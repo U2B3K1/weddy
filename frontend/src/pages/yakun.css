@@ -1,0 +1,171 @@
+/* ===== Sahifaning yakuniy qismi — jjettas.com + atlasmotion.com uslubida (Yakun.jsx) =====
+   Uchta yopishqoq sahna ketma-ket keladi, har biri aylantirishga bog'langan:
+     1) Chaqiriq — «Saloningiz Libosaga tayyormi?» (atlasmotion: aylantirishga bog'langan fon videosi)
+     2) Raqamlar — markazda gologramma guldasta, raqamlar bitta-bitta yorishib almashadi
+     3) Kirish   — to'liq ekranli video
+   --p (0..1) — blok ichidagi aylantirish ulushi, uni Reklama.jsx [data-sahna] bloklarga yozadi.
+   Ranglar sahifaning yuqorisidagidek: to'q ko'k fon, tilla va fil suyagi. */
+
+.rk-yk { position: relative; z-index: 2; --yk-fon: #0c1321; }
+.rk-yk-yol { position: relative; }
+.rk-yk-pin { position: sticky; top: 0; height: 100vh; height: 100svh; overflow: hidden; }
+.rk-yk-raqam { background: var(--yk-fon); }
+
+/* ---------- 1) Chaqiriq: atlasmotion.com uslubida ----------
+   Fon — aylantirishga bog'langan video (.rk-yk-osmon; vaqtini Yakun.jsx boshqaradi): kamera tilla bulutlardan saroyga tushadi.
+   Ustida yozuvlar ketma-ket (hammasi --p dan):
+     .rk-yk-kichik  kichik «Navbat sizda.» — so'zma-so'z chiqadi, keyin so'nadi
+     h2             katta sarlavha — harflar qator ostidan birin-ketin ko'tariladi (qator overflow bilan kesadi)
+     .rk-yk-izoh    izoh — so'zlar xiradan yorqinga o'tadi
+     .rk-tugma      a'zo bo'lish
+   Shrift — barcha matn EZAZ serifi (var(--serif)); rang — fil suyagi, urg'u tilla. */
+.rk-yk-chaqiriq {
+  height: 540vh; background: var(--yk-fon);
+  --ka: clamp(0, (var(--p, 0) - .08) / .05, 1);                      /* kichik yozuv: 1-so'z */
+  --kb: clamp(0, (var(--p, 0) - .13) / .05, 1);                      /* kichik yozuv: 2-so'z */
+  --kc: clamp(0, (var(--p, 0) - .27) / .07, 1);                      /* kichik yozuvning so'nishi */
+  --h: calc((var(--p, 0) - .4) / .2 * (var(--harf) + 5));            /* ko'tarilgan harflar soni */
+  --w: calc((var(--p, 0) - .6) / .18 * (var(--soz) + 2));            /* yorishgan so'zlar soni */
+  --t: clamp(0, (var(--p, 0) - .8) / .1, 1);                         /* tugmaning chiqishi */
+}
+.rk-yk-osmon { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; opacity: var(--kir, 1); }
+/* video ustida: mayda donadorlik (rasm chizilgandek) va matn o'qilishi uchun tepa-pastda to'q ko'k parda */
+.rk-yk-chaqiriq .rk-yk-pin::before {
+  content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  background:
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1  0 0 0 0 1  0 0 0 0 1  0 0 0 .5 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.14'/%3E%3C/svg%3E"),
+    linear-gradient(180deg, rgba(12, 19, 33, .5), rgba(12, 19, 33, .08) 34%, rgba(12, 19, 33, .12) 62%, rgba(12, 19, 33, .7));
+}
+.rk-yk-chaqiriq .rk-yk-pin > :not(video) { z-index: 2; }
+
+.rk-yk-kichik {
+  position: absolute; left: 0; right: 0; top: 50%; margin: 0 !important; transform: translateY(-50%); text-align: center; pointer-events: none;
+  font-family: var(--serif); font-weight: 400; text-transform: uppercase; line-height: 1.04; letter-spacing: .02em;
+  font-size: clamp(30px, 4vw, 72px); color: #fff6dc; text-shadow: 0 2px 30px rgba(12, 19, 33, .55);
+  opacity: calc(1 - var(--kc));
+}
+.rk-yk-kichik i { display: block; font-style: normal; opacity: calc(.0 + var(--ka)); transform: translateY(calc((1 - var(--ka)) * .5em)); }
+.rk-yk-kichik i + i { opacity: var(--kb); transform: translateY(calc((1 - var(--kb)) * .5em)); color: var(--tilla); }
+
+.rk-yk-savol { position: absolute; left: 0; right: 0; top: clamp(110px, 17vh, 190px); text-align: center; pointer-events: none; }
+.rk-yk-chaqiriq h2 {
+  margin: 0; display: inline-block; text-align: left;
+  font-family: var(--serif); font-weight: 400; text-transform: uppercase;
+  font-size: clamp(34px, 6vw, 118px); line-height: 1.04; letter-spacing: .02em; color: #fff6dc;
+  text-shadow: 0 2px 40px rgba(12, 19, 33, .45);
+}
+/* qator harflarni kesadi: ular ostidan ko'tarilib chiqadi */
+.rk-yk-chaqiriq h2 span { display: block; overflow: hidden; white-space: nowrap; padding: .04em .04em .1em; }
+.rk-yk-chaqiriq h2 span + span { display: inline-block; vertical-align: top; margin-left: 1.9em; color: #f3d6a8; text-shadow: 0 2px 22px rgba(12, 19, 33, .75), 0 0 60px rgba(12, 19, 33, .5); }
+.rk-yk-chaqiriq h2 span + span + span { margin-left: .2em; }
+.rk-yk-chaqiriq h2 i {
+  display: inline-block; font-style: normal;
+  --y: clamp(0, (var(--h) - var(--i)) / 4, 1);
+  transform: translateY(calc((1 - var(--y)) * 112%));
+}
+.rk-yk-past { position: absolute; left: 31%; bottom: 13vh; max-width: min(34ch, 60vw); }
+.rk-yk-izoh {
+  margin: 0 !important; font-family: var(--serif); font-weight: 400; letter-spacing: .01em; line-height: 1.24;
+  font-size: clamp(16px, 1.55vw, 28px); color: #fff6dc; text-shadow: 0 2px 26px rgba(12, 19, 33, .6);
+}
+.rk-yk-izoh i { font-style: normal; --y: clamp(0, var(--w) - var(--i), 1); opacity: calc(var(--y) * .78 + clamp(0, var(--w) + 1.5 - var(--i), 1) * .22); }
+.rk-yk-chaqiriq .rk-tugma { margin-top: 3.4vh; opacity: var(--t); transform: translateY(calc((1 - var(--t)) * 20px)); pointer-events: auto; }
+
+/* ---------- 2) Raqamlar: tilla sim-karkas (wireframe) chizma fonida tepada gologramma guldastalar, raqamlar bilan birga almashadi ---------- */
+.rk-yk-raqam {
+  height: 430vh;
+  --k: var(--kir, 1);                    /* kirish: fon va shulaning paydo bo'lishi */
+  --q: clamp(0, (var(--p, 0) - .04) / .92, 1);            /* raqamlar yo'li */
+  --n: 4;                                                 /* statlar soni — har biri yo'lning 1/n ulushini oladi */
+  --gul-d: min(40vh, 46vw);                               /* markazdagi yagona guldastaning diametri */
+}
+/* fon: «Imkoniyatlar» slaydidagidek tilla sim-karkas (wireframe) chizma — xira ko'rinadi, raqamlar va
+   guldastalar undan ajralib turadi. Aylantirganda sekin yaqinlashadi va raqamlarga qarshi tomonga siljiydi. */
+.rk-yk-fon {
+  position: absolute; inset: -4%; width: 108%; height: 108%; object-fit: cover; display: block; z-index: 0;
+  filter: saturate(1.08) contrast(1.03); opacity: calc(var(--k) * .58);
+  transform: translate3d(calc((var(--q) - .5) * 4vw), 0, 0) scale(calc(1 + var(--q) * .08));
+}
+/* chap tomonda (raqamlar) va chetlarda yengil qoraytirish — wireframe chizmani o'chirmay, matn o'qilishini ta'minlaydi */
+.rk-yk-raqam .rk-yk-pin::before {
+  content: ''; position: absolute; inset: 0; z-index: 1; pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(12, 19, 33, .6), rgba(12, 19, 33, .16) 42%, transparent 64%),
+    radial-gradient(120% 90% at 50% 42%, transparent 44%, rgba(12, 19, 33, .55));
+}
+.rk-yk-raqam .rk-yk-pin::after {
+  content: ''; position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background: linear-gradient(var(--yk-fon), transparent 16%, transparent 84%, var(--yk-fon));
+}
+.rk-yk-yorliq { position: absolute; left: var(--chet); top: clamp(96px, 14vh, 130px); margin: 0 !important; z-index: 3; }
+/* faol raqam ko'rsatkichi (01 02 03 04) — yorliq qarshisidagi mayda chiziqchalar */
+.rk-yk-raqam-son {
+  position: absolute; right: var(--chet); top: clamp(96px, 14vh, 130px); z-index: 3;
+  display: flex; align-items: center; gap: 10px; height: 1em;
+}
+.rk-yk-raqam-son i {
+  width: 24px; height: 2px; background: rgba(228, 193, 150, .95);
+  --boshlash: calc(var(--i) / var(--n)); --uzunlik: calc(1 / var(--n));
+  --k1: clamp(0, (var(--q) - var(--boshlash)) / .06, 1);
+  --k2: clamp(0, (var(--q) - (var(--boshlash) + var(--uzunlik) - .06)) / .06, 1);
+  opacity: calc(.16 + var(--k1) * (1 - var(--k2)) * .84);
+  scale: calc(1 + var(--k1) * (1 - var(--k2)) * .55);
+}
+/* raqamlar: hammasi bitta joyda turadi, aylantirishga qarab bitta-bitta ko'tarilib yorishadi, keyin xiralashib
+   navbatdagi raqamga o'tadi (jjettas.com uslubidagi «o'z joyida almashish»). */
+.rk-yk-yol-raqam {
+  position: absolute; inset: 0; z-index: 2; pointer-events: none;
+  display: flex; align-items: center; justify-content: center;
+}
+.rk-yk-son {
+  position: absolute; left: var(--chet); bottom: 11vh; top: auto;
+  width: auto; max-width: min(58vw, 660px); padding: 0;
+  display: flex; flex-direction: column; align-items: flex-start; text-align: left;
+  --boshlash: calc(var(--i) / var(--n)); --uzunlik: calc(1 / var(--n));
+  --k1: clamp(0, (var(--q) - var(--boshlash)) / .06, 1);                        /* kirish: ko'tarilib yorishadi */
+  --k2: clamp(0, (var(--q) - (var(--boshlash) + var(--uzunlik) - .06)) / .06, 1); /* chiqish: xiralashib tushadi */
+  opacity: calc(var(--k1) * (1 - var(--k2)));
+  transform: translateY(calc((1 - var(--k1)) * 5vh - var(--k2) * 5vh));
+  filter: blur(calc(((1 - var(--k1)) + var(--k2)) * 7px));
+  will-change: transform, opacity, filter;
+}
+.rk-yk-son b {
+  font-family: var(--serif); font-weight: 400; line-height: .82; font-size: min(19vh, 24vw); letter-spacing: -.02em;
+  background: linear-gradient(180deg, #fbf6ee 8%, #e4c196 46%, #a57c4b 96%); -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.rk-yk-son span {
+  margin-top: 1.8vh; font-size: clamp(12px, 1.1vw, 18px); font-weight: 700; letter-spacing: .3em; text-transform: uppercase; color: var(--oq);
+  white-space: nowrap;
+}
+/* pastda so'zlar lentasi — raqamlardan sekinroq, teskari tomonga suriladi */
+.rk-yk-lenta { position: absolute; left: 0; right: 0; bottom: 5vh; z-index: 1; overflow: hidden; opacity: .5; border-top: 1px solid rgba(228, 193, 150, .25); padding-top: 14px; }
+.rk-yk-lenta > div { display: flex; width: max-content; transform: translate3d(calc(-30vw + var(--q) * 26vw), 0, 0); }
+.rk-yk-lenta span { display: flex; }
+.rk-yk-lenta b { display: flex; align-items: center; gap: 26px; padding-right: 26px; font: 500 12px/1 ui-monospace, monospace; letter-spacing: 4px; color: var(--tilla); }
+.rk-yk-lenta i { font-style: normal; opacity: .6; }
+/* Markazda yagona guldasta gologrammasi — raqamlar bilan birga almashadi (Yakun.jsx faol guldastani tanlaydi).
+   Kanvas guldastaning o'zidan ancha katta — butun sahnani egallaydi (figura o'lchami Yakun.jsx da `masshtab` bilan):
+   almashish paytida eski guldasta nuqtalari chapga sochilib, yangisi o'ngdan yig'ilganda ular to'rtburchak chetda
+   kesilmaydi, erkin uchib so'nadi. Chetlarga yaqin yumshoq niqob bilan yo'qoladi. */
+.rk-yk-gul-qator { position: absolute; inset: 0; z-index: 2; pointer-events: none; }
+.rk-yk-gul-qator canvas {
+  position: absolute; inset: 0; width: 100%; height: 100%; display: block; opacity: var(--k);
+  -webkit-mask-image: radial-gradient(70% 78% at 50% 50%, #000 62%, transparent); mask-image: radial-gradient(70% 78% at 50% 50%, #000 62%, transparent);
+}
+
+/* ---------- Telefon va tik ekran ---------- */
+@media (max-width: 899px), (max-aspect-ratio: 11/10) {
+  .rk-yk-chaqiriq h2 { font-size: clamp(24px, 8.8vw, 64px); line-height: 1; }
+  /* uch qator zinapoya emas, «tartibsiz» turadi: ikkinchisi o'ngga surilgan, uchinchisi yarim qaytadi */
+  .rk-yk-chaqiriq h2 span + span { display: block; margin-left: 1.5em; }
+  .rk-yk-chaqiriq h2 span + span + span { display: block; margin-left: .55em; }
+  .rk-yk-savol { padding: 0 var(--chet); }
+  .rk-yk-past { left: var(--chet); right: var(--chet); bottom: 10svh; max-width: none; }
+  .rk-yk-raqam { height: 400vh; }
+  .rk-yk-son { bottom: 9svh; max-width: 84vw; }
+  .rk-yk-son b { font-size: min(16svh, 34vw); }
+  .rk-yk-son span { letter-spacing: .2em; white-space: normal; line-height: 1.4; }
+  .rk-yk-raqam { --gul-d: min(32svh, 66vw); }
+  .rk-yk-raqam-son { gap: 8px; }
+  .rk-yk-raqam-son i { width: 18px; }
+}

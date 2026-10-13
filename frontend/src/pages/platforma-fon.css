@@ -1,0 +1,22 @@
+/* Platforma ichki sahifalari foni — "Kelinlar" bo'limidagi qasr rasmi va tepadan tushayotgan
+   tilla harflar yomg'iri. Qatlam kontent ORTIDA turadi (z-index: -1); kontent kartochkalari oq
+   fonli bo'lgani uchun to'q fonda aniq ajralib turadi. pointer-events: none — klik va aylantirish
+   kontentga to'sqinlik qilmaydi. */
+.platforma-fon {
+  position: fixed; inset: 0; z-index: -1; overflow: hidden; pointer-events: none;
+  background: #1c2433;
+}
+.platforma-fon img {
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+  filter: blur(3px) brightness(.85) saturate(1.05); transform: scale(1.04);
+}
+/* Xira qatlam: tepa tilla nur bilan, past esa to'qroq — oq kartochkalar va pastki nav ustida
+   muvozanat saqlanadi */
+.pf-aura {
+  position: absolute; inset: 0;
+  background:
+    radial-gradient(ellipse 55% 38% at 50% 6%, rgba(255, 236, 205, .16), transparent 70%),
+    linear-gradient(180deg, rgba(14, 22, 38, .5), rgba(14, 22, 38, .32) 45%, rgba(14, 22, 38, .62));
+}
+.platforma-fon canvas { position: absolute; inset: 0; width: 100%; height: 100%; mix-blend-mode: screen; }
+@media (prefers-reduced-motion: reduce) { .platforma-fon canvas { display: none; } }

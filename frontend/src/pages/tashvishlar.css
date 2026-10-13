@@ -1,0 +1,197 @@
+/* ===== "Imkoniyatlar" slayderi — Orano "Innovation" uslubida (Tashvishlar.jsx) =====
+   Qatlamlar (pastdan tepaga):
+     .rk-tv-sahna   kadrlar to'plami. .rk-tv-kadr — bitta slayd: tilla sim-karkas fon + polida turgan tilla kelin
+     .rk-tv-skaner  slayd almashganda ekran bo'ylab yuradigan tik tilla nur; yangi kadr uning ortidan ochiladi
+     .rk-tv-tor     Orano'dagi ingichka yo'naltiruvchi chiziqlar
+     matn, sanoq, nuqtalar, strelkalar
+   JS o'zgaruvchilari: --mx, --my (kursor, -0.5..0.5); har kadrda --kx, --ky (kelin oyog'i turadigan nuqta, %), --kh (bo'yi, vh).
+   Bo'lim baland (.rk-tv-yol), sahna yopishqoq (.rk-tv): aylantirilgan joy qaysi slayd ko'rinishini belgilaydi.
+   Holatlar: .rk-tv-faol — ostidagi joriy kadr; .rk-tv-kiruvchi + .rk-tv-ongdan/.rk-tv-chapdan — ochilayotgan kadr;
+             .rk-tv-jim — matn yashirin (o'tishning birinchi yarmi). */
+
+/* har slaydga 55vh aylantirish yo'li; oxirgi slayd ham shuncha turib, keyin bo'lim yuqoriga ketadi */
+.rk-tv-yol { position: relative; z-index: 2; height: calc(100vh + (var(--soni, 8) - 1) * 55vh); }
+.rk-tv {
+  --tv-fon: #0c1321; --tv-vaqt: 1.15s; --tv-egri: cubic-bezier(.65, 0, .25, 1);
+  position: sticky; top: 0; height: 100vh; height: 100svh; overflow: hidden;
+  background: var(--tv-fon); color: var(--oq);
+  /* tepa va pastda sahifaning umumiy foniga yumshoq qo'shiladi */
+  -webkit-mask-image: linear-gradient(transparent, #000 9%, #000 91%, transparent);
+  mask-image: linear-gradient(transparent, #000 9%, #000 91%, transparent);
+}
+
+/* Bo'lim ekranni to'liq egallamaguncha — faqat qorong'ilik va «Imkoniyatlar» yozuvi; keyin kontent yorishib ochiladi (--p: Reklama.jsx) */
+.rk-tv::after {
+  content: ''; position: absolute; inset: 0; z-index: 5; pointer-events: none;
+  background: var(--tv-fon); opacity: calc(1 - var(--kir));
+}
+
+/* --- Kadrlar --- */
+.rk-tv-sahna { position: absolute; inset: 0; }
+.rk-tv-kadr { position: absolute; inset: 0; visibility: hidden; background: var(--tv-fon); }
+.rk-tv-kadr.rk-tv-faol { visibility: visible; }
+.rk-tv-kadr.rk-tv-kiruvchi { visibility: visible; z-index: 2; animation: var(--tv-vaqt) var(--tv-egri) both; }
+.rk-tv-kadr.rk-tv-ongdan { animation-name: rk-tv-ongdan; }
+.rk-tv-kadr.rk-tv-chapdan { animation-name: rk-tv-chapdan; }
+@keyframes rk-tv-ongdan { from { clip-path: inset(0 0 0 100%); } to { clip-path: inset(0 0 0 0); } }
+@keyframes rk-tv-chapdan { from { clip-path: inset(0 100% 0 0); } to { clip-path: inset(0 0 0 0); } }
+
+.rk-tv-fon {
+  position: absolute; inset: -3%; width: 106%; height: 106%; object-fit: cover; display: block; opacity: .58;
+  transform: translate3d(calc(var(--mx, 0) * -22px), calc(var(--my, 0) * -14px), 0);
+  transition: transform .9s var(--yumshoq);
+}
+/* ochilayotgan kadrning foni biroz kattaroqdan o'z o'lchamiga qaytadi — nur ortidan "o'tirib" keladi */
+.rk-tv-kiruvchi .rk-tv-fon { animation: rk-tv-otir var(--tv-vaqt) var(--tv-egri) both; }
+@keyframes rk-tv-otir { from { scale: 1.08; opacity: .9; } to { scale: 1; opacity: .58; } }
+/* o'ng tomon matn uchun qoraytiriladi, chetlar so'nadi; kelin ortida ham fon chiziqlari xiralashadi */
+.rk-tv-kadr::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background:
+    radial-gradient(calc(var(--kh, 60) * .42vh) calc(var(--kh, 60) * .6vh) at calc(var(--kx, 34) * 1%) calc(var(--ky, 90) * 1% - var(--kh, 60) * .45vh),
+      rgba(12, 19, 33, .8), rgba(12, 19, 33, .45) 60%, transparent),
+    linear-gradient(90deg, transparent 40%, rgba(12, 19, 33, .8) 62%, rgba(12, 19, 33, .92)),
+    radial-gradient(120% 90% at 30% 55%, transparent 45%, rgba(12, 19, 33, .85));
+}
+
+/* Kelin: tilla sim-karkas video, oyog'i (--kx, --ky) nuqtada — fondagi polda turadi. Videoda figuraning oyog'i
+   kadr balandligining ~90% ida, shuning uchun quti shu nuqtadan 90% yuqoriga suriladi.
+   lighten — videoning to'q foni fon chiziqlarini yopmaydi; fon ham tilla bo'lgani uchun kelin undan yorqinroq. */
+.rk-tv-kelin {
+  position: absolute; left: calc(var(--kx, 34) * 1%); top: calc(var(--ky, 90) * 1%); z-index: 1;
+  height: min(calc(var(--kh, 60) * 1.22vh), 50vw); aspect-ratio: 1;
+  transform: translate3d(calc(-50% + var(--mx, 0) * 26px), calc(-90% + var(--my, 0) * 10px), 0);
+  transition: transform .9s var(--yumshoq);
+  mix-blend-mode: lighten; filter: brightness(1.18) contrast(1.06);
+  -webkit-mask-image: radial-gradient(closest-side, #000 78%, transparent);
+  mask-image: radial-gradient(closest-side, #000 78%, transparent);
+  cursor: grab; touch-action: pan-y; user-select: none; -webkit-user-select: none; outline: none;
+}
+.rk-tv-kelin:active { cursor: grabbing; }
+.rk-tv-kelin:focus-visible { filter: brightness(1.4) contrast(1.06); }
+.rk-tv-kelin video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; display: block; pointer-events: none; }
+.rk-tv-kadr:not(.rk-tv-faol) .rk-tv-kelin { pointer-events: none; }
+
+/* --- Skaner nuri: yangi kadrning ochilish chegarasida yuradi --- */
+.rk-tv-skaner {
+  position: absolute; top: 0; bottom: 0; left: 0; width: 2px; margin-left: -1px; z-index: 3; pointer-events: none;
+  background: linear-gradient(0deg, transparent, var(--tilla) 14%, var(--oq) 50%, var(--tilla) 86%, transparent);
+  box-shadow: 0 0 18px 2px rgba(228, 193, 150, .9), 0 0 70px 10px rgba(228, 193, 150, .35);
+  animation: var(--tv-vaqt) var(--tv-egri) both;
+}
+/* nur ortidagi (yangi kadr tomonidagi) yorug'lik izi */
+.rk-tv-skaner::after { content: ''; position: absolute; top: 0; bottom: 0; width: 16vw; }
+.rk-tv-skaner.rk-tv-ongdan { animation-name: rk-tv-nur-ongdan; }
+.rk-tv-skaner.rk-tv-ongdan::after { left: 0; background: linear-gradient(90deg, rgba(228, 193, 150, .22), transparent); }
+.rk-tv-skaner.rk-tv-chapdan { animation-name: rk-tv-nur-chapdan; }
+.rk-tv-skaner.rk-tv-chapdan::after { right: 0; background: linear-gradient(270deg, rgba(228, 193, 150, .22), transparent); }
+@keyframes rk-tv-nur-ongdan { from { left: 100%; opacity: 1; } 92% { opacity: 1; } to { left: 0; opacity: 0; } }
+@keyframes rk-tv-nur-chapdan { from { left: 0; opacity: 1; } 92% { opacity: 1; } to { left: 100%; opacity: 0; } }
+
+/* --- Ingichka yo'naltiruvchi chiziqlar --- */
+.rk-tv-tor {
+  position: absolute; inset: 0; pointer-events: none; opacity: .5;
+  background:
+    linear-gradient(90deg, rgba(228, 193, 150, .08) 1px, transparent 1px) 0 0 / 20% 100%,
+    linear-gradient(0deg, rgba(228, 193, 150, .08) 1px, transparent 1px) 0 30% / 100% 40%;
+}
+
+/* --- Yozuvlar --- */
+.rk-tv-yorliq {
+  position: absolute; z-index: 6; left: var(--chet); top: clamp(96px, 14vh, 130px); margin: 0; padding-left: 14px;
+  border-left: 3px solid var(--tilla);
+  font-size: 11px; letter-spacing: 3px; line-height: 1.6; text-transform: uppercase; color: var(--tilla);
+}
+.rk-tv-obraz {
+  position: absolute; left: var(--chet); bottom: 11vh; margin: 0; max-width: 24ch;
+  font-size: 11px; letter-spacing: 2px; line-height: 1.6; text-transform: uppercase; color: var(--tilla);
+  transition: opacity .4s ease;
+}
+.rk-tv-obraz b { display: block; font: 600 11px/1.8 ui-monospace, monospace; color: var(--oq); }
+.rk-tv-obraz small { display: block; margin-top: 10px; font-size: 10px; letter-spacing: 1.5px; color: rgba(251, 246, 238, .5); }
+
+.rk-tv-matn {
+  position: absolute; left: 56%; right: calc(var(--chet) + 90px); top: 50%; transform: translateY(-50%);
+  max-width: 500px; transition: opacity .4s ease, transform .6s var(--yumshoq), filter .4s ease;
+}
+.rk-tv-sanoq { display: flex; align-items: center; gap: 14px; margin: 0 0 28px; font: 500 12px/1 ui-monospace, monospace; letter-spacing: 2px; color: rgba(251, 246, 238, .5); }
+.rk-tv-sanoq b { color: var(--tilla); font-weight: 600; }
+.rk-tv-sanoq i { width: 34px; height: 1px; background: rgba(251, 246, 238, .6); }
+.rk-tv-matn h2 {
+  margin: 0; font-family: var(--serif); font-weight: 400; text-transform: uppercase; white-space: nowrap;
+  font-size: clamp(38px, 4.6vw, 84px); line-height: 1; letter-spacing: .14em;
+}
+.rk-tv-shior { margin: 18px 0 22px; font-family: var(--kursiv); font-style: italic; font-size: clamp(22px, 2.1vw, 32px); line-height: 1.15; color: var(--tilla); }
+.rk-tv-matn ul { list-style: none; margin: 0; padding: 0; }
+.rk-tv-matn li { padding: 9px 0; font-size: clamp(14px, 1.05vw, 17px); line-height: 1.5; color: var(--xira); border-top: 1px solid rgba(251, 246, 238, .12); }
+
+/* Slaydlar ro'yxati: sakkizta chiziqcha, joriysi tilla va uzunroq; bosilsa o'sha slaydga o'tadi */
+.rk-tv-nuqtalar { display: flex; gap: 6px; margin-top: 26px; }
+.rk-tv-nuqtalar button {
+  width: 22px; height: 22px; padding: 0; border: 0; background: none; cursor: pointer; position: relative;
+  transition: width .5s var(--yumshoq);
+}
+.rk-tv-nuqtalar button::before {
+  content: ''; position: absolute; left: 0; right: 0; top: 50%; height: 2px; margin-top: -1px;
+  background: rgba(251, 246, 238, .3); transition: background .3s ease;
+}
+.rk-tv-nuqtalar button:hover::before { background: var(--oq); }
+.rk-tv-nuqtalar .rk-tv-faol { width: 46px; }
+.rk-tv-nuqtalar .rk-tv-faol::before { background: var(--tilla); }
+/* avtomatik almashish sanayotganda joriy nuqta oq bilan to'lib boradi (Tashvishlar.jsx dagi AVTO = 5 s; matn o'tishning o'rtasida almashgani uchun 4.5 s) */
+.rk-tv-nuqtalar .rk-tv-faol::after {
+  content: ''; position: absolute; left: 0; top: 50%; height: 2px; margin-top: -1px; width: 100%;
+  background: var(--oq); transform-origin: 0 50%; transform: scaleX(0);
+}
+.rk-tv-avto .rk-tv-nuqtalar .rk-tv-faol::after { animation: rk-tv-tolish 4.5s linear both; }
+@keyframes rk-tv-tolish { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.rk-tv-nuqtalar button:focus-visible { outline: 2px solid var(--tilla); outline-offset: 2px; }
+
+.rk-tv-jim .rk-tv-matn { opacity: 0; transform: translateY(calc(-50% + 18px)); filter: blur(6px); }
+.rk-tv-jim .rk-tv-obraz { opacity: 0; }
+
+/* --- Strelkalar --- */
+.rk-tv-strelka {
+  position: absolute; top: 50%; width: 68px; height: 68px; margin-top: -34px; padding: 0; border-radius: 50%; cursor: pointer;
+  display: grid; place-items: center; background: rgba(12, 19, 33, .35); color: var(--oq);
+  border: 1px solid rgba(251, 246, 238, .55); backdrop-filter: blur(4px);
+  transition: background .3s ease, color .3s ease, border-color .3s ease, transform .4s var(--yumshoq);
+}
+.rk-tv-strelka svg { width: 30px; height: 9px; fill: none; stroke: currentColor; stroke-width: 1.2; transition: transform .4s var(--yumshoq); }
+.rk-tv-keyingi { right: var(--chet); }
+.rk-tv-oldingi { left: var(--chet); width: 44px; height: 44px; margin-top: -22px; border-color: rgba(251, 246, 238, .3); }
+.rk-tv-oldingi svg { width: 18px; }
+.rk-tv-strelka:hover { background: var(--tilla); color: var(--siyoh); border-color: var(--tilla); }
+.rk-tv-keyingi:hover svg { transform: translateX(5px); }
+.rk-tv-oldingi:hover svg { transform: translateX(-3px); }
+.rk-tv-strelka:focus-visible { outline: 2px solid var(--tilla); outline-offset: 4px; }
+
+/* Telefon va tik ekran: matn pastda chapda, kelin uning yonida — o'ngda, fondagi polda turadi */
+@media (max-width: 899px), (max-aspect-ratio: 11/10) {
+  .rk-tv { padding: 92px var(--chet) 96px; display: flex; flex-direction: column; justify-content: flex-end; }
+  /* faqat matn orti (chap past) va strelkalar tasmasi qoraytiriladi — kelin oyog'i ostidagi pol ko'rinib turadi */
+  .rk-tv-kadr::after {
+    background:
+      linear-gradient(0deg, rgba(12, 19, 33, .9) 9%, transparent 22%),
+      radial-gradient(95% 48% at 0% 70%, rgba(12, 19, 33, .94) 50%, transparent);
+  }
+  .rk-tv-kelin { left: 77%; top: calc(100svh - 124px); height: min(52svh, 116vw); }
+  .rk-tv-matn > :not(h2) { max-width: 58%; }
+  .rk-tv-matn h2 { text-shadow: 0 2px 18px rgba(12, 19, 33, .9); }
+  .rk-tv-matn li { padding: 6px 0; }
+  .rk-tv-shior { margin: 10px 0 12px; }
+  .rk-tv-nuqtalar { margin-top: 14px; }
+  .rk-tv-yorliq { top: 84px; }
+  .rk-tv-obraz { display: none; }
+  .rk-tv-matn { position: relative; left: auto; right: auto; top: auto; transform: none; max-width: none; }
+  .rk-tv-jim .rk-tv-matn { transform: translateY(14px); }
+  .rk-tv-matn h2 { letter-spacing: .1em; font-size: clamp(34px, 10vw, 60px); }
+  .rk-tv-strelka { top: auto; bottom: 28px; margin-top: 0; width: 52px; height: 52px; }
+  .rk-tv-oldingi { left: auto; right: calc(var(--chet) + 64px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .rk-tv { --tv-vaqt: .01s; }
+  .rk-tv-fon { transition: none; transform: none; }
+  .rk-tv-kelin { transition: none; transform: translate(-50%, -90%); }
+  .rk-tv-skaner { display: none; }
+}

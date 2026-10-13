@@ -1,0 +1,18 @@
+# Libosa Telegram boti (polling rejimi).
+# Qo'yish: /etc/systemd/system/libosa-telegram.service
+# TELEGRAM_BOT_TOKEN backend/.env dan o'qiladi.
+
+[Unit]
+Description=Libosa Telegram bot (polling)
+After=network.target postgresql.service
+
+[Service]
+User=libosa
+Group=libosa
+WorkingDirectory=/var/www/libosa/backend
+ExecStart=/var/www/libosa/venv/bin/python manage.py telegram_bot
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

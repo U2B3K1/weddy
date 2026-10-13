@@ -1,0 +1,111 @@
+/* ===== "Kartalar" bo'limi — Lusion "Area of Expertise" uslubida (kino bo'limi o'rniga) =====
+   Ssenariy (aylantirish ulushi p, JS hisoblaydi):
+     0–12%   sarlavha; 3 karta markazda dasta bo'lib turadi (orqa tomoni — kelin libosi)
+     10–40%  dasta yelpig'ichdek yoyiladi: kartalar qiyshayib, kattalashib yon-yonga chiqadi
+     15–80%  orqada tilla lenta egri chiziq bo'lib chiziladi
+     40–80%  kartalar birin-ketin ag'dariladi — old tomonda Bron / Zalog / Foyda ma'lumoti
+     70–88%  qiyshiqlik to'g'rilanadi, kartalar bir qatorga tekislanadi
+     92–100% bo'lim so'nadi
+   JS o'zgaruvchilari: bo'limda --fan, --tek, --sarl, --ket; har kartada --flip, --mx, --my. */
+
+.rk-kartalar { position: relative; z-index: 2; height: 460vh; }
+.rk-kar-yopishqoq {
+  position: sticky; top: 0; height: 100vh; height: 100svh; overflow: hidden;
+  perspective: 1700px; perspective-origin: 50% 45%;
+  opacity: calc(1 - var(--ket, 0)); filter: blur(calc(var(--ket, 0) * 12px));
+}
+
+/* Sarlavha — boshida markazda katta, kartalar yoyilganda tepaga ko'tarilib so'nadi */
+.rk-kar-sarlavha {
+  position: absolute; left: 0; right: 0; top: 10vh; margin: 0; text-align: center; pointer-events: none;
+  font-family: var(--serif); font-weight: 400; text-transform: uppercase; color: var(--oq);
+  font-size: clamp(34px, 4.6vw, 84px); line-height: 1.05; letter-spacing: .04em;
+  text-shadow: 0 2px 40px rgba(14, 26, 43, .6);
+  opacity: calc(1 - var(--sarl, 0)); transform: translateY(calc(var(--sarl, 0) * -60px));
+  filter: blur(calc(var(--sarl, 0) * 10px));
+}
+.rk-kar-sarlavha em { font-family: var(--kursiv); font-style: italic; color: var(--tilla); text-transform: none; }
+
+/* O'ng tepadagi kichik izoh + 3 ta mitti karta belgisi (Lusion'dagidek) */
+.rk-kar-izoh {
+  position: absolute; right: var(--chet); top: clamp(96px, 14vh, 130px); max-width: 30ch; text-align: right;
+  font-size: 11px; letter-spacing: 2px; line-height: 1.7; text-transform: uppercase; color: var(--xira);
+  opacity: var(--sarl, 0);
+}
+.rk-kar-izoh i { display: inline-block; width: 12px; height: 17px; margin: 10px 0 0 6px; border-radius: 2px;
+  border: 1px solid var(--tilla); background: rgba(228, 193, 150, .15); }
+
+/* Tilla lenta — kartalar ortidan o'tadigan egri chiziq; uzunligi aylantirish bilan chiziladi */
+.rk-kar-lenta { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+.rk-kar-lenta path { fill: none; stroke-linecap: round; stroke-dasharray: 1 1; stroke-dashoffset: calc(1 - var(--lenta, 0)); }
+
+/* Kartalar sahnasi */
+.rk-kar-sahna { position: absolute; left: 50%; top: 57%; width: 0; height: 0; transform-style: preserve-3d; }
+.rk-okarta {
+  --w: min(21vw, 40vh); --oraliq: calc(var(--w) * 1.14);
+  --o: calc(var(--i) - 1);                       /* -1, 0, 1 — chap, o'rta, o'ng */
+  position: absolute; width: var(--w); aspect-ratio: 5 / 7; left: calc(var(--w) / -2); top: calc(var(--w) * -.7);
+  transform-style: preserve-3d; cursor: pointer;
+  transform:
+    translate3d(calc(var(--o) * var(--oraliq) * var(--fan, 0) + var(--i) * 4px * (1 - var(--fan, 0))),
+                calc((1 - var(--fan, 0)) * (60px - var(--i) * 6px) + var(--o) * var(--o) * 26px * var(--fan, 0) * (1 - var(--tek, 0))),
+                calc(var(--i) * 2px))
+    rotateZ(calc(var(--o) * (5deg * (1 - var(--fan, 0)) + 4deg * var(--fan, 0) * (1 - var(--tek, 0)))))
+    rotateY(calc(var(--flip, 0) * 180deg + var(--o) * -22deg * var(--fan, 0) * (1 - var(--tek, 0)) + var(--mx, 0) * 14deg))
+    rotateX(calc(var(--my, 0) * -10deg))
+    scale(calc(.58 + .42 * var(--fan, 0)));
+  transition: transform .5s var(--yumshoq);     /* kursor egilishi yumshoq bo'lsin; aylantirishda ham silliqlaydi */
+}
+.rk-okarta-tomon {
+  position: absolute; inset: 0; border-radius: calc(var(--w) * .06); overflow: hidden;
+  backface-visibility: hidden; -webkit-backface-visibility: hidden;
+  box-shadow: 0 30px 80px -30px rgba(5, 10, 20, .8);
+}
+
+/* --- Orqa tomoni: to'q ko'k, tilla naqsh, arkada kelin libosi --- */
+.rk-okarta-orqa {
+  background: radial-gradient(ellipse at 50% 45%, #22395c, #142338 75%);
+  border: 2px solid var(--tilla);
+}
+.rk-okarta-orqa svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.rk-okarta-arka {
+  position: absolute; left: 22%; right: 22%; top: 17%; bottom: 17%;
+  border-radius: 999px 999px 10px 10px; overflow: hidden;
+  border: 1.5px solid var(--tilla); box-shadow: 0 0 0 5px #172840, 0 0 0 6px rgba(228, 193, 150, .5), 0 0 40px rgba(228, 193, 150, .25);
+}
+.rk-okarta-arka img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 12%; display: block; }
+.rk-okarta-arka::after { content: ''; position: absolute; inset: 0; background: linear-gradient(0deg, rgba(20, 35, 56, .35), transparent 35%); }
+
+/* --- Old tomoni: fil suyagi qog'oz, o'yin kartasi tartibida --- */
+.rk-okarta-yuz {
+  transform: rotateY(180deg); background: var(--oq); color: var(--siyoh);
+  padding: calc(var(--w) * .085) calc(var(--w) * .09);
+  display: flex; flex-direction: column;
+}
+.rk-okarta-bosh { display: flex; justify-content: space-between; align-items: flex-start; }
+.rk-okarta-bosh h3 { margin: 0; font-family: var(--serif); font-weight: 400; text-transform: uppercase;
+  font-size: calc(var(--w) * .1); letter-spacing: .03em; line-height: 1; }
+.rk-okarta-bosh small { display: block; margin-bottom: 6px; font: 600 calc(var(--w) * .036)/1 ui-monospace, monospace; letter-spacing: 1px; color: #b08a5a; }
+.rk-okarta-belgi { width: calc(var(--w) * .1); height: auto; flex: none; }
+.rk-okarta-shior { margin: calc(var(--w) * .07) 0 calc(var(--w) * .02); font-family: var(--kursiv); font-style: italic;
+  font-size: calc(var(--w) * .075); line-height: 1.15; color: #8a6639; }
+.rk-okarta-yuz ul { list-style: none; margin: 0; padding: 0; flex: 1; }
+.rk-okarta-yuz li {
+  padding: calc(var(--w) * .03) 0; font-size: calc(var(--w) * .046); line-height: 1.35;
+  background: radial-gradient(circle, rgba(47, 73, 110, .45) 1px, transparent 1.4px) bottom left / 7px 3px repeat-x;
+}
+.rk-okarta-oyoq { display: flex; justify-content: space-between; align-items: flex-end; transform: rotate(180deg); }
+.rk-okarta-oyoq span { font-family: var(--serif); text-transform: uppercase; font-size: calc(var(--w) * .1); line-height: 1; }
+
+/* Telefon va tik ekran: 3D o'yinsiz, kartalar old tomoni bilan ustma-ust ro'yxat */
+@media (max-width: 899px), (max-aspect-ratio: 11/10) {
+  .rk-kartalar { height: auto; padding: 18vh var(--chet) 10vh; }
+  .rk-kar-yopishqoq { position: static; height: auto; overflow: visible; perspective: none; opacity: 1; filter: none; }
+  .rk-kar-sarlavha { position: static; opacity: 1; transform: none; filter: none; margin-bottom: 40px; }
+  .rk-kar-izoh, .rk-kar-lenta { display: none; }
+  .rk-kar-sahna { position: static; width: auto; height: auto; display: grid; gap: 28px; justify-items: center; }
+  .rk-okarta { position: relative; left: auto; top: auto; --w: min(86vw, 360px); transform: none !important; transition: none; }
+  .rk-okarta-orqa { display: none; }
+  .rk-okarta-yuz { transform: none; }
+}
+@media (prefers-reduced-motion: reduce) { .rk-okarta { transition: none; } }

@@ -1,0 +1,75 @@
+/* ===== "Kelinlar" bo'limi — Lusion TEAM uslubidagi gologramma (EZAZ ranglari va shriftlari) ===== */
+
+/* Bo'lim balandligi: har obrazga ~100vh aylantirish yo'li */
+.rk-kelinlar { position: relative; z-index: 2; height: 520vh; }
+.rk-kel-yopishqoq {
+  position: sticky; top: 0; height: 100vh; height: 100svh; overflow: hidden;
+  background: #1c2433; color: var(--oq);
+}
+/* Bo'lim ekranni to'liq egallamaguncha — faqat qorong'ilik va sarlavhaning o'zi; keyin kontent yorishib ochiladi (--p: Reklama.jsx) */
+.rk-kel-yopishqoq::after {
+  content: ''; position: absolute; inset: 0; z-index: 5; pointer-events: none;
+  background: #1c2433; opacity: calc(1 - var(--kir));
+}
+.rk-kel-sarlavha { z-index: 6; }
+
+/* 1) Yorqin saroy foni — bosh kadrdagi oq-tilla zal; orzudagidek yumshoq, sal xira (fokusdan tashqari) */
+.rk-kel-fon {
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+  filter: blur(3px) brightness(.92) saturate(1.05); transform: scale(1.04);
+}
+/* Kelin ortidagi yumshoq "aura": nuqtali obraz yorqin fonda yo'qolib ketmasligi uchun markaz biroz to'qroq,
+   chetlar va tepa — iliq tilla nur bilan yoritilgan */
+.rk-kel-aura { position: absolute; inset: 0; pointer-events: none;
+  background:
+    radial-gradient(ellipse 22% 52% at 46% 54%, rgba(14, 22, 38, .78), rgba(14, 22, 38, .35) 55%, transparent 80%),
+    radial-gradient(ellipse 40% 30% at 50% 0%, rgba(255, 236, 205, .35), transparent 70%),
+    linear-gradient(180deg, rgba(14, 26, 43, .25), transparent 25%, transparent 70%, rgba(14, 26, 43, .55)); }
+/* 2) harflar yomg'iri, 3) gologramma tuvali */
+.rk-kel-yomgir, .rk-kel-tuval { position: absolute; inset: 0; width: 100%; height: 100%; }
+.rk-kel-yomgir { pointer-events: none; mix-blend-mode: screen; }
+.rk-kel-tuval { cursor: pointer; }
+
+/* 4) HUD: [[ 001 ]], chiziqli shkala, nuqtalar qatori */
+.rk-kel-hud { position: absolute; left: var(--chet); right: var(--chet); top: clamp(110px, 17vh, 150px);
+  display: flex; align-items: center; justify-content: space-between; pointer-events: none;
+  font: 500 11px/1 ui-monospace, monospace; letter-spacing: 1px; color: var(--oq); opacity: .85; }
+.rk-kel-shkala { width: 240px; height: 12px;
+  background: repeating-linear-gradient(90deg, var(--oq) 0 1px, transparent 1px 24px) bottom / 100% 6px no-repeat,
+              repeating-linear-gradient(90deg, var(--oq) 0 2px, transparent 2px 120px) bottom / 100% 12px no-repeat; opacity: .7; }
+.rk-kel-nuqtalar { width: 120px; height: 12px; margin-right: 22vw;
+  background: radial-gradient(circle, var(--oq) 1px, transparent 1.5px) 0 0 / 10px 6px; opacity: .6; }
+
+/* Sarlavha — Lusion'dagi "T E A M" kabi keng oraliqli, EZAZ serifida */
+.rk-kel-sarlavha { position: absolute; right: var(--chet); top: clamp(96px, 15vh, 140px); margin: 0;
+  font-family: var(--serif); font-weight: 400; text-transform: uppercase; color: var(--oq);
+  font-size: clamp(44px, 6.4vw, 108px); letter-spacing: .32em; line-height: 1; margin-right: -.32em; }
+
+/* Obraz nomi, uslubi va progress chizig'i (chap past) */
+.rk-kel-ism { position: absolute; left: var(--chet); bottom: clamp(56px, 10vh, 96px); animation: rk-kel-kir .8s var(--yumshoq) both; }
+.rk-kel-ism p { margin: 0 0 10px; font-family: var(--kursiv); font-style: italic; font-size: clamp(22px, 2vw, 30px); color: var(--tilla); }
+.rk-kel-ism p b { font-family: ui-monospace, monospace; font-style: normal; font-size: 14px; color: var(--oq); margin-right: 8px; }
+.rk-kel-ism small { display: block; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; color: var(--xira); line-height: 1.6; }
+.rk-kel-chiziq { display: block; margin-top: 18px; width: 200px; height: 1px; background: rgba(251, 246, 238, .2); position: relative; }
+.rk-kel-chiziq::after { content: ''; position: absolute; inset: 0; background: var(--tilla); transform-origin: left; transform: scaleX(var(--kel-p, 0)); }
+@keyframes rk-kel-kir { from { opacity: 0; transform: translateY(14px); filter: blur(6px); } to { opacity: 1; transform: none; filter: none; } }
+
+/* Kvadratchalardan yig'ilgan katta bosh harf */
+.rk-kel-harf { position: absolute; right: calc(var(--chet) + 26vw); bottom: clamp(40px, 7vh, 70px); width: clamp(84px, 8.5vw, 136px); height: auto; pointer-events: none;
+  filter: drop-shadow(0 0 10px rgba(228, 193, 150, .55)); animation: rk-kel-harf .9s steps(1, end) both;
+  /* gologramma skaner chiziqlari */
+  -webkit-mask-image: repeating-linear-gradient(0deg, #000 0 3px, rgba(0, 0, 0, .55) 3px 4px); mask-image: repeating-linear-gradient(0deg, #000 0 3px, rgba(0, 0, 0, .55) 3px 4px); }
+@keyframes rk-kel-harf { 0% { opacity: 0; } 15% { opacity: .9; } 25% { opacity: .2; } 40% { opacity: 1; } 55% { opacity: .5; } 70%, 100% { opacity: 1; } }
+
+/* Izoh matni (o'ng past) */
+.rk-kel-matn { position: absolute; right: var(--chet); bottom: clamp(56px, 10vh, 96px); margin: 0; max-width: 34ch;
+  font-size: clamp(14px, 1.1vw, 17px); line-height: 1.5; color: var(--oq); opacity: .9; }
+
+/* Telefon va tik ekran: hammasi ixchamroq, harf va shkala yashiriladi */
+@media (max-width: 899px), (max-aspect-ratio: 11/10) {
+  .rk-kelinlar { height: 420vh; }
+  .rk-kel-harf, .rk-kel-shkala, .rk-kel-nuqtalar { display: none; }
+  .rk-kel-sarlavha { left: var(--chet); right: auto; letter-spacing: .2em; }
+  .rk-kel-matn { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { .rk-kel-yomgir { display: none; } }

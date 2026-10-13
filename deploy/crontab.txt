@@ -1,0 +1,18 @@
+# Libosa rejalashtirilgan ishlar.
+# O'rnatish: crontab /var/www/libosa/deploy/crontab.txt   (yoki `crontab -e` bilan qo'shing)
+# Server soat zonasi Asia/Tashkent bo'lishi kerak: sudo timedatectl set-timezone Asia/Tashkent
+
+# Har 10 daqiqada: avansi yo'q, muddati o'tgan vaqtinchalik bronlarni bekor qilish (FT-2.5)
+*/10 * * * * cd /var/www/libosa/backend && /var/www/libosa/venv/bin/python manage.py bronlarni_tozalash >> /var/log/libosa-cron.log 2>&1
+
+# Har 15 daqiqada: rahbarga kunlik hisobot (har salonga belgilangan vaqtdan keyin, kuniga 1 marta)
+*/15 * * * * cd /var/www/libosa/backend && /var/www/libosa/venv/bin/python manage.py kunlik_hisobot >> /var/log/libosa-cron.log 2>&1
+
+# Har soatda: sotuvchilarga Telegram eslatmalar (kuniga bir marta yoziladi)
+0 * * * * cd /var/www/libosa/backend && /var/www/libosa/venv/bin/python manage.py eslatmalarni_yuborish >> /var/log/libosa-cron.log 2>&1
+
+# Har kuni 10:00: mijozlarga SMS eslatmalar (ertaga olib ketish/qaytarish)
+0 10 * * * cd /var/www/libosa/backend && /var/www/libosa/venv/bin/python manage.py sms_eslatmalar >> /var/log/libosa-cron.log 2>&1
+
+# Har kuni 04:00: chiqqaniga 90 kun bo'lgan salonlarni butunlay o'chirish
+0 4 * * * cd /var/www/libosa/backend && /var/www/libosa/venv/bin/python manage.py chiqqan_salonlar --ochirish >> /var/log/libosa-cron.log 2>&1
