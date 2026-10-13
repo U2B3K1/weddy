@@ -27,7 +27,7 @@ export default function DashbordYon({ onBolim }) {
   return (
     <div className="dashbord-yon">
       <h4>Bugun</h4>
-      <button type="button" className="qator-btn" onClick={och('kassa')}><span>Tushum</span><b>{som(bugun.tushum_jami)}</b></button>
+      <button type="button" className="qator-btn" onClick={och('hisobotlar')}><span>Tushum</span><b>{som(bugun.tushum_jami)}</b></button>
       <button type="button" className="qator-btn" onClick={och('kassa')}><span>Smena</span><b>{bugun.smena_ochiq ? 'ochiq' : 'yopiq'}</b></button>
       <button type="button" className="qator-btn" onClick={och('bosh')}><span>Olib / qaytar</span><b>{bugun.olib_ketiladi} / {bugun.qaytariladi}</b></button>
 
