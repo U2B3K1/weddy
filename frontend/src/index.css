@@ -418,6 +418,12 @@ textarea:focus {
 .dashbord-yon .qator-btn.qizil b { color: #ffb4ab; }
 .dashbord-yon .malumot { font-size: 12px; margin: 2px 4px; }
 
+/* Hisobot sahifasidagi «Bugun» xulosasi */
+.bugun-xulosa { display: flex; flex-direction: column; gap: 8px; }
+.bugun-xulosa h3 { margin-bottom: 4px; }
+.bugun-xulosa .qator-btn { padding: 10px 12px; font-size: 13px; }
+.bugun-xulosa .qator-btn b { font-weight: 600; color: var(--oq); font-variant-numeric: tabular-nums; }
+
 @media (min-width: 768px) {
   .dashbord-yon-mobil { display: none; }
   .dashbord-yon {

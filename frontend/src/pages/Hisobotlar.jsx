@@ -69,6 +69,7 @@ function HisobotBolim() {
 
   return (
     <div className="stack hisobot-sahifa">
+      <BugunXulosa />
       <select value={kalit} onChange={(e) => setKalit(e.target.value)}>
         {royxat.map((r) => <option key={r.kalit} value={r.kalit}>{r.sarlavha}</option>)}
       </select>
@@ -158,6 +159,29 @@ function HisobotBolim() {
       <Bonus />
       <Bank />
     </div>
+  )
+}
+
+// Bugungi tezkor xulosa (Tushum, Smena, Olib/qaytar) — dashborddagi bilan bir xil (FT-1.2).
+function BugunXulosa() {
+  const [d, setD] = useState(null)
+  useEffect(() => {
+    let faol = true
+    const yukla = async () => {
+      try { const r = await dashbord('oy', ''); if (faol) setD(r.bugun) } catch { /* jimgina */ }
+    }
+    yukla()
+    const t = setInterval(yukla, 60000)
+    return () => { faol = false; clearInterval(t) }
+  }, [])
+  if (!d) return null
+  return (
+    <section className="blok bugun-xulosa">
+      <h3>Bugun</h3>
+      <div className="qator-btn"><span>Tushum</span><b>{som(d.tushum_jami)}</b></div>
+      <div className="qator-btn"><span>Smena</span><b>{d.smena_ochiq ? 'ochiq' : 'yopiq'}</b></div>
+      <div className="qator-btn"><span>Olib / qaytar</span><b>{d.olib_ketiladi} / {d.qaytariladi}</b></div>
+    </section>
   )
 }
 
