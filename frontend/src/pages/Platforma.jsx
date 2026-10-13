@@ -89,12 +89,12 @@ function Panel({ bolim, onChiqish }) {
   }, [onChiqish])
   useEffect(() => { yukla() }, [yukla])
 
-  const bajar = async (fn, ok) => {
+  const bajar = useCallback(async (fn, ok) => {
     setXabar({ turi: '', matn: '' })
     try { await fn(); setXabar({ turi: 'ok', matn: ok }); await yukla(); return true } catch (e) {
       setXabar({ turi: 'xato', matn: xatoMatni(e) }); return false
     }
-  }
+  }, [yukla])
 
   return (
     <div className="stack">
@@ -257,12 +257,32 @@ const MANBA = { panel: 'panelda kiritilgan', env: 'server sozlamasidan (.env)', 
 function TelegramSozlama({ s, bajar }) {
   const [token, setToken] = useState('')
   const [nomi, setNomi] = useState('')
+  const [ulash, setUlash] = useState(null)
+
+  // Kod ko'rsatilgandan keyin egasi botga ulanganini tekshirib turadi
+  useEffect(() => {
+    if (!ulash) return undefined
+    const t = setInterval(async () => {
+      try {
+        const r = await papi.get('/sozlamalar/')
+        if (r.data.telegram_ega_ulangan) { setUlash(null); bajar(async () => {}, '') }
+      } catch { /* keyingi urinishda tekshiramiz */ }
+    }, 3000)
+    return () => clearInterval(t)
+  }, [ulash, bajar])
+
   const yubor = async () => {
     const tana = {}
     if (token.trim()) tana.telegram_token = token.trim()
     if (nomi.trim()) tana.telegram_bot_nomi = nomi.trim()
     if (await bajar(() => papi.patch('/sozlamalar/', tana), 'Telegram boti saqlandi.')) { setToken(''); setNomi('') }
   }
+
+  const ulashBoshlash = () => bajar(async () => {
+    const r = await papi.post('/sozlamalar/telegram-ulash/')
+    setUlash(r.data)
+  }, "Kod tayyor. Telegram'da botga yuboring.")
+
   return (
     <details className="blok amal">
       <summary>
@@ -295,6 +315,26 @@ function TelegramSozlama({ s, bajar }) {
           Token saqlanmasdan oldin Telegram'da tekshiriladi — xato token butun platformani botsiz qoldirmasin.
           Saqlangach qayta ko'rsatilmaydi.
         </p>
+
+        {s.telegram_ulangan && (
+          s.telegram_ega_ulangan ? (
+            <div className="qator">
+              <span className="malumot">Siz botga ulangansiz — «a'zo bo'lish» so'rovlari Telegram'ingizga keladi.</span>
+              <button type="button" className="ikkinchi" onClick={() => bajar(() => papi.delete('/sozlamalar/telegram-ulash/'), 'Telegram uzildi.')}>
+                Ulanishni uzish
+              </button>
+            </div>
+          ) : ulash ? (
+            <>
+              <p>Telegramda botni oching{s.telegram_bot_nomi ? <> (<b>@{s.telegram_bot_nomi}</b>)</> : ''} va shu xabarni yuboring:</p>
+              <p className="kod">/start {ulash.kod}</p>
+              {ulash.havola && <a className="tugma-havola" href={ulash.havola} target="_blank" rel="noreferrer">Botni ochish</a>}
+              <p className="malumot">Kod 15 daqiqa amal qiladi. Ulangach bu oyna o'zi yangilanadi.</p>
+            </>
+          ) : (
+            <button type="button" className="ikkinchi" onClick={ulashBoshlash}>Telegramni ulash (men — egasi)</button>
+          )
+        )}
       </div>
     </details>
   )
