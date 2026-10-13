@@ -79,6 +79,22 @@ export default function Dashbord({ onBolim }) {
       </header>
       {pnlFilial && <p className="malumot">Ko'rsatgichlar tanlangan filial bo'yicha.</p>}
 
+      {/* Bugun — tezkor xulosa (Tushum, Smena, Olib/qaytar) — chap paneldan ko'chirildi */}
+      <section className="bugun-widget">
+        <button type="button" onClick={() => onBolim('hisobotlar')}>
+          <span className="bugun-nom">Tushum</span>
+          <b>{som(bugun.tushum_jami)}</b>
+        </button>
+        <button type="button" onClick={() => onBolim('kassa')}>
+          <span className="bugun-nom">Smena</span>
+          <b>{bugun.smena_ochiq ? 'ochiq' : 'yopiq'}</b>
+        </button>
+        <button type="button" onClick={() => onBolim('bosh')}>
+          <span className="bugun-nom">Olib / qaytar</span>
+          <b>{bugun.olib_ketiladi} / {bugun.qaytariladi}</b>
+        </button>
+      </section>
+
       <div className="kpi-tor">
         <div className="kpi kpi-asosiy">
           <span className="kpi-bosh"><Ikona nom="tushum" /><span className="kpi-nom">Bugun tushum</span></span>

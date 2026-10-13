@@ -21,16 +21,11 @@ export default function DashbordYon({ onBolim }) {
   }, [])
 
   if (!d) return null
-  const { bugun, qoplamagan } = d
+  const { qoplamagan } = d
   const och = (b) => () => onBolim?.(b)
 
   return (
     <div className="dashbord-yon">
-      <h4>Bugun</h4>
-      <button type="button" className="qator-btn" onClick={och('hisobotlar')}><span>Tushum</span><b>{som(bugun.tushum_jami)}</b></button>
-      <button type="button" className="qator-btn" onClick={och('kassa')}><span>Smena</span><b>{bugun.smena_ochiq ? 'ochiq' : 'yopiq'}</b></button>
-      <button type="button" className="qator-btn" onClick={och('bosh')}><span>Olib / qaytar</span><b>{bugun.olib_ketiladi} / {bugun.qaytariladi}</b></button>
-
       {qarz && (qarz.qarzdorlar.length > 0 || qarz.qoldiq_kutilmoqda.length > 0) && (
         <>
           <h4>Qarzdorlar ({qarz.qarzdorlar.length})</h4>

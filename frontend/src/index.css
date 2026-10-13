@@ -424,6 +424,19 @@ textarea:focus {
 .bugun-xulosa .qator-btn { padding: 10px 12px; font-size: 13px; }
 .bugun-xulosa .qator-btn b { font-weight: 600; color: var(--oq); font-variant-numeric: tabular-nums; }
 
+/* Dashbord asosiy ekranidagi «Bugun» xulosasi (uch katak) */
+.bugun-widget { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 4px; }
+.bugun-widget button {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
+  padding: 12px 14px; text-align: left;
+  background: rgba(253, 250, 245, .08); border: 1px solid rgba(255, 255, 255, .16);
+  border-radius: 14px; backdrop-filter: blur(12px);
+  transition: border-color .18s ease;
+}
+.bugun-widget button:hover { border-color: rgba(228, 193, 150, .4); }
+.bugun-nom { font-size: 12px; color: rgba(251, 246, 238, .62); letter-spacing: .02em; }
+.bugun-widget b { font-size: 16px; font-weight: 700; color: var(--oq); font-variant-numeric: tabular-nums; }
+
 @media (min-width: 768px) {
   .dashbord-yon-mobil { display: none; }
   .dashbord-yon {
