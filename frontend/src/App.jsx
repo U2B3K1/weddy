@@ -112,9 +112,8 @@ export default function App() {
       <Platforma onOrqaga={() => { window.location.hash = ''; setPlatforma(false) }} />
     </div>
   )
-  const platformaga = () => { window.location.hash = '#platforma'; setPlatforma(true) }
   const kirishga = (ochiq) => { window.location.hash = ochiq ? '#kirish' : ''; window.scrollTo(0, 0); setKirish(ochiq) }
-  if (!xodim && !kirish) return <Reklama onKirish={() => kirishga(true)} onPlatforma={platformaga} />
+  if (!xodim && !kirish) return <Reklama onKirish={() => kirishga(true)} />
   if (!xodim) {
     return (
       <>

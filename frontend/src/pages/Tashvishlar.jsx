@@ -38,7 +38,7 @@ const SLAYDLAR = [
     qatorlar: ['Bir hisobda bir nechta filial', "Har filialga o'z qurilmasi", 'Alohida kassa', "Filial bo'yicha foyda"] },
 ]
 const SONI = SLAYDLAR.length
-const AVTO = 5000      // ms — bo'lim ekranda turganda slayd shuncha vaqtdan keyin o'zi almashadi
+const AVTO = 8000      // ms — bo'lim ekranda turganda slayd shuncha vaqtdan keyin o'zi almashadi
 const OTISH = 1150     // ms — skaner nuri ekranni kesib o'tadigan vaqt (tashvishlar.css dagi --tv-vaqt bilan bir xil)
 const BOSH = 0.25      // s — videoning birinchi kadrlari (asl rasm) keyingilaridan farq qiladi, tashlab yuboriladi
 const TEZLIK = 1.7     // bir bosishdagi to'liq aylanish tezligi (5 s lik video ≈ 3 s da)

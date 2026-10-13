@@ -21,7 +21,7 @@ const chekla = (v, a, b) => Math.min(b, Math.max(a, v))
 const YIL = new Date().getFullYear()   // futerdagi yil
 const MENYU = [['imkoniyatlar', 'Imkoniyatlar'], ['azo', "A'zo bo'lish"]]
 
-export default function Reklama({ onKirish, onPlatforma }) {
+export default function Reklama({ onKirish }) {
   const ildiz = useRef(null)
   const tuval = useRef(null)
   const sahna = useRef(null)
@@ -261,7 +261,6 @@ export default function Reklama({ onKirish, onPlatforma }) {
         </button>
         <div className="rk-oyoq-past">
           <span>© {YIL} Libosa</span>
-          <button className="rk-oyoq-kichik" onClick={onPlatforma}>Platforma egasi</button>
           <button className="rk-tepaga" aria-label="Tepaga" onClick={ot('bosh')} data-magnit>↑</button>
         </div>
       </footer>

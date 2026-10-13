@@ -136,7 +136,8 @@ export async function gologrammaYarat(canvas, rasmlar, soni = N, { markaz = [.46
     kadr = requestAnimationFrame(chiz)
   }
   window.addEventListener('resize', olcham)
-  window.addEventListener('pointermove', surildi, { passive: true })
+  // Kursor to'lqini (nuqtalarni aylana bo'ylab itarish) faqat sichqoncha bor qurilmada — mobil/teginishda chiroyli chiqmaydi.
+  if (window.matchMedia('(pointer: fine)').matches) window.addEventListener('pointermove', surildi, { passive: true })
   kadr = requestAnimationFrame(chiz)
 
   return {
