@@ -25,7 +25,7 @@
 }
 
 * { box-sizing: border-box; }
-body { margin: 0; font-family: var(--sans); background: var(--tun); }
+body { margin: 0; font-family: var(--sans); }
 
 main { max-width: 480px; margin: 0 auto; padding: 24px 16px; }
 h1 { text-align: center; color: var(--tilla); }

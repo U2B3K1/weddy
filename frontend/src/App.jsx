@@ -125,7 +125,7 @@ export default function App() {
   if (!xodim) {
     return (
       <>
-        <PlatformaFon />
+        <PlatformaFon nurli />
         <button className="kirish-orqaga ikkinchi kichik" onClick={() => kirishga(false)}>← Bosh sahifa</button>
         <Kirish onKirdi={(x) => { setXodim(x); setSahifa(x.rol === 'rahbar' ? 'dashbord' : 'bosh'); me().then(setXodim).catch(() => {}) }} />
       </>

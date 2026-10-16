@@ -7,9 +7,19 @@ import { yomgirYarat } from './yomgir'
 import './platforma-fon.css'
 
 // bezak=false (ichki ish ekranlari): rasm va yomg'irsiz, faqat tun foni + tilla nur — matn kontrasti bir xil bo'ladi.
-export default function PlatformaFon({ bezak = true }) {
+// nurli: siyoh fon ostida xira saroy rasmi va tepadan tushadigan nur (Kirish ekrani); yomg'ir yo'q.
+export default function PlatformaFon({ bezak = true, nurli = false }) {
   const yomgir = useRef(null)
-  useEffect(() => (bezak ? yomgirYarat(yomgir.current) : undefined), [bezak])
+  useEffect(() => (bezak && !nurli ? yomgirYarat(yomgir.current) : undefined), [bezak, nurli])
+  if (nurli) {
+    return (
+      <div className="platforma-fon nurli" aria-hidden="true">
+        <img src="/kelinlar/saroy.jpg" alt="" />
+        <i className="pf-siyoh" />
+        <i className="pf-nur" />
+      </div>
+    )
+  }
   if (!bezak) return <div className="platforma-fon ichki" aria-hidden="true" />
   return (
     <div className="platforma-fon" aria-hidden="true">
