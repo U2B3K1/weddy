@@ -269,8 +269,8 @@ label > input, label > select { color: var(--oq); }
 .kirish { width: 100%; max-width: 480px; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px 16px; margin: 0 auto; }
 .kirish-panel {
   width: 100%; max-width: 440px; display: flex; flex-direction: column; gap: 18px; padding: 28px 24px;
-  background: var(--shisha); border: 1px solid var(--shisha-chet); border-radius: 28px;
-  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); box-shadow: 0 30px 80px -30px rgba(0, 0, 0, .8);
+  background: rgba(16, 26, 44, .28); border: 1px solid rgba(228, 193, 150, .22); border-radius: 28px;
+  backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); box-shadow: 0 30px 80px -30px rgba(0, 0, 0, .6);
 }
 .logo { display: inline-flex; align-items: center; gap: 12px; color: var(--oq); font-family: var(--serif); letter-spacing: 7px; }
 .logo svg { width: 40px; height: 40px; color: var(--tilla); flex: none; }
@@ -299,22 +299,28 @@ label > input, label > select { color: var(--oq); }
 }
 @media (max-width: 479px) { .kirish-panel { padding: 24px 16px; } }
 
-/* ---------- Kirish foni: siyoh qatlam ostida xira saroy va tepadan tushadigan nur ---------- */
-.platforma-fon.nurli { background: var(--tun-chuqur); }
-.platforma-fon.nurli img { filter: blur(2px) saturate(.8); opacity: .5; transform: scale(1.06); }
+/* ---------- Kirish foni: bosh sahifadagi (reklama-qasr.css) kabi — siyoh qatlam, ko'k tusli xira saroy, gumbazdan tushadigan nur ---------- */
+.platforma-fon.nurli { background: #05070c; }
+.platforma-fon.nurli img { filter: saturate(.7) brightness(.9); opacity: .55; transform: none; }
 .pf-siyoh {
   position: absolute; inset: 0;
   background:
-    radial-gradient(ellipse 80% 60% at 50% 35%, rgba(11, 18, 32, .35), rgba(11, 18, 32, .88) 100%),
-    linear-gradient(180deg, rgba(11, 18, 32, .55), rgba(7, 12, 22, .92));
+    radial-gradient(ellipse 75% 70% at 50% 50%, transparent 40%, rgba(5, 7, 12, .85) 100%),
+    rgba(14, 26, 43, .62);
 }
+.pf-siyoh::after { content: ''; position: absolute; inset: 0; background: #1c3150; mix-blend-mode: color; opacity: .8; }
 .pf-nur {
-  position: absolute; left: 50%; top: -10%; width: 140%; height: 90%; transform: translateX(-50%); transform-origin: 50% 0;
+  position: absolute; inset: 0; mix-blend-mode: screen;
   background:
-    radial-gradient(ellipse 45% 70% at 50% 0%, rgba(228, 193, 150, .42), transparent 70%),
-    conic-gradient(from 180deg at 50% 0%, transparent 0 14%, rgba(255, 226, 180, .26) 17%, transparent 21%,
-      transparent 30%, rgba(255, 226, 180, .18) 33%, transparent 37%, transparent 46%, rgba(255, 226, 180, .30) 50%, transparent 54%,
-      transparent 63%, rgba(255, 226, 180, .18) 67%, transparent 71%, transparent 80%, rgba(255, 226, 180, .22) 83%, transparent 87%);
-  mix-blend-mode: screen; filter: blur(6px); animation: nur-tebran 14s ease-in-out infinite alternate;
+    radial-gradient(ellipse 14% 22% at 50% 4%, rgba(255, 240, 215, .7), transparent 70%),
+    radial-gradient(ellipse 34% 95% at 50% 0%, rgba(228, 193, 150, .42), rgba(228, 193, 150, .14) 45%, transparent 75%),
+    radial-gradient(ellipse 60% 40% at 50% 100%, rgba(228, 193, 150, .10), transparent 70%);
+  animation: nur-nafas 6s ease-in-out infinite alternate;
 }
-@keyframes nur-tebran { from { transform: translateX(-50%) rotate(-2.5deg); opacity: .8; } to { transform: translateX(-50%) rotate(2.5deg); opacity: 1; } }
+@keyframes nur-nafas { from { filter: brightness(.9); } to { filter: brightness(1.15); } }
+@media (max-width: 767px) {
+  .pf-nur { background:
+    radial-gradient(ellipse 30% 14% at 50% 3%, rgba(255, 240, 215, .7), transparent 70%),
+    radial-gradient(ellipse 70% 70% at 50% 0%, rgba(228, 193, 150, .42), rgba(228, 193, 150, .14) 45%, transparent 75%),
+    radial-gradient(ellipse 90% 30% at 50% 100%, rgba(228, 193, 150, .10), transparent 70%); }
+}
