@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react'
 import { boshlash, boshlashYop, me, oflaynKesh, oflaynToplam, saqlangan, smenaHolati, sozlamalar, tarmoqXatosi } from './api'
 import BoshEkran from './pages/BoshEkran'
 import DashbordYon from './components/DashbordYon'
+import Tasdiq from './components/Tasdiq'
+import NavIkona from './components/NavIkona'
 import Shapka from './components/Shapka'
 import Dashbord from './pages/Dashbord'
 import Hisobotlar from './pages/Hisobotlar'
@@ -19,6 +21,7 @@ import YangiZakaz from './pages/YangiZakaz'
 import Zakazlar from './pages/Zakazlar'
 
 const HARAKATSIZLIK_MS = 10 * 60 * 1000
+const OGOHLANTIRISH_MS = 30 * 1000 // chiqishdan 30 soniya oldin «Davom etyapsizmi?»
 const OFLAYN_KESH_MS = 5 * 60 * 1000
 
 export default function App() {
@@ -48,6 +51,7 @@ export default function App() {
   const [bosh, setBosh] = useState(null)
   // Telefonda nav chapdan chiqadigan menyu: shapkadagi tugma ochadi, bo'lim tanlanganda yopiladi.
   const [menyu, setMenyu] = useState(false)
+  const [uxlayapti, setUxlayapti] = useState(false)
 
   useEffect(() => { sozlamalar().then((s) => setPromoYoq(s.promokodlar_bolimi !== false)).catch(() => {}) }, [])
   // Boshlash ro'yxatini faqat rahbar ko'radi — nav tarkibiga qarab yuklanadi.
@@ -87,13 +91,17 @@ export default function App() {
   const kirgan = xodim !== null
   useEffect(() => {
     if (!kirgan) return undefined
-    let t
-    const chiq = () => { saqlangan.chiqish(); window.location.hash = '#kirish'; setKirish(true); setXodim(null) }
-    const qayta = () => { clearTimeout(t); t = setTimeout(chiq, HARAKATSIZLIK_MS) }
+    let t, t0
+    const chiq = () => { saqlangan.chiqish(); window.location.hash = '#kirish'; setKirish(true); setUxlayapti(false); setXodim(null) }
+    const qayta = () => {
+      clearTimeout(t); clearTimeout(t0); setUxlayapti(false)
+      t0 = setTimeout(() => setUxlayapti(true), HARAKATSIZLIK_MS - OGOHLANTIRISH_MS)
+      t = setTimeout(chiq, HARAKATSIZLIK_MS)
+    }
     const hodisalar = ['pointerdown', 'keydown', 'scroll', 'touchstart']
     hodisalar.forEach((h) => window.addEventListener(h, qayta, { passive: true }))
     qayta()
-    return () => { clearTimeout(t); hodisalar.forEach((h) => window.removeEventListener(h, qayta)) }
+    return () => { clearTimeout(t); clearTimeout(t0); hodisalar.forEach((h) => window.removeEventListener(h, qayta)) }
   }, [kirgan])
 
   // Onlayn paytda oflayn keshni yangilab turadi; oflaynda esa aloqa tiklanganini tekshiradi.
@@ -108,7 +116,7 @@ export default function App() {
   if (!tayyor) return null
   if (platforma) return (
     <div className="ilova">
-      <PlatformaFon />
+      <PlatformaFon bezak={false} />
       <Platforma onOrqaga={() => { window.location.hash = ''; setPlatforma(false) }} />
     </div>
   )
@@ -132,9 +140,31 @@ export default function App() {
     ...(rahbar ? [['hisobotlar', 'Hisobot'], ['sozlamalar', 'Sozlama']] : []),
   ]
 
+  // Ichki bo'limlar sahifa tepasida segment ko'rinishida ham chiqadi (telefon va planshetda nav faqat asosiy bo'limlarni ko'rsatadi).
+  const ichki = {
+    katalog: { joriy: katalogBolim, tanla: setKatalogBolim, royxat: [['liboslar', 'Liboslar'], ['aksessuarlar', 'Aksessuarlar']] },
+    mijozlar: { joriy: mijozlarBolim, tanla: setMijozlarBolim, royxat: [['mijozlar', 'Mijozlar'], ['salonchilar', 'Salonchilar'], ...(rahbar && promoYoq ? [['promokodlar', 'Promokodlar']] : [])] },
+    kassa: { joriy: kassaBolim, tanla: setKassaBolim, royxat: [...(kassaOchiq ? [['hisobot', 'Hisobot'], ['xarajat', 'Xarajat'], ['inkassatsiya', 'Inkassatsiya'], ['zalog', 'Zaloglar'], ['chiqish', 'Chiqish'], ['yopish', 'Yopish']] : []), ...(rahbar ? [['tarix', 'Tarix']] : [])] },
+    hisobotlar: { joriy: hisobotlarBolim, tanla: setHisobotlarBolim, royxat: [['hisobot', 'Hisobot'], ['pnl', 'Foyda va zarar'], ['bildirishnoma', 'Bildirishnomalar'], ['grafik', 'Grafik']] },
+    sozlamalar: { joriy: sozlamaBolim, tanla: setSozlamaBolim, planshet: true, royxat: SOZLAMA_BOLIMLAR.map((b) => [b.id, b.nomi]) },
+  }[sahifa]
+  const bosSahifa = rahbar ? 'dashbord' : 'bosh'
+  const tabBar = [[bosSahifa, 'Bosh', 'bosh'], ['kalendar', 'Bandlik', 'kalendar'], ['yangi', 'Yangi zakaz', 'yangi'], ['zakazlar', 'Zakazlar', 'zakazlar']]
+  const boshlashPanel = rahbar && bosh?.korsatilsin && (
+    <div className="boshlash-panel">
+      <h4>Boshlash</h4>
+      {bosh.qadamlar.map((q) => (
+        <button key={q.kalit} type="button" className="qator-btn" onClick={() => setSahifa(q.bolim)}>
+          <span>{q.bajarildi ? '✓' : '○'} {q.nomi}</span>
+        </button>
+      ))}
+      <button className="ikkinchi kichik" onClick={() => boshlashYop().then(setBosh)}>Ro'yxatni yashirish</button>
+    </div>
+  )
+
   return (
     <div className="ilova">
-      <PlatformaFon />
+      <PlatformaFon bezak={false} />
       <Shapka ochiq={menyu} onMenyu={() => setMenyu(!menyu)}>
         <span>{xodim.ism}</span>
         <button className="ikkinchi kichik" onClick={() => { saqlangan.chiqish(); window.location.hash = '#kirish'; setKirish(true); setXodim(null) }}>
@@ -152,6 +182,15 @@ export default function App() {
       {!onlayn && <p className="ogohlantirish obuna-banner">Internet yo'q: faqat ko'rish rejimi.</p>}
       {!onlayn ? <main><Oflayn /></main> : (<>
       <main>
+        {ichki && ichki.royxat.length > 0 && (
+          <div className={`ichki-segment ${ichki.planshet ? 'faqat-planshet' : ''}`} role="tablist">
+            {ichki.royxat.map(([id, nomi]) => (
+              <button key={id} type="button" role="tab" aria-selected={ichki.joriy === id} className={ichki.joriy === id ? 'faol' : ''}
+                onClick={() => ichki.tanla(id)}>{nomi}</button>
+            ))}
+          </div>
+        )}
+        {sahifa === 'dashbord' && rahbar && <div className="boshlash-asosiy">{boshlashPanel}</div>}
         {sahifa === 'dashbord' && rahbar && <Dashbord onBolim={setSahifa} />}
         {sahifa === 'bosh' && <BoshEkran rahbar={rahbar} onZakaz={zakaz} onYangi={() => setSahifa('yangi')} onKassa={() => setSahifa('kassa')} />}
         {sahifa === 'yangi' && <YangiZakaz onTayyor={zakaz} />}
@@ -163,20 +202,34 @@ export default function App() {
         {sahifa === 'hisobotlar' && rahbar && <Hisobotlar bolim={hisobotlarBolim} onBolim={setSahifa} />}
         {sahifa === 'sozlamalar' && rahbar && <Sozlamalar menId={xodim.id} bolim={sozlamaBolim} onBolim={setSozlamaBolim} />}
       </main>
+      <nav className="tab-bar" aria-label="Asosiy bo'limlar">
+        {tabBar.slice(0, 2).map(([k, nom, ik]) => (
+          <button key={k} type="button" className={sahifa === k ? 'faol' : ''} onClick={() => { setSahifa(k); setMenyu(false) }}><NavIkona nom={ik} /><span>{nom}</span></button>
+        ))}
+        <button type="button" className="tab-qoshish" aria-label="Yangi zakaz" onClick={() => { setSahifa('yangi'); setMenyu(false) }}><NavIkona nom="yangi" /></button>
+        <button type="button" className={sahifa === 'zakazlar' ? 'faol' : ''} onClick={() => { setSahifa('zakazlar'); setZakazId(null); setMenyu(false) }}><NavIkona nom="zakazlar" /><span>Zakazlar</span></button>
+        <button type="button" className={menyu ? 'faol' : ''} aria-expanded={menyu} onClick={() => setMenyu(!menyu)}><NavIkona nom="koproq" /><span>Ko'proq</span></button>
+      </nav>
+      {uxlayapti && (
+        <Tasdiq sarlavha="Davom etyapsizmi?" tugma="Ha, davom etaman" xavfli={false}
+          matn="30 soniyadan keyin xavfsizlik uchun tizimdan chiqiladi. Yarim to'ldirilgan zakaz qoralama sifatida saqlanadi."
+          onYop={() => setUxlayapti(false)} onTasdiq={() => setUxlayapti(false)} />
+      )}
       {menyu && <div className="menyu-parda" onClick={() => setMenyu(false)} />}
       <nav className={`pastki ${menyu ? 'ochiq' : ''}`}
         onClick={(e) => { const b = e.target.closest('button'); if (b && !b.classList.contains('orqaga')) setMenyu(false) }}>
-        {rahbar && bosh?.korsatilsin && (
-          <div className="boshlash-panel">
-            <h4>Boshlash</h4>
-            {bosh.qadamlar.map((q) => (
-              <button key={q.kalit} type="button" className="qator-btn" onClick={() => setSahifa(q.bolim)}>
-                <span>{q.bajarildi ? '✓' : '○'} {q.nomi}</span>
-              </button>
-            ))}
-            <button className="ikkinchi kichik" onClick={() => boshlashYop().then(setBosh)}>Ro'yxatni yashirish</button>
-          </div>
-        )}
+        <div className="nav-kichik">
+          {bolimlar.map(([k, nom]) => (
+            <button key={k} className={sahifa === k ? 'faol' : ''} aria-label={nom}
+              onClick={() => {
+                if (k === 'sozlamalar' || k === 'katalog' || k === 'mijozlar') setOldin(sahifa)
+                setSahifa(k)
+                if (k === 'zakazlar') setZakazId(null)
+              }}><NavIkona nom={k} /><span className="nav-nom">{nom}</span></button>
+          ))}
+        </div>
+        <div className="nav-desk">
+          {boshlashPanel}
         {rahbar && sahifa === 'dashbord' && <DashbordYon onBolim={setSahifa} />}
         {sahifa === 'sozlamalar' ? (
           <>
@@ -229,9 +282,10 @@ export default function App() {
                 if (k === 'sozlamalar' || k === 'katalog' || k === 'mijozlar') setOldin(sahifa)
                 setSahifa(k)
                 if (k === 'zakazlar') setZakazId(null)
-              }}>{nom}</button>
+              }}><NavIkona nom={k} /><span className="nav-nom">{nom}</span></button>
           ))
         )}
+        </div>
       </nav>
       </>)}
     </div>

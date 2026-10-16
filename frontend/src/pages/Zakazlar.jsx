@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import Hujjat from '../components/Hujjat'
+import Tasdiq from '../components/Tasdiq'
 import {
   bekorQilish, berish, chegirmaSora, mijozOzgartir, tolovHavola, primerkaBelgila, primerkaOzgartir, promokodOlibTashla, promokodQolla, qarzTolash, qaytarish, sanaKochirish, som, sozlamalar, tayyorChegirmalar,
   tolovQabul, xatoMatni, zakazAksessuarOchir, zakazAksessuarQosh, zakazTafsilot, zakazTarixi, zakazlarRoyxat,
@@ -10,6 +11,29 @@ const HOLATLAR = {
   vaqtinchalik: 'Vaqtinchalik bron', chegirma_kutilmoqda: "Chegirma tasdig'i kutilmoqda", bron: 'Bron',
   berildi: 'Berildi', qaytarildi: 'Qaytarildi (qarz bor)', yopildi: 'Yopildi', bekor: 'Bekor qilingan',
 }
+
+// Zakaz yo'li: 4 qadam; «yopildi» — hammasi o'tilgan, «bekor» — hech biri.
+const QADAMLAR = ['Bron', 'Avans', 'Berildi', 'Qaytarildi']
+function qadamIndeksi(z) {
+  const h = z.holat
+  if (h === 'yopildi') return 4
+  if (h === 'qaytarildi') return 3
+  if (h === 'berildi') return 2
+  if (h === 'bron') return z.qoldiq === 0 ? 2 : 1
+  if (h === 'vaqtinchalik') return z.tolangan > 0 ? 1 : 0
+  return 0
+}
+// Holatga qarab bitta katta asosiy tugma matni (yo'riqnoma 8.1)
+function asosiyTugma(z) {
+  const h = z.holat
+  if (h === 'vaqtinchalik' && z.qoldiq > 0) return 'Avans qabul qilish'
+  if (h === 'bron' && z.qoldiq > 0) return 'Qoldiqni qabul qilish'
+  if (h === 'bron') return 'Libosni berish'
+  if (h === 'berildi') return 'Qaytarib olish'
+  if (h === 'qaytarildi' && z.qarz > 0) return 'Qarzni yopish'
+  return null
+}
+const holatSinfi = (h) => ({ vaqtinchalik: 'vaqtinchalik', chegirma_kutilmoqda: 'vaqtinchalik', bron: 'bron', berildi: 'berildi', qaytarildi: 'qarz', yopildi: 'qaytarildi', bekor: 'qarz' }[h] || 'bron')
 
 export default function Zakazlar({ tanlangan, onTanla }) {
   const [q, setQ] = useState('')
@@ -74,11 +98,24 @@ function Karta({ id, onOrqaga }) {
   const h = z.holat
 
   return (
-    <div className="stack">
-      <button className="ikkinchi" onClick={onOrqaga}>← Zakazlar</button>
-      <section className="blok">
+    <div className="stack karta">
+      <div className="karta-bosh">
+        <button className="ikkinchi karta-orqaga" aria-label="Zakazlar ro'yxatiga qaytish" onClick={onOrqaga}>‹</button>
         <h2>Zakaz #{z.raqam}</h2>
-        <p><b>{HOLATLAR[h]}</b></p>
+        <span className={`holat ${holatSinfi(h)}`}>{HOLATLAR[h]}</span>
+      </div>
+      {h !== 'bekor' && (
+        <ol className="holat-chizigi" aria-label="Zakaz bosqichlari">
+          {QADAMLAR.map((n, i) => <li key={n} className={i < qadamIndeksi(z) ? 'otdi' : i === qadamIndeksi(z) ? 'joriy' : ''}><i />{n}</li>)}
+        </ol>
+      )}
+      {asosiyTugma(z) && (
+        <button className="asosiy-tugma" onClick={() => {
+          const d = document.getElementById('asosiy-amal')
+          if (d) { d.open = true; d.scrollIntoView({ behavior: 'smooth', block: 'center' }) }
+        }}>{asosiyTugma(z)}</button>
+      )}
+      <section className="blok karta-asosiy">
         <p>{z.mijoz === z.telefon ? z.telefon : `${z.mijoz} · ${z.telefon}`}</p>
         <p>{z.liboslar.join(', ')}</p>
         {z.aksessuarlar.length > 0 && <p className="malumot">Aksessuarlar: {z.aksessuarlar.join(', ')}</p>}
@@ -113,7 +150,7 @@ function Karta({ id, onOrqaga }) {
         </div>
         {h === 'chegirma_kutilmoqda' && <p className="malumot">Chegirma tasdiqlanmaguncha shartnoma chop etilmaydi.</p>}
       </section>
-
+      <div className="karta-ong">
       {xabar.matn && <p className={xabar.turi === 'xato' ? 'xato' : 'malumot'}>{xabar.matn}</p>}
 
       {(h === 'vaqtinchalik' || h === 'bron') && z.qoldiq > 0 && (
@@ -123,6 +160,14 @@ function Karta({ id, onOrqaga }) {
             () => tolovQabul({ zakaz: z.id, tur: h === 'bron' ? 'qoldiq' : 'avans', summa, usul }),
             `To'lov qabul qilindi.${soz?.fiskal_eslatma ? ` ${soz.fiskal_izoh || 'Fiskal chekni urishni unutmang.'}` : ''}`)} />
       )}
+      {h === 'bron' && z.qoldiq === 0 && <BerishForma soz={soz} onYuborish={(zaloglar) => bajar(() => berish(z.id, zaloglar), 'Libos berildi.')} />}
+      {h === 'berildi' && <QaytarishForma baholash={soz ? soz.mijoz_bahosi : true} onYuborish={(b) => bajar(() => qaytarish(z.id, b), 'Qaytarish rasmiylashtirildi.')} />}
+      {h === 'qaytarildi' && z.qarz > 0 && (
+        <TolovForma sarlavha="Jarima qarzini to'lash" maks={z.qarz} usulsiz
+          onYuborish={(summa) => bajar(() => qarzTolash(z.id, summa), "Qarz to'landi.")} />
+      )}
+      <details className="boshqa-amallar">
+        <summary className="havola-tugma">Boshqa amallar</summary>
       {h === 'vaqtinchalik' && z.tolangan === 0 && (soz?.promokodlar_bolimi !== false || z.promokod) && <PromokodForma z={z} bajar={bajar} />}
       {h === 'vaqtinchalik' && <ChegirmaForma zakazId={z.id} z={z} bajar={bajar} />}
       {['vaqtinchalik', 'bron'].includes(h) && <AksessuarForma z={z} bajar={bajar} />}
@@ -131,20 +176,15 @@ function Karta({ id, onOrqaga }) {
       {(soz?.primerka || z.primerkalar.length > 0) && (
         <PrimerkaForma z={z} bajar={bajar} ochiq={['vaqtinchalik', 'chegirma_kutilmoqda', 'bron'].includes(h) && !!soz?.primerka} />
       )}
-      {h === 'bron' && z.qoldiq === 0 && <BerishForma soz={soz} onYuborish={(zaloglar) => bajar(() => berish(z.id, zaloglar), 'Libos berildi.')} />}
-      {h === 'berildi' && <QaytarishForma baholash={soz ? soz.mijoz_bahosi : true} onYuborish={(b) => bajar(() => qaytarish(z.id, b), 'Qaytarish rasmiylashtirildi.')} />}
-      {h === 'qaytarildi' && z.qarz > 0 && (
-        <TolovForma sarlavha="Jarima qarzini to'lash" maks={z.qarz} usulsiz
-          onYuborish={(summa) => bajar(() => qarzTolash(z.id, summa), "Qarz to'landi.")} />
-      )}
       {['vaqtinchalik', 'chegirma_kutilmoqda', 'bron'].includes(h) && (
         <>
           <KochirishForma onYuborish={(b) => bajar(() => sanaKochirish(z.id, b), 'Sana ko\'chirildi.')} />
           <BekorForma soz={soz} onYuborish={(b) => bajar(() => bekorQilish(z.id, b), 'Zakaz bekor qilindi.')} />
         </>
       )}
-
-      <section className="blok">
+      </details>
+      </div>
+      <section className="blok karta-tolovlar">
         <h3>To'lovlar</h3>
         {z.tolovlar.length === 0 && <p className="malumot">Hali yo'q</p>}
         {z.tolovlar.map((t, i) => (
@@ -256,9 +296,9 @@ function SalonchiTanlash({ z, bajar }) {
   )
 }
 
-function Amal({ sarlavha, children }) {
+function Amal({ sarlavha, children, id }) {
   return (
-    <details className="blok amal">
+    <details className="blok amal" id={id}>
       <summary>{sarlavha}</summary>
       <div className="stack">{children}</div>
     </details>
@@ -272,7 +312,7 @@ function TolovForma({ sarlavha, maks, onYuborish, usulsiz, zakazId }) {
   const [havola, setHavola] = useState(null)
   const havolaOl = () => tolovHavola(zakazId, Number(summa) || undefined).then(setHavola).catch(() => setHavola({ havolalar: {} }))
   return (
-    <Amal sarlavha={sarlavha}>
+    <Amal sarlavha={sarlavha} id="asosiy-amal">
       <label>Summa (maks. {som(maks)})
         <input type="number" min="1" max={maks} value={summa} onChange={(e) => setSumma(e.target.value)} />
       </label>
@@ -378,7 +418,7 @@ function BerishForma({ onYuborish, soz }) {
       ? { turi, hujjat_turi: f.hujjat_turi, hujjat_raqami: f.hujjat_raqami }
       : { turi, tavsif: f.tavsif, ogirlik_gr: f.ogirlik_gr, summa: Number(f.summa || 0) }
   return (
-    <Amal sarlavha="Libosni berish (zalog)">
+    <Amal sarlavha="Libosni berish (zalog)" id="asosiy-amal">
       <select value={turi} onChange={(e) => { setTuri(e.target.value); setF({}) }}>
         {TURLAR.map(([t, nom]) => <option key={t} value={t}>{nom}</option>)}
       </select>
@@ -406,7 +446,7 @@ function QaytarishForma({ onYuborish, baholash }) {
     ...(f.baho ? { baho: Number(f.baho) } : {}), izoh: f.izoh || '',
   }
   return (
-    <Amal sarlavha="Qaytarish">
+    <Amal sarlavha="Qaytarish" id="asosiy-amal">
       <label>Holat tekshiruvi
         <select value={f.tekshiruv} onChange={set('tekshiruv')}>
           <option value="butun">Butun</option><option value="dog">Dog'</option>
@@ -520,11 +560,17 @@ function BekorForma({ onYuborish, soz }) {
   const qoida = (soz?.qaytarish_qoidasi || [[30, 100], [7, 50], [0, 0]])
     .map(([kun, foiz]) => (kun > 0 ? `${kun}+ kun — ${foiz}%` : `undan kam — ${foiz}%`)).join(', ')
   const [sabab, setSabab] = useState('')
+  const [surov, setSurov] = useState(false)
   return (
     <Amal sarlavha="Zakazni bekor qilish">
       <p className="malumot">Avans qaytarish qoidasi: {qoida}.</p>
       <label>Sabab<input value={sabab} onChange={(e) => setSabab(e.target.value)} /></label>
-      <button className="xavfli" disabled={!sabab.trim()} onClick={() => onYuborish({ sabab })}>Bekor qilish</button>
+      <button className="xavfli" disabled={!sabab.trim()} onClick={() => setSurov(true)}>Bekor qilish</button>
+      {surov && (
+        <Tasdiq sarlavha="Zakazni bekor qilasizmi?" tugma="Ha, bekor qilish"
+          matn={`Zakaz bekor qilinadi (sabab: ${sabab.trim()}). Avans qaytarish qoidasi: ${qoida}. Bu amalni qaytarib bo'lmaydi.`}
+          onYop={() => setSurov(false)} onTasdiq={() => { setSurov(false); onYuborish({ sabab }) }} />
+      )}
     </Amal>
   )
 }

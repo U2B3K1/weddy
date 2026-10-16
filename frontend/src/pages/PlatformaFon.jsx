@@ -6,9 +6,11 @@ import { useEffect, useRef } from 'react'
 import { yomgirYarat } from './yomgir'
 import './platforma-fon.css'
 
-export default function PlatformaFon() {
+// bezak=false (ichki ish ekranlari): rasm va yomg'irsiz, faqat tun foni + tilla nur — matn kontrasti bir xil bo'ladi.
+export default function PlatformaFon({ bezak = true }) {
   const yomgir = useRef(null)
-  useEffect(() => yomgirYarat(yomgir.current), [])
+  useEffect(() => (bezak ? yomgirYarat(yomgir.current) : undefined), [bezak])
+  if (!bezak) return <div className="platforma-fon ichki" aria-hidden="true" />
   return (
     <div className="platforma-fon" aria-hidden="true">
       <img src="/kelinlar/saroy.jpg" alt="" />

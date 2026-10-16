@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import Xarajatlar from '../components/Xarajatlar'
 import OylikGrafik from '../components/OylikGrafik'
+import Tasdiq from '../components/Tasdiq'
 import {
   bankHolati, bankKirit, bonusHisobot, dashbord, filiallar, hisobot, hisobotTafsilot, hisobotlarRoyxati, kategoriyalar,
   oylikQator, oyniOch, oyniYop, pnl, pnlTafsilot, som, xatoMatni, xodimlarBoshqaruv,
@@ -194,6 +195,7 @@ function PnlBolim() {
   const [xato, setXato] = useState('')
   useEffect(() => { filiallar(true).then((r) => setFil(r.filiallar)).catch(() => {}) }, [])
   useEffect(() => { pnl(oy, pnlFilial).then(setHisobot).catch((e) => setXato(xatoMatni(e))) }, [oy, pnlFilial])
+  const [oyniYopSurov, setOyniYopSurov] = useState(false)
   const amal = (fn) => async () => {
     setXato('')
     try { await fn(); setHisobot(await pnl(oy, pnlFilial)) } catch (e) { setXato(xatoMatni(e)) }
@@ -218,7 +220,14 @@ function PnlBolim() {
             <button className="ikkinchi" onClick={amal(() => oyniOch(oy))}>Oyni qayta ochish</button>
           </div>
         ) : (
-          <button className="ikkinchi" onClick={amal(() => oyniYop(oy))}>Oyni yopish</button>
+          <>
+            <button className="ikkinchi" onClick={() => setOyniYopSurov(true)}>Oyni yopish</button>
+            {oyniYopSurov && (
+              <Tasdiq sarlavha={`${oy} oyini yopasizmi?`} tugma="Ha, oyni yopish"
+                matn="Yopilgan oy ma'lumotlarini faqat rahbar o'zgartira oladi. Keyin «Oyni qayta ochish» orqali ochish mumkin."
+                onYop={() => setOyniYopSurov(false)} onTasdiq={() => { setOyniYopSurov(false); amal(() => oyniYop(oy))() }} />
+            )}
+          </>
         ))}
       </section>
     </div>

@@ -1,18 +1,31 @@
 :root {
-  --rang: #8b5e83;
-  --matn: #fbf6ee;                     /* fil suyagi — to'q qasr fonda o'qiladi */
+  --rang: #8b5e83;                     /* faqat vitrina (ochiq modal) ishlatadi */
   --fon: #faf7fa;                      /* ochiq fon — vitrina/hujjat modal ichida ishlatiladi */
-  --chiziq: rgba(251, 246, 238, .18);  /* shaffof oq chegara */
   --xato: #b3261e;
-  --yaxshi: #7ecb8f;
-  --tilla: #e4c196; --tilla-toq: #cc9866; --siyoh: #0e1a2b; --oq: #fbf6ee;
-  font-family: system-ui, -apple-system, 'Segoe UI', sans-serif;
+  /* fon */
+  --tun: #0B1220; --tun-chuqur: #070C16;
+  /* panellar (shisha): .78 dan shaffof QILMANG */
+  --shisha: rgba(22, 35, 58, .78); --shisha-ichki: rgba(251, 246, 238, .06);
+  --shisha-chet: rgba(228, 193, 150, .28); --shisha-chet-faol: #E4C196;
+  /* brend */
+  --tilla: #E4C196; --tilla-toq: #CC9866; --kok: #2F496E; --siyoh: #141B26;
+  /* matn */
+  --oq: #FBF6EE; --matn: #FBF6EE; --matn-2: #C7CFDA;
+  --chiziq: rgba(251, 246, 238, .18);
+  /* holat */
+  --yaxshi: #7ED6A0; --xavf: #FF9B92; --ogoh: #F2C46D; --ber: #8DB4E8;
+  /* shakl */
+  --r-panel: 20px; --r-ichki: 14px; --r-tugma: 999px;
+  --serif: 'Casagrande Deco', 'Forum', Georgia, serif;
+  --kursiv: 'Cormorant Garamond', Georgia, serif;
+  --sans: 'Manrope', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-family: var(--sans);
   color: var(--matn);
-  background: var(--fon);
+  background: var(--tun);
 }
 
 * { box-sizing: border-box; }
-body { margin: 0; }
+body { margin: 0; font-family: var(--sans); background: var(--tun); }
 
 main { max-width: 480px; margin: 0 auto; padding: 24px 16px; }
 h1 { text-align: center; color: var(--tilla); }

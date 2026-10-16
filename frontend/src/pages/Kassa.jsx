@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import Tasdiq from '../components/Tasdiq'
 import {
   kassaZaloglar, smenaChiqish, smenaHolati, smenaOchish, smenaQoshilish, smenaTuzat, smenaYopish, smenalar, som, tolovQabul,
   xarajatModdalari, xarajatYarat, xatoMatni, zalogBelgila,
@@ -68,7 +69,7 @@ export default function Kassa({ rahbar, bolim, onHolatOzgardi }) {
               onYuborish={(summa) => bajar(() => smenaChiqish(summa), (r) => `Chiqdingiz. Farq: ${som(r.farq)}`)} />
           )}
           {bolim === 'yopish' && (
-            <Sanash sarlavha="Smenani yopish (oxirgi sotuvchi)" tugma="Smenani yopish"
+            <Sanash sarlavha="Smenani yopish (oxirgi sotuvchi)" tugma="Smenani yopish" tasdiqMatn="Smena yopiladi, keyin to'lov qabul qilib bo'lmaydi."
               onYuborish={(summa, izoh) => bajar(() => smenaYopish(summa, izoh), (r) => `Smena yopildi. Farq: ${som(r.farq)}`)} />
           )}
           {bolim === 'tarix' && rahbar && <YopilganSmenalar />}
@@ -137,16 +138,21 @@ function XarajatForma({ onYuborish }) {
   )
 }
 
-function Sanash({ sarlavha, tugma, onYuborish, izohsiz }) {
+function Sanash({ sarlavha, tugma, onYuborish, izohsiz, tasdiqMatn }) {
   const [summa, setSumma] = useState('')
   const [izoh, setIzoh] = useState('')
+  const [surov, setSurov] = useState(false)
   return (
     <details className="blok amal">
       <summary>{sarlavha}</summary>
       <div className="stack">
         <label>Sanalgan naqd pul<input type="number" min="0" value={summa} onChange={(e) => setSumma(e.target.value)} /></label>
         {!izohsiz && <label>Izoh (farq bo'lsa majburiy)<input value={izoh} onChange={(e) => setIzoh(e.target.value)} /></label>}
-        <button disabled={summa === ''} onClick={() => onYuborish(Number(summa), izoh)}>{tugma}</button>
+        <button disabled={summa === ''} onClick={() => (tasdiqMatn ? setSurov(true) : onYuborish(Number(summa), izoh))}>{tugma}</button>
+        {surov && (
+          <Tasdiq sarlavha={`${tugma}?`} tugma={tugma} matn={`${tasdiqMatn} Sanalgan naqd: ${Number(summa).toLocaleString('ru-RU')} so'm.`}
+            onYop={() => setSurov(false)} onTasdiq={() => { setSurov(false); onYuborish(Number(summa), izoh) }} />
+        )}
       </div>
     </details>
   )
