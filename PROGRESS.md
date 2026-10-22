@@ -40,7 +40,7 @@ Har qismning to'liq tarixi (nima, nega, qanday sinalgan): `docs/PROGRESS_ARXIV.m
 docker compose up -d db                      # PostgreSQL 16, port 5433 (5432 band)
 cd backend && .venv/Scripts/python manage.py migrate
 .venv/Scripts/python manage.py runserver     # API :8000
-.venv/Scripts/python manage.py test          # 661 ta test, ~11 daqiqa; ikki test jarayonini birga ishlatma
+.venv/Scripts/python manage.py test          # 660 ta test, ~11 daqiqa; ikki test jarayonini birga ishlatma
 cd ../frontend && npm run dev                # :5173;  npm run lint / build
 ```
 - Demo: `manage.py demo_ezaz` (salon `ezaz`; parol va PIN lar shu buyruq faylida). Platforma egasi: `manage.py platforma_admin <login>`.
