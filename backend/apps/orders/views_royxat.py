@@ -113,9 +113,11 @@ class ZakazTafsilotView(APIView):
         return Response({
             **_qisqa(z), 'asosiy_narx': z.asosiy_narx, 'ustama': z.ustama, 'ustama_foiz': z.ustama_foiz, 'chegirma': z.chegirma,
             'tolangan': tolangan, 'qoldiq': z.jami - tolangan,
-            'tolovlar': [{'tur': t.tur, 'summa': t.summa, 'usul': t.usul, 'xodim': t.xodim.ism,
+            'tolovlar': [{'tur': t.tur, 'tur_nomi': t.get_tur_display(), 'summa': t.summa, 'usul': t.usul,
+                          'usul_nomi': t.get_usul_display(), 'xodim': t.xodim.ism,
                           'vaqt': t.vaqt} for t in z.tolovlar.select_related('xodim')],
-            'zaloglar': [{'id': g.id, 'turi': g.turi, 'holat': g.holat, 'summa': g.summa,
+            'zaloglar': [{'id': g.id, 'turi': g.turi, 'turi_nomi': g.get_turi_display(), 'holat': g.holat,
+                          'holat_nomi': g.get_holat_display(), 'summa': g.summa,
                           'tavsif': g.tavsif, 'yorliq': g.yorliq} for g in z.zaloglar.all()],
             'aksessuar_qatorlari': [{'id': a.id, 'nomi': a.dona.aksessuar.nomi, 'yorliq': a.dona.yorliq,
                                      'narx': a.narx} for a in z.aksessuarlar.all()],
@@ -163,14 +165,11 @@ def _davr_bloki(salon, dan, gacha, filial=None):
     Sof foyda bu yerda hisoblanmaydi — soliq oylik hisoblanadi.
     """
     f = {'filial_id': filial} if filial else {}
-    zakazlar = reports.tushum_zakazlari(salon, dan, gacha, f)  # P&L bilan bir xil: avvalgi davr zakazi bekor bo'lsa storno
-    daromad = ((zakazlar.aggregate(s=Sum('jami'))['s'] or 0)
-               - (reports.storno_zakazlari(salon, dan, gacha, f).aggregate(s=Sum('jami'))['s'] or 0))
-    soni = zakazlar.count()
+    daromad, storno, soni = reports.sof_tushum(salon, dan, gacha, f)  # P&L bilan bir xil: avvalgi davr zakazi bekor bo'lsa storno
     xarajat = Xarajat.objects.filter(salon=salon, holat=Xarajat.Holat.TASDIQLANDI,
                                      sana__range=(dan, gacha), **f).aggregate(s=Sum('summa'))['s'] or 0
     return {'hozirgi_daromad': daromad, 'xarajatlar': xarajat, 'taxminiy_sof_foyda': None, 'zakazlar_soni': soni,
-            'ortacha_chek': daromad // soni if soni else 0}
+            'ortacha_chek': (daromad + storno) // soni if soni else 0}  # davr zakazlari bo'yicha, storno'siz
 
 
 def _oldinda(salon, bugun, kunlar=30, filial=None):

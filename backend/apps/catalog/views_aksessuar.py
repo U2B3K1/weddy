@@ -159,13 +159,8 @@ class DonaView(APIView):
         # Avval hamma narsa tekshiriladi, keyin saqlanadi: holat rad etilsa filial ham o'zgarmay qolsin
         filial = dona.filial
         if 'filial' in request.data:  # donani filialga ko'chirish (null — biriktirilmagan)
-            from apps.tenants.models import Filial
-            fid = request.data.get('filial')
-            if fid not in (None, '') and not str(fid).isdigit():
-                raise NotFound('Filial topilmadi.')
-            filial = Filial.objects.filter(salon=request.salon, id=fid, faol=True).first() if fid else None
-            if fid and not filial:
-                raise NotFound('Filial topilmadi.')
+            from apps.tenants.views_filial import sorovdagi_filial
+            filial = sorovdagi_filial(request)
         holat = dona.holat
         if 'holat' in request.data:
             holat = serializers.ChoiceField(choices=AksessuarDona.Holat.values).run_validation(request.data.get('holat'))

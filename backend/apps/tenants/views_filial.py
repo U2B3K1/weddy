@@ -21,6 +21,18 @@ def joriy_filial(request):
     return q.filial if q and q.filial_id and q.filial.faol else None
 
 
+def sorovdagi_filial(request):
+    """So'rovdagi `filial` (ko'chirish/biriktirish uchun): faol Filial yoki None (bo'sh — biriktirilmagan).
+    Topilmasa yoki raqam bo'lmasa — 404."""
+    fid = request.data.get('filial')
+    if not fid:  # None, '', 0, false — biriktirilmagan
+        return None
+    filial = Filial.objects.filter(salon=request.salon, id=fid, faol=True).first() if str(fid).isdigit() else None
+    if not filial:
+        raise NotFound('Filial topilmadi.')
+    return filial
+
+
 def filial_json(f):
     return {'id': f.id, 'nomi': f.nomi, 'manzil': f.manzil, 'faol': f.faol}
 

@@ -63,6 +63,14 @@ def storno_zakazlari(salon, boshi, oxiri, f):
                                 tolangan_sana__lt=boshi, **f)
 
 
+def sof_tushum(salon, boshi, oxiri, f):
+    """Davr tushumi — P&L va bosh ekran uchun yagona ta'rif: `(tushum, storno, zakazlar_soni)`.
+    `tushum` storno ayirilgan holda."""
+    r = tushum_zakazlari(salon, boshi, oxiri, f).aggregate(s=Sum('jami'), n=Count('id'))
+    storno = storno_zakazlari(salon, boshi, oxiri, f).aggregate(s=Sum('jami'))['s'] or 0
+    return (r['s'] or 0) - storno, storno, r['n']
+
+
 def foyda_zarar(salon, yil, oy, soliq_foizi=None, filial=None):
     """Foyda va zarar (Ilova B). `filial` berilsa — shu filial natijasi: uning zakazlari, liboslari va unga yozilgan
     xarajatlar. Filialga biriktirilmagan (umumiy) xarajat va liboslar filial ko'rinishiga kirmaydi."""
@@ -75,9 +83,7 @@ def foyda_zarar(salon, yil, oy, soliq_foizi=None, filial=None):
 
     # 1. Tushum: faqat shu oyda to'liq to'langan zakazlar (6.1). Shu oy ichida bekor qilingani chiqariladi;
     # keyingi oyda bekor qilingani o'tgan oy daromadini o'zgartirmaydi — bekor qilingan oyda storno bo'ladi.
-    zakazlar = tushum_zakazlari(salon, boshi, oxiri, f)
-    storno = storno_zakazlari(salon, boshi, oxiri, f).aggregate(s=Sum('jami'))['s'] or 0
-    tushum = (zakazlar.aggregate(s=Sum('jami'))['s'] or 0) - storno
+    tushum, storno, zakazlar_soni = sof_tushum(salon, boshi, oxiri, f)
 
     xarajatlar = Xarajat.objects.filter(salon=salon, holat=Xarajat.Holat.TASDIQLANDI,
                                         sana__range=(boshi, oxiri), **f)
@@ -111,7 +117,7 @@ def foyda_zarar(salon, yil, oy, soliq_foizi=None, filial=None):
 
     return {
         'oy': f'{yil}-{oy:02d}', 'filial': filial,
-        'tushum': tushum, 'zakazlar_soni': zakazlar.count(), 'storno': storno,
+        'tushum': tushum, 'zakazlar_soni': zakazlar_soni, 'storno': storno,
         'togridan_togri_xarajat': togridan_jami, 'togridan_togri_moddalar': modda_boyicha(togridan),
         'yalpi_foyda': yalpi,
         'operatsion_xarajat': operatsion_jami, 'operatsion_moddalar': modda_boyicha(operatsion),

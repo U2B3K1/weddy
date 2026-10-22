@@ -30,10 +30,11 @@ class SmenaHolatiView(APIView):
         smena = services.xodim_smenasi(request.salon, request.user) or services.ochiq_smena(request.salon, filial)
         if not smena:
             return Response({'ochiq': False, 'filial': filial.nomi if filial else None})
+        faol = list(smena.ishtirokchilar.filter(chiqqan=None).select_related('xodim'))
         return Response({
             'ochiq': True, 'id': smena.id, 'filial': smena.filial.nomi if smena.filial_id else None,
-            'ishtirokchilar': [i.xodim.ism for i in
-                               smena.ishtirokchilar.filter(chiqqan=None).select_related('xodim')],
+            'ishtirokchilar': [i.xodim.ism for i in faol],
+            'men_ishtirokchi': any(i.xodim_id == request.user.id for i in faol),
             'hisobot': services.kassa_hisobot(smena),
             'zalog_tekshirilmagan': tekshiruv.tekshirilmaganlar_soni(smena),
         })

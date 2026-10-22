@@ -4,6 +4,7 @@ import { pinLogin, qurilmaPinTasdiq, qurilmaTasdiqHolati, salonLogin, saqlangan,
 
 const QAYTA_URINISH = 15 * 1000         // holat olinmasa shuncha vaqtdan keyin qayta so'raladi
 const HAVOLA_ZAXIRA = 2.5 * 60 * 1000   // server havolani tugashiga 2 daqiqa qolganda almashtiradi — biroz oldinroq so'raymiz
+const INTERNET_YOQ = "Internet yo'q. Kirish uchun aloqa kerak."
 
 // FT-22.2: yangi qurilma ruxsat kutadi. Rahbar Telegramdagi havolani bosib (yoki QR ni telefonida skanerlab)
 // botda «Ha, bu men» desa, qurilma o'zi ochiladi. Telegramdan foydalana olmaydigan rahbar shu yerda PIN bilan tasdiqlaydi.
@@ -51,7 +52,7 @@ function QurilmaKutish({ setXato, onTasdiqlandi, onBekor }) {
       await qurilmaPinTasdiq(rahbar.id, pin)
       onTasdiqlandi()
     } catch (err) {
-      if (tarmoqXatosi(err)) return setXato("Internet yo'q. Kirish uchun aloqa kerak.")
+      if (tarmoqXatosi(err)) return setXato(INTERNET_YOQ)
       setPin('')
       const s = err.response.status
       if (s === 401) return onBekor()  // qurilma shu orada rad etilgan
@@ -141,7 +142,7 @@ function SalonKirish({ setXato, onTayyor }) {
       const r = await salonLogin(login, parol)
       onTayyor(r.qurilma_token)
     } catch (err) {
-      if (tarmoqXatosi(err)) return setXato("Internet yo'q. Kirish uchun aloqa kerak.")
+      if (tarmoqXatosi(err)) return setXato(INTERNET_YOQ)
       // 403: parol ko'p marta xato kiritilgan — to'g'ri parol ham vaqtincha o'tmaydi
       setXato(err.response.status === 403 ? err.response.data?.detail || "Keyinroq urinib ko'ring." : "Login yoki parol noto'g'ri.")
     }
@@ -170,7 +171,7 @@ function XodimTanlash({ setXato, onKirdi, onQurilmaOchirildi }) {
   // Faqat server «qurilma ishonchli emas» desa qurilma unutiladi; internet uzilganda emas.
   const yukla = () => xodimlar().then((r) => { setRoyxat(r); setKutilmoqda(false); setXato('') })
     .catch((e) => {
-      if (tarmoqXatosi(e)) return setXato("Internet yo'q. Kirish uchun aloqa kerak.")
+      if (tarmoqXatosi(e)) return setXato(INTERNET_YOQ)
       // FT-22.2: yangi qurilma rahbar ruxsatini kutadi; token saqlanadi va holat tekshirib turiladi
       if (e.response?.data?.kod === 'qurilma_kutilmoqda') return setKutilmoqda(true)
       return onQurilmaOchirildi()
@@ -192,7 +193,7 @@ function XodimTanlash({ setXato, onKirdi, onQurilmaOchirildi }) {
       saqlangan.xodimSaqla(r.xodim)
       onKirdi(r.xodim)
     } catch (err) {
-      if (tarmoqXatosi(err)) return setXato("Internet yo'q. Kirish uchun aloqa kerak.")
+      if (tarmoqXatosi(err)) return setXato(INTERNET_YOQ)
       if (kodKerak) { setTgKod(''); return setXato(err.response?.data?.detail || "Telegram kod noto'g'ri.") }
       setPin('')
       if (err.response?.status === 503) return setXato(err.response.data.detail)

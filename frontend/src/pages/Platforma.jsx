@@ -1,6 +1,7 @@
 import axios from 'axios'
 import { useCallback, useEffect, useState } from 'react'
 import { som, xatoMatni } from '../api'
+import { ZAKAZ_HOLATLARI } from '../nomlar'
 import Shapka from '../components/Shapka'
 
 // Platforma egasi alohida token bilan ishlaydi: salon xodimi tokeni bu API ga, bu token esa salon ma'lumotiga yaramaydi.
@@ -459,7 +460,7 @@ function Yordam({ salonId }) {
     <div className="stack">
       <p className="malumot">Shu oy: tushum {som(d.shu_oy.tushum)}, sof foyda {som(d.shu_oy.sof_foyda)}. Oxirgi zakazlar:</p>
       {d.zakazlar.map((z) => (
-        <p key={z.raqam} className="qator-matn">#{z.raqam} · {z.mijoz} · {z.olib_ketish} · {z.holat} · {som(z.jami)}</p>
+        <p key={z.raqam} className="qator-matn">#{z.raqam} · {z.mijoz} · {z.olib_ketish} · {ZAKAZ_HOLATLARI[z.holat] || z.holat} · {som(z.jami)}</p>
       ))}
     </div>
   )

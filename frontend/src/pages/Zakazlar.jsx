@@ -6,11 +6,7 @@ import {
   tolovQabul, xatoMatni, zakazAksessuarOchir, zakazAksessuarQosh, zakazTafsilot, zakazTarixi, zakazlarRoyxat,
   boshAksessuarlar, boshLiboslar, libosAlmashtirish, salonchilar, zakazSalonchi,
 } from '../api'
-
-const HOLATLAR = {
-  vaqtinchalik: 'Vaqtinchalik bron', chegirma_kutilmoqda: "Chegirma tasdig'i kutilmoqda", bron: 'Bron',
-  berildi: 'Berildi', qaytarildi: 'Qaytarildi (qarz bor)', yopildi: 'Yopildi', bekor: 'Bekor qilingan',
-}
+import { TARIX_HARAKATLARI, ZAKAZ_HOLATLARI } from '../nomlar'
 
 // Zakaz yo'li: 4 qadam; «yopildi» — hammasi o'tilgan, «bekor» — hech biri.
 const QADAMLAR = ['Bron', 'Avans', 'Berildi', 'Qaytarildi']
@@ -50,17 +46,17 @@ export default function Zakazlar({ tanlangan, onTanla }) {
 
   return (
     <div className="stack">
-      <input placeholder="Raqam, telefon yoki ism" value={q} onChange={(e) => setQ(e.target.value)} />
-      <select value={holat} onChange={(e) => setHolat(e.target.value)}>
+      <input placeholder="Raqam, telefon yoki ism" aria-label="Zakaz qidirish" value={q} onChange={(e) => setQ(e.target.value)} />
+      <select value={holat} onChange={(e) => setHolat(e.target.value)} aria-label="Holat bo'yicha filtr">
         <option value="">Barcha holatlar</option>
-        {Object.entries(HOLATLAR).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+        {Object.entries(ZAKAZ_HOLATLARI).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
       </select>
       {xato && <p className="xato">{xato}</p>}
       {royxat.length === 0 && <p className="malumot">Zakaz topilmadi.</p>}
       {royxat.map((z) => (
         <button key={z.id} className="qator-btn" onClick={() => onTanla(z.id)}>
           <b>#{z.raqam}</b> {z.mijoz} · {z.olib_ketish}
-          <span>{HOLATLAR[z.holat]} · {som(z.jami)}</span>
+          <span>{ZAKAZ_HOLATLARI[z.holat]} · {som(z.jami)}</span>
         </button>
       ))}
     </div>
@@ -102,7 +98,7 @@ function Karta({ id, onOrqaga }) {
       <div className="karta-bosh">
         <button className="ikkinchi karta-orqaga" aria-label="Zakazlar ro'yxatiga qaytish" onClick={onOrqaga}>‹</button>
         <h2>Zakaz #{z.raqam}</h2>
-        <span className={`holat ${holatSinfi(h)}`}>{HOLATLAR[h]}</span>
+        <span className={`holat ${holatSinfi(h)}`}>{ZAKAZ_HOLATLARI[h]}</span>
       </div>
       {h !== 'bekor' && (
         <ol className="holat-chizigi" aria-label="Zakaz bosqichlari">
@@ -188,14 +184,14 @@ function Karta({ id, onOrqaga }) {
         <h3>To'lovlar</h3>
         {z.tolovlar.length === 0 && <p className="malumot">Hali yo'q</p>}
         {z.tolovlar.map((t, i) => (
-          <p key={i} className="qator-matn">{t.tur} · {som(t.summa)} · {t.usul} · {t.xodim}</p>
+          <p key={i} className="qator-matn">{t.tur_nomi} · {som(t.summa)} · {t.usul_nomi} · {t.xodim}</p>
         ))}
         {z.zaloglar.map((g) => (
-          <p key={g.id} className="qator-matn">Zalog {g.yorliq}: {g.turi} · {g.holat}</p>
+          <p key={g.id} className="qator-matn">Zalog {g.yorliq}: {g.turi_nomi} · {g.holat_nomi}</p>
         ))}
         <button className="ikkinchi kichik" onClick={() => zakazTarixi(id).then(setTarix)}>O'zgarishlar tarixi</button>
         {tarix && tarix.map((t, i) => (
-          <p key={i} className="qator-matn">{t.harakat}: {t.eski} → {t.yangi} ({t.xodim}) {t.sabab}</p>
+          <p key={i} className="qator-matn">{TARIX_HARAKATLARI[t.harakat] || t.harakat}: {t.eski} → {t.yangi} ({t.xodim}) {t.sabab}</p>
         ))}
       </section>
     </div>

@@ -11,7 +11,8 @@ from rest_framework.views import APIView
 
 from . import cheklov
 from .auth import make_device_token, make_staff_token, qurilma_holati
-from .models import Ariza, IshonchliQurilma, Jurnal, Salon, Xodim, jurnalga_yoz
+from .models import Ariza, IshonchliQurilma, Salon, Xodim, jurnalga_yoz
+from .permissions import salon_yoza_oladimi
 
 
 class OchiqView(APIView):
@@ -70,7 +71,7 @@ class SalonLoginView(OchiqView):
         d = ser.validated_data
         # Parolni tanlab topishga qarshi: salon emas, xato terayotgan IP to'xtatiladi (cheklov.py)
         if cheklov.bloklanganmi(request, 'salon', d['login']):
-            raise PermissionDenied("Parol ko'p marta xato kiritildi. Keyinroq urinib ko'ring.")
+            raise PermissionDenied("Parol ko'p marta xato kiritildi: kirish 15 daqiqaga to'xtatildi.")
         salon = Salon.objects.filter(login=d['login']).first()
         if not salon or not salon.check_parol(d['parol']) or salon.holat == Salon.Holat.BLOKLANGAN:
             cheklov.xato_yoz(request, 'salon', d['login'])
@@ -138,22 +139,29 @@ class QurilmaTasdiqView(OchiqView):
         holat, salon, qurilma = self._kutayotgan(request)
         if holat == 'ok':
             return Response({'tasdiqlangan': True})
-        from apps.notify.services import QURILMA_FAQAT_KORISH, qurilma_ozgartirsa_boladi, qurilma_tasdiqla
-        if not qurilma_ozgartirsa_boladi(salon):
+        from apps.notify.services import QURILMA_FAQAT_KORISH, qurilma_tasdiqla
+        if not salon_yoza_oladimi(salon):
             raise PermissionDenied(QURILMA_FAQAT_KORISH)
         xid = str(request.data.get('xodim_id', ''))
         xodim = self._pin_rahbarlar(salon).filter(id=int(xid)).first() if xid.isdigit() else None
         if not xodim:
             raise NotFound('Rahbar topilmadi.')
-        if Jurnal.objects.filter(salon=salon, harakat='qurilma_pin_xato',
-                                 vaqt__gt=timezone.now() - timedelta(days=1)).count() >= QURILMA_PIN_XATO_SUTKADA:
-            raise PermissionDenied("Bugun PIN ko'p marta xato kiritildi. Rahbar Telegramni ulab ruxsat bersin "
-                                   "yoki platforma egasiga murojaat qiling.")
-        try:
-            pin_tekshir(xodim, str(request.data.get('pin', '')))
-        except AuthenticationFailed:
-            jurnalga_yoz(salon, xodim, 'qurilma_pin_xato', f'qurilma {qurilma.nomi}')
-            # 401 emas: klient 401 ni «qurilma chiqarilgan» deb tushunadi
+        # Salon qatori qulflanadi: parallel so'rovlar tekshiruv va xato yozuvi orasidan o'tib, sutkalik
+        # chegaradan ortiq PIN sinab ko'ra olmasin.
+        with transaction.atomic():
+            Salon.objects.select_for_update().filter(id=salon.id).first()
+            if cheklov.sutkalik_oshdimi('qurilma_pin', str(salon.id), QURILMA_PIN_XATO_SUTKADA):
+                raise PermissionDenied("Bugun PIN ko'p marta xato kiritildi. Rahbar Telegramni ulab ruxsat bersin "
+                                       "yoki platforma egasiga murojaat qiling.")
+            try:
+                pin_tekshir(xodim, str(request.data.get('pin', '')))
+            except AuthenticationFailed:
+                cheklov.xato_yoz(request, 'qurilma_pin', str(salon.id))
+                jurnalga_yoz(salon, xodim, 'qurilma_pin_xato', f'qurilma {qurilma.nomi}')  # audit uchun
+                xato = True
+            else:
+                xato = False
+        if xato:  # 401 emas: klient 401 ni «qurilma chiqarilgan» deb tushunadi
             return Response({'detail': "PIN noto'g'ri."}, status=400)
         qurilma_tasdiqla(qurilma, xodim, 'qurilmada PIN')
         return Response({'tasdiqlangan': True})
@@ -170,7 +178,7 @@ class XodimlarRoyxatiView(OchiqView):
 def pin_tekshir(xodim, pin):
     """PIN ni tekshiradi; 5 marta xato bo'lsa 15 daqiqaga bloklaydi (FT-1.7). Xatoda istisno ko'taradi."""
     if xodim.bloklangan:
-        raise PermissionDenied("PIN ko'p marta xato kiritildi. Keyinroq urinib ko'ring.")
+        raise PermissionDenied("PIN ko'p marta xato kiritildi: kirish 15 daqiqaga to'xtatildi.")
     if not xodim.check_pin(pin):
         xodim.xato_urinish += 1
         if xodim.xato_urinish >= settings.PIN_MAX_ATTEMPTS:

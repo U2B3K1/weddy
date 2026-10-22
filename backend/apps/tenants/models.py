@@ -343,10 +343,11 @@ def integratsiya(salon):
 class KirishUrinishi(models.Model):
     """Salon/platforma loginidagi xato urinish. Bloklash akkaunt emas, IP bo'yicha (`apps.tenants.cheklov`):
     loginni bilgan begona odam xato parol terib salonni kirolmaydigan qilib qo'ya olmasin."""
-    tur = models.CharField(max_length=20)  # 'salon' | 'platforma'
+    tur = models.CharField(max_length=20)  # 'salon' | 'platforma' | 'admin' | 'qurilma_pin'
     login = models.CharField(max_length=150)
     ip = models.GenericIPAddressField()
     vaqt = models.DateTimeField(auto_now_add=True, db_index=True)
 
     class Meta:
-        indexes = [models.Index(fields=['ip', 'vaqt'])]
+        indexes = [models.Index(fields=['ip', 'vaqt']), models.Index(fields=['ip', 'tur', 'login', 'vaqt']),
+                   models.Index(fields=['tur', 'login', 'vaqt'])]

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import Promokodlar from './Promokodlar'
 import Salonchilar from './Salonchilar'
 import { mijozKarta, mijozOzgartir, mijozQoraRoyxat, mijozlar, som, xatoMatni } from '../api'
+import { ZAKAZ_HOLATLARI } from '../nomlar'
 
 const MANBA = { instagram: 'Instagram', tavsiya: 'Tavsiya', salonchi: 'Salonchi', boshqa: 'Boshqa' }
 const OLCHAMLAR = [['kokrak', "Ko'krak"], ['bel', 'Bel'], ['son', 'Son'], ['boy', "Bo'y"], ['oyoq_olchami', 'Oyoq kiyim']]
@@ -125,7 +126,7 @@ function Karta({ id, rahbar, onOrqaga, onZakaz }) {
         {m.tarix.map((z) => (
           <button key={z.id} className="qator-btn" onClick={() => onZakaz(z.id)}>
             <span><b>#{z.raqam}</b> {z.olib_ketish} · {z.liboslar.join(', ')}</span>
-            <span>{z.holat} · {som(z.jami)}</span>
+            <span>{ZAKAZ_HOLATLARI[z.holat] || z.holat} · {som(z.jami)}</span>
           </button>
         ))}
       </section>

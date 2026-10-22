@@ -99,8 +99,7 @@ def libosni_ozgartirish(*, salon, rahbar, libos, **maydonlar):
         if libos.tamirlar.filter(tugagan__isnull=True).exists():
             raise KatalogXatosi("Libosda tugallanmagan ta'mir bor: avval ta'mirni tugating.")
         from apps.bookings.models import Bron
-        if holat != Libos.Holat.BOSH and Bron.faol().filter(
-                libos=libos, oraliq__endswith__gt=timezone.localdate()).exists():
+        if holat != Libos.Holat.BOSH and Bron.kelgusi().filter(libos=libos).exists():
             # aks holda mijozning zakazi sotilgan/arxivdagi libosga bog'liq qolib ketardi
             raise KatalogXatosi("Libosning kelgusi bronlari bor: avval zakazlarni boshqa libosga o'tkazing yoki bekor qiling.")
         jurnalga_yoz(salon, rahbar, 'libos_holati', f'libos {libos.artikul}', libos.holat, holat)

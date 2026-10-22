@@ -5,7 +5,7 @@ from django.utils import timezone
 
 from apps.tenants.models import sozlama
 
-from .changes import OZGARTIRILADI, _log, _qayta_hisobla, tolov_holatini_mosla
+from .changes import OZGARTIRILADI, _log, _qayta_hisobla
 from .models import Primerka, Zakaz
 
 
@@ -34,8 +34,7 @@ def _narxni_yangila(zakaz, xodim, eski):
                        .aggregate(s=Sum('moslash_narxi'))['s'] or 0)
     if zakaz.xizmatlar == eski:
         return
-    _qayta_hisobla(zakaz)
-    tolov_holatini_mosla(zakaz, PrimerkaXatosi)  # 6.1: qoldiq / to'liq to'langan / ortiqcha to'lov
+    _qayta_hisobla(zakaz, PrimerkaXatosi)  # 6.1: qoldiq / to'liq to'langan / ortiqcha to'lov
     zakaz.save()
     _log(zakaz, xodim, 'moslash_narxi', eski, zakaz.xizmatlar)
 

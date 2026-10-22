@@ -16,6 +16,7 @@ from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from apps.tenants.models import Ariza, IshonchliQurilma, Salon, Xodim, jurnalga_yoz, platforma_sozlama
+from apps.tenants.permissions import salon_yoza_oladimi
 
 from . import telegram
 from .models import KirishKodi, TelegramUlash, Xabar
@@ -255,9 +256,8 @@ def qurilma_tasdiq_havolasi(qurilma):
     Bot sozlanmagan yoki salonda Telegram ulagan rahbar bo'lmasa havola yo'q (u hech kimga ishlamasdi).
     Amaldagi havola muddati tugaguncha o'sha qoladi; faqat tugashiga oz qolganda yangisi chiqariladi.
     """
-    sozlama = platforma_sozlama()
-    nomi = (sozlama.telegram_bot_nomi or settings.TELEGRAM_BOT_NAME or '').lstrip('@')
-    if not nomi or not (sozlama.telegram_token or settings.TELEGRAM_BOT_TOKEN) or not Xodim.objects.filter(
+    nomi = (telegram.bot_nomi() or '').lstrip('@')
+    if not nomi or not telegram.sozlangan() or not Xodim.objects.filter(
             salon_id=qurilma.salon_id, rol=Xodim.Rol.RAHBAR, faol=True, telegram_id__isnull=False).exists():
         return None, None
     if not qurilma.tg_token_tugaydi or qurilma.tg_token_tugaydi < timezone.now() + QURILMA_TOKEN_ZAXIRA:
@@ -294,11 +294,6 @@ def qurilma_kutmoqda_xabari(qurilma):
 
 
 QURILMA_FAQAT_KORISH = "Salon «faqat ko'rish» holatida: qurilmalarni o'zgartirib bo'lmaydi."
-
-
-def qurilma_ozgartirsa_boladi(salon):
-    """Ilovadagi `SalonYozishRuxsati` bilan bir xil: «faqat ko'rish» salonida qurilma tasdiqlanmaydi/chiqarilmaydi."""
-    return salon.holat in (Salon.Holat.SINOV, Salon.Holat.FAOL)
 
 
 def qurilma_tasdiqla(q, rahbar, manba='', kodsiz=False):
@@ -347,7 +342,7 @@ def qurilma_start_ishla(chat_id, token):
         return "Havola eskirgan yoki allaqachon ishlatilgan. Qurilmada «Telegram orqali tasdiqlash» ni qayta bosing.", None
     if not _salon_rahbari(q.salon_id, chat_id):
         return "Bu havola faqat shu salon rahbari uchun.", None
-    if not qurilma_ozgartirsa_boladi(q.salon):
+    if not salon_yoza_oladimi(q.salon):
         return QURILMA_FAQAT_KORISH, None
     if q.tasdiqlangan:
         return f"{_qurilma_tavsifi(q)} allaqachon ishonchli.", None
@@ -368,7 +363,7 @@ def qurilma_tugma_ishla(chat_id, qid, amal):
         return "Bu amal faqat shu salon rahbariga ruxsat etilgan."
     if not q.faol:
         return "Qurilma allaqachon ro'yxatdan chiqarilgan."
-    if not qurilma_ozgartirsa_boladi(q.salon):
+    if not salon_yoza_oladimi(q.salon):
         return QURILMA_FAQAT_KORISH
     if amal in ('t', 'h'):
         if q.tasdiqlangan:

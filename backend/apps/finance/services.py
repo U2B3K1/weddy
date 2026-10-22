@@ -217,7 +217,7 @@ def bank_solishtirish(*, salon, rahbar, yil, oy, usul, kochirma_summa, komissiya
         jurnalga_yoz(salon, rahbar, 'xarajat_bekor_qilindi', f'xarajat #{eski.id}', eski.summa, 'komissiya 0')
     elif komissiya:
         b.xarajat = Xarajat.objects.create(
-            salon=salon, sana=oxiri if oxiri < timezone.localdate() else timezone.localdate(),
+            salon=salon, sana=min(oxiri, timezone.localdate()),
             modda=Xarajat.Modda.BANK, summa=komissiya, usul=usul,
             izoh=f'Bank komissiyasi ({usul}), {yil}-{oy:02d}', kiritgan=rahbar, tasdiqlagan=rahbar,
             holat=Xarajat.Holat.TASDIQLANDI)

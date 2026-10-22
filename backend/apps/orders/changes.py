@@ -54,17 +54,19 @@ def _ochiq_zakaz(salon, zakaz):
     return zakaz
 
 
-def _qayta_hisobla(zakaz):
+def _qayta_hisobla(zakaz, xato=None):
+    """Narxni qayta hisoblaydi va to'lov holatini moslaydi — ikkalasi doim birga, biri unutilib qolmasin."""
     asosiy = (sum(p.narx for p in zakaz.pozitsiyalar.all())
               + sum(a.narx for a in zakaz.aksessuarlar.all()) + zakaz.xizmatlar)
     h = narx_hisobla(asosiy, zakaz.ustama_foiz, chegirma=zakaz.chegirma)
     zakaz.asosiy_narx, zakaz.ustama, zakaz.chegirma, zakaz.jami = (
         h['asosiy_narx'], h['ustama'], h['chegirma'], h['jami'])
     zakaz.promokod_chegirma = min(zakaz.promokod_chegirma, zakaz.chegirma)
+    tolov_holatini_mosla(zakaz, xato)
 
 
 def tolov_holatini_mosla(zakaz, xato=None):
-    """Narx o'zgargach to'lov holati (6.1). Har bir narxni o'zgartiruvchi amal `_qayta_hisobla` dan keyin chaqiradi.
+    """Narx o'zgargach to'lov holati (6.1). `_qayta_hisobla` oxirida chaqiriladi.
 
     To'langan summa jamidan oshsa — amal to'xtatiladi (ortiqcha pul jimgina qolib ketmasin). Qoldiq paydo bo'lsa
     `tolangan_sana` tozalanadi (qoldiq to'langach daromad qayta tan olinadi); narx tushib to'langan summaga
@@ -122,7 +124,6 @@ def sanani_kochirish(*, salon, xodim, zakaz, olib_ketish, qaytarish, sabab=''):
     if sozlama(salon).mavsumiy_narx:  # FT-17.1: mavsumiy ustama yangi sanaga qarab qayta hisoblanadi
         zakaz.ustama_foiz = mavsumiy_foiz(salon, olib_ketish)
     _qayta_hisobla(zakaz)
-    tolov_holatini_mosla(zakaz)
     zakaz.save()
     _log(zakaz, xodim, 'sana_kochirildi', eski, f'{olib_ketish} – {qaytarish}', sabab)
     return zakaz
@@ -148,8 +149,7 @@ def libosni_almashtirish(*, salon, xodim, zakaz, eski_libos, yangi_libos, sabab=
     poz.libos, poz.narx, poz.zalog = yangi, yangi.ijara_narxi, yangi.zalog
     poz.save()
     eski_jami = zakaz.jami
-    _qayta_hisobla(zakaz)
-    tolov_holatini_mosla(zakaz)  # qimmatroq libos: qoldiq paydo bo'lsa daromad sanasi tozalanadi
+    _qayta_hisobla(zakaz)  # qimmatroq libos: qoldiq paydo bo'lsa daromad sanasi tozalanadi
     zakaz.save()
     _log(zakaz, xodim, 'libos_almashtirildi', f'{eski_libos.artikul} (jami {eski_jami})',
          f'{yangi.artikul} (jami {zakaz.jami})', sabab)
@@ -208,7 +208,6 @@ def zakazga_aksessuar_qoshish(*, salon, xodim, zakaz, aksessuar, soni=1):
                                       zakaz=zakaz):
         ZakazAksessuar.objects.create(salon=salon, zakaz=zakaz, dona=dona, narx=aksessuar.ijara_narxi)
     _qayta_hisobla(zakaz)
-    tolov_holatini_mosla(zakaz)
     zakaz.save()
     _log(zakaz, xodim, 'aksessuar_qoshildi', f'jami {eski_jami}', f'{aksessuar.nomi} × {soni} (jami {zakaz.jami})')
     return zakaz
@@ -233,7 +232,6 @@ def zakazdan_aksessuarni_olish(*, salon, xodim, zakaz, qator_id, sabab=''):
         zakaz.chegirma = max(0, zakaz.chegirma - zakaz.promokod_chegirma)
         zakaz.promokod, zakaz.promokod_chegirma = None, 0
     _qayta_hisobla(zakaz)
-    tolov_holatini_mosla(zakaz)
     zakaz.save()
     _log(zakaz, xodim, 'aksessuar_olib_tashlandi', f'{nomi} (jami {eski_jami})', f'jami {zakaz.jami}', sabab)
     return zakaz

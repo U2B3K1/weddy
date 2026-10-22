@@ -50,7 +50,7 @@ class PlatformaLoginView(APIView):
         login, parol = str(request.data.get('login', '')), str(request.data.get('parol', ''))
         # parolni tanlab topishga qarshi — IP bo'yicha (cheklov.py), egasining o'zi bloklanib qolmaydi
         if cheklov.bloklanganmi(request, 'platforma', login):
-            raise PermissionDenied("Ko'p marta xato kiritildi. Keyinroq urinib ko'ring.")
+            raise PermissionDenied("Parol ko'p marta xato kiritildi: kirish 15 daqiqaga to'xtatildi.")
         admin = PlatformaAdmini.objects.filter(login=login, faol=True).first()
         if not admin or not admin.check_parol(parol):
             cheklov.xato_yoz(request, 'platforma', login)

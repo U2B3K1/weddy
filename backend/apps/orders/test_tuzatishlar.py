@@ -15,7 +15,7 @@ from apps.catalog.services import KatalogXatosi, libosni_ozgartirish
 from apps.tenants.auth import make_staff_token
 from apps.tenants.models import Xodim
 
-from .changes import OzgartirishXatosi, sanani_kochirish, zakazga_aksessuar_qoshish, zakazdan_aksessuarni_olish
+from .changes import sanani_kochirish, zakazga_aksessuar_qoshish, zakazdan_aksessuarni_olish
 from .models import Zakaz
 from .rental import libos_berish, libos_qaytarish
 from .services import zakaz_yaratish

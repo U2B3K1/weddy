@@ -135,13 +135,8 @@ class LibosTafsilotView(APIView):
         ser.is_valid(raise_exception=True)
         filial_ozgaradi, filial = 'filial' in request.data, None
         if filial_ozgaradi:  # libosni filialga ko'chirish (null — biriktirilmagan)
-            from apps.tenants.models import Filial
-            fid = request.data.get('filial')
-            if fid not in (None, '') and not str(fid).isdigit():
-                raise NotFound('Filial topilmadi.')
-            filial = Filial.objects.filter(salon=request.salon, id=fid, faol=True).first() if fid else None
-            if fid and not filial:
-                raise NotFound('Filial topilmadi.')
+            from apps.tenants.views_filial import sorovdagi_filial
+            filial = sorovdagi_filial(request)
         # Filial va qolgan maydonlar bitta tranzaksiyada: holat rad etilsa filial ham o'zgarmay qoladi
         with transaction.atomic():
             libos, err = _bajar(libosni_ozgartirish, salon=request.salon, rahbar=request.user,

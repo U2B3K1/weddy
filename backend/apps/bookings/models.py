@@ -40,6 +40,11 @@ class Bron(SalonModel):
         """Muddati o'tmagan bronlar (tugagan vaqtinchalik bronlar hisobga olinmaydi)."""
         return cls.objects.exclude(turi=cls.Turi.VAQTINCHALIK, muddati__lt=timezone.now())
 
+    @classmethod
+    def kelgusi(cls):
+        """Hali tugamagan faol bronlar (libos sotilish/arxivga o'tishini to'sadi)."""
+        return cls.faol().filter(oraliq__endswith__gt=timezone.localdate())
+
 
 class LibosQulfi(SalonModel):
     """Zakazga qo'shilayotgan libos 15 daqiqaga boshqa sotuvchidan yashiriladi (FT-2.7)."""

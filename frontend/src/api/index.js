@@ -51,7 +51,7 @@ export const oflaynToplam = () => api.get('/oflayn-toplam/').then((r) => r.data)
 // Rahbar qurilmalar ro'yxatida ajrata olishi uchun: «Chrome · Windows · 09.10 12:50» kabi nom (FT-22.2)
 const qurilmaNomi = () => {
   const ua = navigator.userAgent
-  const brauzer = brauzerVersiyasi(ua).split(' ')[0] || 'Brauzer'  // model qatoridagi brauzer bilan bir xil bo'lsin
+  const brauzer = BRAUZERLAR.find(([re]) => re.test(ua))?.[1] || 'Brauzer'  // model qatoridagi brauzer bilan bir xil
   const tizim = /iPad/.test(ua) ? 'iPad' : /iPhone/.test(ua) ? 'iPhone' : /Android/.test(ua) ? 'Android'
     : /Windows/.test(ua) ? 'Windows' : /Mac/.test(ua) ? 'Mac' : 'qurilma'
   const d = new Date()

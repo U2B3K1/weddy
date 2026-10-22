@@ -298,12 +298,8 @@ class QurilmaView(APIView):
             from apps.notify.services import qurilma_tasdiqla  # Telegram havolasi tokenini ham bekor qiladi
             qurilma_tasdiqla(q, request.user)
         if 'filial' in request.data:  # qurilmani filialga biriktirish (yoki null — biriktirmaslik)
-            from .models import Filial
-            fid = request.data.get('filial')
-            filial = Filial.objects.filter(salon=request.salon, id=fid, faol=True).first() if fid else None
-            if fid and not filial:
-                raise NotFound('Filial topilmadi.')
-            q.filial = filial
+            from .views_filial import sorovdagi_filial
+            q.filial = sorovdagi_filial(request)
             q.save(update_fields=['filial'])
         return Response(qurilma_json(q))
 

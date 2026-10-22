@@ -145,25 +145,33 @@ def _filial_param(request):
     return int(filial) if filial.isdigit() else None
 
 
+def _davr_va_filtrlar(request, nomlar):
+    """Hisobot so'rovidagi `dan`/`gacha` (standart: joriy oy) va raqamli filtrlar."""
+    bugun = timezone.localdate()
+    try:
+        dan = date.fromisoformat(request.query_params.get('dan') or str(bugun.replace(day=1)))
+        gacha = date.fromisoformat(request.query_params.get('gacha') or str(bugun))
+    except ValueError:
+        raise ValidationError({'dan': "Sana YYYY-OY-KUN ko'rinishida bo'lishi kerak."})
+    if gacha < dan or (gacha - dan).days > 366:
+        raise ValidationError({'gacha': "Davr noto'g'ri yoki 1 yildan uzun."})
+    filtrlar = {}
+    for nomi in nomlar:
+        qiymat = request.query_params.get(nomi)
+        if qiymat:
+            if not qiymat.isdigit():
+                raise ValidationError({nomi: "Noto'g'ri qiymat."})
+            filtrlar[nomi] = int(qiymat)
+    return dan, gacha, filtrlar
+
+
 class HisobotTafsilotView(APIView):
     """GET /api/hisobotlar/h/<nom>/tafsilot/?kalit=&dan=&gacha= — qatorni tashkil qilgan zakazlar (FT-18.2)."""
     permission_classes = [IsRahbar]
 
     def get(self, request, nom):
         from .statistika import tafsilot
-        bugun = timezone.localdate()
-        try:
-            dan = date.fromisoformat(request.query_params.get('dan') or str(bugun.replace(day=1)))
-            gacha = date.fromisoformat(request.query_params.get('gacha') or str(bugun))
-        except ValueError:
-            raise ValidationError({'dan': "Sana YYYY-OY-KUN ko'rinishida bo'lishi kerak."})
-        filtrlar = {}
-        for nomi in ('sotuvchi', 'filial'):  # hisobotdagi filtrlar bilan bir xil (HisobotView)
-            qiymat = request.query_params.get(nomi)
-            if qiymat:
-                if not qiymat.isdigit():
-                    raise ValidationError({nomi: "Noto'g'ri qiymat."})
-                filtrlar[nomi] = int(qiymat)
+        dan, gacha, filtrlar = _davr_va_filtrlar(request, ('sotuvchi', 'filial'))  # HisobotView bilan bir xil
         natija = tafsilot(request.salon, nom, request.query_params.get('kalit', ''), dan, gacha, **filtrlar)
         if natija is None:
             raise ValidationError({'kalit': "Bu hisobot yoki qator uchun tafsilot yo'q."})
@@ -270,22 +278,9 @@ class HisobotView(APIView):
         fn = HISOBOTLAR.get(nom)
         if not fn:
             return Response({'detail': "Bunday hisobot yo'q."}, status=404)
-        bugun = timezone.localdate()
-        try:
-            dan = date.fromisoformat(request.query_params.get('dan') or str(bugun.replace(day=1)))
-            gacha = date.fromisoformat(request.query_params.get('gacha') or str(bugun))
-        except ValueError:
-            raise ValidationError({'dan': "Sana YYYY-OY-KUN ko'rinishida bo'lishi kerak."})
-        if gacha < dan or (gacha - dan).days > 366:
-            raise ValidationError({'gacha': "Davr noto'g'ri yoki 1 yildan uzun."})
         from .statistika import FILTRLAR
-        filtrlar = {}
-        for nomi in FILTRLAR.get(nom, ()):  # FT-20.1: faqat shu hisobotga tegishli filtrlar qo'llanadi
-            qiymat = request.query_params.get(nomi)
-            if qiymat:
-                if not qiymat.isdigit():
-                    raise ValidationError({nomi: "Noto'g'ri qiymat."})
-                filtrlar[nomi] = int(qiymat)
+        # FT-20.1: faqat shu hisobotga tegishli filtrlar qo'llanadi
+        dan, gacha, filtrlar = _davr_va_filtrlar(request, FILTRLAR.get(nom, ()))
         return Response({**fn(request.salon, dan, gacha, **filtrlar), 'dan': dan, 'gacha': gacha,
                          'filtrlar': list(FILTRLAR.get(nom, ()))})
 

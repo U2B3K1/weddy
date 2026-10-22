@@ -56,9 +56,9 @@ sudo adduser libosa www-data     # nginx media/static o'qiy olishi uchun
 
 ```bash
 cd /var/www
-sudo -u libosa git clone https://github.com/U2B3K1/weddy.git libosa
+sudo -u libosa git clone -b master https://github.com/U2B3K1/weddy.git libosa
 # agar repo allaqachon yaratilgan bo'lsa:
-#   sudo rm -rf libosa && sudo -u libosa git clone https://github.com/U2B3K1/weddy.git libosa
+#   sudo rm -rf libosa && sudo -u libosa git clone -b master https://github.com/U2B3K1/weddy.git libosa
 ```
 
 ---

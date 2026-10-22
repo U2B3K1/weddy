@@ -6,6 +6,7 @@ IP to'xtatiladi: shu IP dan shu loginga 5 ta xato (15 daqiqa ichida) yoki istalg
 oxirgi xatodan boshlab 15 daqiqa blok.
 """
 import ipaddress
+import random
 from datetime import timedelta
 
 from django.conf import settings
@@ -14,6 +15,7 @@ from django.utils import timezone
 from .models import KirishUrinishi
 
 IP_JAMI_SOATIGA = 30  # bitta IP dan har xil loginlarni sinab chiqishga qarshi
+LOGIN_TURLARI = ('salon', 'platforma', 'admin')  # qurilmadagi PIN ('qurilma_pin') salon bo'yicha alohida hisoblanadi
 
 
 def mijoz_ip(request):
@@ -48,11 +50,17 @@ def bloklanganmi(request, tur, login):
     qs = KirishUrinishi.objects.filter(ip=ip)
     return (_toplam_blokda(qs.filter(tur=tur, login=login), settings.PIN_MAX_ATTEMPTS,
                            timedelta(minutes=settings.PIN_LOCK_MINUTES), hozir)
-            or _toplam_blokda(qs, IP_JAMI_SOATIGA, timedelta(hours=1), hozir))
+            or _toplam_blokda(qs.filter(tur__in=LOGIN_TURLARI), IP_JAMI_SOATIGA, timedelta(hours=1), hozir))
+
+
+def sutkalik_oshdimi(tur, kalit, soni):
+    """IP dan qat'i nazar `kalit` bo'yicha oxirgi sutkadagi xatolar `soni` ga yetdimi (qurilmadagi PIN — salon bo'yicha)."""
+    return KirishUrinishi.objects.filter(tur=tur, login=kalit, vaqt__gt=timezone.now() - timedelta(days=1))[:soni].count() >= soni
 
 
 def xato_yoz(request, tur, login):
-    KirishUrinishi.objects.filter(vaqt__lt=timezone.now() - timedelta(days=1)).delete()  # jadval o'smasin
+    if random.random() < 0.02:  # eski qatorlarni vaqti-vaqti bilan tozalash — har xatoda emas
+        KirishUrinishi.objects.filter(vaqt__lt=timezone.now() - timedelta(days=1)).delete()
     KirishUrinishi.objects.create(tur=tur, login=login[:150], ip=mijoz_ip(request))
 
 
@@ -70,7 +78,7 @@ def admin_kirish(asl_login):
             return asl_login(request, extra_context)
         nomi = request.POST.get('username', '')
         if bloklanganmi(request, 'admin', nomi):
-            return HttpResponse("Ko'p marta xato kiritildi. 15 daqiqadan keyin urinib ko'ring.", status=429)
+            return HttpResponse("Parol ko'p marta xato kiritildi: kirish 15 daqiqaga to'xtatildi.", status=429)
         javob = asl_login(request, extra_context)
         (tozala if request.user.is_authenticated else xato_yoz)(request, 'admin', nomi)
         return javob

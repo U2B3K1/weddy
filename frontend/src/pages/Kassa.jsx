@@ -49,9 +49,11 @@ export default function Kassa({ rahbar, bolim, onHolatOzgardi }) {
               <section className="blok">
                 <h2>Smena ochiq</h2>
                 <p>Ishlayotganlar: {s.ishtirokchilar.join(', ')}</p>
-                <button className="ikkinchi" onClick={() => bajar(smenaQoshilish, "Smenaga qo'shildingiz.")}>
-                  Smenaga qo'shilish
-                </button>
+                {!s.men_ishtirokchi && (
+                  <button className="ikkinchi" onClick={() => bajar(smenaQoshilish, "Smenaga qo'shildingiz.")}>
+                    Smenaga qo'shilish
+                  </button>
+                )}
               </section>
               <Hisobot h={s.hisobot} />
             </>

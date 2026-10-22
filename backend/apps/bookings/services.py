@@ -33,15 +33,12 @@ def bron_oraliq(libos, olib_ketish, qaytarish, standart_bufer=None):
     return Range(olib_ketish, qaytarish + timedelta(days=libos.samarali_bufer_kun(standart_bufer)), '[]')
 
 
-def eng_yaqin_bosh_sana(libos, olib_ketish, qaytarish, bufer, bronlar=None):
+def eng_yaqin_bosh_sana(libos, olib_ketish, qaytarish, bufer, bronlar):
     """Band libos shu davomiylikda eng erta qachon bo'sh bo'lishi (FT-2.2, S27). Topilmasa None.
 
     `bronlar` — libosning `olib_ketish` dan keyin tugaydigan faol bron oraliqlari (ro'yxat aylanayotganda
-    bir martada olib uzatiladi); berilmasa bazadan o'qiladi.
+    bir martada olib uzatiladi).
     """
-    if bronlar is None:
-        bronlar = list(Bron.faol().filter(libos=libos, oraliq__endswith__gt=olib_ketish)
-                       .values_list('oraliq', flat=True))
     davom = qaytarish - olib_ketish
     nomzod = olib_ketish
     for _ in range(60):
@@ -50,17 +47,20 @@ def eng_yaqin_bosh_sana(libos, olib_ketish, qaytarish, bufer, bronlar=None):
         if not tosiqlar:
             return nomzod
         # yuqori chegara kirmaydi: bron va bufer tugagandan keyingi birinchi kun
-        nomzod = max(b.upper + timedelta(days=1) if b.upper_inc else b.upper for b in tosiqlar)
+        nomzod = max(_chegaralar(b)[1] for b in tosiqlar)
     return None
 
 
+def _chegaralar(r):
+    """Sana oralig'i `[boshi, oxiri)` ko'rinishida — chegaralar `[]` yoki `[)` bo'lishi mumkin."""
+    return ((r.lower if r.lower_inc else r.lower + timedelta(days=1)),
+            (r.upper + timedelta(days=1) if r.upper_inc else r.upper))
+
+
 def _kesishadi(a, b):
-    """Ikki sana oralig'i kesishadimi (PostgreSQL `&&` kabi). Chegaralar `[]` yoki `[)` bo'lishi mumkin."""
-    def chegara(r):
-        yuqori = r.upper + timedelta(days=1) if r.upper_inc else r.upper
-        return (r.lower if r.lower_inc else r.lower + timedelta(days=1)), yuqori
-    a1, a2 = chegara(a)
-    b1, b2 = chegara(b)
+    """Ikki sana oralig'i kesishadimi (PostgreSQL `&&` kabi)."""
+    a1, a2 = _chegaralar(a)
+    b1, b2 = _chegaralar(b)
     return a1 < b2 and b1 < a2
 
 
