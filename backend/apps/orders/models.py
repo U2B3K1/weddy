@@ -194,6 +194,21 @@ class ChegirmaSorovi(SalonModel):
                                                  on_delete=models.SET_NULL, related_name='sorov')
 
 
+class TushumFarqi(SalonModel):
+    """Yopilgan oyda tan olingan zakaz narxi keyin oshganda — farq (6.1, FT-18.4).
+
+    Yopilgan oy tushumi o'zgarmaydi: zakaz o'sha oyda eski summasi bilan qoladi, farq esa qoldiq to'liq to'langan
+    kuni (`sana`) shu kungi oy tushumiga kiradi. `sana` bo'sh — farq hali to'lanmagan (zakazda bittadan ko'p bo'lmaydi).
+    """
+    zakaz = models.ForeignKey(Zakaz, on_delete=models.CASCADE, related_name='tushum_farqlari')
+    summa = models.PositiveIntegerField()
+    sana = models.DateField(null=True, blank=True)
+    yaratilgan = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['yaratilgan', 'id']
+
+
 class ZakazTarixi(SalonModel):
     """Zakazdagi har bir o'zgartirish va bekor qilish: kim, qachon, nima, sabab (FT-17.5)."""
     zakaz = models.ForeignKey(Zakaz, on_delete=models.CASCADE, related_name='tarix')

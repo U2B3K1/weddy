@@ -575,6 +575,7 @@ function KochirishForma({ onYuborish }) {
 function BekorForma({ onYuborish, soz }) {
   const qoida = (soz?.qaytarish_qoidasi || [[30, 100], [7, 50], [0, 0]])
     .map(([kun, foiz]) => (kun > 0 ? `${kun}+ kun — ${foiz}%` : `undan kam — ${foiz}%`)).join(', ')
+    + (soz?.qaytarish_asosi === 'tolangan' ? " (hamma to'langan summaga)" : " (faqat avansga, qoldiq to'liq qaytadi)")
   const [sabab, setSabab] = useState('')
   const [surov, setSurov] = useState(false)
   return (

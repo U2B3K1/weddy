@@ -8,7 +8,7 @@ from apps.bookings.services import bron_qilish
 from apps.cash.models import SmenaIshtirokchi, Tolov
 from apps.cash.services import KassaXatosi, smenaga_qoshilish
 from apps.catalog.models import Libos
-from apps.finance import reports
+from apps.finance import reports, statistika
 from apps.finance.models import YopilganOy
 from apps.finance.statistika import HISOBOTLAR, SARLAVHALAR
 from apps.tenants.models import Xodim
@@ -41,15 +41,40 @@ class MantiqTests(Base):
         z = zakazni_bekor_qilish(salon=self.salon, xodim=self.xodim, zakaz=z, sabab='x', qoida=[(0, 0)])
         self.assertEqual((z.qaytarilgan_avans, z.ushlab_qolingan_avans), (700_000, 300_000))
 
-    def test_yopilgan_oyda_tolangan_zakaz_narxi_oshmaydi(self):
+    def test_bekor_qilishda_qoida_hamma_tolanganga_salon_sozlamasi(self):
         z = self.zakaz()
-        self.tola(z, z.jami)
+        self.tola(z, 300_000)
+        self.tola(z, 700_000, Tolov.Tur.QOLDIQ)
+        z = zakazni_bekor_qilish(salon=self.salon, xodim=self.xodim, zakaz=z, sabab='x', qoida=[(0, 50)], asos='tolangan')
+        self.assertEqual((z.qaytarilgan_avans, z.ushlab_qolingan_avans), (500_000, 500_000))
+
+    def test_yopilgan_oyda_tolangan_zakaz_narx_farqi_yangi_oyga(self):
+        z = self.zakaz()
+        eski = z.jami
+        self.tola(z, eski)
         otgan = timezone.localdate().replace(day=1) - timedelta(days=1)
         Zakaz.objects.filter(id=z.id).update(tolangan_sana=otgan)
         YopilganOy.objects.create(salon=self.salon, yil=otgan.year, oy=otgan.month)
         qimmat = Libos.objects.create(salon=self.salon, kategoriya=self.kat, artikul='Q', nomi='Q', ijara_narxi=2_000_000)
-        with self.assertRaisesMessage(OzgartirishXatosi, 'oy yopilgan'):
-            libosni_almashtirish(salon=self.salon, xodim=self.xodim, zakaz=z, eski_libos=self.libos, yangi_libos=qimmat)
+        z = libosni_almashtirish(salon=self.salon, xodim=self.xodim, zakaz=Zakaz.objects.get(id=z.id),
+                                 eski_libos=self.libos, yangi_libos=qimmat)
+        farq = z.jami - eski
+        self.assertEqual((z.tolangan_sana, list(z.tushum_farqlari.values_list('summa', 'sana'))), (otgan, [(farq, None)]))
+        bugun = timezone.localdate()
+        oy = reports.oy_chegaralari(bugun.year, bugun.month)
+        self.assertEqual(reports.sof_tushum(self.salon, *reports.oy_chegaralari(otgan.year, otgan.month), {})[0], eski)
+        self.assertEqual(reports.sof_tushum(self.salon, *oy, {})[0], 0)  # farq hali to'lanmagan
+        self.assertEqual([q['zakaz'] for q in reports.kutilayotgan_daromad(self.salon, bugun)['zakazlar']], [z.raqam])
+
+        self.tola(z, farq, Tolov.Tur.QOLDIQ)
+        self.assertEqual(reports.sof_tushum(self.salon, *oy, {})[0], farq)  # farq yangi oyga
+        self.assertEqual(reports.sof_tushum(self.salon, *reports.oy_chegaralari(otgan.year, otgan.month), {})[0], eski)
+        self.assertEqual(reports.pnl_tafsilot(self.salon, bugun.year, bugun.month, 'tushum')['jami'], farq)
+        self.assertEqual(reports.kutilayotgan_daromad(self.salon, bugun)['zakazlar'], [])
+        self.assertEqual(statistika.tafsilot(self.salon, 'sotuvchi', z.sotuvchi_id, *oy)['jami'], farq)
+
+        zakazni_bekor_qilish(salon=self.salon, xodim=self.xodim, zakaz=z, sabab='x', qoida=[(0, 0)])
+        self.assertEqual(reports.sof_tushum(self.salon, *oy, {})[:2], (-eski, eski))  # yangi oyda tan olingani storno emas
 
     def test_libos_qaytmagan_yoki_tamirda_bolsa_berilmaydi(self):
         z = self.zakaz()

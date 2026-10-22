@@ -10,7 +10,7 @@ from apps.cash.services import tolangan_summa, tolov_qabul
 from apps.catalog.models import Libos
 from apps.tenants.models import Xodim, sozlama
 
-from .models import ChegirmaSorovi, Zakaz, ZakazAksessuar, ZakazPozitsiya, ZakazTarixi
+from .models import ChegirmaSorovi, TushumFarqi, Zakaz, ZakazAksessuar, ZakazPozitsiya, ZakazTarixi
 from .pricing import mavsumiy_foiz, narx_hisobla
 
 # FT-17.4: standart qoida — (to'ygacha qolgan kun, avansdan qaytariladigan %), kattasidan kichigiga
@@ -71,19 +71,38 @@ def tolov_holatini_mosla(zakaz, xato=None):
     To'langan summa jamidan oshsa — amal to'xtatiladi (ortiqcha pul jimgina qolib ketmasin). Qoldiq paydo bo'lsa
     `tolangan_sana` tozalanadi (qoldiq to'langach daromad qayta tan olinadi); narx tushib to'langan summaga
     tenglashsa — zakaz bugun to'liq to'langan hisoblanadi (aks holda daromadga hech qachon kirmasdi).
+    Daromad yopilgan oyda tan olingan bo'lsa, o'sha oy o'zgarmaydi — narx farqi yangi oyga yoziladi (`TushumFarqi`).
     """
+    from apps.finance.services import oy_yopilgan
+
     tolangan = tolangan_summa(zakaz)
     if tolangan > zakaz.jami:
         raise (xato or OzgartirishXatosi)("To'langan summa yangi jamidan oshib ketadi. "
                                           "Avval zakazni bekor qilib, avansni qaytaring.")
-    if zakaz.tolangan_sana and tolangan < zakaz.jami:
-        from apps.finance.services import oy_yopilgan
-        s = zakaz.tolangan_sana
-        if oy_yopilgan(zakaz.salon_id, s.year, s.month):  # yopilgan oy tushumi jimgina o'zgarib qolmasin
-            raise (xato or OzgartirishXatosi)(f"Zakaz {s:%m.%Y} da to'liq to'langan, u oy yopilgan: narxni oshirib bo'lmaydi.")
+    s = zakaz.tolangan_sana
+    if s and (zakaz.tushum_farqlari.exists() or oy_yopilgan(zakaz.salon_id, s.year, s.month)):
+        _tushum_farqi(zakaz, tolangan)
+    elif s and tolangan < zakaz.jami:
         zakaz.tolangan_sana = None
-    elif not zakaz.tolangan_sana and tolangan and tolangan == zakaz.jami:
+    elif not s and tolangan and tolangan == zakaz.jami:
         zakaz.tolangan_sana = timezone.localdate()
+
+
+def _tushum_farqi(zakaz, tolangan):
+    """Hali to'lanmagan farq = yangi jami − shu paytgacha tan olingan summa (eski jami − to'lanmagan farq)."""
+    kutilgan = zakaz.tushum_farqlari.filter(sana=None).first()
+    eski_jami = Zakaz.objects.values_list('jami', flat=True).get(id=zakaz.id)
+    farq = zakaz.jami - (eski_jami - (kutilgan.summa if kutilgan else 0))
+    if farq <= 0:  # narx tan olingan summagacha qaytdi — kutilayotgan farq yo'q
+        if kutilgan:
+            kutilgan.delete()
+        return
+    sana = timezone.localdate() if tolangan == zakaz.jami else None
+    if kutilgan:
+        kutilgan.summa, kutilgan.sana = farq, sana
+        kutilgan.save(update_fields=['summa', 'sana'])
+    else:
+        TushumFarqi.objects.create(salon=zakaz.salon, zakaz=zakaz, summa=farq, sana=sana)
 
 
 def _bronlash(zakaz, xodim, olib_ketish, qaytarish):
@@ -162,7 +181,7 @@ def libosni_almashtirish(*, salon, xodim, zakaz, eski_libos, yangi_libos, sabab=
 
 @transaction.atomic
 def zakazni_bekor_qilish(*, salon, xodim, zakaz, sabab, qaytariladigan_foiz_override=None,
-                         qoida=None, usul=Tolov.Usul.NAQD):
+                         qoida=None, asos=None, usul=Tolov.Usul.NAQD):
     """Avansning qaytariladigan qismi olib ketishgacha qolgan kunga qarab hisoblanadi (FT-17.3).
 
     Qaytarilmagan qism «boshqa daromad»ga yoziladi. Libos shu sanalar uchun darhol bo'shaydi.
@@ -173,6 +192,8 @@ def zakazni_bekor_qilish(*, salon, xodim, zakaz, sabab, qaytariladigan_foiz_over
     zakaz = _ochiq_zakaz(salon, zakaz)
     if qoida is None:  # admin paneldagi qoida (FT-17.4)
         qoida = sozlama(salon).qaytarish_qoidasi
+    if asos is None:
+        asos = sozlama(salon).qaytarish_asosi
     qolgan = (zakaz.olib_ketish - timezone.localdate()).days
     foiz = qaytariladigan_foiz(qolgan, qoida)
     if qaytariladigan_foiz_override is not None:
@@ -182,9 +203,11 @@ def zakazni_bekor_qilish(*, salon, xodim, zakaz, sabab, qaytariladigan_foiz_over
             raise OzgartirishXatosi("Foiz 0 dan 100 gacha bo'lishi kerak.")
         foiz = qaytariladigan_foiz_override
 
-    # Qoida faqat avansga qo'llanadi (FT-17.3): oldindan to'langan qoldiq to'liq qaytariladi
+    # Qoida salon sozlamasiga ko'ra: faqat avansga (FT-17.3 — oldindan to'langan qoldiq to'liq qaytariladi)
+    # yoki hamma to'langan summaga
     tolangan = tolangan_summa(zakaz)
-    avans = zakaz.tolovlar.filter(tur=Tolov.Tur.AVANS).aggregate(s=Sum('summa'))['s'] or 0
+    avans = (tolangan if asos == 'tolangan'
+             else zakaz.tolovlar.filter(tur=Tolov.Tur.AVANS).aggregate(s=Sum('summa'))['s'] or 0)
     qaytariladi = avans * foiz // 100 + (tolangan - avans)
     if qaytariladi:
         tolov_qabul(salon=salon, xodim=xodim, tur=Tolov.Tur.VOZVRAT, summa=qaytariladi,
@@ -200,7 +223,7 @@ def zakazni_bekor_qilish(*, salon, xodim, zakaz, sabab, qaytariladigan_foiz_over
     zakaz.qaytarilgan_avans, zakaz.ushlab_qolingan_avans = qaytariladi, tolangan - qaytariladi
     zakaz.save()
     _log(zakaz, xodim, 'bekor_qilindi', eski_holat,
-         f"to'langan {tolangan} (avans {avans}): qaytarildi {qaytariladi} (avansning {foiz}%), "
+         f"to'langan {tolangan} (qoida qo'llangan {avans}): qaytarildi {qaytariladi} ({foiz}%), "
          f'ushlab qolindi {tolangan - qaytariladi}', sabab)
     return zakaz
 

@@ -268,6 +268,9 @@ class SalonSozlamalari(models.Model):
     kechikish_jarimasi = models.BooleanField(default=False)                 # FT-9.3
     kechikish_kunlik_summa = models.PositiveIntegerField(default=0)
     qaytarish_qoidasi = models.JSONField(default=standart_qaytarish_qoidasi)  # FT-17.4
+    # Qoida nimaga qo'llanadi: faqat avansga (oldindan to'langan qoldiq to'liq qaytadi) yoki hamma to'langan summaga
+    qaytarish_asosi = models.CharField(max_length=10, choices=[('avans', 'Avans'), ('tolangan', "To'langan summa")],
+                                       default='avans')
     libos_tasdigi = models.BooleanField(default=True)                       # FT-3.6
     # Promokodlar (4.18); 3-bosqich sozlamalari
     promokod_tasdiqsiz = models.BooleanField(default=True)        # o'chirilsa promokod ham rahbar tasdig'iga boradi (FT-21.7)

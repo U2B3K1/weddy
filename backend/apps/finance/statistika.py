@@ -20,7 +20,7 @@ from apps.orders.models import (ChegirmaSorovi, Mijoz, QaytarishAkti, Salonchi, 
 from apps.tenants.models import Xodim
 
 from .models import Xarajat
-from .reports import storno_zakazlari, tushum_zakazlari
+from .reports import farq_zakazlari, storno_zakazlari, tushum_zakazlari
 
 BERILGAN = (Zakaz.Holat.BERILDI, Zakaz.Holat.QAYTARILDI, Zakaz.Holat.YOPILDI)
 FAOL_LIBOS = (Libos.Holat.BOSH, Libos.Holat.TOZALASHDA, Libos.Holat.TAMIRDA)
@@ -43,10 +43,17 @@ def _storno(salon, dan, gacha, sotuvchi=None, filial=None):
     return storno_zakazlari(salon, dan, gacha, _filtr(sotuvchi, filial))
 
 
-def _sof(tushum_qs, storno_qs, kalit, maydon='jami'):
-    """Kalit bo'yicha davr tushumi storno ayirilgan holda: {kalit: summa}."""
+def _farq(salon, dan, gacha, sotuvchi=None, filial=None):
+    return farq_zakazlari(salon, dan, gacha, _filtr(sotuvchi, filial))
+
+
+def _sof(tushum_qs, storno_qs, kalit, maydon='tushum', farq_qs=None):
+    """Kalit bo'yicha davr tushumi narx farqlari qo'shilgan, storno ayirilgan holda: {kalit: summa}.
+    Zakaz bo'yicha — `tushum` annotatsiyasi (reports), pozitsiya bo'yicha — libos ijara narxi (farqsiz)."""
     natija = defaultdict(int)
     for k, s in tushum_qs.values_list(kalit).annotate(s=Sum(maydon)):
+        natija[k] += s or 0
+    for k, s in (farq_qs.values_list(kalit).annotate(s=Sum(maydon)) if farq_qs is not None else ()):
         natija[k] += s or 0
     for k, s in storno_qs.values_list(kalit).annotate(s=Sum(maydon)):
         natija[k] -= s or 0
@@ -110,7 +117,8 @@ def kategoriyalar(salon, dan, gacha, sotuvchi=None, filial=None, **_):
 def sotuvchilar(salon, dan, gacha, filial=None, **_):
     tol = {r['sotuvchi_id']: r for r in _tolangan(salon, dan, gacha, filial=filial).values('sotuvchi_id')
            .annotate(n=Count('id'))}
-    summa = _sof(_tolangan(salon, dan, gacha, filial=filial), _storno(salon, dan, gacha, filial=filial), 'sotuvchi_id')
+    summa = _sof(_tolangan(salon, dan, gacha, filial=filial), _storno(salon, dan, gacha, filial=filial), 'sotuvchi_id',
+                 farq_qs=_farq(salon, dan, gacha, filial=filial))
     zf = {'zakaz__filial_id': filial} if filial else {}  # filial filtri qatorning hamma ustuniga
     yangi = dict(Zakaz.objects.filter(salon=salon, yaratilgan__date__range=(dan, gacha), **_filtr(filial=filial))
                  .exclude(holat=Zakaz.Holat.BEKOR).values_list('sotuvchi_id').annotate(n=Count('id')))
@@ -138,7 +146,8 @@ def sotuvchilar(salon, dan, gacha, filial=None, **_):
 
 def salonchilar(salon, dan, gacha, sotuvchi=None, **_):
     tol = _sof(_tolangan(salon, dan, gacha, sotuvchi).filter(salonchi__isnull=False),
-               _storno(salon, dan, gacha, sotuvchi).filter(salonchi__isnull=False), 'salonchi_id')
+               _storno(salon, dan, gacha, sotuvchi).filter(salonchi__isnull=False), 'salonchi_id',
+               farq_qs=_farq(salon, dan, gacha, sotuvchi).filter(salonchi__isnull=False))
     mij = dict(Zakaz.objects.filter(salon=salon, salonchi__isnull=False, yaratilgan__date__range=(dan, gacha),
                                     **({'sotuvchi_id': sotuvchi} if sotuvchi else {}))
                .exclude(holat=Zakaz.Holat.BEKOR).values_list('salonchi_id').annotate(n=Count('mijoz', distinct=True)))
@@ -150,7 +159,8 @@ def salonchilar(salon, dan, gacha, sotuvchi=None, **_):
 
 
 def mijoz_manbalari(salon, dan, gacha, sotuvchi=None, **_):
-    tol = _sof(_tolangan(salon, dan, gacha, sotuvchi), _storno(salon, dan, gacha, sotuvchi), 'mijoz__manba')
+    tol = _sof(_tolangan(salon, dan, gacha, sotuvchi), _storno(salon, dan, gacha, sotuvchi), 'mijoz__manba',
+               farq_qs=_farq(salon, dan, gacha, sotuvchi))
     mij = dict(Zakaz.objects.filter(salon=salon, yaratilgan__date__range=(dan, gacha),
                                     **({'sotuvchi_id': sotuvchi} if sotuvchi else {})).exclude(holat=Zakaz.Holat.BEKOR)
                .values_list('mijoz__manba').annotate(n=Count('mijoz', distinct=True)))
@@ -384,13 +394,14 @@ def tafsilot(salon, nom, kalit, dan, gacha, **filtrlar):
         return (qs.filter(**shart).distinct().select_related('mijoz', 'sotuvchi')
                 .prefetch_related('pozitsiyalar__libos').order_by(*tartib))
 
-    def qator(z, storno=False):
+    def qator(z, storno=False, farq=False):
         return {'zakaz_id': z.id, 'raqam': z.raqam, 'mijoz': z.mijoz.fio or z.mijoz.telefon,
-                'sana': timezone.localtime(z.bekor_vaqti).date() if storno else z.tolangan_sana,
-                'sotuvchi': z.sotuvchi.ism if z.sotuvchi else None, 'storno': storno,
-                'liboslar': [p.libos.nomi for p in z.pozitsiyalar.all()], 'jami': -z.jami if storno else z.jami}
-    # Qator tushumidan ayirilgan storno zakazlar ham ko'rsatiladi (P&L tafsiloti kabi, bekor qilingan vaqt bo'yicha).
-    # Zakaz jami bilan — libos/kategoriya qatori esa pozitsiya narxi bilan, shu sabab ular farq qilishi mumkin (sahifada izoh bor).
+                'sana': timezone.localtime(z.bekor_vaqti).date() if storno else z.farq_sana if farq else z.tolangan_sana,
+                'sotuvchi': z.sotuvchi.ism if z.sotuvchi else None, 'storno': storno, 'farq': farq,
+                'liboslar': [p.libos.nomi for p in z.pozitsiyalar.all()], 'jami': -z.tushum if storno else z.tushum}
+    # Qator tushumidan ayirilgan storno zakazlar va yopilgan oy ustidan narx farqlari ham ko'rsatiladi (P&L tafsiloti kabi).
+    # Zakaz summasi bilan — libos/kategoriya qatori esa pozitsiya narxi bilan, shu sabab ular farq qilishi mumkin (sahifada izoh bor).
     qatorlar = ([qator(z) for z in royxat(_tolangan(salon, dan, gacha, **zakaz_filtrlari), 'tolangan_sana', 'raqam')]
+                + [qator(z, farq=True) for z in royxat(_farq(salon, dan, gacha, **zakaz_filtrlari), 'farq_sana', 'raqam')]
                 + [qator(z, True) for z in royxat(_storno(salon, dan, gacha, **zakaz_filtrlari), 'bekor_vaqti', 'raqam')])
     return {'qatorlar': qatorlar, 'jami': sum(q['jami'] for q in qatorlar)}

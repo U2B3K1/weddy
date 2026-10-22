@@ -133,7 +133,10 @@ def tolov_qabul(*, salon, xodim, tur, summa, usul=Tolov.Usul.NAQD, zakaz=None, i
         Bron.objects.filter(zakaz=zakaz).update(turi=Bron.Turi.MUSTAHKAM, muddati=None)
         AksessuarBron.objects.filter(zakaz=zakaz).update(turi=Bron.Turi.MUSTAHKAM, muddati=None)
     if tur in (Tolov.Tur.AVANS, Tolov.Tur.QOLDIQ) and tolangan_summa(zakaz) == zakaz.jami:
-        zakaz.tolangan_sana = timezone.localdate()
+        if zakaz.tolangan_sana:  # daromad yopilgan oyda tan olingan, narx keyin oshgan — farq bugun tan olinadi
+            zakaz.tushum_farqlari.filter(sana=None).update(sana=timezone.localdate())
+        else:
+            zakaz.tolangan_sana = timezone.localdate()
     if tur in (Tolov.Tur.AVANS, Tolov.Tur.QOLDIQ):
         zakaz.save(update_fields=['holat', 'tolangan_sana'])
     return tolov

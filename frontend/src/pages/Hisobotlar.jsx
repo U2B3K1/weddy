@@ -147,7 +147,7 @@ function HisobotBolim() {
                 <table className="jadval"><tbody>
                   {taf.qatorlar.map((q) => (
                     <tr key={q.zakaz_id} className="kichik-qator">
-                      <td>{q.storno && 'Bekor qilindi (storno) · '}{sanaMatni(q.sana)} · #{q.raqam} · {q.mijoz} · {q.liboslar.join(', ')}{q.sotuvchi ? ` · ${q.sotuvchi}` : ''}</td>
+                      <td>{q.storno && 'Bekor qilindi (storno) · '}{q.farq && "Narx oshgani (yopilgan oy ustidan) · "}{sanaMatni(q.sana)} · #{q.raqam} · {q.mijoz} · {q.liboslar.join(', ')}{q.sotuvchi ? ` · ${q.sotuvchi}` : ''}</td>
                       <td>{som(q.jami)}</td>
                     </tr>
                   ))}

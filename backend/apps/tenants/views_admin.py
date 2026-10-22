@@ -16,7 +16,7 @@ from .models import IshonchliQurilma, Xodim, YordamRuxsati, jurnalga_yoz, sozlam
 from .permissions import IsRahbar, IsStaff, SalonYozishRuxsati
 
 SOZLAMA_MAYDONLARI = ('bufer_kun', 'vaqtinchalik_bron_soat', 'zalog_pul', 'zalog_hujjat', 'zalog_tillo',
-                      'kechikish_jarimasi', 'kechikish_kunlik_summa', 'qaytarish_qoidasi', 'libos_tasdigi',
+                      'kechikish_jarimasi', 'kechikish_kunlik_summa', 'qaytarish_qoidasi', 'qaytarish_asosi', 'libos_tasdigi',
                       'promokod_tasdiqsiz', 'promokod_chegirma_birga', 'salonchi_kodlari',
                       'mavsumiy_narx', 'sotuvchi_bonusi', 'bonus_foiz', 'primerka', 'mijoz_bahosi',
                       'qulf_daqiqa', 'sotuvchi_libos_qoshadi', 'qoplamagan_royxat',
@@ -44,6 +44,7 @@ class SozlamaSerializer(serializers.Serializer):
     qaytarish_qoidasi = serializers.ListField(
         child=serializers.ListField(child=serializers.IntegerField(), min_length=2, max_length=2),
         min_length=1, max_length=10, required=False)
+    qaytarish_asosi = serializers.ChoiceField(choices=['avans', 'tolangan'], required=False)
     libos_tasdigi = serializers.BooleanField(required=False)
     promokod_tasdiqsiz = serializers.BooleanField(required=False)
     promokod_chegirma_birga = serializers.BooleanField(required=False)

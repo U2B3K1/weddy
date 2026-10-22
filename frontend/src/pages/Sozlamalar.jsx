@@ -124,6 +124,12 @@ export default function Sozlamalar({ menId, bolim, onBolim }) {
       render: () => (
         <section className="blok stack">
           <h3>Bekor qilishda avans qaytarish</h3>
+          <label>Qoida nimaga qo'llanadi
+            <select value={s.qaytarish_asosi} onChange={(e) => set('qaytarish_asosi', e.target.value)}>
+              <option value="avans">Faqat avansga — oldindan to'langan qoldiq to'liq qaytariladi</option>
+              <option value="tolangan">Hamma to'langan summaga</option>
+            </select>
+          </label>
           {s.qaytarish_qoidasi.map(([kun, foiz], i) => (
             <div key={i} className="qator">
               <input type="number" min="0" value={kun} disabled={i === s.qaytarish_qoidasi.length - 1} onChange={qoida(i, 0)} />
@@ -132,7 +138,9 @@ export default function Sozlamalar({ menId, bolim, onBolim }) {
               <span>%</span>
             </div>
           ))}
-          <p className="malumot">Olib ketishgacha qolgan kunga qarab avansning shu qismi qaytariladi; qolgani «boshqa daromad».</p>
+          <p className="malumot">Olib ketishgacha qolgan kunga qarab {s.qaytarish_asosi === 'tolangan' ? "to'langan summaning" : 'avansning'} shu
+            qismi qaytariladi; qolgani «boshqa daromad». Misol: avans 1 mln, qoldiq 4 mln to'langan, qoida 50% —{' '}
+            {s.qaytarish_asosi === 'tolangan' ? '2,5 mln' : '4,5 mln'} qaytariladi.</p>
         </section>
       ),
     },

@@ -116,9 +116,11 @@ def shartnoma(zakaz):
             qismlar.append((f"{oldingi} kundan kam qolganda" if oldingi else 'istalgan vaqtda') + f" — {foiz}%")
     bandlar.append({
         'sarlavha': 'Bekor qilish va avansni qaytarish',
-        'matn': "Zakaz libos berilgunga qadar bekor qilinishi mumkin. Avansning qaytariladigan qismi olib ketish "
-                "sanasigacha qolgan kunga bog'liq: " + '; '.join(qismlar) + ". Libos berilgandan keyin zakaz bekor "
-                "qilinmaydi, faqat muddatidan oldin qaytariladi."})
+        'matn': "Zakaz libos berilgunga qadar bekor qilinishi mumkin. "
+                + ("To'langan summaning" if soz.qaytarish_asosi == 'tolangan' else "Avansning")
+                + " qaytariladigan qismi olib ketish sanasigacha qolgan kunga bog'liq: " + '; '.join(qismlar)
+                + (". Avansdan tashqari oldindan to'langan summa to'liq qaytariladi" if soz.qaytarish_asosi != 'tolangan' else '')
+                + ". Libos berilgandan keyin zakaz bekor qilinmaydi, faqat muddatidan oldin qaytariladi."})
 
     # Salonning o'z bandlari (admin paneldan); avtomatik bandlar sozlamalarga bog'liq bo'lgani uchun tahrirlanmaydi
     for b in soz.shartnoma_bandlari or []:

@@ -4,12 +4,13 @@ from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
 
 from django.conf import settings
-from django.db.models import Count, Q, Sum
+from django.db.models import Count, Exists, F, Max, OuterRef, Q, Subquery, Sum
+from django.db.models.functions import Coalesce
 from django.utils import timezone
 
 from apps.cash.models import Tolov
 from apps.catalog.models import Libos
-from apps.orders.models import Zakaz
+from apps.orders.models import TushumFarqi, Zakaz
 
 from .models import Xarajat
 
@@ -66,24 +67,47 @@ def tolov_filiali(filial):
     return Q(zakaz__filial_id=filial) | Q(zakaz__isnull=True, smena__filial_id=filial)
 
 
+def _farqlar(shart=Q()):
+    """Zakazning narx farqlari (`TushumFarqi`) yig'indisi — subquery, join qatorlarni ko'paytirmasin."""
+    return Coalesce(Subquery(TushumFarqi.objects.filter(shart, zakaz=OuterRef('pk')).values('zakaz')
+                             .annotate(s=Sum('summa')).values('s')), 0)
+
+
+def _bekor_qilinmagan(qs, oxiri):
+    return qs.exclude(Q(holat=Zakaz.Holat.BEKOR) & (Q(bekor_vaqti__isnull=True) | Q(bekor_vaqti__date__lte=oxiri)))
+
+
+# Har uch funksiya zakazlarni `tushum` annotatsiyasi bilan qaytaradi — davr tushumiga kiradigan (yoki storno) summa.
 def tushum_zakazlari(salon, boshi, oxiri, f):
-    """Oyda to'liq to'langan va shu oy oxirigacha bekor qilinmagan zakazlar."""
-    return (Zakaz.objects.filter(salon=salon, tolangan_sana__range=(boshi, oxiri), **f)
-            .exclude(Q(holat=Zakaz.Holat.BEKOR) & (Q(bekor_vaqti__isnull=True) | Q(bekor_vaqti__date__lte=oxiri))))
+    """Oyda to'liq to'langan va shu oy oxirigacha bekor qilinmagan zakazlar. `tushum` — shu kuni tan olingan summa:
+    keyin yopilgan oy ustidan narx oshgan bo'lsa, farq bu yerga emas, `farq_zakazlari` ga kiradi."""
+    return _bekor_qilinmagan(Zakaz.objects.filter(salon=salon, tolangan_sana__range=(boshi, oxiri), **f), oxiri)         .annotate(tushum=F('jami') - _farqlar())
+
+
+def farq_zakazlari(salon, boshi, oxiri, f):
+    """Daromadi yopilgan oyda tan olingan, keyin narxi oshib, farqi shu davrda to'liq to'langan zakazlar."""
+    davrda = Q(sana__range=(boshi, oxiri))
+    return (_bekor_qilinmagan(Zakaz.objects.filter(
+        Exists(TushumFarqi.objects.filter(davrda, zakaz=OuterRef('pk'))), salon=salon, **f), oxiri)
+        .annotate(tushum=_farqlar(davrda), farq_sana=Subquery(
+            TushumFarqi.objects.filter(davrda, zakaz=OuterRef('pk')).values('zakaz').annotate(m=Max('sana')).values('m'))))
 
 
 def storno_zakazlari(salon, boshi, oxiri, f):
-    """Oldingi oylarda daromadga kirgan, shu oyda bekor qilingan zakazlar — tushumdan ayiriladi."""
-    return Zakaz.objects.filter(salon=salon, holat=Zakaz.Holat.BEKOR, bekor_vaqti__date__range=(boshi, oxiri),
-                                tolangan_sana__lt=boshi, **f)
+    """Oldingi oylarda daromadga kirgan, shu oyda bekor qilingan zakazlar — tushumdan ayiriladi
+    (`tushum` — davrgacha tan olingan summa: to'lanmagan yoki keyin tan olingan narx farqisiz)."""
+    return (Zakaz.objects.filter(salon=salon, holat=Zakaz.Holat.BEKOR, bekor_vaqti__date__range=(boshi, oxiri),
+                                 tolangan_sana__lt=boshi, **f)
+            .annotate(tushum=F('jami') - _farqlar(Q(sana__isnull=True) | Q(sana__gte=boshi))))
 
 
 def sof_tushum(salon, boshi, oxiri, f):
     """Davr tushumi — P&L va bosh ekran uchun yagona ta'rif: `(tushum, storno, zakazlar_soni)`.
-    `tushum` storno ayirilgan holda."""
-    r = tushum_zakazlari(salon, boshi, oxiri, f).aggregate(s=Sum('jami'), n=Count('id'))
-    storno = storno_zakazlari(salon, boshi, oxiri, f).aggregate(s=Sum('jami'))['s'] or 0
-    return (r['s'] or 0) - storno, storno, r['n']
+    `tushum` narx farqlari qo'shilgan va storno ayirilgan holda."""
+    r = tushum_zakazlari(salon, boshi, oxiri, f).aggregate(s=Sum('tushum'), n=Count('id'))
+    farq = farq_zakazlari(salon, boshi, oxiri, f).aggregate(s=Sum('tushum'))['s'] or 0
+    storno = storno_zakazlari(salon, boshi, oxiri, f).aggregate(s=Sum('tushum'))['s'] or 0
+    return (r['s'] or 0) + farq - storno, storno, r['n']
 
 
 def foyda_zarar(salon, yil, oy, soliq_foizi=None, filial=None):
@@ -164,10 +188,13 @@ def pnl_tafsilot(salon, yil, oy, qator, filial=None):
 
     if qator == 'tushum':
         for z in tushum_zakazlari(salon, boshi, oxiri, f).select_related('mijoz').order_by('tolangan_sana', 'raqam'):
-            qosh(f'Zakaz #{z.raqam} · {z.mijoz.fio or z.mijoz.telefon}', z.jami, z.tolangan_sana, z)
+            qosh(f'Zakaz #{z.raqam} · {z.mijoz.fio or z.mijoz.telefon}', z.tushum, z.tolangan_sana, z)
+        for z in farq_zakazlari(salon, boshi, oxiri, f).select_related('mijoz').order_by('farq_sana', 'raqam'):
+            qosh(f"Narx oshgani (zakaz {z.tolangan_sana:%Y-%m} da to'langan, u oy yopilgan) · zakaz #{z.raqam} · "
+                 f'{z.mijoz.fio or z.mijoz.telefon}', z.tushum, z.farq_sana, z)
         for z in storno_zakazlari(salon, boshi, oxiri, f).select_related('mijoz').order_by('bekor_vaqti'):
             qosh(f'Bekor qilindi (storno, {z.tolangan_sana:%Y-%m} daromadi) · zakaz #{z.raqam} · '
-                 f'{z.mijoz.fio or z.mijoz.telefon}', -z.jami, timezone.localtime(z.bekor_vaqti).date(), z)
+                 f'{z.mijoz.fio or z.mijoz.telefon}', -z.tushum, timezone.localtime(z.bekor_vaqti).date(), z)
     elif qator in ('togridan', 'operatsion'):
         xs = Xarajat.objects.filter(salon=salon, holat=Xarajat.Holat.TASDIQLANDI, sana__range=(boshi, oxiri), **f)
         from .moddalar import modda_nomlari, togridan_kodlar
@@ -201,7 +228,9 @@ def kutilayotgan_daromad(salon, sana, filial=None):
     # O'tgan sana uchun: o'sha kuni hali faol bo'lgan zakazlar (keyinroq bekor qilingani ham kiradi). Bitta so'rov.
     zakazlar = (Zakaz.objects.filter(salon=salon, **({'filial_id': filial} if filial else {}))
                 .exclude(Q(holat=Zakaz.Holat.BEKOR) & (Q(bekor_vaqti__isnull=True) | Q(bekor_vaqti__date__lte=sana)))
-                .exclude(tolangan_sana__lte=sana)
+                # to'liq to'langanlar chiqadi; daromadi yopilgan oyda tan olinib, narx farqi hali to'lanmagani qoladi
+                .exclude(Q(tolangan_sana__lte=sana) & ~Exists(TushumFarqi.objects.filter(
+                    Q(sana__isnull=True) | Q(sana__gt=sana), zakaz=OuterRef('pk'), yaratilgan__date__lte=sana)))
                 .annotate(avans=Sum('tolovlar__summa', filter=Q(tolovlar__tur__in=[Tolov.Tur.AVANS, Tolov.Tur.QOLDIQ],
                                                                 tolovlar__vaqt__date__lte=sana)))
                 .filter(avans__gt=0).select_related('mijoz').order_by('olib_ketish', 'raqam'))
