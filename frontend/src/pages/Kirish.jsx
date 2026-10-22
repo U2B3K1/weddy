@@ -1,6 +1,113 @@
 import { useEffect, useRef, useState } from 'react'
 import Logo from '../components/Logo'
-import { pinLogin, salonLogin, saqlangan, tarmoqXatosi, xodimlar } from '../api'
+import { pinLogin, qurilmaPinTasdiq, qurilmaTasdiqHolati, salonLogin, saqlangan, tarmoqXatosi, xodimlar } from '../api'
+
+const QAYTA_URINISH = 15 * 1000         // holat olinmasa shuncha vaqtdan keyin qayta so'raladi
+const HAVOLA_ZAXIRA = 2.5 * 60 * 1000   // server havolani tugashiga 2 daqiqa qolganda almashtiradi — biroz oldinroq so'raymiz
+
+// FT-22.2: yangi qurilma ruxsat kutadi. Rahbar Telegramdagi havolani bosib (yoki QR ni telefonida skanerlab)
+// botda «Ha, bu men» desa, qurilma o'zi ochiladi. Telegramdan foydalana olmaydigan rahbar shu yerda PIN bilan tasdiqlaydi.
+function QurilmaKutish({ setXato, onTasdiqlandi, onBekor }) {
+  const [holat, setHolat] = useState(null)
+  const [qr, setQr] = useState('')
+  const [rahbar, setRahbar] = useState(null)
+  const [pin, setPin] = useState('')
+
+  useEffect(() => {
+    let tirik = true
+    let taymer
+    const ol = () => {
+      clearTimeout(taymer)
+      qurilmaTasdiqHolati().then(async (d) => {
+        if (!tirik) return
+        if (d.tasdiqlangan) return onTasdiqlandi()
+        setHolat(d)
+        // Havola muddati tugashidan oldin yangisini so'raymiz (server o'sha havolani qaytaradi, eskisi buzilmaydi)
+        if (d.tg_tugaydi) taymer = setTimeout(ol, Math.max(QAYTA_URINISH, new Date(d.tg_tugaydi) - Date.now() - HAVOLA_ZAXIRA))
+        if (!d.tg_havola) return setQr('')
+        try {
+          const { default: QRCode } = await import('qrcode')  // faqat shu ekranda kerak — umumiy yuklamaga qo'shilmaydi
+          const rasm = await QRCode.toDataURL(d.tg_havola, { margin: 1, width: 220 })
+          if (tirik) setQr(rasm)
+        } catch { if (tirik) setQr('') }
+      }).catch((e) => {
+        if (!tirik) return
+        if (e.response?.status === 401) return onBekor()  // qurilma rad etilgan — salon logini sahifasiga
+        taymer = setTimeout(ol, QAYTA_URINISH)
+      })
+    }
+    // Uxlagan planshetda taymerlar to'xtaydi: ekran yonganda eskirgan QR o'rniga yangisini olamiz
+    const korindi = () => { if (document.visibilityState === 'visible') ol() }
+    ol()
+    document.addEventListener('visibilitychange', korindi)
+    return () => { tirik = false; clearTimeout(taymer); document.removeEventListener('visibilitychange', korindi) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const pinBilan = async (e) => {
+    e.preventDefault()
+    setXato('')
+    try {
+      await qurilmaPinTasdiq(rahbar.id, pin)
+      onTasdiqlandi()
+    } catch (err) {
+      if (tarmoqXatosi(err)) return setXato("Internet yo'q. Kirish uchun aloqa kerak.")
+      setPin('')
+      const s = err.response.status
+      if (s === 401) return onBekor()  // qurilma shu orada rad etilgan
+      // 404: rahbar shu orada Telegram uladi yoki o'chirildi; 403: PIN bloki, sutkalik chegara yoki «faqat ko'rish»
+      if (s === 404) { setRahbar(null); return setXato(err.response.data?.detail || 'Rahbar topilmadi.') }
+      if (s === 400) return setXato("PIN noto'g'ri.")
+      setXato(err.response.data?.detail || "Ruxsat berib bo'lmadi. Birozdan keyin urinib ko'ring.")
+    }
+  }
+
+  if (rahbar) {
+    return (
+      <form onSubmit={pinBilan}>
+        <p className="kirish-sarlavha"><em>{rahbar.ism},</em> qurilmaga ruxsat bering</p>
+        <label>Shaxsiy PIN kodingiz
+          <input type="password" inputMode="numeric" maxLength={6} value={pin} onChange={(e) => setPin(e.target.value)} autoFocus />
+        </label>
+        <button type="submit" disabled={pin.length < 4}>Ruxsat berish</button>
+        <button type="button" className="havola-tugma kirish-chiqish" onClick={() => { setRahbar(null); setPin('') }}>‹ Orqaga</button>
+      </form>
+    )
+  }
+
+  return (
+    <div className="xodimlar qurilma-kutish">
+      <p className="kirish-sarlavha">Qurilma <em>ruxsat kutmoqda</em></p>
+      {!holat ? (
+        <p className="malumot">Yuklanmoqda…</p>
+      ) : holat.tg_havola ? (
+        <>
+          <p className="malumot">Rahbar Telegram orqali ruxsat beradi. Bu rahbarning telefoni bo'lsa — tugmani bosing,
+            planshet yoki kompyuter bo'lsa — QR kodni rahbar telefonida skanerlang. Botda «Ha, bu men» ni bosing.</p>
+          <a className="tugma-havola" href={holat.tg_havola} target="_blank" rel="noopener noreferrer">Telegram orqali tasdiqlash</a>
+          {qr && <img className="qurilma-qr" src={qr} alt="Telegram tasdiq havolasi QR kodi" width="220" height="220" />}
+        </>
+      ) : (
+        <p className="malumot">Rahbar o'z qurilmasida «Sozlama → Qurilmalar» bo'limida ruxsat berishi kerak.</p>
+      )}
+      {holat?.rahbarlar?.length > 0 && (
+        <>
+          <p className="malumot">Siz rahbarmisiz? Shu yerda PIN kodingiz bilan ruxsat bering:</p>
+          <div className="xodim-kartalar">
+            {holat.rahbarlar.map((x) => (
+              <button key={x.id} type="button" className="xodim-karta" onClick={() => setRahbar(x)}>
+                <span className="xodim-harf" aria-hidden="true">{(x.ism || '?').trim().charAt(0).toUpperCase()}</span>
+                <span className="xodim-karta-ism">{x.ism}</span>
+              </button>
+            ))}
+          </div>
+        </>
+      )}
+      <p className="malumot">Ruxsat berilgach sahifa o'zi ochiladi.</p>
+      <button type="button" className="havola-tugma kirish-chiqish" onClick={onBekor}>Bekor qilish</button>
+    </div>
+  )
+}
 
 // FT-1.1: avval salon logini (qurilmada bir marta), keyin xodim ismi va shaxsiy PIN.
 export default function Kirish({ onKirdi }) {
@@ -33,8 +140,10 @@ function SalonKirish({ setXato, onTayyor }) {
     try {
       const r = await salonLogin(login, parol)
       onTayyor(r.qurilma_token)
-    } catch {
-      setXato("Login yoki parol noto'g'ri.")
+    } catch (err) {
+      if (tarmoqXatosi(err)) return setXato("Internet yo'q. Kirish uchun aloqa kerak.")
+      // 403: parol ko'p marta xato kiritilgan — to'g'ri parol ham vaqtincha o'tmaydi
+      setXato(err.response.status === 403 ? err.response.data?.detail || "Keyinroq urinib ko'ring." : "Login yoki parol noto'g'ri.")
     }
   }
 
@@ -58,15 +167,15 @@ function XodimTanlash({ setXato, onKirdi, onQurilmaOchirildi }) {
   const kutishRef = useRef(false)
   kutishRef.current = kutilmoqda
 
+  // Faqat server «qurilma ishonchli emas» desa qurilma unutiladi; internet uzilganda emas.
+  const yukla = () => xodimlar().then((r) => { setRoyxat(r); setKutilmoqda(false); setXato('') })
+    .catch((e) => {
+      if (tarmoqXatosi(e)) return setXato("Internet yo'q. Kirish uchun aloqa kerak.")
+      // FT-22.2: yangi qurilma rahbar ruxsatini kutadi; token saqlanadi va holat tekshirib turiladi
+      if (e.response?.data?.kod === 'qurilma_kutilmoqda') return setKutilmoqda(true)
+      return onQurilmaOchirildi()
+    })
   useEffect(() => {
-    // Faqat server «qurilma ishonchli emas» desa qurilma unutiladi; internet uzilganda emas.
-    const yukla = () => xodimlar().then((r) => { setRoyxat(r); setKutilmoqda(false); setXato('') })
-      .catch((e) => {
-        if (tarmoqXatosi(e)) return setXato("Internet yo'q. Kirish uchun aloqa kerak.")
-        // FT-22.2: yangi qurilma rahbar ruxsatini kutadi; token saqlanadi va holat tekshirib turiladi
-        if (e.response?.data?.kod === 'qurilma_kutilmoqda') return setKutilmoqda(true)
-        return onQurilmaOchirildi()
-      })
     yukla()
     const t = setInterval(() => { if (kutishRef.current) yukla() }, 5000)
     return () => clearInterval(t)
@@ -117,14 +226,8 @@ function XodimTanlash({ setXato, onKirdi, onQurilmaOchirildi }) {
     return () => window.removeEventListener('keydown', h)
   }, [tanlangan])
 
-  if (kutilmoqda) {
-    return (
-      <div className="xodimlar">
-        <p className="ogohlantirish">Bu qurilma hali ishonchli emas. Rahbar o'z qurilmasida «Sozlama → Qurilmalar» bo'limida ruxsat berishi kerak. Ruxsat berilgach sahifa o'zi ochiladi.</p>
-        <button className="ikkinchi" onClick={onQurilmaOchirildi}>Bekor qilish</button>
-      </div>
-    )
-  }
+  if (kutilmoqda) return <QurilmaKutish setXato={setXato} onTasdiqlandi={yukla} onBekor={onQurilmaOchirildi} />
+
 
   if (!tanlangan) {
     return (

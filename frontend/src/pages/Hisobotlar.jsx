@@ -58,7 +58,8 @@ function HisobotBolim() {
   const [taf, setTaf] = useState(null)
   const och = (i) => {
     if (taf?.i === i) return setTaf(null)
-    hisobotTafsilot(kalit, h.kalitlar[i], dan, gacha).then((r) => setTaf({ i, nom: h.qatorlar[i][0], ...r })).catch((e) => setXato(xatoMatni(e)))
+    // tafsilot ochilgan qator bilan bir xil filtrda (aks holda jami qatordagidan katta chiqardi)
+    hisobotTafsilot(kalit, h.kalitlar[i], dan, gacha, { sotuvchi: filtr.sotuvchi || undefined, filial: filtr.filial || undefined }).then((r) => setTaf({ i, nom: h.qatorlar[i][0], ...r })).catch((e) => setXato(xatoMatni(e)))
   }
   useEffect(() => {
     let bekor = false
@@ -306,7 +307,7 @@ const ozgarish = (hozir, oldin) => {
 function Pnl({ r, filial }) {
   // FT-18.2: hisoblanmaydigan qatorni bosganda uni tashkil qilgan zakaz va xarajatlar ochiladi
   const qatorlar = [
-    ['1. Tushum', r.tushum, false, 'tushum'], ["2. To'g'ridan-to'g'ri xarajat", -r.togridan_togri_xarajat, false, 'togridan'],
+    [r.storno ? `1. Tushum (bekor qilinganlar storno: −${som(r.storno)})` : '1. Tushum', r.tushum, false, 'tushum'], ["2. To'g'ridan-to'g'ri xarajat", -r.togridan_togri_xarajat, false, 'togridan'],
     ['3. Yalpi foyda', r.yalpi_foyda, true],
     ['4. Operatsion xarajatlar', -r.operatsion_xarajat, false, 'operatsion'], ['5. Operatsion foyda', r.operatsion_foyda, true],
     ['6. Boshqa daromad', r.boshqa_daromad, false, 'boshqa'], [`7. Soliq (${r.soliq_foizi}%)`, -r.soliq],

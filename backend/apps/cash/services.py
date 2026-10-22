@@ -60,6 +60,16 @@ def smenaga_qoshilish(*, salon, xodim, filial=None):
     return smena
 
 
+def _qulfla(smena):
+    """Smena qatorini qulflaydi va hali ochiqligini tekshiradi. To'lov, chiqish va yopish shu qulf orqali
+    navbatma-navbat bajariladi: yopilayotgan smenaga to'lov tushmaydi (aks holda saqlangan qoldiq va farq
+    unga kirmay qolardi), ikki sotuvchi bir vaqtda «oxirgi emasman» deb chiqib ketmaydi."""
+    smena = Smena.objects.select_for_update().get(id=smena.id)
+    if smena.yopilgan:
+        raise KassaXatosi('Smena yopilgan.')
+    return smena
+
+
 def _faol_ishtirokchi(smena, xodim):
     return SmenaIshtirokchi.objects.filter(smena=smena, xodim=xodim, chiqqan=None).exists()
 
@@ -83,6 +93,7 @@ def tolov_qabul(*, salon, xodim, tur, summa, usul=Tolov.Usul.NAQD, zakaz=None, i
         if not ochiq_smena(salon):
             raise KassaXatosi('Ochiq smena bo\'lmasa to\'lov qabul qilinmaydi.')
         raise KassaXatosi('Avval smenaga qo\'shiling.')
+    smena = _qulfla(smena)
 
     if tur in (Tolov.Tur.AVANS, Tolov.Tur.QOLDIQ):
         if zakaz is None:
@@ -142,6 +153,7 @@ def smena_chiqish(*, salon, xodim, sanalgan_summa, filial=None):
     smena = _kassa(salon, xodim, filial)
     if not smena:
         raise KassaXatosi('Ochiq smena yo\'q.')
+    smena = _qulfla(smena)
     faol = SmenaIshtirokchi.objects.filter(smena=smena, chiqqan=None)
     if faol.count() < 2:
         raise KassaXatosi('Siz oxirgi sotuvchisiz: smenani yoping.')
@@ -162,6 +174,7 @@ def smena_yopish(*, salon, xodim, fakt_qoldiq, izoh='', filial=None):
     smena = _kassa(salon, xodim, filial)
     if not smena:
         raise KassaXatosi('Ochiq smena yo\'q.')
+    smena = _qulfla(smena)
     faol = SmenaIshtirokchi.objects.filter(smena=smena, chiqqan=None)
     if faol.count() != 1 or not faol.filter(xodim=xodim).exists():
         raise KassaXatosi('Smenani faqat oxirgi qolgan sotuvchi yopadi.')

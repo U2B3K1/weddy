@@ -19,6 +19,15 @@ def _sana(value, nom):
         raise ValidationError({nom: 'Sana YYYY-OY-KUN ko\'rinishida bo\'lishi kerak.'})
 
 
+def _sanalar(request):
+    """`dan`/`gacha` juftligi. Teskari tartib Postgres oralig'ida 500 berardi — oldindan 400."""
+    dan = _sana(request.query_params.get('dan'), 'dan')
+    gacha = _sana(request.query_params.get('gacha'), 'gacha')
+    if gacha < dan:
+        raise ValidationError({'gacha': "Qaytarish sanasi olib ketishdan oldin bo'lishi mumkin emas."})
+    return dan, gacha
+
+
 def _manekin(request, libos):
     """Manekin qatlami prefetch keshidan (qo'shimcha so'rovsiz)."""
     r = next((x for x in libos.rasmlar.all() if x.id == libos.manekin_rasm_id and x.fonsiz), None)
@@ -37,19 +46,23 @@ class BoshLiboslarView(APIView):
     """GET /api/bronlar/bosh/?dan=2026-11-10&gacha=2026-11-12[&bandlarni_korsat=1]"""
 
     def get(self, request):
-        dan = _sana(request.query_params.get('dan'), 'dan')
-        gacha = _sana(request.query_params.get('gacha'), 'gacha')
+        dan, gacha = _sanalar(request)
         korsat = request.query_params.get('bandlarni_korsat') == '1'
-        natija = bosh_liboslar(request.salon, dan, gacha, korsat, request.user, q=request.query_params.get('q', ''))
+        q = request.query_params.get('q', '').strip()
+        natija = bosh_liboslar(request.salon, dan, gacha, korsat, request.user, q=q)
         # filial filtri: filialga biriktirilmagan libos hamma filialda ko'rinadi
         filial = request.query_params.get('filial', '')
-        if filial.isdigit():
-            natija = [(l, band) for l, band in natija if l.filial_id in (None, int(filial))]
-        # Band libos o'rniga taklif: shu kategoriyadagi (iloji bo'lsa shu o'lchamdagi) bo'sh liboslar (FT-2.2)
-        if any(band for _, band in natija):
-            boshlar = [l for l, band in bosh_liboslar(request.salon, dan, gacha, False, request.user) if not l.qulflangan]
-        else:
+        filialda = (lambda l: l.filial_id in (None, int(filial))) if filial.isdigit() else (lambda l: True)
+        natija = [(l, band) for l, band in natija if filialda(l)]
+        # Band libos o'rniga taklif: shu kategoriyadagi (iloji bo'lsa shu o'lchamdagi) bo'sh liboslar (FT-2.2).
+        # Takliflar ham shu filialdan; qidiruvsiz so'rovda bo'sh liboslar natijaning o'zida bor — qayta hisoblanmaydi.
+        if not any(band for _, band in natija):
             boshlar = []
+        elif q:
+            boshlar = [l for l, band in bosh_liboslar(request.salon, dan, gacha, False, request.user)
+                       if not l.qulflangan and filialda(l)]
+        else:
+            boshlar = [l for l, band in natija if not band and not l.qulflangan]
 
         def oxshashlar(libos):
             nomzodlar = [b for b in boshlar if b.kategoriya_id == libos.kategoriya_id and b.id != libos.id]
@@ -75,6 +88,11 @@ class BronYaratishSerializer(serializers.Serializer):
     libos = serializers.IntegerField()
     dan = serializers.DateField()
     gacha = serializers.DateField()
+
+    def validate(self, d):
+        if d['gacha'] < d['dan']:
+            raise serializers.ValidationError({'gacha': "Qaytarish sanasi olib ketishdan oldin bo'lishi mumkin emas."})
+        return d
 
 
 class BronYaratishView(APIView):
@@ -120,8 +138,7 @@ class BoshAksessuarlarView(APIView):
     """GET /api/bronlar/bosh-aksessuarlar/?dan=&gacha= — sanalarda kamida bitta bo'sh donasi bor aksessuarlar."""
 
     def get(self, request):
-        dan = _sana(request.query_params.get('dan'), 'dan')
-        gacha = _sana(request.query_params.get('gacha'), 'gacha')
+        dan, gacha = _sanalar(request)
         from apps.catalog.manekin import aksessuar_manekin_json
         from apps.tenants.models import sozlama
         manekin_yoq = sozlama(request.salon).manekin

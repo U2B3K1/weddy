@@ -233,13 +233,15 @@ class OyniYopishTests(FinanceBase):
         y = oyni_yopish(salon=self.salon, rahbar=self.rahbar, yil=2026, oy=8)
         self.assertEqual(y.hisobot['operatsion_xarajat'], 1000)  # yopish paytidagi hisobot saqlanadi
 
-    def test_yopilgan_oyga_faqat_rahbar_xarajat_kirita_oladi(self):
+    def test_yopilgan_oyga_hech_kim_xarajat_kiritmaydi(self):
         from .services import oyni_yopish
         oyni_yopish(salon=self.salon, rahbar=self.rahbar, yil=2026, oy=8)
         smena_ochish(salon=self.salon, xodim=self.malika, boshlangich_qoldiq=0)
         with self.assertRaisesMessage(XarajatXatosi, 'yopilgan'):
             xarajat_kiritish(salon=self.salon, xodim=self.malika, modda='boshqa', summa=1, sana=date(2026, 8, 5))
-        xarajat_kiritish(salon=self.salon, xodim=self.rahbar, modda='boshqa', summa=1, sana=date(2026, 8, 5))
+        # rahbar ham: yopilgan oyning saqlangan hisoboti o'zgarmasligi uchun avval oy ochiladi
+        with self.assertRaisesMessage(XarajatXatosi, 'oyni oching'):
+            xarajat_kiritish(salon=self.salon, xodim=self.rahbar, modda='boshqa', summa=1, sana=date(2026, 8, 5))
         # ochiq oyga sotuvchi kirita oladi
         xarajat_kiritish(salon=self.salon, xodim=self.malika, modda='boshqa', summa=1)
 

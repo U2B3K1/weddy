@@ -216,6 +216,13 @@ class IshonchliQurilma(SalonModel):
     tasdiqlangan = models.BooleanField(default=True)
     tasdiqlagan = models.ForeignKey('Xodim', null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
     oxirgi_kirish = models.DateTimeField(null=True, blank=True)
+    # Brauzer aytgan model: «Samsung SM-T505 · Android 13 · Chrome 130» — rahbar qurilmalarni ajratishi uchun
+    modeli = models.CharField(max_length=200, blank=True)
+    # Telegram orqali tasdiqlash: deep link tokenining sha256 xeshi (tokenning o'zi saqlanmaydi) va muddati
+    tg_token = models.CharField(max_length=64, blank=True, db_index=True)
+    tg_token_tugaydi = models.DateTimeField(null=True, blank=True)
+    # Rahbar shu qurilmani Telegramdan tasdiqlagan payt: shu kirishda PIN dan keyin ikkinchi kod so'ralmaydi
+    tg_tasdiqlangan = models.DateTimeField(null=True, blank=True)
     # Qurilma (planshet) qaysi filialda turadi: yangi zakaz va libos shu filialga yoziladi
     filial = models.ForeignKey(Filial, null=True, blank=True, on_delete=models.SET_NULL, related_name='qurilmalar')
 

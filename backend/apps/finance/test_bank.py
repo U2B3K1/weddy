@@ -69,7 +69,8 @@ class BankTests(Base):
         self.assertEqual(self.usul(r.json(), 'click')['farq'], 0)
         self.assertEqual(list(Xarajat.objects.filter(modda='bank').values_list('summa', flat=True)), [4_000])
         self.c.post('/api/hisobotlar/bank/', {**body, 'komissiya': 0, 'kochirma_summa': 500_000}, format='json')
-        self.assertFalse(Xarajat.objects.filter(modda='bank').exists())
+        # komissiya 0 — xarajat o'chirilmaydi, «rad etildi» bo'lib tarixda qoladi va P&L ga kirmaydi
+        self.assertEqual(list(Xarajat.objects.filter(modda='bank').values_list('holat', flat=True)), ['rad'])
 
     def test_faqat_rahbar_va_notogri_kiritish(self):
         s = APIClient(); s.credentials(HTTP_AUTHORIZATION='Bearer ' + make_staff_token(self.malika))

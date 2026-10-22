@@ -23,9 +23,12 @@ def ochish(fayl):
     """Faylni xavfsiz ochadi: format, hajm va piksel soni tekshiriladi."""
     if fayl.size > settings.RASM_MAKS_BAYT:
         raise KatalogXatosi(f'Rasm {settings.RASM_MAKS_BAYT // 1024 // 1024} MB dan katta.')
-    Image.MAX_IMAGE_PIXELS = settings.RASM_MAKS_PIKSEL
     try:
         img = Image.open(fayl)
+        # Pillow chegaradan 2 baravargacha kattasida faqat ogohlantiradi — o'lcham ochishdan (dekodlashdan) oldin
+        # o'zimiz tekshiramiz; global Image.MAX_IMAGE_PIXELS o'zgartirilmaydi
+        if img.width * img.height > settings.RASM_MAKS_PIKSEL:
+            raise KatalogXatosi('Rasm piksel soni juda katta.')
         img.verify()          # buzilgan fayllarni ushlaydi
         fayl.seek(0)
         img = Image.open(fayl)

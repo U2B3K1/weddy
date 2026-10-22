@@ -19,7 +19,7 @@ def donani_tamirga_berish(*, salon, xodim, dona, ish_turi, kim=''):
     dona = AksessuarDona.objects.select_for_update().get(id=dona.id, salon=salon)
     if dona.holat != AksessuarDona.Holat.BOSH:
         raise KatalogXatosi(f'Dona hozir «{dona.get_holat_display()}» holatida, ta\'mirga berib bo\'lmaydi.')
-    if AksessuarBron.faol().filter(dona=dona).exists():
+    if AksessuarBron.kelgusi().filter(dona=dona).exists():
         raise KatalogXatosi("Bu donada bronlar bor; avval bronlarni boshqa donaga o'tkazing.")
     try:
         with transaction.atomic():

@@ -11,7 +11,7 @@ from apps.catalog.models import Libos
 from apps.finance import reports
 from apps.finance.models import Xarajat
 from apps.tenants.models import Xodim
-from apps.tenants.permissions import IsRahbar, IsStaff
+from apps.tenants.permissions import IsRahbar, IsStaff, salon_yoza_oladimi
 
 from . import hujjatlar
 from .changes import muddati_otganlarni_bekor_qil
@@ -82,7 +82,8 @@ class ZakazlarRoyxatiView(APIView):
     permission_classes = [IsStaff]
 
     def get(self, request):
-        muddati_otganlarni_bekor_qil(request.salon)
+        if salon_yoza_oladimi(request.salon):  # «faqat ko'rish» salonida GET hech narsa yozmaydi; cron baribir ishlaydi
+            muddati_otganlarni_bekor_qil(request.salon)
         qs = _zakazlar(request.salon)
         holat = request.query_params.get('holat')
         if holat:
@@ -138,7 +139,8 @@ class BoshEkranView(APIView):
     permission_classes = [IsStaff]
 
     def get(self, request):
-        muddati_otganlarni_bekor_qil(request.salon)  # FT-2.5: cron ishlamay qolsa ham bron osilib qolmaydi
+        if salon_yoza_oladimi(request.salon):  # FT-2.5: cron ishlamay qolsa ham bron osilib qolmaydi
+            muddati_otganlarni_bekor_qil(request.salon)
         bugun = timezone.localdate()
         faol = Zakaz.objects.filter(salon=request.salon).exclude(
             holat__in=[Zakaz.Holat.BEKOR, Zakaz.Holat.YOPILDI])
@@ -161,8 +163,9 @@ def _davr_bloki(salon, dan, gacha, filial=None):
     Sof foyda bu yerda hisoblanmaydi — soliq oylik hisoblanadi.
     """
     f = {'filial_id': filial} if filial else {}
-    zakazlar = Zakaz.objects.filter(salon=salon, tolangan_sana__range=(dan, gacha), **f).exclude(holat=Zakaz.Holat.BEKOR)
-    daromad = zakazlar.aggregate(s=Sum('jami'))['s'] or 0
+    zakazlar = reports.tushum_zakazlari(salon, dan, gacha, f)  # P&L bilan bir xil: avvalgi davr zakazi bekor bo'lsa storno
+    daromad = ((zakazlar.aggregate(s=Sum('jami'))['s'] or 0)
+               - (reports.storno_zakazlari(salon, dan, gacha, f).aggregate(s=Sum('jami'))['s'] or 0))
     soni = zakazlar.count()
     xarajat = Xarajat.objects.filter(salon=salon, holat=Xarajat.Holat.TASDIQLANDI,
                                      sana__range=(dan, gacha), **f).aggregate(s=Sum('summa'))['s'] or 0

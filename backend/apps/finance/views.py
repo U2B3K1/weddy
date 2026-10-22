@@ -7,7 +7,7 @@ from rest_framework.views import APIView
 
 from apps.cash.services import KassaXatosi
 from apps.tenants.models import Xodim
-from apps.tenants.permissions import IsRahbar, IsStaff, SalonYozishRuxsati
+from apps.tenants.permissions import IsRahbar, IsStaff, SalonYozishRuxsati, salon_yoza_oladimi
 from django.utils import timezone
 
 from . import reports
@@ -30,7 +30,7 @@ class XarajatSerializer(serializers.Serializer):
     summa = serializers.IntegerField(min_value=1)
     sana = serializers.DateField(required=False)
     usul = serializers.ChoiceField(choices=['naqd', 'karta', 'click', 'payme'], default='naqd')
-    izoh = serializers.CharField(required=False, allow_blank=True, default='')
+    izoh = serializers.CharField(required=False, allow_blank=True, default='', max_length=300)
     kassadan = serializers.BooleanField(required=False)
 
 
@@ -40,7 +40,8 @@ class XarajatlarView(APIView):
 
     def get(self, request):
         from .moddalar import doimiy_qoralamalarni_yarat, modda_nomlari
-        if request.user.rol == Xodim.Rol.RAHBAR:  # FT-13.3: joriy oy qoralamalari rahbar ro'yxatni ochganda paydo bo'ladi
+        # FT-13.3: joriy oy qoralamalari rahbar ro'yxatni ochganda paydo bo'ladi («faqat ko'rish» salonida yozilmaydi)
+        if request.user.rol == Xodim.Rol.RAHBAR and salon_yoza_oladimi(request.salon):
             doimiy_qoralamalarni_yarat(request.salon)
         qs = Xarajat.objects.filter(salon=request.salon).select_related('kiritgan')
         if request.user.rol != Xodim.Rol.RAHBAR:
@@ -101,7 +102,7 @@ class XarajatView(APIView):
 
 
 class XarajatQarorView(APIView):
-    permission_classes = [IsRahbar]
+    permission_classes = [IsRahbar, SalonYozishRuxsati]
 
     def post(self, request, pk):
         x = Xarajat.objects.filter(salon=request.salon, id=pk).first()
@@ -156,7 +157,14 @@ class HisobotTafsilotView(APIView):
             gacha = date.fromisoformat(request.query_params.get('gacha') or str(bugun))
         except ValueError:
             raise ValidationError({'dan': "Sana YYYY-OY-KUN ko'rinishida bo'lishi kerak."})
-        natija = tafsilot(request.salon, nom, request.query_params.get('kalit', ''), dan, gacha)
+        filtrlar = {}
+        for nomi in ('sotuvchi', 'filial'):  # hisobotdagi filtrlar bilan bir xil (HisobotView)
+            qiymat = request.query_params.get(nomi)
+            if qiymat:
+                if not qiymat.isdigit():
+                    raise ValidationError({nomi: "Noto'g'ri qiymat."})
+                filtrlar[nomi] = int(qiymat)
+        natija = tafsilot(request.salon, nom, request.query_params.get('kalit', ''), dan, gacha, **filtrlar)
         if natija is None:
             raise ValidationError({'kalit': "Bu hisobot yoki qator uchun tafsilot yo'q."})
         return Response(natija)

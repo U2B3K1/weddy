@@ -37,10 +37,10 @@ def sorov_json(s):
 
 class ChegirmaSerializer(serializers.Serializer):
     tayyor = serializers.IntegerField(required=False)
-    foiz = serializers.DecimalField(max_digits=5, decimal_places=2, required=False)
-    summa = serializers.IntegerField(required=False)
+    foiz = serializers.DecimalField(max_digits=5, decimal_places=2, required=False, min_value=0, max_value=100)
+    summa = serializers.IntegerField(required=False, min_value=0)
     sabab = serializers.ChoiceField(choices=ChegirmaSorovi.Sabab.choices, default='boshqa')
-    izoh = serializers.CharField(required=False, allow_blank=True, default='')
+    izoh = serializers.CharField(required=False, allow_blank=True, default='', max_length=300)
 
 
 class ChegirmaView(APIView):
@@ -81,9 +81,10 @@ class ChegirmaSorovlariView(APIView):
 
 class QarorSerializer(serializers.Serializer):
     qaror = serializers.ChoiceField(choices=['tasdiq', 'rad'])
-    foiz = serializers.DecimalField(max_digits=5, decimal_places=2, required=False)
-    summa = serializers.IntegerField(required=False)
-    izoh = serializers.CharField(required=False, allow_blank=True, default='')
+    # manfiy chegirma bazadagi musbat maydonda 500 berardi; 100% dan ortig'i jimgina kesilardi
+    foiz = serializers.DecimalField(max_digits=5, decimal_places=2, required=False, min_value=0, max_value=100)
+    summa = serializers.IntegerField(required=False, min_value=0)
+    izoh = serializers.CharField(required=False, allow_blank=True, default='', max_length=300)
 
 
 class ChegirmaQarorView(APIView):
@@ -104,7 +105,7 @@ class ChegirmaQarorView(APIView):
 
 class TayyorChegirmaSerializer(serializers.Serializer):
     nomi = serializers.CharField(max_length=100)
-    foiz = serializers.DecimalField(max_digits=5, decimal_places=2, required=False)
+    foiz = serializers.DecimalField(max_digits=5, decimal_places=2, required=False, min_value=Decimal('0.01'), max_value=100)
     summa = serializers.IntegerField(min_value=1, required=False)
 
     def validate(self, d):

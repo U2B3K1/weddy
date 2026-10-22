@@ -69,7 +69,7 @@ class SmenaQoshilishView(APIView):
 
 class SanashSerializer(serializers.Serializer):
     summa = serializers.IntegerField(min_value=0)
-    izoh = serializers.CharField(required=False, allow_blank=True, default='')
+    izoh = serializers.CharField(required=False, allow_blank=True, default='', max_length=300)
 
 
 class SmenaChiqishView(APIView):
@@ -102,11 +102,14 @@ class SmenaYopishView(APIView):
 
 
 class TolovSerializer(serializers.Serializer):
-    tur = serializers.ChoiceField(choices=Tolov.Tur.choices)
+    # To'g'ridan-to'g'ri kiritiladigan turlar. Qolgan chiqimlar o'z jarayoni orqali: xarajat — rahbar tasdig'i
+    # bilan (finance), vozvrat — zakazni bekor qilishda, zalog/jarima — berish va qaytarishda. Aks holda
+    # sotuvchi kassadan xarajat yoki «vozvrat» deb pulni hisobsiz olib chiqa olardi.
+    tur = serializers.ChoiceField(choices=[Tolov.Tur.AVANS, Tolov.Tur.QOLDIQ, Tolov.Tur.INKASSATSIYA])
     summa = serializers.IntegerField(min_value=1)
     usul = serializers.ChoiceField(choices=Tolov.Usul.choices, default=Tolov.Usul.NAQD)
     zakaz = serializers.IntegerField(required=False)
-    izoh = serializers.CharField(required=False, allow_blank=True, default='')
+    izoh = serializers.CharField(required=False, allow_blank=True, default='', max_length=300)
 
 
 class TolovView(APIView):

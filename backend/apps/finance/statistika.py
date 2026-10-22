@@ -332,8 +332,12 @@ TAFSILOT_FILTRI = {
 }
 
 
-def tafsilot(salon, nom, kalit, dan, gacha):
-    """Hisobot qatoriga kirgan, davrda to'liq to'langan zakazlar. Noma'lum hisobot yoki kalit — None."""
+def tafsilot(salon, nom, kalit, dan, gacha, **filtrlar):
+    """Hisobot qatoriga kirgan, davrda to'liq to'langan zakazlar. Noma'lum hisobot yoki kalit — None.
+
+    Hisobot ochilgan filtrlar (sotuvchi, filial) tafsilotga ham qo'llanadi — aks holda tafsilot jami u ochilgan
+    filtrlangan qatordan katta chiqardi. «libos» hisobotida filtrlar libosga tegishli va qator o'zi bitta libos.
+    """
     filtr = TAFSILOT_FILTRI.get(nom)
     if filtr is None:
         return None
@@ -341,7 +345,9 @@ def tafsilot(salon, nom, kalit, dan, gacha):
         shart = filtr(kalit)
     except (TypeError, ValueError):
         return None
-    zakazlar = (_tolangan(salon, dan, gacha).filter(**shart).distinct().select_related('mijoz', 'sotuvchi')
+    zakaz_filtrlari = {k: v for k, v in filtrlar.items()
+                       if v and k in ('sotuvchi', 'filial') and k in FILTRLAR.get(nom, ()) and nom != 'libos'}
+    zakazlar = (_tolangan(salon, dan, gacha, **zakaz_filtrlari).filter(**shart).distinct().select_related('mijoz', 'sotuvchi')
                 .prefetch_related('pozitsiyalar__libos').order_by('tolangan_sana', 'raqam'))
     qatorlar = [{'zakaz_id': z.id, 'raqam': z.raqam, 'sana': z.tolangan_sana, 'mijoz': z.mijoz.fio or z.mijoz.telefon,
                  'sotuvchi': z.sotuvchi.ism if z.sotuvchi else None,

@@ -217,7 +217,7 @@ class PlatformaSozlamaTests(PlatformaBase):
     def test_bosh_holat(self):
         d = self.c.get(self.url).json()
         self.assertEqual(d, {'telegram_kiritilgan': False, 'telegram_bot_nomi': '', 'telegram_manba': 'yoq',
-                             'telegram_ulangan': False})
+                             'telegram_ulangan': False, 'telegram_ega_ulangan': False})
 
     def test_token_saqlanadi_va_bot_nomi_botdan_olinadi(self):
         with self.tokenli as t:
@@ -225,7 +225,7 @@ class PlatformaSozlamaTests(PlatformaBase):
         self.assertEqual(t.call_args.args, (TOKEN,))          # saqlashdan oldin getMe bilan tekshiriladi
         self.assertEqual(platforma_sozlama().telegram_token, TOKEN)
         self.assertEqual(d, {'telegram_kiritilgan': True, 'telegram_bot_nomi': 'ezaz_bot', 'telegram_manba': 'panel',
-                             'telegram_ulangan': True})
+                             'telegram_ulangan': True, 'telegram_ega_ulangan': False})
         # token API orqali qaytarilmaydi
         self.assertNotIn(TOKEN, self.c.get(self.url).content.decode())
 

@@ -26,14 +26,15 @@ def xarajat_kiritish(*, salon, xodim, modda, summa, sana=None, usul='naqd', izoh
         raise XarajatXatosi('Summa musbat bo\'lishi kerak.')
     rahbar = xodim.rol == Xodim.Rol.RAHBAR
     xsana = sana or timezone.localdate()
-    if not rahbar and oy_yopilgan(salon, xsana.year, xsana.month):
-        raise XarajatXatosi("Bu oy yopilgan: uni faqat rahbar o'zgartira oladi.")
+    if oy_yopilgan(salon, xsana.year, xsana.month):  # tuzatish va bekor qilishdagi qoida bilan bir xil
+        raise XarajatXatosi("Bu oy yopilgan: avval oyni oching." if rahbar
+                            else "Bu oy yopilgan: uni faqat rahbar o'zgartira oladi.")
     if kassadan is None or not rahbar:
         kassadan = True if not rahbar else False
     tolov = None
     if kassadan:
         tolov = tolov_qabul(salon=salon, xodim=xodim, tur=Tolov.Tur.XARAJAT, summa=summa,
-                            usul=usul, izoh=f'{modda}: {izoh}'.strip(': '))
+                            usul=usul, izoh=f'{modda}: {izoh}'.strip(': ')[:300])
         filial = tolov.smena.filial or filial  # kassadan to'langan bo'lsa — shu kassa filiali
     return Xarajat.objects.create(
         filial=filial, salon=salon, sana=sana or timezone.localdate(), modda=modda, summa=summa, usul=usul, izoh=izoh,
@@ -55,6 +56,9 @@ def xarajat_qarori(*, salon, rahbar, xarajat, tasdiqlash, summa=None):
         if summa <= 0:
             raise XarajatXatosi("Summa musbat bo'lishi kerak.")
         xarajat.summa = summa
+    if not tasdiqlash and xarajat.tolov_id:  # rad etilsa P&L dan chiqardi, lekin pul kassadan chiqib bo'lgan
+        raise XarajatXatosi("Kassadan to'langan xarajat rad etilmaydi: pul kassadan chiqqan. "
+                            "Tasdiqlab, kerak bo'lsa moddasi va izohini tuzating.")
     xarajat.holat = Xarajat.Holat.TASDIQLANDI if tasdiqlash else Xarajat.Holat.RAD
     xarajat.tasdiqlagan = rahbar
     xarajat.save()
@@ -191,20 +195,30 @@ def bank_solishtirish(*, salon, rahbar, yil, oy, usul, kochirma_summa, komissiya
         raise XarajatXatosi("To'lov usuli noto'g'ri.")
     if komissiya < 0:
         raise XarajatXatosi("Komissiya manfiy bo'lishi mumkin emas.")
-    _, oxiri = reports.oy_chegaralari(yil, oy)
+    boshi, oxiri = reports.oy_chegaralari(yil, oy)
+    if boshi > timezone.localdate():
+        raise XarajatXatosi("Kelgusi oy uchun bank solishtiruvi kiritilmaydi.")
+    if oy_yopilgan(salon, yil, oy):  # komissiya xarajati yopilgan oyning P&L ini o'zgartirardi
+        raise XarajatXatosi("Bu oy yopilgan: avval oyni oching.")
     b, _ = BankSolishtirish.objects.select_for_update().get_or_create(
         salon=salon, yil=yil, oy=oy, usul=usul, defaults={'kochirma_summa': kochirma_summa, 'kiritgan': rahbar})
     b.kochirma_summa, b.komissiya, b.kiritgan = kochirma_summa, komissiya, rahbar
-    # Komissiya xarajati: qayta kiritilganda eski yozuv yangilanadi, ikki marta yozilmaydi
-    if b.xarajat_id:
-        if komissiya:
-            Xarajat.objects.filter(id=b.xarajat_id).update(summa=komissiya)
-        else:
-            Xarajat.objects.filter(id=b.xarajat_id).delete()
-            b.xarajat = None
+    # Komissiya xarajati: qayta kiritilganda eski yozuv yangilanadi, ikki marta yozilmaydi.
+    # Xarajat o'chirilmaydi — boshqa xarajatlar kabi «rad etildi» bo'lib tarixda qoladi.
+    eski = Xarajat.objects.filter(id=b.xarajat_id).first() if b.xarajat_id else None
+    if eski and komissiya:
+        if eski.summa != komissiya or eski.holat != Xarajat.Holat.TASDIQLANDI:
+            jurnalga_yoz(salon, rahbar, 'xarajat_tuzatildi', f'xarajat #{eski.id}', eski.summa, komissiya)
+        eski.summa, eski.holat = komissiya, Xarajat.Holat.TASDIQLANDI
+        eski.save(update_fields=['summa', 'holat'])
+    elif eski:
+        eski.holat = Xarajat.Holat.RAD
+        eski.save(update_fields=['holat'])
+        jurnalga_yoz(salon, rahbar, 'xarajat_bekor_qilindi', f'xarajat #{eski.id}', eski.summa, 'komissiya 0')
     elif komissiya:
         b.xarajat = Xarajat.objects.create(
-            salon=salon, sana=min(oxiri, timezone.localdate()), modda=Xarajat.Modda.BANK, summa=komissiya, usul=usul,
+            salon=salon, sana=oxiri if oxiri < timezone.localdate() else timezone.localdate(),
+            modda=Xarajat.Modda.BANK, summa=komissiya, usul=usul,
             izoh=f'Bank komissiyasi ({usul}), {yil}-{oy:02d}', kiritgan=rahbar, tasdiqlagan=rahbar,
             holat=Xarajat.Holat.TASDIQLANDI)
     b.save()

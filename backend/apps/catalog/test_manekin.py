@@ -193,7 +193,8 @@ class AksessuarQatlamTests(TestCase):
         self.yukla()
         self.fata.refresh_from_db()
         eski = self.fata.manekin_rasm.path
-        self.yukla()
+        with self.captureOnCommitCallbacks(execute=True):  # eski fayl faqat tranzaksiya tugagach o'chadi
+            self.yukla()
         self.fata.refresh_from_db()
         self.assertFalse(os.path.exists(eski))
         yangi = self.fata.manekin_rasm.path

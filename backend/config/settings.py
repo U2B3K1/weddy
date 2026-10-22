@@ -33,6 +33,13 @@ DEBUG = env('DEBUG', default=True)
 
 ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['localhost', '127.0.0.1'])
 
+# Standart kalit ochiq repoda turibdi: u bilan istalgan kishi xodim va platforma egasi tokenini soxtalashtira oladi.
+# Production (DEBUG=False yoki haqiqiy domen) da .env dagi SECRET_KEY berilmagan bo'lsa — ishga tushmaydi.
+if SECRET_KEY == 'dev-faqat-ishlab-chiqish-uchun' and (
+        not DEBUG or any(h not in ('localhost', '127.0.0.1', '[::1]') for h in ALLOWED_HOSTS)):
+    from django.core.exceptions import ImproperlyConfigured
+    raise ImproperlyConfigured(".env da SECRET_KEY berilmagan — standart dev kaliti bilan productionda ishlab bo'lmaydi.")
+
 
 # Application definition
 

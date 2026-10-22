@@ -1,5 +1,6 @@
 """Zakazni o'zgartirish va bekor qilish (4.17)."""
 from django.db import transaction
+from django.db.models import Min
 from django.utils import timezone
 
 from apps.bookings.models import AksessuarBron, Bron
@@ -62,22 +63,39 @@ def _qayta_hisobla(zakaz):
     zakaz.promokod_chegirma = min(zakaz.promokod_chegirma, zakaz.chegirma)
 
 
+def tolov_holatini_mosla(zakaz, xato=None):
+    """Narx o'zgargach to'lov holati (6.1). Har bir narxni o'zgartiruvchi amal `_qayta_hisobla` dan keyin chaqiradi.
+
+    To'langan summa jamidan oshsa — amal to'xtatiladi (ortiqcha pul jimgina qolib ketmasin). Qoldiq paydo bo'lsa
+    `tolangan_sana` tozalanadi (qoldiq to'langach daromad qayta tan olinadi); narx tushib to'langan summaga
+    tenglashsa — zakaz bugun to'liq to'langan hisoblanadi (aks holda daromadga hech qachon kirmasdi).
+    """
+    tolangan = tolangan_summa(zakaz)
+    if tolangan > zakaz.jami:
+        raise (xato or OzgartirishXatosi)("To'langan summa yangi jamidan oshib ketadi. "
+                                          "Avval zakazni bekor qilib, avansni qaytaring.")
+    if zakaz.tolangan_sana and tolangan < zakaz.jami:
+        zakaz.tolangan_sana = None
+    elif not zakaz.tolangan_sana and tolangan and tolangan == zakaz.jami:
+        zakaz.tolangan_sana = timezone.localdate()
+
+
 def _bronlash(zakaz, xodim, olib_ketish, qaytarish):
     avans_bor = zakaz.holat == Zakaz.Holat.BRON
     for p in zakaz.pozitsiyalar.select_related('libos__kategoriya'):
         bron_qilish(salon=zakaz.salon, libos=p.libos, olib_ketish=olib_ketish, qaytarish=qaytarish,
-                    xodim=xodim, avans_bor=avans_bor, zakaz=zakaz)
-    # Aksessuarlar: har bir turdan shuncha dona yangi sanalarga qayta band qilinadi (boshqa dona chiqishi mumkin)
+                    xodim=xodim, avans_bor=avans_bor, zakaz=zakaz, qayta=True)
+    # Aksessuarlar: har bir turdan shuncha dona yangi sanalarga qayta band qilinadi (boshqa dona chiqishi mumkin).
+    # Narx zakazdagi narx bo'yicha qoladi — katalog narxi keyin o'zgargan bo'lsa ham, sana ko'chirish narxni o'zgartirmaydi.
     qatorlar = list(zakaz.aksessuarlar.select_related('dona__aksessuar__kategoriya'))
     zakaz.aksessuarlar.all().delete()
-    soni = {}
+    narxlar = {}
     for q in qatorlar:
-        soni.setdefault(q.dona.aksessuar, 0)
-        soni[q.dona.aksessuar] += 1
-    for a, n in soni.items():
-        for dona in aksessuar_bron_qilish(salon=zakaz.salon, aksessuar=a, soni=n, olib_ketish=olib_ketish,
-                                          qaytarish=qaytarish, avans_bor=avans_bor, zakaz=zakaz):
-            ZakazAksessuar.objects.create(salon=zakaz.salon, zakaz=zakaz, dona=dona, narx=a.ijara_narxi)
+        narxlar.setdefault(q.dona.aksessuar, []).append(q.narx)
+    for a, n in narxlar.items():
+        for dona, narx in zip(aksessuar_bron_qilish(salon=zakaz.salon, aksessuar=a, soni=len(n), olib_ketish=olib_ketish,
+                                                    qaytarish=qaytarish, avans_bor=avans_bor, zakaz=zakaz), n):
+            ZakazAksessuar.objects.create(salon=zakaz.salon, zakaz=zakaz, dona=dona, narx=narx)
 
 
 @transaction.atomic
@@ -92,15 +110,19 @@ def sanani_kochirish(*, salon, xodim, zakaz, olib_ketish, qaytarish, sabab=''):
     if olib_ketish < timezone.localdate():
         raise OzgartirishXatosi("O'tgan sanaga ko'chirib bo'lmaydi.")
     eski = f'{zakaz.olib_ketish} – {zakaz.qaytarish}'
+    # Avanssiz bron muddati ko'chirishda uzaymaydi: aks holda har kuni ko'chirib libosni avanssiz ushlab turish mumkin (FT-2.5)
+    eski_muddat = Bron.objects.filter(zakaz=zakaz, turi=Bron.Turi.VAQTINCHALIK).aggregate(m=Min('muddati'))['m']
     Bron.objects.filter(zakaz=zakaz).delete()  # o'z bronlari yangi sanalarni to'smasligi uchun
     AksessuarBron.objects.filter(zakaz=zakaz).delete()
     _bronlash(zakaz, xodim, olib_ketish, qaytarish)
+    if eski_muddat:
+        Bron.objects.filter(zakaz=zakaz, turi=Bron.Turi.VAQTINCHALIK).update(muddati=eski_muddat)
+        AksessuarBron.objects.filter(zakaz=zakaz, turi=Bron.Turi.VAQTINCHALIK).update(muddati=eski_muddat)
     zakaz.olib_ketish, zakaz.qaytarish = olib_ketish, qaytarish
     if sozlama(salon).mavsumiy_narx:  # FT-17.1: mavsumiy ustama yangi sanaga qarab qayta hisoblanadi
         zakaz.ustama_foiz = mavsumiy_foiz(salon, olib_ketish)
     _qayta_hisobla(zakaz)
-    if zakaz.tolangan_sana and tolangan_summa(zakaz) < zakaz.jami:
-        zakaz.tolangan_sana = None  # narx oshdi: qoldiq to'langach daromad qayta tan olinadi (6.1)
+    tolov_holatini_mosla(zakaz)
     zakaz.save()
     _log(zakaz, xodim, 'sana_kochirildi', eski, f'{olib_ketish} – {qaytarish}', sabab)
     return zakaz
@@ -127,9 +149,7 @@ def libosni_almashtirish(*, salon, xodim, zakaz, eski_libos, yangi_libos, sabab=
     poz.save()
     eski_jami = zakaz.jami
     _qayta_hisobla(zakaz)
-    if tolangan_summa(zakaz) > zakaz.jami:
-        raise OzgartirishXatosi("Yangi libos arzonroq: to'langan summa jamidan oshib ketadi. "
-                                "Avval zakazni bekor qilib, avansni qaytaring.")
+    tolov_holatini_mosla(zakaz)  # qimmatroq libos: qoldiq paydo bo'lsa daromad sanasi tozalanadi
     zakaz.save()
     _log(zakaz, xodim, 'libos_almashtirildi', f'{eski_libos.artikul} (jami {eski_jami})',
          f'{yangi.artikul} (jami {zakaz.jami})', sabab)
@@ -188,6 +208,7 @@ def zakazga_aksessuar_qoshish(*, salon, xodim, zakaz, aksessuar, soni=1):
                                       zakaz=zakaz):
         ZakazAksessuar.objects.create(salon=salon, zakaz=zakaz, dona=dona, narx=aksessuar.ijara_narxi)
     _qayta_hisobla(zakaz)
+    tolov_holatini_mosla(zakaz)
     zakaz.save()
     _log(zakaz, xodim, 'aksessuar_qoshildi', f'jami {eski_jami}', f'{aksessuar.nomi} × {soni} (jami {zakaz.jami})')
     return zakaz
@@ -204,9 +225,15 @@ def zakazdan_aksessuarni_olish(*, salon, xodim, zakaz, qator_id, sabab=''):
     AksessuarBron.objects.filter(zakaz=zakaz, dona=qator.dona).delete()
     nomi = f'{qator.dona.aksessuar.nomi} ({qator.dona.yorliq})'
     qator.delete()
+    # «Bepul aksessuar» promokodi shu aksessuar uchun bo'lsa va zakazda u qolmasa — chegirma ham olib tashlanadi
+    p = zakaz.promokod
+    if (p and p.chegirma_turi == p.ChegirmaTuri.AKSESSUAR and p.aksessuar_id == qator.dona.aksessuar_id
+            and not zakaz.aksessuarlar.filter(dona__aksessuar_id=p.aksessuar_id).exists()):
+        zakaz.promokod_ishlatilishlari.filter(bekor=False).update(bekor=True)
+        zakaz.chegirma = max(0, zakaz.chegirma - zakaz.promokod_chegirma)
+        zakaz.promokod, zakaz.promokod_chegirma = None, 0
     _qayta_hisobla(zakaz)
-    if tolangan_summa(zakaz) > zakaz.jami:
-        raise OzgartirishXatosi("To'langan summa yangi jamidan oshib ketadi: aksessuarni olib tashlab bo'lmaydi.")
+    tolov_holatini_mosla(zakaz)
     zakaz.save()
     _log(zakaz, xodim, 'aksessuar_olib_tashlandi', f'{nomi} (jami {eski_jami})', f'jami {zakaz.jami}', sabab)
     return zakaz

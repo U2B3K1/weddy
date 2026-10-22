@@ -1,3 +1,4 @@
+from django.db import transaction
 from rest_framework import serializers
 from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.parsers import FormParser, MultiPartParser
@@ -132,19 +133,24 @@ class LibosTafsilotView(APIView):
 
         ser = S(data=request.data)
         ser.is_valid(raise_exception=True)
-        if 'filial' in request.data:  # libosni filialga ko'chirish (null — biriktirilmagan)
-            from apps.tenants.models import Filial, jurnalga_yoz
+        filial_ozgaradi, filial = 'filial' in request.data, None
+        if filial_ozgaradi:  # libosni filialga ko'chirish (null — biriktirilmagan)
+            from apps.tenants.models import Filial
             fid = request.data.get('filial')
+            if fid not in (None, '') and not str(fid).isdigit():
+                raise NotFound('Filial topilmadi.')
             filial = Filial.objects.filter(salon=request.salon, id=fid, faol=True).first() if fid else None
             if fid and not filial:
                 raise NotFound('Filial topilmadi.')
-            l = _libos(request, pk)
-            if l.filial_id != (filial.id if filial else None):
-                jurnalga_yoz(request.salon, request.user, 'libos_filiali', l.artikul, l.filial_id or '', filial.id if filial else '')
-                l.filial = filial
-                l.save(update_fields=['filial'])
-        libos, err = _bajar(libosni_ozgartirish, salon=request.salon, rahbar=request.user,
-                            libos=_libos(request, pk), **ser.validated_data)
+        # Filial va qolgan maydonlar bitta tranzaksiyada: holat rad etilsa filial ham o'zgarmay qoladi
+        with transaction.atomic():
+            libos, err = _bajar(libosni_ozgartirish, salon=request.salon, rahbar=request.user,
+                                libos=_libos(request, pk), **ser.validated_data)
+            if not err and filial_ozgaradi and libos.filial_id != (filial.id if filial else None):
+                jurnalga_yoz(request.salon, request.user, 'libos_filiali', libos.artikul, libos.filial_id or '',
+                             filial.id if filial else '')
+                libos.filial = filial
+                libos.save(update_fields=['filial'])
         return err or Response(libos_json(libos, True, request))
 
 

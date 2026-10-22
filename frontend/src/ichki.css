@@ -279,7 +279,8 @@ label > input, label > select { color: var(--oq); }
 .kirish-sarlavha { margin: 0; text-align: center; font-size: 20px; }
 .kirish-sarlavha em { font-family: var(--kursiv); font-style: italic; font-size: 26px; color: var(--tilla); }
 .kirish form, .kirish .xodimlar { gap: 16px; }
-.xodim-kartalar { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
+.xodim-kartalar { display: flex; flex-wrap: wrap; justify-content: center; gap: 12px; }  /* kam xodimda kartalar markazda */
+.xodim-kartalar > .xodim-karta { flex: 0 0 calc((100% - 12px) / 2); }
 .xodim-karta {
   min-height: 112px; flex-direction: column; gap: 10px; padding: 16px 8px; display: flex; align-items: center; justify-content: center;
   background: var(--shisha-ichki); color: var(--oq); border: 1px solid var(--shisha-chet); border-radius: var(--r-panel); box-shadow: none; font-weight: 600;
@@ -288,13 +289,15 @@ label > input, label > select { color: var(--oq); }
 .xodim-harf { width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: rgba(228, 193, 150, .16); color: var(--tilla); font-family: var(--serif); font-size: 24px; }
 .xodim-karta-ism { overflow-wrap: anywhere; text-align: center; }
 .kirish-chiqish { align-self: center; }
+.qurilma-kutish .malumot { margin: 0; text-align: center; }
+.qurilma-qr { align-self: center; width: 220px; height: 220px; padding: 10px; background: #fff; border-radius: var(--r-ichki); }
 .pin-nuqtalar { display: flex; justify-content: center; gap: 14px; padding: 4px 0; }
 .pin-nuqtalar i { width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid var(--tilla); }
 .pin-nuqtalar i.to-liq { background: var(--tilla); }
 .pin-klaviatura { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; justify-items: center; }
 .pin-tugma { width: 100%; max-width: 96px; height: 64px; min-height: 64px; padding: 0; font-size: 24px; font-family: var(--serif); }
 @media (min-width: 768px) {
-  .xodim-kartalar { grid-template-columns: repeat(3, 1fr); }
+  .xodim-kartalar > .xodim-karta { flex-basis: calc((100% - 24px) / 3); }
   .pin-tugma { height: 72px; min-height: 72px; }
 }
 @media (max-width: 479px) { .kirish-panel { padding: 24px 16px; } }

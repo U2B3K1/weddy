@@ -10,7 +10,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .auth import make_device_token, make_staff_token, qurilma_holati
-from .models import Ariza, IshonchliQurilma, Salon, Xodim
+from .models import Ariza, IshonchliQurilma, Jurnal, Salon, Xodim, jurnalga_yoz
 
 
 class OchiqView(APIView):
@@ -58,6 +58,7 @@ class SalonLoginSerializer(serializers.Serializer):
     login = serializers.CharField()
     parol = serializers.CharField()
     qurilma_nomi = serializers.CharField(default='Planshet')
+    qurilma_modeli = serializers.CharField(required=False, allow_blank=True, default='')
 
 
 class SalonLoginView(OchiqView):
@@ -84,7 +85,11 @@ class SalonLoginView(OchiqView):
         # Demo/sinov salonida (qurilma_avto_tasdiq) har bir qurilma darhol ishonchli bo'ladi.
         birinchi = salon.qurilma_avto_tasdiq or not IshonchliQurilma.objects.filter(
             salon=salon, faol=True, tasdiqlangan=True).exists()
-        qurilma = IshonchliQurilma.objects.create(salon=salon, nomi=d['qurilma_nomi'][:100], tasdiqlangan=birinchi)
+        qurilma = IshonchliQurilma.objects.create(salon=salon, nomi=d['qurilma_nomi'][:100],
+                                                  modeli=d['qurilma_modeli'][:200], tasdiqlangan=birinchi)
+        if not birinchi:  # rahbarlarga «Ruxsat / Rad» tugmali xabar (xato kirishni buzmaydi)
+            from apps.notify.services import qurilma_kutmoqda_xabari
+            transaction.on_commit(lambda: qurilma_kutmoqda_xabari(qurilma))
         return Response({'qurilma_token': make_device_token(salon, qurilma), 'kutilmoqda': not birinchi,
                          'salon': {'nomi': salon.nomi, 'rang': salon.rang}})
 
@@ -97,6 +102,66 @@ def _device(request):
         # 401 emas: klient qurilma tokenini saqlab, ruxsatni kutadi
         raise PermissionDenied({'detail': 'Qurilma rahbar ruxsatini kutmoqda.', 'kod': 'qurilma_kutilmoqda'})
     return h[1], h[2]
+
+
+QURILMA_PIN_XATO_SUTKADA = 5  # kutayotgan qurilmalardan rahbar PIN ini taxmin qilishga salon bo'yicha sutkalik chegara
+
+
+class QurilmaTasdiqView(OchiqView):
+    """Ruxsat kutayotgan qurilmaning o'zidan tasdiqlash yo'llari (FT-22.2).
+
+    GET — Telegram havolasi (rahbar bosib, botda «Ha, bu men» desa qurilma ochiladi), uning muddati va
+    PIN bilan tasdiqlay oladigan rahbarlar.
+    POST {xodim_id, pin} — Telegramdan foydalana olmaydigan rahbar shu qurilmada o'z PIN i bilan tasdiqlaydi:
+    aks holda yagona rahbar yangi qurilmada qotib qolardi. Bu yo'l ishonchsiz qurilmaga PIN taxmin qilish
+    imkonini beradi, shu sabab salon bo'yicha sutkada 5 ta xato bilan cheklangan (4 xonali PIN ~5 yilda).
+    """
+
+    def _kutayotgan(self, request):
+        h = qurilma_holati(request.headers.get('X-Device-Token', ''))
+        if not h:
+            raise AuthenticationFailed('Qurilma ishonchli emas, salon logini bilan qayta kiring.')
+        return h
+
+    @staticmethod
+    def _pin_rahbarlar(salon):
+        """Telegram ulamagan rahbarlar; bot umuman sozlanmagan bo'lsa — barcha rahbarlar (havola ishlamaydi)."""
+        from apps.notify import telegram
+        qs = Xodim.objects.filter(salon=salon, rol=Xodim.Rol.RAHBAR, faol=True)
+        return qs if not telegram.sozlangan() else qs.filter(telegram_id__isnull=True)
+
+    def get(self, request):
+        holat, salon, qurilma = self._kutayotgan(request)
+        if holat == 'ok':
+            return Response({'tasdiqlangan': True})
+        from apps.notify.services import qurilma_tasdiq_havolasi
+        havola, tugaydi = qurilma_tasdiq_havolasi(qurilma)
+        return Response({'tasdiqlangan': False, 'tg_havola': havola, 'tg_tugaydi': tugaydi,
+                         'rahbarlar': [{'id': x.id, 'ism': x.ism} for x in self._pin_rahbarlar(salon).order_by('ism')]})
+
+    def post(self, request):
+        holat, salon, qurilma = self._kutayotgan(request)
+        if holat == 'ok':
+            return Response({'tasdiqlangan': True})
+        from apps.notify.services import QURILMA_FAQAT_KORISH, qurilma_ozgartirsa_boladi, qurilma_tasdiqla
+        if not qurilma_ozgartirsa_boladi(salon):
+            raise PermissionDenied(QURILMA_FAQAT_KORISH)
+        xid = str(request.data.get('xodim_id', ''))
+        xodim = self._pin_rahbarlar(salon).filter(id=int(xid)).first() if xid.isdigit() else None
+        if not xodim:
+            raise NotFound('Rahbar topilmadi.')
+        if Jurnal.objects.filter(salon=salon, harakat='qurilma_pin_xato',
+                                 vaqt__gt=timezone.now() - timedelta(days=1)).count() >= QURILMA_PIN_XATO_SUTKADA:
+            raise PermissionDenied("Bugun PIN ko'p marta xato kiritildi. Rahbar Telegramni ulab ruxsat bersin "
+                                   "yoki platforma egasiga murojaat qiling.")
+        try:
+            pin_tekshir(xodim, str(request.data.get('pin', '')))
+        except AuthenticationFailed:
+            jurnalga_yoz(salon, xodim, 'qurilma_pin_xato', f'qurilma {qurilma.nomi}')
+            # 401 emas: klient 401 ni «qurilma chiqarilgan» deb tushunadi
+            return Response({'detail': "PIN noto'g'ri."}, status=400)
+        qurilma_tasdiqla(qurilma, xodim, 'qurilmada PIN')
+        return Response({'tasdiqlangan': True})
 
 
 class XodimlarRoyxatiView(OchiqView):
@@ -137,7 +202,9 @@ class PinLoginView(OchiqView):
             raise NotFound('Xodim topilmadi.')
         pin_tekshir(xodim, pin)
         from apps.notify import services as notify
-        if notify.kirish_kodi_kerak(xodim):  # FT-1.1, FT-22.3: rahbar kirishi Telegram kod bilan tasdiqlanadi
+        # FT-1.1, FT-22.3: rahbar kirishi Telegram kod bilan tasdiqlanadi. Qurilmani hozirgina Telegramdan
+        # o'zi tasdiqlagan bo'lsa — shaxsi Telegram orqali allaqachon tasdiqlangan, ikkinchi kod so'ralmaydi.
+        if notify.kirish_kodi_kerak(xodim) and not notify.tg_tasdiq_kodsiz_kirish(xodim, qurilma):
             kod = str(request.data.get('telegram_kod', '')).strip()
             if not kod:
                 if not notify.kirish_kodi_yubor(xodim):
@@ -147,7 +214,11 @@ class PinLoginView(OchiqView):
             if not notify.kirish_kodini_tekshir(xodim, kod):
                 raise AuthenticationFailed("Telegram kod noto'g'ri yoki muddati o'tgan.")
         Salon.objects.filter(id=salon.id).update(oxirgi_kirish=timezone.now())  # platforma egasi uchun faollik
-        IshonchliQurilma.objects.filter(id=qurilma.id).update(oxirgi_kirish=timezone.now())
+        yangi = {'oxirgi_kirish': timezone.now()}
+        modeli = str(request.data.get('qurilma_modeli') or '')[:200]
+        if modeli:  # faqat to'liq kirgandan keyin; eski qurilmalar ham modelini shu yo'l bilan oladi
+            yangi['modeli'] = modeli
+        IshonchliQurilma.objects.filter(id=qurilma.id).update(**yangi)
         return Response({'token': make_staff_token(xodim, qurilma),
                          'xodim': {'id': xodim.id, 'ism': xodim.ism, 'rol': xodim.rol}})
 

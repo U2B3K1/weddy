@@ -84,8 +84,11 @@ function Tafsilot({ id, rahbar, bajar }) {
           <span key={d.id} className={`dona ${d.holat !== 'bosh' ? 'dona-yaroqsiz' : ''}`}>
             {d.yorliq}
             {rahbar ? (
-              <select value={d.holat} onChange={(e) => amal(() => donaHolati(d.id, e.target.value), `${d.yorliq}: holat o'zgardi.`)}>
-                {Object.entries(DONA_HOLAT).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+              // Ta'mirga berish va undan qaytarish faqat pastdagi «Ta'mir» bo'limi orqali (xarajat va jurnal yoziladi)
+              <select value={d.holat} disabled={d.holat === 'tamirda'} title={d.holat === 'tamirda' ? "Avval ta'mirni tugating" : undefined}
+                onChange={(e) => amal(() => donaHolati(d.id, e.target.value), `${d.yorliq}: holat o'zgardi.`)}>
+                {Object.entries(DONA_HOLAT).filter(([k]) => k !== 'tamirda' || d.holat === 'tamirda')
+                  .map(([k, v]) => <option key={k} value={k}>{v}</option>)}
               </select>
             ) : <small>{DONA_HOLAT[d.holat]}</small>}
             {fil.length > 0 && (rahbar ? (

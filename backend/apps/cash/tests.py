@@ -123,11 +123,11 @@ class KassaAPITests(KassaBase):
         c = APIClient()
         c.credentials(HTTP_AUTHORIZATION='Bearer ' + make_staff_token(self.malika))
         self.assertFalse(c.get('/api/kassa/smena/').json()['ochiq'])
-        self.assertEqual(c.post('/api/kassa/tolovlar/', {'tur': 'xarajat', 'summa': 1000},
+        self.assertEqual(c.post('/api/kassa/tolovlar/', {'tur': 'inkassatsiya', 'summa': 1000},
                                 format='json').status_code, 409)
         self.assertEqual(c.post('/api/kassa/smena/ochish/', {'boshlangich_qoldiq': 500},
                                 format='json').status_code, 201)
-        self.assertEqual(c.post('/api/kassa/tolovlar/', {'tur': 'xarajat', 'summa': 100},
+        self.assertEqual(c.post('/api/kassa/tolovlar/', {'tur': 'inkassatsiya', 'summa': 100},
                                 format='json').status_code, 201)
         h = c.get('/api/kassa/smena/').json()
         self.assertEqual(h['hisobot']['hisobdagi_qoldiq'], 400)

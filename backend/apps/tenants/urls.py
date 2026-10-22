@@ -5,6 +5,7 @@ from . import views, views_admin, views_filial, views_integratsiya, views_platfo
 urlpatterns = [
     path('salon-login/', views.SalonLoginView.as_view()),
     path('xodimlar/', views.XodimlarRoyxatiView.as_view()),
+    path('qurilma-tasdiq/', views.QurilmaTasdiqView.as_view()),
     path('pin-login/', views.PinLoginView.as_view()),
     path('pin-tekshir/', views.PinTekshirView.as_view()),
     path('me/', views.MeView.as_view()),

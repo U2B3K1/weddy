@@ -70,3 +70,9 @@ class AksessuarBron(SalonModel):
     @classmethod
     def faol(cls):
         return cls.objects.exclude(turi=Bron.Turi.VAQTINCHALIK, muddati__lt=timezone.now())
+
+    @classmethod
+    def kelgusi(cls):
+        """Hali tugamagan faol bronlar. Qaytarilgan zakazning bronlari o'chirilmaydi — ular donani abadiy
+        «bronlari bor» qilib to'smasligi uchun o'tib ketganlari hisobga olinmaydi."""
+        return cls.faol().filter(oraliq__endswith__gt=timezone.localdate())

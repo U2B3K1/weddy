@@ -96,9 +96,21 @@ class AksessuarQoshishTests(AksBase):
 
     def test_royxatda_yaroqli_donalar_soni(self):
         d = self.fata.donalar.first()
-        self.api(self.rahbar).patch(f'/api/donalar/{d.id}/', {'holat': 'tamirda'}, format='json')
+        self.api(self.rahbar).patch(f'/api/donalar/{d.id}/', {'holat': 'yoqolgan'}, format='json')
         a = self.api(self.rahbar).get('/api/aksessuarlar/').json()[0]
         self.assertEqual((a['donalar_soni'], a['yaroqli_donalar']), (3, 2))
+
+    def test_tamir_holati_faqat_tamir_jurnali_orqali(self):
+        d = self.fata.donalar.first()
+        c = self.api(self.rahbar)
+        self.assertEqual(c.patch(f'/api/donalar/{d.id}/', {'holat': 'tamirda'}, format='json').status_code, 409)
+        AksessuarDona.objects.filter(id=d.id).update(holat='tamirda')
+        self.assertEqual(c.patch(f'/api/donalar/{d.id}/', {'holat': 'bosh'}, format='json').status_code, 409)
+
+    def test_rad_etilgan_holat_filialni_ham_ozgartirmaydi(self):
+        d = self.fata.donalar.first()
+        r = self.api(self.rahbar).patch(f'/api/donalar/{d.id}/', {'holat': 'tamirda', 'filial': 'abc'}, format='json')
+        self.assertEqual(r.status_code, 404)  # 500 emas
 
 
 class BandlikTests(AksBase):

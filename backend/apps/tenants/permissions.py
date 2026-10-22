@@ -22,4 +22,9 @@ class SalonYozishRuxsati(IsStaff):
             return False
         if request.method in self.SAFE:
             return True
-        return request.salon.holat in (Salon.Holat.SINOV, Salon.Holat.FAOL)
+        return salon_yoza_oladimi(request.salon)
+
+
+def salon_yoza_oladimi(salon):
+    """Salon yozishga ochiqmi (FT-22.8). GET ichidagi yon yozuvlar (qoralama, avto-bekor) ham shunga qaraydi."""
+    return salon.holat in (Salon.Holat.SINOV, Salon.Holat.FAOL)

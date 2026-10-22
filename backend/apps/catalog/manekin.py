@@ -89,8 +89,9 @@ def qatlam_yaratish(*, salon, rasm):
     qatlam = _webp(fonni_olib_tashla(img, _fon_farqi(salon)))
     eski = rasm.fonsiz.name if rasm.fonsiz else None
     rasm.fonsiz.save('fonsiz.webp', ContentFile(qatlam), save=True)
-    if eski and eski != rasm.fonsiz.name:
-        rasm.fonsiz.storage.delete(eski)
+    if eski and eski != rasm.fonsiz.name:  # tranzaksiya qaytsa qator eski faylga ishora qiladi — u o'chmasin
+        storage = rasm.fonsiz.storage
+        transaction.on_commit(lambda: storage.delete(eski))
     libos = Libos.objects.select_for_update().get(id=rasm.libos_id)
     if libos.manekin_rasm_id != rasm.id:  # yangi rasm — joylashuv standartga qaytadi
         libos.manekin_rasm = rasm
@@ -133,8 +134,9 @@ def aksessuar_qatlami(*, salon, aksessuar, fayl):
     eski = a.manekin_rasm.name if a.manekin_rasm else None
     a.manekin_rasm.save('aksessuar.webp', ContentFile(qatlam), save=False)
     a.save(update_fields=['manekin_rasm'])
-    if eski and eski != a.manekin_rasm.name:
-        a.manekin_rasm.storage.delete(eski)
+    if eski and eski != a.manekin_rasm.name:  # faqat tranzaksiya muvaffaqiyatli tugagach
+        storage = a.manekin_rasm.storage
+        transaction.on_commit(lambda: storage.delete(eski))
     return a
 
 

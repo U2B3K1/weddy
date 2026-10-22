@@ -3,10 +3,9 @@ from django.db import transaction
 from django.db.models import Sum
 from django.utils import timezone
 
-from apps.cash.services import tolangan_summa
 from apps.tenants.models import sozlama
 
-from .changes import OZGARTIRILADI, _log, _qayta_hisobla
+from .changes import OZGARTIRILADI, _log, _qayta_hisobla, tolov_holatini_mosla
 from .models import Primerka, Zakaz
 
 
@@ -36,8 +35,7 @@ def _narxni_yangila(zakaz, xodim, eski):
     if zakaz.xizmatlar == eski:
         return
     _qayta_hisobla(zakaz)
-    if zakaz.tolangan_sana and tolangan_summa(zakaz) < zakaz.jami:
-        zakaz.tolangan_sana = None  # qoldiq paydo bo'ldi: to'langach daromad qayta tan olinadi (6.1)
+    tolov_holatini_mosla(zakaz, PrimerkaXatosi)  # 6.1: qoldiq / to'liq to'langan / ortiqcha to'lov
     zakaz.save()
     _log(zakaz, xodim, 'moslash_narxi', eski, zakaz.xizmatlar)
 

@@ -4,7 +4,7 @@ from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
 
 from django.conf import settings
-from django.db.models import Count, Sum
+from django.db.models import Count, Q, Sum
 from django.utils import timezone
 
 from apps.cash.models import Tolov
@@ -51,6 +51,18 @@ def sotuvchi_bonuslari(salon, yil, oy, filial=None):
             'jami': sum(q['bonus'] for q in qatorlar)}
 
 
+def tushum_zakazlari(salon, boshi, oxiri, f):
+    """Oyda to'liq to'langan va shu oy oxirigacha bekor qilinmagan zakazlar."""
+    return (Zakaz.objects.filter(salon=salon, tolangan_sana__range=(boshi, oxiri), **f)
+            .exclude(Q(holat=Zakaz.Holat.BEKOR) & (Q(bekor_vaqti__isnull=True) | Q(bekor_vaqti__date__lte=oxiri))))
+
+
+def storno_zakazlari(salon, boshi, oxiri, f):
+    """Oldingi oylarda daromadga kirgan, shu oyda bekor qilingan zakazlar — tushumdan ayiriladi."""
+    return Zakaz.objects.filter(salon=salon, holat=Zakaz.Holat.BEKOR, bekor_vaqti__date__range=(boshi, oxiri),
+                                tolangan_sana__lt=boshi, **f)
+
+
 def foyda_zarar(salon, yil, oy, soliq_foizi=None, filial=None):
     """Foyda va zarar (Ilova B). `filial` berilsa — shu filial natijasi: uning zakazlari, liboslari va unga yozilgan
     xarajatlar. Filialga biriktirilmagan (umumiy) xarajat va liboslar filial ko'rinishiga kirmaydi."""
@@ -61,10 +73,11 @@ def foyda_zarar(salon, yil, oy, soliq_foizi=None, filial=None):
         oz = integratsiya(salon).soliq_foizi
         soliq_foizi = settings.SOLIQ_FOIZI if oz is None else float(oz) if oz % 1 else int(oz)
 
-    # 1. Tushum: faqat shu oyda to'liq to'langan zakazlar (6.1); bekor qilinganlar chiqariladi
-    zakazlar = Zakaz.objects.filter(salon=salon, tolangan_sana__range=(boshi, oxiri), **f).exclude(
-        holat=Zakaz.Holat.BEKOR)
-    tushum = zakazlar.aggregate(s=Sum('jami'))['s'] or 0
+    # 1. Tushum: faqat shu oyda to'liq to'langan zakazlar (6.1). Shu oy ichida bekor qilingani chiqariladi;
+    # keyingi oyda bekor qilingani o'tgan oy daromadini o'zgartirmaydi — bekor qilingan oyda storno bo'ladi.
+    zakazlar = tushum_zakazlari(salon, boshi, oxiri, f)
+    storno = storno_zakazlari(salon, boshi, oxiri, f).aggregate(s=Sum('jami'))['s'] or 0
+    tushum = (zakazlar.aggregate(s=Sum('jami'))['s'] or 0) - storno
 
     xarajatlar = Xarajat.objects.filter(salon=salon, holat=Xarajat.Holat.TASDIQLANDI,
                                         sana__range=(boshi, oxiri), **f)
@@ -98,7 +111,7 @@ def foyda_zarar(salon, yil, oy, soliq_foizi=None, filial=None):
 
     return {
         'oy': f'{yil}-{oy:02d}', 'filial': filial,
-        'tushum': tushum, 'zakazlar_soni': zakazlar.count(),
+        'tushum': tushum, 'zakazlar_soni': zakazlar.count(), 'storno': storno,
         'togridan_togri_xarajat': togridan_jami, 'togridan_togri_moddalar': modda_boyicha(togridan),
         'yalpi_foyda': yalpi,
         'operatsion_xarajat': operatsion_jami, 'operatsion_moddalar': modda_boyicha(operatsion),
@@ -129,9 +142,11 @@ def pnl_tafsilot(salon, yil, oy, qator, filial=None):
         q.append({'matn': matn, 'summa': summa, 'sana': sana, 'zakaz_id': zakaz.id if zakaz else None})
 
     if qator == 'tushum':
-        for z in (Zakaz.objects.filter(salon=salon, tolangan_sana__range=(boshi, oxiri), **f).exclude(holat=Zakaz.Holat.BEKOR)
-                  .select_related('mijoz').order_by('tolangan_sana', 'raqam')):
+        for z in tushum_zakazlari(salon, boshi, oxiri, f).select_related('mijoz').order_by('tolangan_sana', 'raqam'):
             qosh(f'Zakaz #{z.raqam} · {z.mijoz.fio or z.mijoz.telefon}', z.jami, z.tolangan_sana, z)
+        for z in storno_zakazlari(salon, boshi, oxiri, f).select_related('mijoz').order_by('bekor_vaqti'):
+            qosh(f'Bekor qilindi (storno, {z.tolangan_sana:%Y-%m} daromadi) · zakaz #{z.raqam} · '
+                 f'{z.mijoz.fio or z.mijoz.telefon}', -z.jami, timezone.localtime(z.bekor_vaqti).date(), z)
     elif qator in ('togridan', 'operatsion'):
         xs = Xarajat.objects.filter(salon=salon, holat=Xarajat.Holat.TASDIQLANDI, sana__range=(boshi, oxiri), **f)
         from .moddalar import modda_nomlari, togridan_kodlar

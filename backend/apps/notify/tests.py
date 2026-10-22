@@ -12,7 +12,7 @@ from apps.orders.discounts import chegirma_sorash
 from apps.orders.models import ChegirmaSorovi, Zakaz
 from apps.orders.services import zakaz_yaratish
 from apps.tenants.auth import make_device_token, make_staff_token
-from apps.tenants.models import IshonchliQurilma, Xodim
+from apps.tenants.models import IshonchliQurilma, Jurnal, Xodim
 
 from . import services, telegram
 from .management.commands.eslatmalarni_yuborish import eslatmalarni_yoz
@@ -275,6 +275,147 @@ class KirishKodiTests(Base):
     def test_kod_yuborilmasa_503(self):
         telegram.xabar_yubor.side_effect = telegram.TelegramXatosi('tarmoq')
         self.assertEqual(self.pin(self.rahbar, '1111').status_code, 503)
+
+
+@BOT
+class QurilmaTelegramTasdiqTests(Base):
+    """FT-22.2: yangi qurilma rahbarning Telegrami orqali tasdiqlanadi (deep link yoki tugma)."""
+
+    def setUp(self):
+        super().setUp()
+        IshonchliQurilma.objects.create(salon=self.salon, nomi='Kassa')  # birinchi (ishonchli) qurilma
+        with self.captureOnCommitCallbacks(execute=True):
+            r = APIClient().post('/api/auth/salon-login/', {'login': 'ezaz', 'parol': 'parol', 'qurilma_nomi': 'Yangi',
+                                                            'qurilma_modeli': 'Samsung SM-T505 · Android 13'}, format='json')
+        self.assertTrue(r.json()['kutilmoqda'])
+        self.dev = r.json()['qurilma_token']
+        self.q = IshonchliQurilma.objects.get(nomi='Yangi')
+
+    def holat(self):
+        return APIClient().get('/api/auth/qurilma-tasdiq/', HTTP_X_DEVICE_TOKEN=self.dev)
+
+    def start(self, chat_id, havola):
+        return yangilanishni_ishla({'message': {'text': '/start ' + havola.split('start=')[1],
+                                                'chat': {'id': chat_id, 'type': 'private'}}})
+
+    def pin(self, xodim, pin, **kw):
+        return APIClient().post('/api/auth/pin-login/', {'xodim_id': xodim.id, 'pin': pin, **kw}, format='json',
+                                HTTP_X_DEVICE_TOKEN=self.dev)
+
+    def tugma(self, chat, data):
+        with mock.patch.object(telegram, 'api'):
+            return yangilanishni_ishla({'callback_query': {'id': 'c', 'from': {'id': chat}, 'data': data}})
+
+    def tasdiq_post(self, xodim, pin):
+        return APIClient().post('/api/auth/qurilma-tasdiq/', {'xodim_id': xodim.id, 'pin': pin}, format='json',
+                                HTTP_X_DEVICE_TOKEN=self.dev)
+
+    def test_rahbarga_ruxsat_rad_tugmali_xabar_navbat_orqali_va_model(self):
+        self.assertEqual(self.yuborilgan, [])  # salon logini Telegramni kutmaydi — xabar navbatda
+        services.kutayotganlarni_yubor()
+        chat, matn, tugmalar = self.yuborilgan[-1]
+        self.assertEqual(chat, 111)
+        self.assertIn('Samsung SM-T505', matn)
+        self.assertEqual([t['callback_data'] for t in tugmalar[0]], [f'qr:{self.q.id}:t', f'qr:{self.q.id}:r'])
+        self.assertEqual(self.api(self.rahbar).get('/api/qurilmalar/').json()[0]['modeli'], 'Samsung SM-T505 · Android 13')
+
+    def test_qurilma_xabarlari_cheklanadi(self):
+        for i in range(5):
+            with self.captureOnCommitCallbacks(execute=True):
+                APIClient().post('/api/auth/salon-login/', {'login': 'ezaz', 'parol': 'parol', 'qurilma_nomi': f'S{i}'},
+                                 format='json')
+        self.assertEqual(Xabar.objects.filter(tur='qurilma_kutmoqda').count(), services.QURILMA_XABAR_CHEGARASI)
+
+    def test_havola_qayta_sorovda_ozgarmaydi(self):
+        d1, d2 = self.holat().json(), self.holat().json()
+        self.assertEqual(d1['tg_havola'], d2['tg_havola'])  # ikki tab / sahifa yangilanishi eski QR ni buzmaydi
+        self.assertIsNotNone(d1['tg_tugaydi'])
+        IshonchliQurilma.objects.filter(id=self.q.id).update(tg_token_tugaydi=timezone.now() + timedelta(minutes=1))
+        self.assertNotEqual(self.holat().json()['tg_havola'], d1['tg_havola'])  # tugashiga oz qoldi — yangisi
+
+    def test_havola_avval_tasdiq_soraydi_va_ikkinchi_kodsiz_kirish(self):
+        havola = self.holat().json()['tg_havola']
+        self.assertTrue(havola.startswith('https://t.me/weddy_test_bot?start=q_'))
+        self.assertNotIn(havola.split('q_')[1], IshonchliQurilma.objects.get(id=self.q.id).tg_token)  # faqat xesh
+        self.assertIn('Bu havola faqat shu salon rahbari', self.start(999, havola))  # begona akkaunt
+        self.assertIn('Samsung SM-T505', self.start(111, havola))
+        self.assertEqual([t['callback_data'] for t in self.yuborilgan[-1][2][0]], [f'qr:{self.q.id}:h', f'qr:{self.q.id}:r'])
+        self.assertFalse(self.holat().json()['tasdiqlangan'])  # havolani bosishning o'zi tasdiqlamaydi
+        self.assertIn('Ruxsat berildi', self.tugma(111, f'qr:{self.q.id}:h'))
+        self.assertIn('eskirgan', self.start(111, havola))  # bir martalik
+        self.assertTrue(self.holat().json()['tasdiqlangan'])
+        self.assertEqual(self.pin(self.rahbar, '1111').status_code, 200)  # o'zi tasdiqladi — ikkinchi kod yo'q
+        self.assertEqual(self.pin(self.rahbar, '1111').status_code, 202)  # keyingi kirishda kod yana kerak
+        self.assertTrue(Jurnal.objects.filter(harakat='qurilma_tasdiqlandi', obyekt__contains='Telegram havola').exists())
+
+    def test_havola_muddati_otadi(self):
+        havola = self.holat().json()['tg_havola']
+        IshonchliQurilma.objects.filter(id=self.q.id).update(tg_token_tugaydi=timezone.now() - timedelta(seconds=1))
+        self.assertIn('eskirgan', self.start(111, havola))
+        self.assertIn("muddati o'tgan", self.tugma(111, f'qr:{self.q.id}:h'))  # «Ha, bu men» ham faqat amaldagi havola bilan
+        self.assertFalse(self.holat().json()['tasdiqlangan'])
+
+    def test_boshqa_rahbar_tasdiqlasa_kod_soraladi(self):
+        rahbar2 = Xodim.objects.create(salon=self.salon, ism='Ikkinchi', rol=Xodim.Rol.RAHBAR, telegram_id=222)
+        rahbar2.set_pin('2222'); rahbar2.save()
+        self.start(222, self.holat().json()['tg_havola'])
+        self.tugma(222, f'qr:{self.q.id}:h')
+        self.assertEqual(self.pin(self.rahbar, '1111').status_code, 202)
+
+    def test_tugmalar_ruxsat_va_rad(self):
+        self.assertIn('faqat shu salon rahbariga', self.tugma(999, f'qr:{self.q.id}:t'))
+        self.assertIn('Ruxsat berildi', self.tugma(111, f'qr:{self.q.id}:t'))
+        self.assertEqual(self.pin(self.rahbar, '1111').status_code, 202)  # tugma — kirish kodi baribir kerak
+        self.assertIn('rad etildi', self.tugma(111, f'qr:{self.q.id}:r'))
+        self.assertEqual(self.holat().status_code, 401)  # qurilma chiqarildi
+
+    def test_oxirgi_ishonchli_qurilmani_rad_etib_bolmaydi(self):
+        IshonchliQurilma.objects.exclude(id=self.q.id).delete()
+        IshonchliQurilma.objects.filter(id=self.q.id).update(tasdiqlangan=True)
+        self.assertIn('Oxirgi ishonchli', services.qurilma_tugma_ishla(111, self.q.id, 'r'))
+        self.assertEqual(self.api(self.rahbar).delete(f'/api/qurilmalar/{self.q.id}/').status_code, 409)
+
+    def test_telegram_ulamagan_rahbar_pin_bilan_tasdiqlaydi(self):
+        d = self.holat().json()
+        self.assertEqual(d['rahbarlar'], [])  # yagona rahbar Telegram ulagan — faqat Telegram orqali
+        Xodim.objects.filter(id=self.rahbar.id).update(telegram_id=None)
+        d = self.holat().json()
+        self.assertIsNone(d['tg_havola'])  # Telegram ulagan rahbar yo'q — havola hech kimga ishlamasdi
+        self.assertEqual(d['rahbarlar'], [{'id': self.rahbar.id, 'ism': 'Rahbar'}])
+        self.assertEqual(self.tasdiq_post(self.malika, '1234').status_code, 404)  # sotuvchi tasdiqlay olmaydi
+        self.assertEqual(self.tasdiq_post(self.rahbar, '0000').status_code, 400)  # 401 emas
+        self.assertTrue(self.tasdiq_post(self.rahbar, '1111').json()['tasdiqlangan'])
+        self.assertEqual(self.pin(self.malika, '1234').status_code, 200)
+
+    def test_pin_taxmini_salon_boyicha_sutkada_cheklanadi(self):
+        Xodim.objects.filter(id=self.rahbar.id).update(telegram_id=None)
+        from apps.tenants.views import QURILMA_PIN_XATO_SUTKADA
+        for i in range(QURILMA_PIN_XATO_SUTKADA):
+            Xodim.objects.filter(id=self.rahbar.id).update(bloklangan_gacha=None)  # 15 daq. blokni chetlab o'tamiz
+            self.assertEqual(self.tasdiq_post(self.rahbar, f'000{i}').status_code, 400)
+        Xodim.objects.filter(id=self.rahbar.id).update(bloklangan_gacha=None)
+        self.assertEqual(self.tasdiq_post(self.rahbar, '1111').status_code, 403)  # to'g'ri PIN ham — bugun yopiq
+        self.assertEqual(Jurnal.objects.filter(harakat='qurilma_pin_xato').count(), QURILMA_PIN_XATO_SUTKADA)
+
+    @override_settings(TELEGRAM_BOT_TOKEN='')
+    def test_bot_sozlanmagan_bolsa_telegram_ulagan_rahbar_ham_pin_bilan(self):
+        d = self.holat().json()
+        self.assertIsNone(d['tg_havola'])
+        self.assertEqual(d['rahbarlar'], [{'id': self.rahbar.id, 'ism': 'Rahbar'}])  # aks holda qotib qolardi
+        self.assertTrue(self.tasdiq_post(self.rahbar, '1111').json()['tasdiqlangan'])
+
+    def test_faqat_korish_salonida_qurilma_ozgarmaydi(self):
+        from apps.tenants.models import Salon
+        Salon.objects.filter(id=self.salon.id).update(holat=Salon.Holat.FAQAT_KORISH)
+        self.assertIn("faqat ko'rish", self.tugma(111, f'qr:{self.q.id}:t'))
+        self.assertFalse(self.holat().json()['tasdiqlangan'])
+
+    def test_pin_login_model_faqat_toliq_kirishda_yangilanadi(self):
+        IshonchliQurilma.objects.filter(id=self.q.id).update(tasdiqlangan=True, modeli='')
+        self.pin(self.rahbar, '1111', qurilma_modeli='Begona')  # 202: Telegram kod hali kiritilmagan
+        self.assertEqual(IshonchliQurilma.objects.get(id=self.q.id).modeli, '')
+        self.pin(self.malika, '1234', qurilma_modeli='iPad · iPadOS 17')
+        self.assertEqual(IshonchliQurilma.objects.get(id=self.q.id).modeli, 'iPad · iPadOS 17')
 
 
 @BOT

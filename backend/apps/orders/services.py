@@ -2,6 +2,7 @@ from collections import Counter
 
 from django.db import transaction
 from django.db.models import Max
+from django.utils import timezone
 
 from apps.bookings.services import BandlikXatosi, aksessuar_bron_qilish, bron_qilish, qulfni_olish
 from apps.catalog.models import Aksessuar, Libos
@@ -19,6 +20,8 @@ def zakaz_yaratish(*, salon, xodim, telefon, olib_ketish, qaytarish, libos_idlar
     """
     if not libos_idlari:
         raise BandlikXatosi("Zakazga kamida bitta libos qo'shing.")
+    if olib_ketish < timezone.localdate():  # sanani ko'chirishdagi qoida bilan bir xil
+        raise BandlikXatosi("O'tgan sanaga zakaz ochib bo'lmaydi.")
     # Takrorlangan aksessuar id — soni (masalan, 2 ta fata); har bir dona alohida band qilinadi (FT-4.2)
     aks_soni = Counter(aksessuar_idlari)
     aksessuarlar = {a.id: a for a in Aksessuar.objects.select_related('kategoriya')

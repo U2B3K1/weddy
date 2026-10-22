@@ -1,4 +1,5 @@
 from django.db import IntegrityError, transaction
+from django.utils import timezone
 
 from apps.tenants.models import Xodim, jurnalga_yoz, sozlama
 
@@ -97,6 +98,11 @@ def libosni_ozgartirish(*, salon, rahbar, libos, **maydonlar):
             raise KatalogXatosi("Bu holatga qo'lda o'tkazib bo'lmaydi.")
         if libos.tamirlar.filter(tugagan__isnull=True).exists():
             raise KatalogXatosi("Libosda tugallanmagan ta'mir bor: avval ta'mirni tugating.")
+        from apps.bookings.models import Bron
+        if holat != Libos.Holat.BOSH and Bron.faol().filter(
+                libos=libos, oraliq__endswith__gt=timezone.localdate()).exists():
+            # aks holda mijozning zakazi sotilgan/arxivdagi libosga bog'liq qolib ketardi
+            raise KatalogXatosi("Libosning kelgusi bronlari bor: avval zakazlarni boshqa libosga o'tkazing yoki bekor qiling.")
         jurnalga_yoz(salon, rahbar, 'libos_holati', f'libos {libos.artikul}', libos.holat, holat)
         libos.holat = holat
     libos.save()
@@ -166,6 +172,10 @@ def aksessuarni_ozgartirish(*, salon, rahbar, aksessuar, **maydonlar):
     a = Aksessuar.objects.select_for_update().get(id=aksessuar.id, salon=salon)
     if a.holat == Aksessuar.Holat.TASDIQ_KUTILMOQDA:
         raise KatalogXatosi('Avval aksessuarni tasdiqlang.')
+    if maydonlar.get('holat') == Aksessuar.Holat.ARXIV and a.holat != Aksessuar.Holat.ARXIV:
+        from apps.bookings.models import AksessuarBron
+        if AksessuarBron.kelgusi().filter(dona__aksessuar=a).exists():
+            raise KatalogXatosi("Aksessuarning kelgusi bronlari bor: avval zakazlardan olib tashlang.")
     for nom, qiymat in maydonlar.items():
         eski = getattr(a, nom)
         if qiymat is not None and qiymat != eski:

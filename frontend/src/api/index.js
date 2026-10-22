@@ -51,8 +51,7 @@ export const oflaynToplam = () => api.get('/oflayn-toplam/').then((r) => r.data)
 // Rahbar qurilmalar ro'yxatida ajrata olishi uchun: «Chrome · Windows · 09.10 12:50» kabi nom (FT-22.2)
 const qurilmaNomi = () => {
   const ua = navigator.userAgent
-  const brauzer = /Edg\//.test(ua) ? 'Edge' : /Chrome\//.test(ua) ? 'Chrome' : /Firefox\//.test(ua) ? 'Firefox'
-    : /Safari\//.test(ua) ? 'Safari' : 'Brauzer'
+  const brauzer = brauzerVersiyasi(ua).split(' ')[0] || 'Brauzer'  // model qatoridagi brauzer bilan bir xil bo'lsin
   const tizim = /iPad/.test(ua) ? 'iPad' : /iPhone/.test(ua) ? 'iPhone' : /Android/.test(ua) ? 'Android'
     : /Windows/.test(ua) ? 'Windows' : /Mac/.test(ua) ? 'Mac' : 'qurilma'
   const d = new Date()
@@ -60,12 +59,64 @@ const qurilmaNomi = () => {
   return `${brauzer} · ${tizim} · ${ikki(d.getDate())}.${ikki(d.getMonth() + 1)} ${ikki(d.getHours())}:${ikki(d.getMinutes())}`
 }
 
-export const salonLogin = (login, parol) =>
-  api.post('/auth/salon-login/', { login, parol, qurilma_nomi: qurilmaNomi() }).then((r) => r.data)
+// Qurilma modeli: «Samsung SM-T505 · Android 13 · Chrome 130». Chromium brauzerlari aniq modelni
+// userAgentData orqali beradi (oddiy userAgent da Android modeli endi «K» deb yashiriladi); qolganlari userAgent dan.
+// Tartib muhim: Edge/Opera/Yandex userAgent ida «Chrome/…» ham bor (va undan oldin turadi), shuning uchun
+// bitta umumiy regex hammasini Chrome deb olardi. iOS dagi Chrome/Firefox/Edge nomini boshqacha yozadi.
+// Samsung plansheti standart brauzeri (SamsungBrowser) ham «Chrome/…» deb yozadi.
+const BRAUZERLAR = [[/(?:EdgA?|EdgiOS)\/(\d+)/, 'Edge'], [/(?:OPR|OPT)\/(\d+)/, 'Opera'], [/YaBrowser\/(\d+)/, 'Yandex'],
+  [/SamsungBrowser\/(\d+)/, 'Samsung Internet'], [/(?:Firefox|FxiOS)\/(\d+)/, 'Firefox'], [/(?:Chrome|CriOS)\/(\d+)/, 'Chrome'], [/Version\/(\d+(?:\.\d+)?).*Safari\//, 'Safari']]
+const brauzerVersiyasi = (ua) => {
+  for (const [re, nomi] of BRAUZERLAR) {
+    const m = ua.match(re)
+    if (m) return `${nomi} ${m[1]}`
+  }
+  return ''
+}
+const BRENDLAR = [[/^SM-/, 'Samsung'], [/^Pixel/, ''], [/^(Redmi|POCO|Mi )/i, 'Xiaomi'], [/^(CPH|RMX)\d/, 'Oppo/Realme']]
+let modelKesh
+export const qurilmaModeli = async () => {
+  if (modelKesh !== undefined) return modelKesh
+  const ua = navigator.userAgent
+  let model = ''
+  let tizim = ''
+  try {
+    const h = await navigator.userAgentData?.getHighEntropyValues(['model', 'platformVersion'])
+    if (h) {
+      model = h.model || ''
+      const v = h.platformVersion || ''
+      tizim = h.platform === 'Windows' ? (parseInt(v, 10) >= 13 ? 'Windows 11' : 'Windows 10')
+        : h.platform === 'Android' ? `Android ${parseInt(v, 10) || ''}`.trim()
+          : h.platform === 'macOS' ? `macOS ${v.split('.').slice(0, 2).join('.')}`.trim() : h.platform || ''
+    }
+  } catch { /* brauzer bermasa — userAgent dan */ }
+  const ios = ua.match(/OS (\d+)_(\d+)/)
+  const ipad = /iPad/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)  // iPadOS o'zini Mac deb ko'rsatadi
+  if (ipad) { model = 'iPad'; tizim = ios ? `iPadOS ${ios[1]}.${ios[2]}` : 'iPadOS' }
+  else if (/iPhone/.test(ua)) { model = 'iPhone'; tizim = ios ? `iOS ${ios[1]}.${ios[2]}` : 'iOS' }
+  if (!tizim) {
+    const a = ua.match(/Android ([\d.]+);\s*([^;)]+)/)
+    // «K» — Chrome yashirgan model; «Mobile/Tablet» — Firefox modelni umuman bermaydi
+    if (a) { tizim = `Android ${parseInt(a[1], 10)}`; if (!model && !/^(K|Mobile|Tablet)$/.test(a[2].trim())) model = a[2].replace(/ Build\/.*/, '').trim() }
+    else tizim = /Windows/.test(ua) ? 'Windows' : /Mac/.test(ua) ? 'Mac' : /Linux/.test(ua) ? 'Linux' : ''
+  }
+  const brend = BRENDLAR.find(([re]) => re.test(model))
+  if (brend?.[1]) model = `${brend[1]} ${model}`
+  const brauzer = brauzerVersiyasi(ua)
+  modelKesh = [model, tizim, brauzer].filter(Boolean).join(' · ').slice(0, 200)
+  return modelKesh
+}
+
+export const salonLogin = async (login, parol) =>
+  api.post('/auth/salon-login/', { login, parol, qurilma_nomi: qurilmaNomi(), qurilma_modeli: await qurilmaModeli() })
+    .then((r) => r.data)
 export const xodimlar = () => api.get('/auth/xodimlar/').then((r) => r.data)
+// Ruxsat kutayotgan qurilma: Telegram tasdiq havolasi va Telegram ulamagan rahbarlar (FT-22.2)
+export const qurilmaTasdiqHolati = () => api.get('/auth/qurilma-tasdiq/').then((r) => r.data)
+export const qurilmaPinTasdiq = (xodim_id, pin) => api.post('/auth/qurilma-tasdiq/', { xodim_id, pin }).then((r) => r.data)
 // Rahbar Telegram ulagan bo'lsa server 202 {telegram_kod_kerak} qaytaradi; kod bilan qayta yuboriladi (FT-22.3)
-export const pinLogin = (xodim_id, pin, telegram_kod) =>
-  api.post('/auth/pin-login/', { xodim_id, pin, telegram_kod }).then((r) => r.data)
+export const pinLogin = async (xodim_id, pin, telegram_kod) =>
+  api.post('/auth/pin-login/', { xodim_id, pin, telegram_kod, qurilma_modeli: await qurilmaModeli() }).then((r) => r.data)
 export const pinTekshir = (pin) => api.post('/auth/pin-tekshir/', { pin }).then((r) => r.data)
 export const arizaYubor = (body) => api.post('/auth/ariza/', body).then((r) => r.data)
 export const me = () => api.get('/auth/me/').then((r) => r.data)
@@ -201,7 +252,8 @@ export const mavsumiyQosh = (body) => post('/mavsumiy-narxlar/', body)
 export const mavsumiyOzgartir = (id, body) => patch(`/mavsumiy-narxlar/${id}/`, body)
 export const mavsumiyOchir = (id) => api.delete(`/mavsumiy-narxlar/${id}/`).then((r) => r.data)
 export const ustamaFoiz = (sana) => get('/narx/ustama/', { sana })
-export const hisobotTafsilot = (nom, kalit, dan, gacha) => get(`/hisobotlar/h/${nom}/tafsilot/`, { kalit, dan, gacha })
+export const hisobotTafsilot = (nom, kalit, dan, gacha, filtrlar = {}) =>
+  get(`/hisobotlar/h/${nom}/tafsilot/`, { kalit, dan, gacha, ...filtrlar })
 export const pnlTafsilot = (oy, qator, filial) => get('/hisobotlar/pnl/tafsilot/', { oy, qator, filial: filial || undefined })
 export const bonusHisobot = (oy) => get('/hisobotlar/bonus/', { oy })
 export const primerkaBelgila = (zakazId, vaqt) => post(`/zakazlar/${zakazId}/primerka/`, { vaqt })

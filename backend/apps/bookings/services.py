@@ -16,6 +16,12 @@ class BandlikXatosi(Exception):
     """Libos shu sanalarga band yoki bron qilib bo'lmaydi."""
 
 
+# Yangi zakazga faqat «bo'sh» libos (tozalashdagi va ta'mirdagi libos ro'yxatda chiqmaydi — talab).
+# Lekin MAVJUD zakazni ko'chirishda libosning bugungi vaqtinchalik holati (tozalash, ta'mir) to'siq emas:
+# ta'mir kelgusi bronlarni saqlaydi (tamir.py), ko'chirish ham o'sha bronni boshqa sanaga o'tkazadi xolos.
+QAYTA_BRONLANADI = (Libos.Holat.BOSH, Libos.Holat.TOZALASHDA, Libos.Holat.TAMIRDA)
+
+
 def bron_oraliq(libos, olib_ketish, qaytarish, standart_bufer=None):
     """Qaytarish kunidan keyin bufer kun ham band hisoblanadi (FT-2.4).
 
@@ -27,17 +33,35 @@ def bron_oraliq(libos, olib_ketish, qaytarish, standart_bufer=None):
     return Range(olib_ketish, qaytarish + timedelta(days=libos.samarali_bufer_kun(standart_bufer)), '[]')
 
 
-def eng_yaqin_bosh_sana(libos, olib_ketish, qaytarish, bufer):
-    """Band libos shu davomiylikda eng erta qachon bo'sh bo'lishi (FT-2.2, S27). Topilmasa None."""
+def eng_yaqin_bosh_sana(libos, olib_ketish, qaytarish, bufer, bronlar=None):
+    """Band libos shu davomiylikda eng erta qachon bo'sh bo'lishi (FT-2.2, S27). Topilmasa None.
+
+    `bronlar` — libosning `olib_ketish` dan keyin tugaydigan faol bron oraliqlari (ro'yxat aylanayotganda
+    bir martada olib uzatiladi); berilmasa bazadan o'qiladi.
+    """
+    if bronlar is None:
+        bronlar = list(Bron.faol().filter(libos=libos, oraliq__endswith__gt=olib_ketish)
+                       .values_list('oraliq', flat=True))
     davom = qaytarish - olib_ketish
     nomzod = olib_ketish
     for _ in range(60):
         oraliq = bron_oraliq(libos, nomzod, nomzod + davom, bufer)
-        tosiq = (Bron.faol().filter(libos=libos, oraliq__overlap=oraliq).order_by('-oraliq__endswith').first())
-        if not tosiq:
+        tosiqlar = [b for b in bronlar if _kesishadi(oraliq, b)]
+        if not tosiqlar:
             return nomzod
-        nomzod = tosiq.oraliq.upper  # yuqori chegara kirmaydi: bron va bufer tugagandan keyingi birinchi kun
+        # yuqori chegara kirmaydi: bron va bufer tugagandan keyingi birinchi kun
+        nomzod = max(b.upper + timedelta(days=1) if b.upper_inc else b.upper for b in tosiqlar)
     return None
+
+
+def _kesishadi(a, b):
+    """Ikki sana oralig'i kesishadimi (PostgreSQL `&&` kabi). Chegaralar `[]` yoki `[)` bo'lishi mumkin."""
+    def chegara(r):
+        yuqori = r.upper + timedelta(days=1) if r.upper_inc else r.upper
+        return (r.lower if r.lower_inc else r.lower + timedelta(days=1)), yuqori
+    a1, a2 = chegara(a)
+    b1, b2 = chegara(b)
+    return a1 < b2 and b1 < a2
 
 
 def bosh_liboslar(salon, olib_ketish, qaytarish, bandlarni_korsat=False, xodim=None, q=''):
@@ -55,23 +79,47 @@ def bosh_liboslar(salon, olib_ketish, qaytarish, bandlarni_korsat=False, xodim=N
         bandlarni_korsat = True
     natija = []
     bufer = sozlama(salon).bufer_kun
+    liboslar = list(liboslar)
+    if not liboslar:
+        return natija
+    # Har libosga alohida so'rov o'rniga (yuzlab libosda sekin edi): eng katta bufer bilan qamrovchi oraliqdagi
+    # bronlar va qulflar bir martada olinadi, har libosning o'z oralig'i bilan kesishishi shu yerda tekshiriladi.
+    qamrov = Range(olib_ketish, qaytarish + timedelta(days=max(l.samarali_bufer_kun(bufer) for l in liboslar)), '[]')
+    bronlar, qulflar = {}, {}
+    for libos_id, b_oraliq in (Bron.faol().filter(salon=salon, libos__in=liboslar, oraliq__overlap=qamrov)
+                               .values_list('libos_id', 'oraliq')):
+        bronlar.setdefault(libos_id, []).append(b_oraliq)
+    if xodim is not None:
+        for libos_id, q_oraliq in (LibosQulfi.objects.filter(libos__in=liboslar, oraliq__overlap=qamrov,
+                                                             tugaydi__gt=timezone.now())
+                                   .exclude(xodim=xodim).values_list('libos_id', 'oraliq')):
+            qulflar.setdefault(libos_id, []).append(q_oraliq)
+    keyingi = {}  # band liboslarning eng yaqin bo'sh sanasi uchun qamrovdan keyingi bronlar ham kerak
+    if bandlarni_korsat and bronlar:
+        for libos_id, b_oraliq in (Bron.faol().filter(salon=salon, libos_id__in=list(bronlar),
+                                                      oraliq__endswith__gt=olib_ketish)
+                                   .values_list('libos_id', 'oraliq')):
+            keyingi.setdefault(libos_id, []).append(b_oraliq)
     for libos in liboslar:
         oraliq = bron_oraliq(libos, olib_ketish, qaytarish, bufer)
-        band = Bron.faol().filter(salon=salon, libos=libos, oraliq__overlap=oraliq).exists()
+        band = any(_kesishadi(oraliq, b) for b in bronlar.get(libos.id, ()))
         if not band or bandlarni_korsat:
-            libos.qulflangan = (not band and xodim is not None
-                                and boshqa_qulf(libos, oraliq, xodim).exists())
-            libos.eng_yaqin_bosh = eng_yaqin_bosh_sana(libos, olib_ketish, qaytarish, bufer) if band else None
+            libos.qulflangan = not band and any(_kesishadi(oraliq, q) for q in qulflar.get(libos.id, ()))
+            libos.eng_yaqin_bosh = (eng_yaqin_bosh_sana(libos, olib_ketish, qaytarish, bufer,
+                                                        keyingi.get(libos.id, [])) if band else None)
             natija.append((libos, band))
     return natija
 
 
 @transaction.atomic
-def bron_qilish(*, salon, libos, olib_ketish, qaytarish, xodim, avans_bor=False, zakaz=None):
-    """Libosni sanalarga band qiladi. Ikki marta bron bazadagi cheklov bilan ham to'xtatiladi."""
+def bron_qilish(*, salon, libos, olib_ketish, qaytarish, xodim, avans_bor=False, zakaz=None, qayta=False):
+    """Libosni sanalarga band qiladi. Ikki marta bron bazadagi cheklov bilan ham to'xtatiladi.
+
+    `qayta=True` — mavjud zakazning o'sha libosini yangi sanaga ko'chirish (QAYTA_BRONLANADI).
+    """
     if qaytarish < olib_ketish:
         raise BandlikXatosi('Qaytarish sanasi olib ketishdan oldin bo\'lishi mumkin emas.')
-    if libos.salon_id != salon.id or libos.holat != Libos.Holat.BOSH:
+    if libos.salon_id != salon.id or libos.holat not in (QAYTA_BRONLANADI if qayta else (Libos.Holat.BOSH,)):
         raise BandlikXatosi('Libos mavjud emas yoki bron qilib bo\'lmaydi.')
 
     oraliq = bron_oraliq(libos, olib_ketish, qaytarish)

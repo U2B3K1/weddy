@@ -131,7 +131,7 @@ class QaytarishSerializer(serializers.Serializer):
     jarima_tolandi = serializers.IntegerField(min_value=0, default=0)
     tortilgan_gr = serializers.DecimalField(max_digits=7, decimal_places=2, required=False)
     baho = serializers.IntegerField(required=False)
-    izoh = serializers.CharField(required=False, allow_blank=True, default='')
+    izoh = serializers.CharField(required=False, allow_blank=True, default='', max_length=300)
 
 
 class QaytarishView(APIView):

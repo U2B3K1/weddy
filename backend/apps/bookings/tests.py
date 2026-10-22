@@ -83,6 +83,37 @@ class BandlikTests(TestCase):
         self.assertIn(self.a, bosh)
         self.bron(date(2026, 11, 11), date(2026, 11, 13))  # qayta bron qilsa bo'ladi
 
+    def test_sorovlar_soni_libos_soniga_bogliq_emas(self):
+        """Ro'yxat har libosga alohida so'rov yubormaydi (yuzlab libosda sekin edi)."""
+        from django.db import connection
+        from django.test.utils import CaptureQueriesContext
+
+        def sana():
+            with CaptureQueriesContext(connection) as c:
+                bosh_liboslar(self.salon, date(2026, 11, 11), date(2026, 11, 11), True, self.xodim)
+            return len(c)
+        self.bron(date(2026, 11, 10), date(2026, 11, 12))
+        oldin = sana()
+        for i in range(5):
+            l = libos_yarat(self.salon, self.kat, f'N{i}')
+            self.bron(date(2026, 11, 10), date(2026, 11, 12), libos=l)
+            self.bron(date(2026, 11, 14), date(2026, 11, 15), libos=l)
+        self.assertEqual(sana(), oldin)
+
+    def test_har_libos_oz_buferi_bilan(self):
+        """Bir martada olingan bronlar har libosning o'z buferi bilan tekshiriladi."""
+        b = libos_yarat(self.salon, self.kat, 'B', bufer_kun=0)
+        self.bron(date(2026, 11, 10), date(2026, 11, 12))
+        self.bron(date(2026, 11, 10), date(2026, 11, 12), libos=b)
+        bosh = [l.artikul for l, _ in bosh_liboslar(self.salon, date(2026, 11, 13), date(2026, 11, 13))]
+        self.assertEqual(bosh, ['B'])  # A ning buferi 1 kun, B niki 0
+
+    def test_eng_yaqin_bosh_ketma_ket_bronlardan_keyin(self):
+        self.bron(date(2026, 11, 10), date(2026, 11, 12))   # bufer bilan 13 gacha
+        self.bron(date(2026, 11, 14), date(2026, 11, 15))   # 16 gacha
+        res = bosh_liboslar(self.salon, date(2026, 11, 11), date(2026, 11, 11), bandlarni_korsat=True)
+        self.assertEqual(res[0][0].eng_yaqin_bosh, date(2026, 11, 17))
+
 
 class SalonlarAjratilganTests(TestCase):
     """S24: bir salon xodimi boshqa salon ma'lumotini ko'ra olmaydi."""

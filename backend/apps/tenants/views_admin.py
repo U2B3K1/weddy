@@ -269,7 +269,7 @@ class SalonRekvizitView(APIView):
 # --- Ishonchli qurilmalar (FT-22.2) ---
 
 def qurilma_json(q):
-    return {'id': q.id, 'nomi': q.nomi, 'qoshilgan': q.qoshilgan, 'tasdiqlangan': q.tasdiqlangan,
+    return {'id': q.id, 'nomi': q.nomi, 'modeli': q.modeli, 'qoshilgan': q.qoshilgan, 'tasdiqlangan': q.tasdiqlangan,
             'oxirgi_kirish': q.oxirgi_kirish, 'filial': q.filial_id}
 
 
@@ -295,9 +295,8 @@ class QurilmaView(APIView):
     def patch(self, request, pk):
         q = self._q(request, pk)
         if request.data.get('tasdiq') is True and not q.tasdiqlangan:
-            q.tasdiqlangan, q.tasdiqlagan = True, request.user
-            q.save(update_fields=['tasdiqlangan', 'tasdiqlagan'])
-            jurnalga_yoz(request.salon, request.user, 'qurilma_tasdiqlandi', f'qurilma {q.nomi}')
+            from apps.notify.services import qurilma_tasdiqla  # Telegram havolasi tokenini ham bekor qiladi
+            qurilma_tasdiqla(q, request.user)
         if 'filial' in request.data:  # qurilmani filialga biriktirish (yoki null — biriktirmaslik)
             from .models import Filial
             fid = request.data.get('filial')
@@ -309,13 +308,10 @@ class QurilmaView(APIView):
         return Response(qurilma_json(q))
 
     def delete(self, request, pk):
-        q = self._q(request, pk)
-        if not IshonchliQurilma.objects.filter(salon=request.salon, faol=True, tasdiqlangan=True).exclude(id=q.id).exists():
-            return Response({'detail': "Oxirgi ishonchli qurilmani o'chirib bo'lmaydi: hech kim kira olmay qoladi."},
-                            status=409)
-        q.faol = False
-        q.save(update_fields=['faol'])
-        jurnalga_yoz(request.salon, request.user, 'qurilma_chiqarildi', f'qurilma {q.nomi}')
+        from apps.notify.services import qurilma_chiqar  # Telegram tugmasi bilan bir xil qoida va qulf
+        xato = qurilma_chiqar(self._q(request, pk), request.user)
+        if xato:
+            return Response({'detail': xato}, status=409)
         return Response(status=204)
 
 

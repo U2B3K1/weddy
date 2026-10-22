@@ -156,25 +156,33 @@ class DonaView(APIView):
         dona = AksessuarDona.objects.filter(salon=request.salon, id=pk).first()
         if not dona:
             raise NotFound('Dona topilmadi.')
+        # Avval hamma narsa tekshiriladi, keyin saqlanadi: holat rad etilsa filial ham o'zgarmay qolsin
+        filial = dona.filial
         if 'filial' in request.data:  # donani filialga ko'chirish (null — biriktirilmagan)
             from apps.tenants.models import Filial
             fid = request.data.get('filial')
+            if fid not in (None, '') and not str(fid).isdigit():
+                raise NotFound('Filial topilmadi.')
             filial = Filial.objects.filter(salon=request.salon, id=fid, faol=True).first() if fid else None
             if fid and not filial:
                 raise NotFound('Filial topilmadi.')
-            dona.filial = filial
-            dona.save(update_fields=['filial'])
-            if 'holat' not in request.data:
-                return Response({'id': dona.id, 'yorliq': dona.yorliq, 'holat': dona.holat, 'filial': dona.filial_id})
-        holat = serializers.ChoiceField(choices=AksessuarDona.Holat.values).run_validation(request.data.get('holat'))
-        from apps.bookings.models import AksessuarBron
-        if holat != AksessuarDona.Holat.BOSH and AksessuarBron.faol().filter(dona=dona).exists():
-            return Response({'detail': 'Bu donada kelgusi bronlar bor; avval bronlarni boshqa donaga o\'tkazing.'},
-                            status=409)
-        from apps.tenants.models import jurnalga_yoz
-        jurnalga_yoz(request.salon, request.user, 'dona_holati', f'dona {dona.yorliq}', dona.holat, holat)
-        dona.holat = holat
-        dona.save(update_fields=['holat'])
+        holat = dona.holat
+        if 'holat' in request.data:
+            holat = serializers.ChoiceField(choices=AksessuarDona.Holat.values).run_validation(request.data.get('holat'))
+        if holat != dona.holat:
+            # Ta'mir faqat ta'mir jurnali orqali: aks holda ochiq yozuv qolib ketadi yoki xarajat yozilmaydi
+            if dona.holat == AksessuarDona.Holat.TAMIRDA:
+                return Response({'detail': "Dona ta'mirda: avval ta'mirni tugating."}, status=409)
+            if holat == AksessuarDona.Holat.TAMIRDA:
+                return Response({'detail': "Ta'mirga «Ta'mirga berish» orqali yuboring."}, status=409)
+            from apps.bookings.models import AksessuarBron
+            if holat != AksessuarDona.Holat.BOSH and AksessuarBron.kelgusi().filter(dona=dona).exists():
+                return Response({'detail': 'Bu donada kelgusi bronlar bor; avval bronlarni boshqa donaga o\'tkazing.'},
+                                status=409)
+            from apps.tenants.models import jurnalga_yoz
+            jurnalga_yoz(request.salon, request.user, 'dona_holati', f'dona {dona.yorliq}', dona.holat, holat)
+        dona.holat, dona.filial = holat, filial
+        dona.save(update_fields=['holat', 'filial'])
         return Response({'id': dona.id, 'yorliq': dona.yorliq, 'holat': dona.holat, 'filial': dona.filial_id})
 
 

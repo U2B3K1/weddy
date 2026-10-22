@@ -95,8 +95,8 @@ def libos_qaytarish(*, salon, xodim, zakaz, tekshiruv=QaytarishAkti.Tekshiruv.BU
 
     ushlab = min(jarima, pul_jami)
     qarz = jarima - ushlab
-    if jarima_tolandi:  # mijoz qolgan jarimani hozir to'ladi
-        t = min(jarima_tolandi, qarz)
+    t = min(jarima_tolandi or 0, qarz)  # mijoz qolgan jarimani hozir to'ladi
+    if t > 0:  # jarima pul zalogidan to'liq ushlangan bo'lsa to'lanadigan narsa yo'q (0 so'mlik to'lov rad etiladi)
         tolov_qabul(salon=salon, xodim=xodim, tur=Tolov.Tur.JARIMA, summa=t, zakaz=zakaz)
         qarz -= t
 

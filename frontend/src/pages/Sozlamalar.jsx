@@ -388,6 +388,7 @@ export default function Sozlamalar({ menId, bolim, onBolim }) {
               <span>
                 <b>{q.nomi}</b> · {q.tasdiqlangan ? 'ishonchli' : <span className="qizil">ruxsat kutmoqda</span>}
                 {q.oxirgi_kirish ? ` · oxirgi kirish ${new Date(q.oxirgi_kirish).toLocaleString('uz-UZ', { dateStyle: 'short', timeStyle: 'short' })}` : ''}
+                <br /><small className="malumot">📱 {q.modeli || "Model noma'lum — qurilmadan keyingi kirishda aniqlanadi"}</small>
               </span>
               {fil.some((f) => f.faol) && (
                 <select value={q.filial || ''} aria-label="Qurilma filiali"
@@ -402,7 +403,7 @@ export default function Sozlamalar({ menId, bolim, onBolim }) {
               </div>
             </div>
           ))}
-          <p className="malumot">Yangi qurilmada salon logini kiritilgach, u shu yerda ruxsat kutadi. Chiqarilgan qurilmadagi ochiq sessiyalar darhol yopiladi.</p>
+          <p className="malumot">Yangi qurilmada salon logini kiritilgach, u shu yerda ruxsat kutadi. Telegram ulagan bo'lsangiz, ruxsatni botdagi tugma yoki qurilma ekranidagi havola/QR orqali ham berasiz. Chiqarilgan qurilmadagi ochiq sessiyalar darhol yopiladi.</p>
           <div className="qator">
             <input type="password" placeholder="Yangi salon paroli (kamida 8 belgi)" value={yangiParol} onChange={(e) => setYangiParol(e.target.value)} />
             <button className="ikkinchi" disabled={yangiParol.length < 8}

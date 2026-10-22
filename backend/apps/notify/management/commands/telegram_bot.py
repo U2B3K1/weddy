@@ -3,7 +3,8 @@ import time
 from django.core.management.base import BaseCommand, CommandError
 
 from apps.notify import telegram
-from apps.notify.services import kutayotganlarni_yubor, start_ishla, start_ishla_platforma, tugma_ishla
+from apps.notify.services import (kutayotganlarni_yubor, qurilma_start_ishla, start_ishla, start_ishla_platforma,
+                                  tugma_ishla)
 
 
 def yangilanishni_ishla(u, token=None):
@@ -14,13 +15,17 @@ def yangilanishni_ishla(u, token=None):
         chat_id = m['chat']['id']
         if m['chat'].get('type') != 'private':
             return None  # guruhlarda ishlamaydi: xabarlarda mijoz ma'lumoti bor
-        if matn.startswith('/start'):
-            javob = start_ishla_platforma(chat_id, matn[6:].strip())
+        tugmalar = None
+        kod = matn[6:].strip()
+        if matn.startswith('/start') and kod.startswith('q_'):  # yangi qurilmani tasdiqlash havolasi
+            javob, tugmalar = qurilma_start_ishla(chat_id, kod[2:])
+        elif matn.startswith('/start'):
+            javob = start_ishla_platforma(chat_id, kod)
             if javob is None:
-                javob = start_ishla(chat_id, matn[6:].strip())
+                javob = start_ishla(chat_id, kod)
         else:
             javob = "Libosa boti. Ulash uchun ilovada «Telegramni ulash» tugmasini bosing."
-        telegram.xabar_yubor(chat_id, javob, **({'token': token} if token else {}))
+        telegram.xabar_yubor(chat_id, javob, tugmalar, **({'token': token} if token else {}))
         return javob
     if 'callback_query' in u:
         c = u['callback_query']
