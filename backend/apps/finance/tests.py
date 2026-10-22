@@ -8,7 +8,7 @@ from apps.bookings.tests import libos_yarat, salon_yarat
 from apps.cash.models import Tolov
 from apps.cash.services import KassaXatosi, smena_ochish, smenaga_qoshilish, tolov_qabul
 from apps.catalog.models import Libos
-from apps.orders.models import Mijoz, Zakaz
+from apps.orders.models import Mijoz, QaytarishAkti, Zakaz
 from apps.orders.services import zakaz_yaratish
 from apps.tenants.auth import make_staff_token
 from apps.tenants.models import Xodim
@@ -273,8 +273,9 @@ class PnlTafsilotTests(FinanceBase):
         Libos.objects.filter(salon=s).update(yaratilgan=vaqt(2026, 1, 1))
         mijoz = Mijoz.objects.create(salon=s, telefon='+998901', fio='Nodira')
         for i, jami in enumerate((2_000_000, 3_000_000), 1):
-            Zakaz.objects.create(salon=s, raqam=i, mijoz=mijoz, olib_ketish=date(2026, 10, 20), qaytarish=date(2026, 10, 22),
-                                 jami=jami, holat=Zakaz.Holat.YOPILDI, tolangan_sana=date(2026, 10, i))
+            z = Zakaz.objects.create(salon=s, raqam=i, mijoz=mijoz, olib_ketish=date(2026, 10, 20), qaytarish=date(2026, 10, 22),
+                                     jami=jami, holat=Zakaz.Holat.YOPILDI, tolangan_sana=date(2026, 10, i))
+            QaytarishAkti.objects.create(salon=s, zakaz=z, sana=date(2026, 10, 22))
         Zakaz.objects.create(salon=s, raqam=3, mijoz=mijoz, olib_ketish=date(2026, 10, 30), qaytarish=date(2026, 11, 1),
                              jami=1_000_000, holat=Zakaz.Holat.BEKOR, bekor_vaqti=vaqt(2026, 10, 12), ushlab_qolingan_avans=300_000)
         for modda, summa in (('tozalash', 200_000), ('bino', 1_000_000), ('reklama', 500_000)):

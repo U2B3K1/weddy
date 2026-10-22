@@ -3,6 +3,7 @@
 Kelin liboslari salonlari uchun ko'p salonli ijara platformasi. TZ: `TZ_Kelin_liboslari_saloni_v1.2.docx` (Desktop).
 Holat (2026-10-22, agent `claude`): 44 qism bajarilgan; hammasi `master` ga commit qilingan (`d30f0cc`), **660 test OK**. Keyingi agent: «Qolgan ishlar» → 1-banddan boshla.
 > Jurnal: yangi yozuv yuqorida; 2026-10-13 va undan eskilari — `docs/PROGRESS_ARXIV.md` oxirida.
+2026-10-22 (12): `claude` · **Sotuvchi bonusi — libos qaytarib olinganda** (foydalanuvchi qarori: «to'y o'tib, liboslarni qabul qilib olganidan keyin to'liq xizmat ko'rsatgan hisoblanadi va keyin bonus chiqadi»). `reports.sotuvchi_bonuslari`: asos — shu oyda qaytarish akti (`QaytarishAkti.sana`) tuzilgan, holati `qaytarildi`/`yopildi` zakazlar `jami`si; storno va 0 ga cheklash olib tashlandi (qaytarilgan zakaz bekor qilinmaydi → bonus kamaymaydi). Har zakaz bonusi alohida hisoblanib qo'shiladi, javobda `zakaz_royxati`; Hisobot → «Sotuvchi bonusi» da sotuvchi ismini bosganda zakazlar (#, mijoz, qaytarilgan sana, summa, bonus). Review'dagi bonus savollari (a)–(d) shu bilan yopildi. Testlar moslandi (+1: to'langan, lekin qaytmagan zakazga bonus yo'q). To'liq to'plam **661 test OK**. Commit qilinmagan; brauzerda ko'rilmagan.
 2026-10-22 (11): `claude` · **`/code-review high` (6cd2da6..HEAD) + handoff tartibi** — 10 topilma, xato yiqilishi yo'q. **Tuzatildi (commit qilinmagan, foydalanuvchi so'ramagan):** statistika tafsilotida storno qatorlari bekor qilingan vaqt bo'yicha saralanadi (P&L kabi); hujjatda zalog olingan/qaytarilgan va qaytarish akti sanalari ham `sanaMatni`; asosiy amal bloki ekran kengayganda (burish) ham ochiladi (`matchMedia` `change`); karta grid'ida qatorlar raqamlanmaydi (bekor zakazda bo'sh qator va ortiqcha bo'shliq yo'q). Sinov: finance 106 OK, lint/build OK; brauzerda ko'rilmagan. **Qoldirildi:** libos/kategoriya tafsilotida storno — zakaz jami, qatorda pozitsiya narxi (tushum qatorlari bilan bir xil, sahifada izoh bor); `sotuvchilar`/`kategoriyalar` da bitta guruhlangan so'rov ikki marta (kichik). **Bonus bo'yicha savollar** — «Ochiq savollar»da. Handoff: `PROGRESS.md` 403 → ~155 qator (2026-10-13 va eski jurnal, 44-qism va reklama bayonlari `docs/PROGRESS_ARXIV.md` oxiriga ko'chirildi, o'chirilmadi).
 2026-10-22 (10): `claude` · **Daromad hisobi bir xil (storno) + zakaz kartasi tuzatishlari** — oldingi ish `6cd2da6`, bu ish `05ef52f` da commit qilindi (ikkinchisi foydalanuvchi alohida so'ramasdan — handoff qoidasiga zid edi). Statistika (`finance/statistika.py`: libos, kategoriya, sotuvchi, salonchi, manba, tafsilot) va sotuvchi bonusi endi P&L bilan bir xil: `reports.tushum_zakazlari` (davr oxirigacha bekor qilinmagan) minus `storno_zakazlari` (oldingi davrdan shu davrda bekor qilingan); tafsilotda storno zakazlar manfiy qator bo'lib chiqadi. Bonus manfiy chiqsa **0** (o'zim tanladim — foydalanuvchi «keyingi oyga o'tkazish»ni xohlasa o'zgartiriladi); bonus jadvalida «Sof tushum» va storno summasi. Zakaz kartasi: keng ekranda (≥768) katta asosiy tugma yashirin, asosiy amal o'ng panelda ochiq turadi (takroriy «Avans» yo'q); berishda pul zalogi libos(lar)ning `zalog` summasidan to'ladi (yangi `libos_zalogi` maydoni); «Tillo qayta tortildi» faqat tillo zalog bo'lsa; `sanaMatni()` (`api/index.js`) — sanalar `22.10.2026` ko'rinishida (zakaz, mijoz, platforma, kassa, xarajat, hisobot, hujjat). Brauzerda ko'rilmagan. **660 test OK** + catalog/orders qayta 329 OK.
 2026-10-22 (9): `claude` · **(8) dagi tuzatishlar tekshirildi** — to'liq to'plam **659 test OK** (609 s), `makemigrations --check` toza, frontend `lint` (faqat ogohlantirishlar) va `build` muvaffaqiyatli. Zakazlar qidiruvi va holat select'iga `aria-label` qo'shildi. Hammasi hali commit qilinmagan.
@@ -25,7 +26,7 @@ Har qismning to'liq tarixi (nima, nega, qanday sinalgan): `docs/PROGRESS_ARXIV.m
 docker compose up -d db                      # PostgreSQL 16, port 5433 (5432 band)
 cd backend && .venv/Scripts/python manage.py migrate
 .venv/Scripts/python manage.py runserver     # API :8000
-.venv/Scripts/python manage.py test          # 660 ta test, ~11 daqiqa; ikki test jarayonini birga ishlatma
+.venv/Scripts/python manage.py test          # 661 ta test, ~11 daqiqa; ikki test jarayonini birga ishlatma
 cd ../frontend && npm run dev                # :5173;  npm run lint / build
 ```
 - Demo: `manage.py demo_ezaz` (salon `ezaz`; parol va PIN lar shu buyruq faylida). Platforma egasi: `manage.py platforma_admin <login>`.
@@ -87,6 +88,7 @@ Buyruqlar (cron): `bronlarni_tozalash` (15 daq.), `eslatmalarni_yuborish` (soatd
 - Integratsiyalar salon darajasida (`.env` — zaxira). Click/Payme: faqat to'lov havolasi, maxfiy kalit saqlanmaydi, webhook yo'q.
 - Bot tokeni va Eskiz paroli bazada ochiq matnda (API, jurnal va arxivga chiqmaydi).
 - **2026-10-22 (o'zim qaror qildim, foydalanuvchi tasdiqlamagan):** (1) to'liq to'langan zakaz keyingi oyda bekor qilinsa o'tgan oy tushumi o'zgarmaydi — bekor qilingan oyda **storno** (`reports.tushum_zakazlari/storno_zakazlari`, P&L `storno` maydoni, tafsilotda manfiy qator; dashbord davr bloki ham shunday); (2) kassadan to'langan xarajat **rad etilmaydi** (pul chiqqan) — faqat tasdiqlanadi, moddasi/izohi tuziladi; frontendda «Rad etish» tugmasi yashirin; (3) GET (zakazlar ro'yxati, bosh ekran) dagi muddati o'tgan bronlarni avto-bekor qilish zaxira sifatida qoldi, lekin «faqat ko'rish» salonida ishlamaydi (cron `bronlarni_tozalash` baribir ishlaydi). Yangi `permissions.salon_yoza_oladimi()` — eski `SalonYozishRuxsati().has_permission()` GET da doim True edi, shu sabab doimiy xarajat qoralamalari «faqat ko'rish»da ham yaratilardi (tuzatildi).
+- **2026-10-22 (12), foydalanuvchi qarori (TZ FT-15.1 dan chetlanish):** sotuvchi bonusi zakaz to'liq to'langanda emas, **libos to'ydan keyin qaytarib olinganda** (qaytarish akti oyi) hisoblanadi. **Sabab:** shunda xizmat to'liq ko'rsatilgan; qaytarilgan zakaz bekor qilinmaydi — bonus orqaga qaytarilmaydi, manfiy bo'lmaydi, har bir zakaz bo'yicha ko'rinadi (shaffoflik). Quyidagi (10) dagi bonus qismi bekor.
 - **2026-10-22 (10), `claude`:** statistika hisobotlari va sotuvchi bonusi ham P&L dagi storno qoidasida (foydalanuvchi «ha» dedi). **Sabab:** yopilgan oy raqamlari va to'langan bonus orqaga qarab o'zgarmasligi kerak; ikki xil ta'rif hisobotlar orasida farq chiqarardi. **Bonus manfiy chiqsa 0** — o'zim tanladim (savolga javob bo'lmadi): oddiy, xodimdan ushlab qolish yo'q; kamchiligi — storno summasi bonusdan «yo'qoladi». Muqobil: keyingi oyga o'tkazish.
 
 ## Tekshirilmagan / ma'lum xavflar
@@ -124,7 +126,7 @@ Click/Payme ID lari (bitta sinov to'lovi bilan tekshirish); soliq foizi; manekin
 Kod bilan:
 1. **Eng birinchi ish:** 2026-10-22 (10) o'zgarishlarini brauzerda ko'rish — zakaz kartasi (≥768 da asosiy amal o'ng panelda ochiq,
    berishda zalog summasi to'lishi, tillo maydoni), Hisobot → statistika tafsilotida storno qatori, «Sotuvchi bonusi» jadvali, sanalar `22.10.2026`.
-2. 2026-10-22 (11) dagi review tuzatishlarini commit qilish (foydalanuvchi so'raganda) va bonus savollariga javobga qarab `reports.sotuvchi_bonuslari` ni o'zgartirish.
+2. 2026-10-22 (11)–(12) o'zgarishlarini commit qilish (foydalanuvchi so'raganda); brauzerda «Sotuvchi bonusi» jadvalini ko'rish.
 3. GitHub'ga push — foydalanuvchi so'raganda.
 4. Click/Payme webhook (avtomatik tasdiqlash) — merchant sinov muhiti kerak.
 5. Manekin rasmini bot orqali mijozga yuborish (FT-5.4); manekinda aksessuar joylashuvi libosga qarab alohida emas.
@@ -143,9 +145,6 @@ Reklama sahifasi (43–44-qism davomi):
 
 Ochiq savollar (foydalanuvchi javob berishi kerak):
 - Soliq qaysi oyga tushishi — buxgalter xulosasi kutilmoqda (hozir tushum tan olingan oyga).
-- Sotuvchi bonusi (review topilmalari, `reports.sotuvchi_bonuslari`): (a) manfiy bo'lsa 0 (hozir) yoki keyingi oyga o'tkazish — 0 da katta storno «kechiriladi»;
-  (b) 0 ga cheklash filial bo'yicha alohida — filial P&L lari bonusi salon P&L iga teng chiqmaydi; (c) bonus o'chiq bo'lgan oydagi zakaz bekor qilinsa ham
-  storno bonusdan ayiriladi (to'lanmagan bonus «qaytariladi»); (d) storno zakaz jamisidan — salon ushlab qolgan avans ayirilmaydi.
 - (6) dan qolganlar: GET dagi avto-bekor/qoralama → faqat cron; 401/400 o'rniga `kod` konventsiyasi; `XodimTanlash`/`QurilmaKutish` ikki so'rov aylanishi; HSTS.
 - Ekranda kuzatilgan, tuzatilmagan: K (≥1200) da ichki bo'limlar chap panelda ham, tepadagi segmentda ham; URL hash `#kirish` da qoladi.
 

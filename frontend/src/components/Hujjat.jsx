@@ -80,8 +80,8 @@ export default function Hujjat({ zakazId, tur, onYop }) {
               <tbody>
                 {h.zaloglar.map((z) => (
                   <tr key={z.yorliq}>
-                    <td>{z.yorliq}</td><td>{z.turi}</td><td>{z.tavsif}</td><td>{z.olingan}</td>
-                    <td>{z.qaytarilgan || z.holat}</td>
+                    <td>{z.yorliq}</td><td>{z.turi}</td><td>{z.tavsif}</td><td>{sanaMatni(z.olingan)}</td>
+                    <td>{z.qaytarilgan ? sanaMatni(z.qaytarilgan) : z.holat}</td>
                   </tr>
                 ))}
               </tbody>
@@ -90,7 +90,7 @@ export default function Hujjat({ zakazId, tur, onYop }) {
 
           {h.qaytarish_akti && (
             <p>
-              Qaytarish: {h.qaytarish_akti.sana}. Holat tekshiruvi: {h.qaytarish_akti.tekshiruv.toLowerCase()}.
+              Qaytarish: {sanaMatni(h.qaytarish_akti.sana)}. Holat tekshiruvi: {h.qaytarish_akti.tekshiruv.toLowerCase()}.
               {h.qaytarish_akti.kechikish_kunlari > 0 && ` Kechikish: ${h.qaytarish_akti.kechikish_kunlari} kun.`}
               {h.qaytarish_akti.jarima > 0 && ` Jarima: ${som(h.qaytarish_akti.jarima)} (zalogdan ushlandi: ${som(h.qaytarish_akti.ushlab_qolingan)}, qarz: ${som(h.qaytarish_akti.qarz)}).`}
               {h.qaytarish_akti.tortilgan_gr != null && ` Tillo buyum qayta tortildi: ${h.qaytarish_akti.tortilgan_gr} g — ${h.qaytarish_akti.ogirlik_mos ? 'mos keldi' : 'mos kelmadi'}.`}

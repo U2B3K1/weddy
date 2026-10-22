@@ -26,10 +26,11 @@ def oy_chegaralari(yil, oy):
 
 
 def sotuvchi_bonuslari(salon, yil, oy, filial=None):
-    """Sotuvchi bonusi (FT-15.1): shu oydagi sof tushumidan (P&L bilan bir xil: to'liq to'langan zakazlar, oldingi
-    oylardan shu oyda bekor qilingani storno qilib ayiriladi) rahbar belgilagan foiz. Storno tushumdan katta bo'lsa
-    bonus 0 — manfiy bonus (ushlab qolish) yo'q.
+    """Sotuvchi bonusi (FT-15.1, foydalanuvchi qarori 2026-10-22): xizmat to'liq ko'rsatilgan — libos to'ydan keyin
+    qaytarib olingan (qaytarish akti sanasi shu oyda) zakazlar summasidan rahbar belgilagan foiz.
 
+    Qaytarilgan zakaz bekor qilinmaydi, shuning uchun bonus keyin kamaymaydi va manfiy bo'lmaydi (storno yo'q).
+    Har bir zakaz bonusi alohida hisoblanib qo'shiladi — jadvalda har so'mning qaysi zakazdan kelgani ko'rinadi.
     Faqat sotuvchi rolidagi xodimlarga; funksiya o'chirilgan bo'lsa (standart) hammasi 0.
     """
     from apps.tenants.models import Xodim, sozlama
@@ -37,19 +38,21 @@ def sotuvchi_bonuslari(salon, yil, oy, filial=None):
     soz = sozlama(salon)
     foiz = soz.bonus_foiz if soz.sotuvchi_bonusi else Decimal(0)
     boshi, oxiri = oy_chegaralari(yil, oy)
-    f = {'sotuvchi__rol': Xodim.Rol.SOTUVCHI, **({'filial_id': filial} if filial else {})}
-    tushumlar = {r['sotuvchi']: r for r in tushum_zakazlari(salon, boshi, oxiri, f)
-                 .values('sotuvchi').annotate(s=Sum('jami'), n=Count('id'))}
-    stornolar = dict(storno_zakazlari(salon, boshi, oxiri, f).values_list('sotuvchi').annotate(s=Sum('jami')))
+    zakazlar = {}
+    for z in (Zakaz.objects.filter(salon=salon, qaytarish_akti__sana__range=(boshi, oxiri),
+                                   holat__in=(Zakaz.Holat.QAYTARILDI, Zakaz.Holat.YOPILDI), sotuvchi__rol=Xodim.Rol.SOTUVCHI,
+                                   **({'filial_id': filial} if filial else {}))
+              .select_related('mijoz', 'qaytarish_akti').order_by('qaytarish_akti__sana', 'raqam')):
+        zakazlar.setdefault(z.sotuvchi_id, []).append({
+            'zakaz_id': z.id, 'raqam': z.raqam, 'mijoz': z.mijoz.fio or z.mijoz.telefon,
+            'qaytarilgan': z.qaytarish_akti.sana, 'summa': z.jami, 'bonus': _int(Decimal(z.jami) * foiz / 100)})
     qatorlar = []
     for x in Xodim.objects.filter(salon=salon, rol=Xodim.Rol.SOTUVCHI).order_by('ism'):
-        r = tushumlar.get(x.id)
-        storno = stornolar.get(x.id) or 0
-        if not r and not storno and not x.faol:
+        zz = zakazlar.get(x.id, [])
+        if not zz and not x.faol:
             continue
-        tushum = (r['s'] if r else 0) - storno
-        qatorlar.append({'id': x.id, 'ism': x.ism, 'zakazlar': r['n'] if r else 0, 'tushum': tushum, 'storno': storno,
-                         'bonus': max(0, _int(Decimal(tushum) * foiz / 100))})
+        qatorlar.append({'id': x.id, 'ism': x.ism, 'zakazlar': len(zz), 'tushum': sum(q['summa'] for q in zz),
+                         'bonus': sum(q['bonus'] for q in zz), 'zakaz_royxati': zz})
     return {'oy': f'{yil}-{oy:02d}', 'yoqilgan': soz.sotuvchi_bonusi, 'foiz': foiz, 'sotuvchilar': qatorlar,
             'jami': sum(q['bonus'] for q in qatorlar)}
 

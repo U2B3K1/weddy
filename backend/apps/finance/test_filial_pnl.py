@@ -7,7 +7,7 @@ from apps.bookings.tests import salon_yarat
 from apps.catalog.models import Libos
 from apps.cash.models import Tolov
 from apps.cash.services import smena_ochish, tolov_qabul
-from apps.orders.models import Mijoz, Zakaz
+from apps.orders.models import Mijoz, QaytarishAkti, Zakaz
 from apps.tenants.auth import make_staff_token
 from apps.tenants.models import Filial, IshonchliQurilma, Xodim, sozlama
 
@@ -31,8 +31,9 @@ class FilialPnlTests(TestCase):
         Libos.objects.filter(salon=s).update(yaratilgan=vaqt(2026, 1, 1))
         mijoz = Mijoz.objects.create(salon=s, telefon='+998901')
         for i, (jami, filial) in enumerate(((2_000_000, self.f1), (3_000_000, self.f2), (1_000_000, None)), 1):
-            Zakaz.objects.create(salon=s, raqam=i, mijoz=mijoz, olib_ketish=date(2026, 10, 20), qaytarish=date(2026, 10, 22),
-                                 jami=jami, holat=Zakaz.Holat.YOPILDI, tolangan_sana=date(2026, 10, i), filial=filial, sotuvchi=self.malika)
+            z = Zakaz.objects.create(salon=s, raqam=i, mijoz=mijoz, olib_ketish=date(2026, 10, 20), qaytarish=date(2026, 10, 22),
+                                     jami=jami, holat=Zakaz.Holat.YOPILDI, tolangan_sana=date(2026, 10, i), filial=filial, sotuvchi=self.malika)
+            QaytarishAkti.objects.create(salon=s, zakaz=z, sana=date(2026, 10, 22))
         kw = dict(salon=s, xodim=self.rahbar, sana=date(2026, 10, 5))
         xarajat_kiritish(modda='tozalash', summa=200_000, filial=self.f1, **kw)
         xarajat_kiritish(modda='reklama', summa=300_000, filial=self.f2, **kw)

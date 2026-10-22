@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { Fragment, useEffect, useState } from 'react'
 import Xarajatlar from '../components/Xarajatlar'
 import OylikGrafik from '../components/OylikGrafik'
 import Tasdiq from '../components/Tasdiq'
@@ -431,6 +431,7 @@ function Bonus() {
   const [oy, setOy] = useState(() => iso(new Date()).slice(0, 7))
   const [d, setD] = useState(null)
   const [xato, setXato] = useState('')
+  const [ochiq, setOchiq] = useState(null)  // zakazlari ko'rsatilayotgan sotuvchi
 
   useEffect(() => {
     let bekor = false
@@ -448,17 +449,32 @@ function Bonus() {
         {d && (
           <div className="hisobot-ora">
             <table className="hisobot">
-              <thead><tr><th>Sotuvchi</th><th className="ong">Zakazlar</th><th className="ong" title="Oldingi oylardan shu oyda bekor qilingan zakazlar ayirilgan">Sof tushum</th><th className="ong">Bonus ({Number(d.foiz)}%)</th></tr></thead>
+              <thead><tr><th>Sotuvchi</th><th className="ong">Zakazlar</th><th className="ong">Zakazlar summasi</th><th className="ong">Bonus ({Number(d.foiz)}%)</th></tr></thead>
               <tbody>
                 {d.sotuvchilar.map((q) => (
-                  <tr key={q.id}><td>{q.ism}</td><td className="ong">{q.zakazlar}</td><td className="ong">{som(q.tushum)}{q.storno > 0 && <div className="malumot">storno −{som(q.storno)}</div>}</td><td className="ong">{som(q.bonus)}</td></tr>
+                  <Fragment key={q.id}>
+                    <tr>
+                      <td>{q.zakazlar > 0
+                        ? <button className="havola-tugma" aria-expanded={ochiq === q.id} onClick={() => setOchiq(ochiq === q.id ? null : q.id)}>{q.ism}</button>
+                        : q.ism}</td>
+                      <td className="ong">{q.zakazlar}</td><td className="ong">{som(q.tushum)}</td><td className="ong">{som(q.bonus)}</td>
+                    </tr>
+                    {ochiq === q.id && q.zakaz_royxati.map((z) => (
+                      <tr key={z.zakaz_id} className="kichik-qator">
+                        <td>#{z.raqam} · {z.mijoz} · qaytarildi {sanaMatni(z.qaytarilgan)}</td><td />
+                        <td className="ong">{som(z.summa)}</td><td className="ong">{som(z.bonus)}</td>
+                      </tr>
+                    ))}
+                  </Fragment>
                 ))}
               </tbody>
               <tfoot><tr><td>Jami</td><td /><td /><td className="ong">{som(d.jami)}</td></tr></tfoot>
             </table>
           </div>
         )}
-        <p className="malumot">Tushum — shu oyda to'liq to'langan zakazlar. Bonus foyda va zarar hisobotida avtomatik hisobga olinadi.</p>
+        <p className="malumot">Bonus xizmat to'liq ko'rsatilgan zakazlardan: to'ydan keyin libos shu oyda qaytarib olingan. Qaytarilgan zakaz bekor qilinmaydi,
+          shuning uchun bonus keyin kamaymaydi. Sotuvchi ismini bosing — har bir zakaz va undan chiqqan bonus ko'rinadi.
+          Bonus foyda va zarar hisobotida avtomatik hisobga olinadi.</p>
       </div>
     </details>
   )

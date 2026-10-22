@@ -13,7 +13,7 @@ from apps.tenants.auth import make_staff_token
 from apps.tenants.models import Xodim, sozlama
 
 from .changes import sanani_kochirish
-from .models import MavsumiyNarx, Zakaz
+from .models import MavsumiyNarx, QaytarishAkti, Zakaz
 from .pricing import mavsumiy_foiz
 from .services import zakaz_yaratish
 
@@ -167,10 +167,13 @@ class BonusTests(NarxBase):
         self.bugun = timezone.localdate()
         smena_ochish(salon=self.salon, xodim=self.malika, boshlangich_qoldiq=0)
 
-    def tolangan(self, xodim, telefon, narx, artikul):
+    def tolangan(self, xodim, telefon, narx, artikul, qaytarildi=True):
         z = self.zakaz(date(self.yil, 12, 1) + timedelta(days=5 * int(artikul)), telefon,
                        libos_yarat(self.salon, self.kat, f'L{artikul}', ijara_narxi=narx), xodim)
         tolov_qabul(salon=self.salon, xodim=self.malika, tur=Tolov.Tur.AVANS, summa=z.jami, zakaz=z)
+        if qaytarildi:  # bonus libos to'ydan keyin qaytarib olinganda chiqadi
+            QaytarishAkti.objects.create(salon=self.salon, zakaz=z, sana=self.bugun)
+            Zakaz.objects.filter(id=z.id).update(holat=Zakaz.Holat.QAYTARILDI)
         return z
 
     def bonus(self):
@@ -201,6 +204,16 @@ class BonusTests(NarxBase):
         r = reports.foyda_zarar(self.salon, self.bugun.year, self.bugun.month)
         self.assertEqual((r['sotuvchi_bonusi'], r['operatsion_xarajat'] - oldin['operatsion_xarajat']), (100_000, 100_000))
         self.assertEqual(r['operatsion_foyda'], r['yalpi_foyda'] - r['operatsion_xarajat'])
+
+    def test_faqat_qaytarib_olingan_zakazga(self):
+        # to'langan, lekin libos hali qaytmagan zakaz — xizmat tugamagan, bonus yo'q
+        self.yoq('sotuvchi_bonusi', bonus_foiz=Decimal('5'))
+        self.tolangan(self.malika, '+998901', 2_000_000, '1', qaytarildi=False)
+        z = self.tolangan(self.malika, '+998902', 1_000_000, '2')
+        b = next(q for q in self.bonus()['sotuvchilar'] if q['ism'] == 'Malika')
+        self.assertEqual((b['zakazlar'], b['tushum'], b['bonus']), (1, 1_000_000, 50_000))
+        self.assertEqual([(q['raqam'], q['qaytarilgan'], q['summa'], q['bonus']) for q in b['zakaz_royxati']],
+                         [(z.raqam, self.bugun, 1_000_000, 50_000)])
 
     def test_bekor_zakaz_hisobga_kirmaydi(self):
         self.yoq('sotuvchi_bonusi', bonus_foiz=Decimal('5'))

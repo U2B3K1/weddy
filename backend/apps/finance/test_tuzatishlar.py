@@ -130,7 +130,7 @@ class OchiqSavollarTests(Base):
         self.assertEqual((bu['tushum'], bu['storno'], bu['qaytarilmagan_avans']), (-z.jami, z.jami, z.ushlab_qolingan_avans))
         self.assertEqual(reports.pnl_tafsilot(self.salon, b.year, b.month, 'tushum')['jami'], bu['tushum'])
 
-    def test_statistika_va_bonus_ham_storno_qiladi(self):
+    def test_statistika_ham_storno_qiladi_bonusga_kirmaydi(self):
         # P&L bilan bir xil: keyingi oyda bekor qilingan zakaz o'tgan oyni o'zgartirmaydi, bekor qilingan oyda ayiriladi
         from apps.orders.changes import zakazni_bekor_qilish
         from apps.orders.models import Zakaz
@@ -157,12 +157,11 @@ class OchiqSavollarTests(Base):
         self.assertEqual((taf['jami'], [q['storno'] for q in taf['qatorlar']]), (-z.jami, [True]))
         self.assertEqual(statistika.kategoriyalar(self.salon, b_dan, bugun)['jami'][2], -1_000_000)
 
-        def bonus(sana):
-            return next(q for q in reports.sotuvchi_bonuslari(self.salon, sana.year, sana.month)['sotuvchilar']
-                        if q['id'] == sotuvchi.id)
-        self.assertEqual(bonus(otgan)['bonus'], z.jami // 10)
-        b = bonus(bugun)
-        self.assertEqual((b['tushum'], b['storno'], b['bonus']), (-z.jami, z.jami, 0))  # manfiy bonus yo'q
+        # bonus faqat qaytarib olingan zakazga — bekor qilingan zakaz hech qaysi oyda bonus bermaydi (storno kerak emas)
+        for sana in (otgan, bugun):
+            b = next(q for q in reports.sotuvchi_bonuslari(self.salon, sana.year, sana.month)['sotuvchilar']
+                     if q['id'] == sotuvchi.id)
+            self.assertEqual((b['zakazlar'], b['bonus']), (0, 0))
 
     def test_shu_oyda_tolanib_bekor_qilingan_zakaz_tushumga_kirmaydi(self):
         from apps.orders.changes import zakazni_bekor_qilish

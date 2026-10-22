@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Hujjat from '../components/Hujjat'
 import Tasdiq from '../components/Tasdiq'
 import {
@@ -293,13 +293,22 @@ function SalonchiTanlash({ z, bajar }) {
   )
 }
 
-// Keng ekranda asosiy amal o'ng panelda ochiq turadi (katta tugma yashirin); telefonda tugma shu blokka olib boradi
-const kengEkran = () => typeof window !== 'undefined' && window.matchMedia?.('(min-width: 768px)').matches
+// Keng ekranda asosiy amal o'ng panelda ochiq turadi (katta tugma yashirin — ichki.css dagi 768px bilan bir xil);
+// telefonda tugma shu blokka olib boradi. Ekran burilib kengaysa blok ochiladi, aks holda tugmasiz yopiq qolardi.
+const KENG = '(min-width: 768px)'
 
 function Amal({ sarlavha, children, id }) {
-  const [ochiq] = useState(() => id === 'asosiy-amal' && kengEkran())
+  const ref = useRef(null)
+  useEffect(() => {
+    if (id !== 'asosiy-amal' || !window.matchMedia) return undefined
+    const mq = window.matchMedia(KENG)
+    const och = () => { if (mq.matches && ref.current) ref.current.open = true }
+    och()
+    mq.addEventListener?.('change', och)
+    return () => mq.removeEventListener?.('change', och)
+  }, [id])
   return (
-    <details className="blok amal" id={id} open={ochiq || undefined}>
+    <details className="blok amal" id={id} ref={ref}>
       <summary>{sarlavha}</summary>
       <div className="stack">{children}</div>
     </details>

@@ -370,16 +370,17 @@ def tafsilot(salon, nom, kalit, dan, gacha, **filtrlar):
         return None
     zakaz_filtrlari = {k: v for k, v in filtrlar.items()
                        if v and k in ('sotuvchi', 'filial') and k in FILTRLAR.get(nom, ()) and nom != 'libos'}
-    def royxat(qs):
+    def royxat(qs, *tartib):
         return (qs.filter(**shart).distinct().select_related('mijoz', 'sotuvchi')
-                .prefetch_related('pozitsiyalar__libos').order_by('tolangan_sana', 'raqam'))
+                .prefetch_related('pozitsiyalar__libos').order_by(*tartib))
 
     def qator(z, storno=False):
         return {'zakaz_id': z.id, 'raqam': z.raqam, 'mijoz': z.mijoz.fio or z.mijoz.telefon,
                 'sana': timezone.localtime(z.bekor_vaqti).date() if storno else z.tolangan_sana,
                 'sotuvchi': z.sotuvchi.ism if z.sotuvchi else None, 'storno': storno,
                 'liboslar': [p.libos.nomi for p in z.pozitsiyalar.all()], 'jami': -z.jami if storno else z.jami}
-    # Qator tushumidan ayirilgan storno zakazlar ham ko'rsatiladi — tafsilot jami qator bilan teng bo'lishi uchun
-    qatorlar = ([qator(z) for z in royxat(_tolangan(salon, dan, gacha, **zakaz_filtrlari))]
-                + [qator(z, True) for z in royxat(_storno(salon, dan, gacha, **zakaz_filtrlari))])
+    # Qator tushumidan ayirilgan storno zakazlar ham ko'rsatiladi (P&L tafsiloti kabi, bekor qilingan vaqt bo'yicha).
+    # Zakaz jami bilan — libos/kategoriya qatori esa pozitsiya narxi bilan, shu sabab ular farq qilishi mumkin (sahifada izoh bor).
+    qatorlar = ([qator(z) for z in royxat(_tolangan(salon, dan, gacha, **zakaz_filtrlari), 'tolangan_sana', 'raqam')]
+                + [qator(z, True) for z in royxat(_storno(salon, dan, gacha, **zakaz_filtrlari), 'bekor_vaqti', 'raqam')])
     return {'qatorlar': qatorlar, 'jami': sum(q['jami'] for q in qatorlar)}
