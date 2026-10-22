@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import {
   doimiyXarajatOzgartir, doimiyXarajatQosh, doimiyXarajatlar, filiallar, moddaOzgartir, moddaQosh, som, xarajatModdalari,
   xarajatBekor, xarajatQaror, xarajatTuzat, xarajatYarat, xarajatlar, xatoMatni,
+  sanaMatni,
 } from '../api'
 
 const HOLAT = { kutilmoqda: 'tasdiq kutmoqda', tasdiqlandi: 'tasdiqlangan', rad: 'rad etilgan' }
@@ -65,7 +66,7 @@ function Qator({ x, bajar, moddalar }) {
   return (
     <div className={`tasdiq ${x.holat === 'rad' ? 'bajarilgan' : ''}`}>
       <span>
-        {x.sana} · <b>{x.modda_nomi}</b> · {som(x.summa)} · {HOLAT[x.holat]}
+        {sanaMatni(x.sana)} · <b>{x.modda_nomi}</b> · {som(x.summa)} · {HOLAT[x.holat]}
         {x.doimiy && ' · doimiy'}{x.kassadan && ' · kassadan'}{x.kiritgan ? ` · ${x.kiritgan}` : ''}{x.izoh ? ` · ${x.izoh}` : ''}
       </span>
       {x.holat === 'kutilmoqda' && (

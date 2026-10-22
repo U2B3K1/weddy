@@ -26,7 +26,9 @@ def oy_chegaralari(yil, oy):
 
 
 def sotuvchi_bonuslari(salon, yil, oy, filial=None):
-    """Sotuvchi bonusi (FT-15.1): shu oyda to'liq to'langan zakazlari tushumidan rahbar belgilagan foiz.
+    """Sotuvchi bonusi (FT-15.1): shu oydagi sof tushumidan (P&L bilan bir xil: to'liq to'langan zakazlar, oldingi
+    oylardan shu oyda bekor qilingani storno qilib ayiriladi) rahbar belgilagan foiz. Storno tushumdan katta bo'lsa
+    bonus 0 — manfiy bonus (ushlab qolish) yo'q.
 
     Faqat sotuvchi rolidagi xodimlarga; funksiya o'chirilgan bo'lsa (standart) hammasi 0.
     """
@@ -35,18 +37,19 @@ def sotuvchi_bonuslari(salon, yil, oy, filial=None):
     soz = sozlama(salon)
     foiz = soz.bonus_foiz if soz.sotuvchi_bonusi else Decimal(0)
     boshi, oxiri = oy_chegaralari(yil, oy)
-    tushumlar = {r['sotuvchi']: r for r in (
-        Zakaz.objects.filter(salon=salon, tolangan_sana__range=(boshi, oxiri), sotuvchi__rol=Xodim.Rol.SOTUVCHI,
-                             **({'filial_id': filial} if filial else {}))
-        .exclude(holat=Zakaz.Holat.BEKOR).values('sotuvchi').annotate(s=Sum('jami'), n=Count('id')))}
+    f = {'sotuvchi__rol': Xodim.Rol.SOTUVCHI, **({'filial_id': filial} if filial else {})}
+    tushumlar = {r['sotuvchi']: r for r in tushum_zakazlari(salon, boshi, oxiri, f)
+                 .values('sotuvchi').annotate(s=Sum('jami'), n=Count('id'))}
+    stornolar = dict(storno_zakazlari(salon, boshi, oxiri, f).values_list('sotuvchi').annotate(s=Sum('jami')))
     qatorlar = []
     for x in Xodim.objects.filter(salon=salon, rol=Xodim.Rol.SOTUVCHI).order_by('ism'):
         r = tushumlar.get(x.id)
-        if not r and not x.faol:
+        storno = stornolar.get(x.id) or 0
+        if not r and not storno and not x.faol:
             continue
-        tushum = r['s'] if r else 0
-        qatorlar.append({'id': x.id, 'ism': x.ism, 'zakazlar': r['n'] if r else 0, 'tushum': tushum,
-                         'bonus': _int(Decimal(tushum) * foiz / 100)})
+        tushum = (r['s'] if r else 0) - storno
+        qatorlar.append({'id': x.id, 'ism': x.ism, 'zakazlar': r['n'] if r else 0, 'tushum': tushum, 'storno': storno,
+                         'bonus': max(0, _int(Decimal(tushum) * foiz / 100))})
     return {'oy': f'{yil}-{oy:02d}', 'yoqilgan': soz.sotuvchi_bonusi, 'foiz': foiz, 'sotuvchilar': qatorlar,
             'jami': sum(q['bonus'] for q in qatorlar)}
 

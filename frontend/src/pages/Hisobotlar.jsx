@@ -5,6 +5,7 @@ import Tasdiq from '../components/Tasdiq'
 import {
   bankHolati, bankKirit, bonusHisobot, dashbord, filiallar, hisobot, hisobotTafsilot, hisobotlarRoyxati, kategoriyalar,
   oylikQator, oyniOch, oyniYop, pnl, pnlTafsilot, som, xatoMatni, xodimlarBoshqaruv,
+  sanaMatni,
 } from '../api'
 
 const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -13,6 +14,7 @@ const korsat = (v, tur) => {
   if (v === null || v === undefined || v === '') return '—'
   if (tur === 'pul') return som(v)
   if (tur === 'foiz') return `${v}%`
+  if (tur === 'sana') return sanaMatni(v)
   return String(v)
 }
 
@@ -145,7 +147,7 @@ function HisobotBolim() {
                 <table className="jadval"><tbody>
                   {taf.qatorlar.map((q) => (
                     <tr key={q.zakaz_id} className="kichik-qator">
-                      <td>{q.sana} · #{q.raqam} · {q.mijoz} · {q.liboslar.join(', ')}{q.sotuvchi ? ` · ${q.sotuvchi}` : ''}</td>
+                      <td>{q.storno && 'Bekor qilindi (storno) · '}{sanaMatni(q.sana)} · #{q.raqam} · {q.mijoz} · {q.liboslar.join(', ')}{q.sotuvchi ? ` · ${q.sotuvchi}` : ''}</td>
                       <td>{som(q.jami)}</td>
                     </tr>
                   ))}
@@ -345,7 +347,7 @@ function Pnl({ r, filial }) {
           {taf.qatorlar.length === 0 ? <p className="malumot">Bu oyda yozuv yo'q.</p> : (
             <table className="jadval"><tbody>
               {taf.qatorlar.map((q, i) => (
-                <tr key={i} className="kichik-qator"><td>{q.sana ? `${q.sana} · ` : ''}{q.matn}</td><td>{som(q.summa)}</td></tr>
+                <tr key={i} className="kichik-qator"><td>{q.sana ? `${sanaMatni(q.sana)} · ` : ''}{q.matn}</td><td>{som(q.summa)}</td></tr>
               ))}
               <tr><td><b>Jami</b></td><td><b>{som(taf.jami)}</b></td></tr>
             </tbody></table>
@@ -446,10 +448,10 @@ function Bonus() {
         {d && (
           <div className="hisobot-ora">
             <table className="hisobot">
-              <thead><tr><th>Sotuvchi</th><th className="ong">Zakazlar</th><th className="ong">Tushum</th><th className="ong">Bonus ({Number(d.foiz)}%)</th></tr></thead>
+              <thead><tr><th>Sotuvchi</th><th className="ong">Zakazlar</th><th className="ong" title="Oldingi oylardan shu oyda bekor qilingan zakazlar ayirilgan">Sof tushum</th><th className="ong">Bonus ({Number(d.foiz)}%)</th></tr></thead>
               <tbody>
                 {d.sotuvchilar.map((q) => (
-                  <tr key={q.id}><td>{q.ism}</td><td className="ong">{q.zakazlar}</td><td className="ong">{som(q.tushum)}</td><td className="ong">{som(q.bonus)}</td></tr>
+                  <tr key={q.id}><td>{q.ism}</td><td className="ong">{q.zakazlar}</td><td className="ong">{som(q.tushum)}{q.storno > 0 && <div className="malumot">storno −{som(q.storno)}</div>}</td><td className="ong">{som(q.bonus)}</td></tr>
                 ))}
               </tbody>
               <tfoot><tr><td>Jami</td><td /><td /><td className="ong">{som(d.jami)}</td></tr></tfoot>

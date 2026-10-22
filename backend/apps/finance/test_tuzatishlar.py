@@ -130,6 +130,40 @@ class OchiqSavollarTests(Base):
         self.assertEqual((bu['tushum'], bu['storno'], bu['qaytarilmagan_avans']), (-z.jami, z.jami, z.ushlab_qolingan_avans))
         self.assertEqual(reports.pnl_tafsilot(self.salon, b.year, b.month, 'tushum')['jami'], bu['tushum'])
 
+    def test_statistika_va_bonus_ham_storno_qiladi(self):
+        # P&L bilan bir xil: keyingi oyda bekor qilingan zakaz o'tgan oyni o'zgartirmaydi, bekor qilingan oyda ayiriladi
+        from apps.orders.changes import zakazni_bekor_qilish
+        from apps.orders.models import Zakaz
+        from apps.tenants.models import sozlama
+
+        from . import reports, statistika
+        sotuvchi = Xodim.objects.create(salon=self.salon, ism='Nodira', rol=Xodim.Rol.SOTUVCHI)
+        soz = sozlama(self.salon)
+        soz.sotuvchi_bonusi, soz.bonus_foiz = True, 10
+        soz.save()
+        z = self.zakaz()
+        tolov_qabul(salon=self.salon, xodim=self.xodim, tur=Tolov.Tur.AVANS, summa=z.jami, zakaz=z)
+        otgan = timezone.localdate().replace(day=1) - timedelta(days=1)
+        Zakaz.objects.filter(id=z.id).update(tolangan_sana=otgan, sotuvchi=sotuvchi)
+        z = zakazni_bekor_qilish(salon=self.salon, xodim=self.xodim, zakaz=z, sabab='x', qoida=[(0, 0)])
+        bugun = timezone.localdate()
+        o_dan, b_dan = otgan.replace(day=1), bugun.replace(day=1)
+
+        def tushum(dan, gacha):
+            return {q[0]: q[3] for q in statistika.sotuvchilar(self.salon, dan, gacha)['qatorlar']}['Nodira']
+        self.assertEqual(tushum(o_dan, otgan), z.jami)  # o'tgan davr o'zgarmadi
+        self.assertEqual(tushum(b_dan, bugun), -z.jami)
+        taf = statistika.tafsilot(self.salon, 'sotuvchi', sotuvchi.id, b_dan, bugun)
+        self.assertEqual((taf['jami'], [q['storno'] for q in taf['qatorlar']]), (-z.jami, [True]))
+        self.assertEqual(statistika.kategoriyalar(self.salon, b_dan, bugun)['jami'][2], -1_000_000)
+
+        def bonus(sana):
+            return next(q for q in reports.sotuvchi_bonuslari(self.salon, sana.year, sana.month)['sotuvchilar']
+                        if q['id'] == sotuvchi.id)
+        self.assertEqual(bonus(otgan)['bonus'], z.jami // 10)
+        b = bonus(bugun)
+        self.assertEqual((b['tushum'], b['storno'], b['bonus']), (-z.jami, z.jami, 0))  # manfiy bonus yo'q
+
     def test_shu_oyda_tolanib_bekor_qilingan_zakaz_tushumga_kirmaydi(self):
         from apps.orders.changes import zakazni_bekor_qilish
 

@@ -3,6 +3,7 @@ import Tasdiq from '../components/Tasdiq'
 import {
   kassaZaloglar, smenaChiqish, smenaHolati, smenaOchish, smenaQoshilish, smenaTuzat, smenaYopish, smenalar, som, tolovQabul,
   xarajatModdalari, xarajatYarat, xatoMatni, zalogBelgila,
+  sanaMatni,
 } from '../api'
 
 // Sotuvchi kassadan to'laydigan kundalik xarajatlar; salonning o'z moddalari ham chiqadi (FT-13.1)
@@ -233,7 +234,7 @@ function YopilganSmenalar() {
         {royxat && royxat.map((s) => (
           <div key={s.id} className="tasdiq">
             <span>
-              <b>{s.sana}</b>{s.filial ? ` · ${s.filial}` : ''} · {s.ochgan} · {s.yopilgan
+              <b>{sanaMatni(s.sana)}</b>{s.filial ? ` · ${s.filial}` : ''} · {s.ochgan} · {s.yopilgan
                 ? <>hisobda {som(s.hisobdagi_qoldiq)}, sanaldi {som(s.fakt_qoldiq)}, farq <b className={s.farq ? 'qizil' : ''}>{som(s.farq)}</b></>
                 : 'ochiq'}
               {s.zalog_tekshirilmagan > 0 && <span className="qizil"> · {s.zalog_tekshirilmagan} ta zalog tekshirilmagan</span>}

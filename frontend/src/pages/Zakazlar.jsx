@@ -5,6 +5,7 @@ import {
   bekorQilish, berish, chegirmaSora, mijozOzgartir, tolovHavola, primerkaBelgila, primerkaOzgartir, promokodOlibTashla, promokodQolla, qarzTolash, qaytarish, sanaKochirish, som, sozlamalar, tayyorChegirmalar,
   tolovQabul, xatoMatni, zakazAksessuarOchir, zakazAksessuarQosh, zakazTafsilot, zakazTarixi, zakazlarRoyxat,
   boshAksessuarlar, boshLiboslar, libosAlmashtirish, salonchilar, zakazSalonchi,
+  sanaMatni,
 } from '../api'
 import { TARIX_HARAKATLARI, ZAKAZ_HOLATLARI } from '../nomlar'
 
@@ -55,7 +56,7 @@ export default function Zakazlar({ tanlangan, onTanla }) {
       {royxat.length === 0 && <p className="malumot">Zakaz topilmadi.</p>}
       {royxat.map((z) => (
         <button key={z.id} className="qator-btn" onClick={() => onTanla(z.id)}>
-          <b>#{z.raqam}</b> {z.mijoz} · {z.olib_ketish}
+          <b>#{z.raqam}</b> {z.mijoz} · {sanaMatni(z.olib_ketish)}
           <span>{ZAKAZ_HOLATLARI[z.holat]} · {som(z.jami)}</span>
         </button>
       ))}
@@ -115,7 +116,7 @@ function Karta({ id, onOrqaga }) {
         <p>{z.mijoz === z.telefon ? z.telefon : `${z.mijoz} · ${z.telefon}`}</p>
         <p>{z.liboslar.join(', ')}</p>
         {z.aksessuarlar.length > 0 && <p className="malumot">Aksessuarlar: {z.aksessuarlar.join(', ')}</p>}
-        <p>{z.olib_ketish} – {z.qaytarish}</p>
+        <p>{sanaMatni(z.olib_ketish)} – {sanaMatni(z.qaytarish)}</p>
         {z.salonchi && (
           <p className="malumot">Salonchi: {z.salonchi.ism}
             {z.salonchi.instagram && <> · <a href={z.salonchi.instagram} target="_blank" rel="noreferrer">Instagram</a></>}
@@ -156,8 +157,8 @@ function Karta({ id, onOrqaga }) {
             () => tolovQabul({ zakaz: z.id, tur: h === 'bron' ? 'qoldiq' : 'avans', summa, usul }),
             `To'lov qabul qilindi.${soz?.fiskal_eslatma ? ` ${soz.fiskal_izoh || 'Fiskal chekni urishni unutmang.'}` : ''}`)} />
       )}
-      {h === 'bron' && z.qoldiq === 0 && <BerishForma soz={soz} onYuborish={(zaloglar) => bajar(() => berish(z.id, zaloglar), 'Libos berildi.')} />}
-      {h === 'berildi' && <QaytarishForma baholash={soz ? soz.mijoz_bahosi : true} onYuborish={(b) => bajar(() => qaytarish(z.id, b), 'Qaytarish rasmiylashtirildi.')} />}
+      {h === 'bron' && z.qoldiq === 0 && <BerishForma soz={soz} libosZalogi={z.libos_zalogi} onYuborish={(zaloglar) => bajar(() => berish(z.id, zaloglar), 'Libos berildi.')} />}
+      {h === 'berildi' && <QaytarishForma baholash={soz ? soz.mijoz_bahosi : true} tillo={z.zaloglar.some((g) => g.turi === 'tillo')} onYuborish={(b) => bajar(() => qaytarish(z.id, b), 'Qaytarish rasmiylashtirildi.')} />}
       {h === 'qaytarildi' && z.qarz > 0 && (
         <TolovForma sarlavha="Jarima qarzini to'lash" maks={z.qarz} usulsiz
           onYuborish={(summa) => bajar(() => qarzTolash(z.id, summa), "Qarz to'landi.")} />
@@ -292,9 +293,13 @@ function SalonchiTanlash({ z, bajar }) {
   )
 }
 
+// Keng ekranda asosiy amal o'ng panelda ochiq turadi (katta tugma yashirin); telefonda tugma shu blokka olib boradi
+const kengEkran = () => typeof window !== 'undefined' && window.matchMedia?.('(min-width: 768px)').matches
+
 function Amal({ sarlavha, children, id }) {
+  const [ochiq] = useState(() => id === 'asosiy-amal' && kengEkran())
   return (
-    <details className="blok amal" id={id}>
+    <details className="blok amal" id={id} open={ochiq || undefined}>
       <summary>{sarlavha}</summary>
       <div className="stack">{children}</div>
     </details>
@@ -401,15 +406,16 @@ function ChegirmaForma({ zakazId, z, bajar }) {
   )
 }
 
-function BerishForma({ onYuborish, soz }) {
+function BerishForma({ onYuborish, soz, libosZalogi }) {
   const TURLAR = [['pul', 'Pul', 'zalog_pul'], ['hujjat', 'Hujjat', 'zalog_hujjat'], ['tillo', 'Tillo buyum', 'zalog_tillo']]
     .filter(([, , k]) => !soz || soz[k])  // admin panelda yoqilgan turlar (FT-7.1)
   const [tanlov, setTuri] = useState('')
   const turi = TURLAR.some(([t]) => t === tanlov) ? tanlov : TURLAR[0]?.[0]
   const [f, setF] = useState({})
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value })
+  const pulSumma = f.summa ?? (libosZalogi ? String(libosZalogi) : '')  // standart — libos(lar)ning zalog summasi
   const zalog = turi === 'pul'
-    ? { turi, summa: Number(f.summa || 0) }
+    ? { turi, summa: Number(pulSumma || 0) }
     : turi === 'hujjat'
       ? { turi, hujjat_turi: f.hujjat_turi, hujjat_raqami: f.hujjat_raqami }
       : { turi, tavsif: f.tavsif, ogirlik_gr: f.ogirlik_gr, summa: Number(f.summa || 0) }
@@ -418,7 +424,7 @@ function BerishForma({ onYuborish, soz }) {
       <select value={turi} onChange={(e) => { setTuri(e.target.value); setF({}) }}>
         {TURLAR.map(([t, nom]) => <option key={t} value={t}>{nom}</option>)}
       </select>
-      {turi === 'pul' && <label>Zalog summasi<input type="number" onChange={set('summa')} /></label>}
+      {turi === 'pul' && <label>Zalog summasi<input type="number" value={pulSumma} onChange={set('summa')} /></label>}
       {turi === 'hujjat' && (<>
         <label>Hujjat turi<input placeholder="pasport" onChange={set('hujjat_turi')} /></label>
         <label>Raqami<input onChange={set('hujjat_raqami')} /></label>
@@ -433,7 +439,7 @@ function BerishForma({ onYuborish, soz }) {
   )
 }
 
-function QaytarishForma({ onYuborish, baholash }) {
+function QaytarishForma({ onYuborish, baholash, tillo }) {
   const [f, setF] = useState({ tekshiruv: 'butun' })
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value })
   const body = {
@@ -451,7 +457,7 @@ function QaytarishForma({ onYuborish, baholash }) {
       </label>
       <label>Jarima<input type="number" min="0" onChange={set('jarima')} /></label>
       <label>Shu zahoti to'langan jarima (zalogdan ortig'i)<input type="number" min="0" onChange={set('jarima_tolandi')} /></label>
-      <label>Tillo qayta tortildi, g (agar tillo zalog bo'lsa)<input type="number" step="0.01" onChange={set('tortilgan_gr')} /></label>
+      {tillo && <label>Tillo qayta tortildi, g<input type="number" step="0.01" onChange={set('tortilgan_gr')} /></label>}
       {baholash && <label>Mijoz bahosi (1–5)<input type="number" min="1" max="5" onChange={set('baho')} /></label>}
       <button onClick={() => onYuborish(body)}>Qaytarishni rasmiylashtirish</button>
     </Amal>

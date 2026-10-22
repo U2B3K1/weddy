@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { mavsumiyOchir, mavsumiyOzgartir, mavsumiyQosh, mavsumiyNarxlar, xatoMatni } from '../api'
+import { mavsumiyOchir, mavsumiyOzgartir, mavsumiyQosh, mavsumiyNarxlar, sanaMatni, xatoMatni } from '../api'
 
 const KUNLAR = ['Du', 'Se', 'Ch', 'Pa', 'Ju', 'Sh', 'Ya']
 const BOSH = { nomi: '', foiz: '', boshlanish: '', tugash: '' }
@@ -59,7 +59,7 @@ export default function MavsumiyNarx() {
         <div key={q.id} className={`tasdiq ${q.faol ? '' : 'bajarilgan'}`}>
           <span>
             <b>{q.nomi}</b> · +{Number(q.foiz)}%
-            {q.boshlanish && ` · ${q.boshlanish} – ${q.tugash}`}
+            {q.boshlanish && ` · ${sanaMatni(q.boshlanish)} – ${sanaMatni(q.tugash)}`}
             {q.hafta_kunlari && ` · ${q.hafta_kunlari.map((k) => KUNLAR[k]).join(', ')}`}
             {!q.faol && " · o'chirilgan"}
           </span>

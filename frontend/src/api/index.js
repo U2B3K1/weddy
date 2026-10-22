@@ -293,6 +293,8 @@ export const xatoMatni = (e, standart = 'Xatolik yuz berdi.') => {
 }
 
 // Brauzerdan qat'i nazar bir xil ko'rinish: 2 400 000 so'm (hujjatlardagi matn bilan mos)
+// ISO sana (2026-10-22 yoki to'liq vaqt) → 22.10.2026; bo'sh qiymat — bo'sh satr
+export const sanaMatni = (s) => (s ? String(s).slice(0, 10).split('-').reverse().join('.') : '')
 export const som = (n) => `${String(Math.round(Number(n || 0))).replace(/\B(?=(\d{3})+(?!\d))/g, ' ')} so'm`
 
 export default api

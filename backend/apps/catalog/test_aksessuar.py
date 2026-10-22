@@ -251,8 +251,10 @@ class ZakazAksessuarAPITests(AksBase):
         self.assertEqual(r.status_code, 201, r.content)
         self.assertEqual((r.json()['jami'], r.json()['aksessuarlar']), (2_600_000, ['FT-01', 'FT-02']))
         zid = r.json()['id']
+        type(self.libos).objects.filter(id=self.libos.id).update(zalog=500_000)
         d = c.get(f'/api/zakazlar/{zid}/').json()
         self.assertEqual(sorted(d['aksessuarlar']), ['Fata klassik (FT-01)', 'Fata klassik (FT-02)'])
+        self.assertEqual(d['libos_zalogi'], 500_000)  # berishda pul zalogi shundan to'ladi
         r = c.get('/api/bronlar/bosh-aksessuarlar/?dan=2026-11-10&gacha=2026-11-12').json()
         self.assertEqual(r[0]['bosh_soni'], 1)
         r = c.post('/api/zakazlar/', {'telefon': '+998902', 'dan': '2026-11-10', 'gacha': '2026-11-12',

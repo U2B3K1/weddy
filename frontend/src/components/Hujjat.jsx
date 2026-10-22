@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { hujjat, som, xatoMatni } from '../api'
+import { hujjat, sanaMatni, som, xatoMatni } from '../api'
 
 // Shartnoma, kvitansiya va zalog dalolatnomasi (FT-10.2, FT-7.4). «Chop etish» brauzerning chop etish oynasini
 // ochadi — u yerdan printerga yuborish yoki PDF sifatida saqlash mumkin.
@@ -22,7 +22,7 @@ export default function Hujjat({ zakazId, tur, onYop }) {
         <article className="hujjat">
           <header>
             <h1>{h.sarlavha}</h1>
-            <p>{h.sana}</p>
+            <p>{sanaMatni(h.sana)}</p>
           </header>
 
           <table className="hujjat-tomonlar"><tbody>
@@ -36,8 +36,8 @@ export default function Hujjat({ zakazId, tur, onYop }) {
               <td>
                 <b>Mijoz:</b> {h.mijoz.fio || '________________'}<br />
                 Tel.: {h.mijoz.telefon}<br />
-                Olib ketish: {h.olib_ketish}<br />
-                Qaytarish: {h.qaytarish}
+                Olib ketish: {sanaMatni(h.olib_ketish)}<br />
+                Qaytarish: {sanaMatni(h.qaytarish)}
               </td>
             </tr>
           </tbody></table>
@@ -58,7 +58,7 @@ export default function Hujjat({ zakazId, tur, onYop }) {
               <thead><tr><th>Sana</th><th>To'lov</th><th>Usul</th><th>Summa</th><th>Qabul qildi</th></tr></thead>
               <tbody>
                 {h.tolovlar.map((t, i) => (
-                  <tr key={i}><td>{t.sana}</td><td>{t.tur}</td><td>{t.usul}</td><td>{som(t.summa)}</td><td>{t.xodim}</td></tr>
+                  <tr key={i}><td>{sanaMatni(t.sana)}</td><td>{t.tur}</td><td>{t.usul}</td><td>{som(t.summa)}</td><td>{t.xodim}</td></tr>
                 ))}
               </tbody>
             </table>

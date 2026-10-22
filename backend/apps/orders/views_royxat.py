@@ -123,6 +123,7 @@ class ZakazTafsilotView(APIView):
                                      'narx': a.narx} for a in z.aksessuarlar.all()],
             'libos_qatorlari': [{'id': p.libos_id, 'artikul': p.libos.artikul, 'nomi': p.libos.nomi, 'narx': p.narx}
                                 for p in z.pozitsiyalar.all()],
+            'libos_zalogi': sum(p.libos.zalog for p in z.pozitsiyalar.all()),  # berishda pul zalogi shundan to'ladi
             'qarz': akt.qarz if akt else 0,
             'bekor_sabab': z.bekor_sabab,
             'xizmatlar': z.xizmatlar,
