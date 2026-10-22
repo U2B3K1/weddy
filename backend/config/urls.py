@@ -23,10 +23,14 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.urls import include, path
 
+from apps.tenants.cheklov import admin_kirish
 from apps.tenants.urls import admin_urlpatterns, platforma_urlpatterns
 
+# Django admin standart /admin/ da emas — avtomatik skanerlar topmasin; login parol tanlashga qarshi cheklangan
+admin.site.login = admin_kirish(admin.site.login)
+
 urlpatterns = [
-    path('admin/', admin.site.urls),
+    path('adminaka/', admin.site.urls),
     path('api/auth/', include('apps.tenants.urls')),
     path('api/', include((admin_urlpatterns, 'tenants_admin'))),
     path('api/platforma/', include((platforma_urlpatterns, 'platforma'))),

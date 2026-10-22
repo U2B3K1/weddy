@@ -186,7 +186,7 @@ sudo -u libosa crontab -l    # tekshirish
 ## 13. Tekshirish ro'yxati
 
 - [ ] `https://libosa.uz` ochiladi (frontend)
-- [ ] `https://libosa.uz/admin/` ochiladi (Django admin)
+- [ ] `https://libosa.uz/adminaka/` ochiladi (Django admin)
 - [ ] `/api/` so'rovlari ishlaydi (login, salon kirishi)
 - [ ] Rasm yuklash `/media/` orqali ko'rinadi
 - [ ] `journalctl -u libosa.service` da xatolik yo'q

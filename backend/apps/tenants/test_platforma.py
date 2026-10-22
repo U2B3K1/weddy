@@ -49,6 +49,18 @@ class PlatformaKirishTests(PlatformaBase):
             self.assertEqual(c.post('/api/platforma/login/', {'login': 'egasi', 'parol': 'x'}, format='json').status_code, 401)
         r = c.post('/api/platforma/login/', {'login': 'egasi', 'parol': 'juda-maxfiy-parol'}, format='json')
         self.assertEqual(r.status_code, 403)
+        # blok IP bo'yicha: egasi boshqa tarmoqdan kira oladi
+        r = c.post('/api/platforma/login/', {'login': 'egasi', 'parol': 'juda-maxfiy-parol'}, format='json',
+                   HTTP_X_REAL_IP='6.6.6.6')
+        self.assertEqual(r.status_code, 200)
+
+    def test_django_admin_adminaka_da_va_cheklangan(self):
+        self.assertEqual(APIClient().get('/admin/').status_code, 404)
+        self.assertEqual(APIClient().get('/adminaka/login/').status_code, 200)
+        c = APIClient()
+        for _ in range(5):
+            self.assertEqual(c.post('/adminaka/login/', {'username': 'root', 'password': 'x'}).status_code, 200)
+        self.assertEqual(c.post('/adminaka/login/', {'username': 'root', 'password': 'x'}).status_code, 429)
 
     def test_xodim_tokeni_bilan_platformaga_kirib_bolmaydi(self):
         _, xodim, _ = salon_yarat()

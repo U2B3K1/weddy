@@ -20,7 +20,7 @@ class Command(BaseCommand):
             raise CommandError('Parol kamida 10 belgidan iborat bo\'lishi kerak.')
         admin, yangi = PlatformaAdmini.objects.get_or_create(login=opts['login'], defaults={'ism': opts['ism']})
         admin.set_parol(parol)
-        admin.xato_urinish, admin.bloklangan_gacha, admin.faol = 0, None, True
+        admin.faol = True
         if opts['ism']:
             admin.ism = opts['ism']
         admin.save()

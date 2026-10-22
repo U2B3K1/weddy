@@ -83,12 +83,38 @@ class QurilmaTests(Base):
         self.assertEqual(c.get('/api/qurilmalar/').json(), [])
         self.assertEqual(c.delete(f'/api/qurilmalar/{q.id}/').status_code, 404)
 
-    def test_salon_paroli_5_xatodan_keyin_bloklanadi(self):
+    def salon_login_ip(self, ip, parol='parol', remote='127.0.0.1'):
+        return APIClient().post('/api/auth/salon-login/', {'login': 'ezaz', 'parol': parol}, format='json',
+                                HTTP_X_REAL_IP=ip, REMOTE_ADDR=remote)
+
+    def test_salon_paroli_5_xatodan_keyin_ip_15_daqiqa_bloklanadi(self):
+        from .models import KirishUrinishi
         for _ in range(5):
-            self.assertEqual(self.salon_login(parol='xato').status_code, 401)
-        self.assertEqual(self.salon_login().status_code, 403)  # to'g'ri parol ham o'tmaydi
-        Salon.objects.filter(id=self.salon.id).update(kirish_blok_gacha=timezone.now() - timedelta(seconds=1))
-        self.assertEqual(self.salon_login().status_code, 200)
+            self.assertEqual(self.salon_login_ip('5.5.5.5', parol='xato').status_code, 401)
+        self.assertEqual(self.salon_login_ip('5.5.5.5').status_code, 403)  # to'g'ri parol ham o'tmaydi
+        self.assertEqual(self.salon_login_ip('5.5.5.5', parol='xato').status_code, 403)
+        self.assertEqual(KirishUrinishi.objects.count(), 5)  # blok paytidagi urinish yozilmaydi — muddat uzaymaydi
+        # salonning o'zi bloklanmaydi: boshqa IP dagi xodim bemalol kiradi
+        self.assertEqual(self.salon_login_ip('6.6.6.6').status_code, 200)
+        KirishUrinishi.objects.update(vaqt=timezone.now() - timedelta(minutes=14))
+        self.assertEqual(self.salon_login_ip('5.5.5.5').status_code, 403)
+        KirishUrinishi.objects.update(vaqt=timezone.now() - timedelta(minutes=16))
+        self.assertEqual(self.salon_login_ip('5.5.5.5').status_code, 200)
+        self.assertFalse(KirishUrinishi.objects.filter(ip='5.5.5.5').exists())  # muvaffaqiyat — xatolar unutiladi
+
+    def test_bitta_ip_kop_loginni_sinasa_bloklanadi(self):
+        from .cheklov import IP_JAMI_SOATIGA
+        for i in range(IP_JAMI_SOATIGA):
+            APIClient().post('/api/auth/salon-login/', {'login': f'salon{i}', 'parol': 'x'}, format='json',
+                             HTTP_X_REAL_IP='7.7.7.7')
+        self.assertEqual(self.salon_login_ip('7.7.7.7').status_code, 403)
+        self.assertEqual(self.salon_login_ip('8.8.8.8').status_code, 200)
+
+    def test_x_real_ip_faqat_nginx_dan_kelganda_ishoniladi(self):
+        # tashqi manzildan kelgan so'rov sarlavhani almashtirib blokdan qochib qutula olmaydi
+        for i in range(5):
+            self.salon_login_ip(f'9.9.9.{i}', parol='xato', remote='203.0.113.5')
+        self.assertEqual(self.salon_login_ip('1.2.3.4', remote='203.0.113.5').status_code, 403)
 
     def test_rahbar_salon_parolini_ozgartiradi(self):
         c = self.api(self.rahbar)

@@ -22,8 +22,6 @@ class PlatformaAdmini(models.Model):
     parol = models.CharField(max_length=128)
     ism = models.CharField(max_length=200, blank=True)
     faol = models.BooleanField(default=True)
-    xato_urinish = models.PositiveSmallIntegerField(default=0)
-    bloklangan_gacha = models.DateTimeField(null=True, blank=True)
 
     is_authenticated = True
 
@@ -100,9 +98,6 @@ class Salon(models.Model):
     obuna_tugaydi = models.DateField(null=True, blank=True)
     rahbar_telefon = models.CharField(max_length=20, blank=True)
     oxirgi_kirish = models.DateTimeField(null=True, blank=True)
-    # Salon parolini tanlab topishga qarshi (PIN bilan bir xil qoida)
-    kirish_xato = models.PositiveSmallIntegerField(default=0)
-    kirish_blok_gacha = models.DateTimeField(null=True, blank=True)
     boshlash_yopilgan = models.BooleanField(default=False)  # boshlash ro'yxati yashirilgan (FT-22.7)
     # Demo/ishtirokchi salonlar uchun: yoqilgan bo'lsa yangi qurilmalar rahbar ruxsatisiz darhol ishonchli bo'ladi
     # (FT-22.2 ni chetlab o'tadi — faqat demo_ezaz kabi sinov salonlarida yoqiladi).
@@ -343,3 +338,15 @@ def integratsiya(salon):
     """Salon integratsiya sozlamalari (birinchi murojaatda bo'sh holda yaratiladi)."""
     salon_id = getattr(salon, 'id', salon)
     return Integratsiya.objects.get_or_create(salon_id=salon_id)[0]
+
+
+class KirishUrinishi(models.Model):
+    """Salon/platforma loginidagi xato urinish. Bloklash akkaunt emas, IP bo'yicha (`apps.tenants.cheklov`):
+    loginni bilgan begona odam xato parol terib salonni kirolmaydigan qilib qo'ya olmasin."""
+    tur = models.CharField(max_length=20)  # 'salon' | 'platforma'
+    login = models.CharField(max_length=150)
+    ip = models.GenericIPAddressField()
+    vaqt = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        indexes = [models.Index(fields=['ip', 'vaqt'])]

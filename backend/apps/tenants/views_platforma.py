@@ -16,7 +16,7 @@ from rest_framework.permissions import BasePermission
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from . import arxiv
+from . import arxiv, cheklov
 from .auth import PlatformTokenAuthentication, make_platform_token
 from .models import (Ariza, IshonchliQurilma, PlatformaAdmini, Salon, Tarif, Xodim, YordamRuxsati, jurnalga_yoz,
                      platforma_sozlama, sozlama)
@@ -48,20 +48,14 @@ class PlatformaLoginView(APIView):
 
     def post(self, request):
         login, parol = str(request.data.get('login', '')), str(request.data.get('parol', ''))
-        admin = PlatformaAdmini.objects.filter(login=login, faol=True).first()
-        if admin and admin.bloklangan_gacha and admin.bloklangan_gacha > timezone.now():
+        # parolni tanlab topishga qarshi — IP bo'yicha (cheklov.py), egasining o'zi bloklanib qolmaydi
+        if cheklov.bloklanganmi(request, 'platforma', login):
             raise PermissionDenied("Ko'p marta xato kiritildi. Keyinroq urinib ko'ring.")
+        admin = PlatformaAdmini.objects.filter(login=login, faol=True).first()
         if not admin or not admin.check_parol(parol):
-            if admin:  # parolni tanlab topishga qarshi (PIN bilan bir xil qoida)
-                admin.xato_urinish += 1
-                if admin.xato_urinish >= settings.PIN_MAX_ATTEMPTS:
-                    admin.bloklangan_gacha = timezone.now() + timedelta(minutes=settings.PIN_LOCK_MINUTES)
-                    admin.xato_urinish = 0
-                admin.save(update_fields=['xato_urinish', 'bloklangan_gacha'])
+            cheklov.xato_yoz(request, 'platforma', login)
             raise AuthenticationFailed("Login yoki parol noto'g'ri.")
-        if admin.xato_urinish:
-            admin.xato_urinish = 0
-            admin.save(update_fields=['xato_urinish'])
+        cheklov.tozala(request, 'platforma', login)
         return Response({'token': make_platform_token(admin), 'ism': admin.ism or admin.login})
 
 

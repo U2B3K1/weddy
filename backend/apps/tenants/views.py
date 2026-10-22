@@ -9,6 +9,7 @@ from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from . import cheklov
 from .auth import make_device_token, make_staff_token, qurilma_holati
 from .models import Ariza, IshonchliQurilma, Jurnal, Salon, Xodim, jurnalga_yoz
 
@@ -67,20 +68,14 @@ class SalonLoginView(OchiqView):
         ser = SalonLoginSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
         d = ser.validated_data
-        salon = Salon.objects.filter(login=d['login']).first()
-        if salon and salon.kirish_blok_gacha and salon.kirish_blok_gacha > timezone.now():
+        # Parolni tanlab topishga qarshi: salon emas, xato terayotgan IP to'xtatiladi (cheklov.py)
+        if cheklov.bloklanganmi(request, 'salon', d['login']):
             raise PermissionDenied("Parol ko'p marta xato kiritildi. Keyinroq urinib ko'ring.")
+        salon = Salon.objects.filter(login=d['login']).first()
         if not salon or not salon.check_parol(d['parol']) or salon.holat == Salon.Holat.BLOKLANGAN:
-            if salon and salon.holat != Salon.Holat.BLOKLANGAN:
-                salon.kirish_xato += 1
-                if salon.kirish_xato >= settings.PIN_MAX_ATTEMPTS:
-                    salon.kirish_blok_gacha = timezone.now() + timedelta(minutes=settings.PIN_LOCK_MINUTES)
-                    salon.kirish_xato = 0
-                salon.save(update_fields=['kirish_xato', 'kirish_blok_gacha'])
+            cheklov.xato_yoz(request, 'salon', d['login'])
             raise AuthenticationFailed("Login yoki parol noto'g'ri.")
-        if salon.kirish_xato:
-            salon.kirish_xato = 0
-            salon.save(update_fields=['kirish_xato'])
+        cheklov.tozala(request, 'salon', d['login'])
         # Birinchi qurilma darhol ishonchli; keyingilari rahbar ruxsatini kutadi (FT-22.2).
         # Demo/sinov salonida (qurilma_avto_tasdiq) har bir qurilma darhol ishonchli bo'ladi.
         birinchi = salon.qurilma_avto_tasdiq or not IshonchliQurilma.objects.filter(
