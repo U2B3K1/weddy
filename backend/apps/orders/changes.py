@@ -1,6 +1,6 @@
 """Zakazni o'zgartirish va bekor qilish (4.17)."""
 from django.db import transaction
-from django.db.models import Min
+from django.db.models import Min, Sum
 from django.utils import timezone
 
 from apps.bookings.models import AksessuarBron, Bron
@@ -77,6 +77,10 @@ def tolov_holatini_mosla(zakaz, xato=None):
         raise (xato or OzgartirishXatosi)("To'langan summa yangi jamidan oshib ketadi. "
                                           "Avval zakazni bekor qilib, avansni qaytaring.")
     if zakaz.tolangan_sana and tolangan < zakaz.jami:
+        from apps.finance.services import oy_yopilgan
+        s = zakaz.tolangan_sana
+        if oy_yopilgan(zakaz.salon_id, s.year, s.month):  # yopilgan oy tushumi jimgina o'zgarib qolmasin
+            raise (xato or OzgartirishXatosi)(f"Zakaz {s:%m.%Y} da to'liq to'langan, u oy yopilgan: narxni oshirib bo'lmaydi.")
         zakaz.tolangan_sana = None
     elif not zakaz.tolangan_sana and tolangan and tolangan == zakaz.jami:
         zakaz.tolangan_sana = timezone.localdate()
@@ -178,8 +182,10 @@ def zakazni_bekor_qilish(*, salon, xodim, zakaz, sabab, qaytariladigan_foiz_over
             raise OzgartirishXatosi("Foiz 0 dan 100 gacha bo'lishi kerak.")
         foiz = qaytariladigan_foiz_override
 
-    avans = tolangan_summa(zakaz)
-    qaytariladi = avans * foiz // 100
+    # Qoida faqat avansga qo'llanadi (FT-17.3): oldindan to'langan qoldiq to'liq qaytariladi
+    tolangan = tolangan_summa(zakaz)
+    avans = zakaz.tolovlar.filter(tur=Tolov.Tur.AVANS).aggregate(s=Sum('summa'))['s'] or 0
+    qaytariladi = avans * foiz // 100 + (tolangan - avans)
     if qaytariladi:
         tolov_qabul(salon=salon, xodim=xodim, tur=Tolov.Tur.VOZVRAT, summa=qaytariladi,
                     usul=usul, zakaz=zakaz, izoh=f'Zakaz #{zakaz.raqam} bekor qilindi')
@@ -191,10 +197,11 @@ def zakazni_bekor_qilish(*, salon, xodim, zakaz, sabab, qaytariladigan_foiz_over
         holat=ChegirmaSorovi.Holat.RAD, rahbar_izohi='Zakaz bekor qilindi')
     eski_holat = zakaz.holat
     zakaz.holat, zakaz.bekor_sabab, zakaz.bekor_vaqti = Zakaz.Holat.BEKOR, sabab, timezone.now()
-    zakaz.qaytarilgan_avans, zakaz.ushlab_qolingan_avans = qaytariladi, avans - qaytariladi
+    zakaz.qaytarilgan_avans, zakaz.ushlab_qolingan_avans = qaytariladi, tolangan - qaytariladi
     zakaz.save()
     _log(zakaz, xodim, 'bekor_qilindi', eski_holat,
-         f'avans {avans}: qaytarildi {qaytariladi} ({foiz}%), ushlab qolindi {avans - qaytariladi}', sabab)
+         f"to'langan {tolangan} (avans {avans}): qaytarildi {qaytariladi} (avansning {foiz}%), "
+         f'ushlab qolindi {tolangan - qaytariladi}', sabab)
     return zakaz
 
 
@@ -241,15 +248,17 @@ BRON_TUGADI_SABAB = 'Avans kiritilmadi: vaqtinchalik bron muddati tugadi'
 
 
 @transaction.atomic
-def muddati_otganlarni_bekor_qil(salon=None):
+def muddati_otganlarni_bekor_qil(salon=None, zakaz_idlar=None):
     """Avanssiz bron muddati (standart 24 soat) o'tgan zakazlarni avtomatik bekor qiladi (FT-2.5, S04).
 
     Libos bo'shaydi, zakaz «Bekor qilingan» holatiga o'tadi, tarixga yoziladi. Bekor qilingan zakazlar sonini qaytaradi.
+    `zakaz_idlar` berilsa — faqat shu zakazlar (bron_qilish muddati o'tgan bronni boshqa zakazga berishdan oldin chaqiradi).
     """
-    muddati_otgan = Bron.objects.filter(turi=Bron.Turi.VAQTINCHALIK, muddati__lt=timezone.now(), zakaz__isnull=False)
-    if salon is not None:
-        muddati_otgan = muddati_otgan.filter(salon=salon)
-    zakaz_idlar = set(muddati_otgan.values_list('zakaz_id', flat=True))
+    if zakaz_idlar is None:
+        muddati_otgan = Bron.objects.filter(turi=Bron.Turi.VAQTINCHALIK, muddati__lt=timezone.now(), zakaz__isnull=False)
+        if salon is not None:
+            muddati_otgan = muddati_otgan.filter(salon=salon)
+        zakaz_idlar = set(muddati_otgan.values_list('zakaz_id', flat=True))
     soni = 0
     for zakaz in (Zakaz.objects.select_for_update()
                   .filter(id__in=zakaz_idlar, holat__in=[Zakaz.Holat.VAQTINCHALIK, Zakaz.Holat.CHEGIRMA_KUTILMOQDA])):

@@ -260,13 +260,11 @@ class HisobotlarRoyxatiView(APIView):
     permission_classes = [IsRahbar]
 
     def get(self, request):
-        from .statistika import HISOBOTLAR
-        bosh = date(2000, 1, 1)
+        from .statistika import HISOBOTLAR, SARLAVHALAR
         from apps.tenants.models import sozlama
         yashirin = set() if sozlama(request.salon).qoplamagan_royxat else {'bosh-liboslar'}  # 4.16: yoq-o'ch
         return Response([{'kalit': 'pnl', 'sarlavha': 'Foyda va zarar (P&L)'}]
-                        + [{'kalit': k, 'sarlavha': fn(request.salon, bosh, bosh)['sarlavha']}
-                           for k, fn in HISOBOTLAR.items() if k not in yashirin])
+                        + [{'kalit': k, 'sarlavha': SARLAVHALAR[k]} for k in HISOBOTLAR if k not in yashirin])
 
 
 class HisobotView(APIView):

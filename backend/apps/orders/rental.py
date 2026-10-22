@@ -9,7 +9,7 @@ from apps.cash.services import KassaXatosi, tolangan_summa, tolov_qabul
 from apps.catalog.models import Libos
 from apps.tenants.models import sozlama
 
-from .models import QaytarishAkti, Zalog, Zakaz
+from .models import QaytarishAkti, Zalog, Zakaz, ZakazPozitsiya
 
 OGIRLIK_TOLERANSIYA = Decimal('0.1')  # gramm
 
@@ -32,6 +32,12 @@ def libos_berish(*, salon, xodim, zakaz, zaloglar, usul=Tolov.Usul.NAQD):
         raise BerishXatosi("Qoldiq to'lanmaguncha libos berilmaydi.")
     if not zaloglar:
         raise BerishXatosi('Zalog olinmagan.')
+    for p in zakaz.pozitsiyalar.select_related('libos'):  # libos jismonan salonda va berishga tayyor bo'lsin
+        if p.libos.holat in (Libos.Holat.TOZALASHDA, Libos.Holat.TAMIRDA):
+            raise BerishXatosi(f"«{p.libos.nomi}» hozir {p.libos.get_holat_display().lower()} — avval «bo'sh» qiling.")
+        if (ZakazPozitsiya.objects.filter(libos=p.libos, zakaz__holat=Zakaz.Holat.BERILDI)
+                .exclude(zakaz=zakaz).exists()):
+            raise BerishXatosi(f"«{p.libos.nomi}» hali oldingi mijozdan qaytmagan.")
 
     ruxsat = sozlama(salon).zalog_turlari()  # admin panelda yoqilgan turlar (FT-7.1)
     for z in zaloglar:
@@ -158,8 +164,8 @@ def tozalash_tugadi(*, salon, libos):
 def qarzni_tolash(*, salon, xodim, zakaz, summa):
     """Qaytarishdan keyingi jarima qarzi to'lanadi; to'liq to'lansa ushlab qolingan zalog qaytadi, zakaz yopiladi."""
     zakaz = Zakaz.objects.select_for_update().get(id=zakaz.id, salon=salon)
-    akt = zakaz.qaytarish_akti
-    if zakaz.holat != Zakaz.Holat.QAYTARILDI or akt.qarz == 0:
+    akt = getattr(zakaz, 'qaytarish_akti', None)  # qaytarilmagan zakazda akt yo'q — 500 emas, 409
+    if zakaz.holat != Zakaz.Holat.QAYTARILDI or akt is None or akt.qarz == 0:
         raise BerishXatosi("To'lanadigan qarz yo'q.")
     summa = min(summa, akt.qarz)
     tolov_qabul(salon=salon, xodim=xodim, tur=Tolov.Tur.JARIMA, summa=summa, zakaz=zakaz)

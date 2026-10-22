@@ -157,6 +157,11 @@ function Karta({ id, onOrqaga }) {
             () => tolovQabul({ zakaz: z.id, tur: h === 'bron' ? 'qoldiq' : 'avans', summa, usul }),
             `To'lov qabul qilindi.${soz?.fiskal_eslatma ? ` ${soz.fiskal_izoh || 'Fiskal chekni urishni unutmang.'}` : ''}`)} />
       )}
+      {h === 'vaqtinchalik' && z.jami === 0 && (
+        <button onClick={() => bajar(() => tolovQabul({ zakaz: z.id, tur: 'avans', summa: 0, usul: 'naqd' }), 'Bron tasdiqlandi.')}>
+          Bronni tasdiqlash (to'liq chegirma — to'lov yo'q)
+        </button>
+      )}
       {h === 'bron' && z.qoldiq === 0 && <BerishForma soz={soz} libosZalogi={z.libos_zalogi} onYuborish={(zaloglar) => bajar(() => berish(z.id, zaloglar), 'Libos berildi.')} />}
       {h === 'berildi' && <QaytarishForma baholash={soz ? soz.mijoz_bahosi : true} tillo={z.zaloglar.some((g) => g.turi === 'tillo')} onYuborish={(b) => bajar(() => qaytarish(z.id, b), 'Qaytarish rasmiylashtirildi.')} />}
       {h === 'qaytarildi' && z.qarz > 0 && (

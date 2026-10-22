@@ -49,6 +49,7 @@ def smena_ochish(*, salon, xodim, boshlangich_qoldiq, filial=None):
     return smena
 
 
+@transaction.atomic
 def smenaga_qoshilish(*, salon, xodim, filial=None):
     smena = ochiq_smena(salon, filial)
     if not smena:
@@ -56,6 +57,7 @@ def smenaga_qoshilish(*, salon, xodim, filial=None):
     boshqa = xodim_smenasi(salon, xodim)
     if boshqa and boshqa.id != smena.id:
         raise KassaXatosi('Siz boshqa kassaning ochiq smenasidasiz: avval undan chiqing.')
+    smena = _qulfla(smena)  # ikki marta bosilsa ikkinchi ishtirokchi qatori yaratilmaydi (yopish «oxirgi emas» deb to'xtardi)
     SmenaIshtirokchi.objects.get_or_create(salon=salon, smena=smena, xodim=xodim, chiqqan=None)
     return smena
 
@@ -74,6 +76,13 @@ def _faol_ishtirokchi(smena, xodim):
     return SmenaIshtirokchi.objects.filter(smena=smena, xodim=xodim, chiqqan=None).exists()
 
 
+def _bronlar_joyida(zakaz):
+    """Zakazning har bir libosi va aksessuar donasi uchun bron qatori bor (muddati o'tgan bo'lsa ham — u hali
+    boshqaga berilmagan, avans bilan mustahkam bo'ladi). Qator yo'q bo'lsa — boshqa zakaz olgan."""
+    return (Bron.objects.filter(zakaz=zakaz).count() == zakaz.pozitsiyalar.count()
+            and AksessuarBron.objects.filter(zakaz=zakaz).count() == zakaz.aksessuarlar.count())
+
+
 def tolangan_summa(zakaz):
     r = zakaz.tolovlar.filter(tur__in=[Tolov.Tur.AVANS, Tolov.Tur.QOLDIQ]).aggregate(s=Sum('summa'))
     return r['s'] or 0
@@ -86,7 +95,15 @@ def tolov_qabul(*, salon, xodim, tur, summa, usul=Tolov.Usul.NAQD, zakaz=None, i
     Avans zakazni mustahkam bronga o'tkazadi; avans + qoldiq jamiga yetsa, zakaz to'liq to'langan
     kuni belgilanadi — daromad shu kuni tan olinadi (6.1).
     """
-    if summa <= 0:
+    if tur in (Tolov.Tur.AVANS, Tolov.Tur.QOLDIQ):
+        if zakaz is None:
+            raise KassaXatosi('Zakaz ko\'rsatilmagan.')
+        # Qulf tartibi hamma joyda bir xil: avval zakaz, keyin smena (bekor qilish, berish, qaytarish ham shunday) —
+        # aks holda parallel avans va bekor qilish bir-birini kutib qolardi (deadlock)
+        zakaz = Zakaz.objects.select_for_update().get(id=zakaz.id, salon=salon)
+    # To'liq bepul zakaz (100% chegirma/promokod): bron 0 so'mlik avans bilan tasdiqlanadi
+    bepul_bron = tur == Tolov.Tur.AVANS and summa == 0 and zakaz is not None and zakaz.jami == 0
+    if summa <= 0 and not bepul_bron:
         raise KassaXatosi('Summa musbat bo\'lishi kerak.')
     smena = xodim_smenasi(salon, xodim)
     if not smena:
@@ -96,9 +113,6 @@ def tolov_qabul(*, salon, xodim, tur, summa, usul=Tolov.Usul.NAQD, zakaz=None, i
     smena = _qulfla(smena)
 
     if tur in (Tolov.Tur.AVANS, Tolov.Tur.QOLDIQ):
-        if zakaz is None:
-            raise KassaXatosi('Zakaz ko\'rsatilmagan.')
-        zakaz = Zakaz.objects.select_for_update().get(id=zakaz.id, salon=salon)
         if zakaz.holat in (Zakaz.Holat.BEKOR, Zakaz.Holat.YOPILDI):
             raise KassaXatosi('Bu zakazga to\'lov qabul qilib bo\'lmaydi.')
         if zakaz.holat == Zakaz.Holat.CHEGIRMA_KUTILMOQDA:
@@ -107,6 +121,9 @@ def tolov_qabul(*, salon, xodim, tur, summa, usul=Tolov.Usul.NAQD, zakaz=None, i
             raise KassaXatosi('Avval avans kiritiladi.')
         if tolangan_summa(zakaz) + summa > zakaz.jami:
             raise KassaXatosi('To\'lov zakaz summasidan oshib ketadi.')
+        if tur == Tolov.Tur.AVANS and zakaz.holat == Zakaz.Holat.VAQTINCHALIK and not _bronlar_joyida(zakaz):
+            raise KassaXatosi("Vaqtinchalik bron muddati o'tib, libos yoki aksessuar boshqa zakazga berilgan. "
+                              "Bu zakazni bekor qilib, qaytadan rasmiylashtiring.")
 
     tolov = Tolov.objects.create(salon=salon, smena=smena, zakaz=zakaz, tur=tur, usul=usul,
                                  summa=summa, xodim=xodim, izoh=izoh)

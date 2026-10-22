@@ -107,7 +107,7 @@ class TolovSerializer(serializers.Serializer):
     # bilan (finance), vozvrat — zakazni bekor qilishda, zalog/jarima — berish va qaytarishda. Aks holda
     # sotuvchi kassadan xarajat yoki «vozvrat» deb pulni hisobsiz olib chiqa olardi.
     tur = serializers.ChoiceField(choices=[Tolov.Tur.AVANS, Tolov.Tur.QOLDIQ, Tolov.Tur.INKASSATSIYA])
-    summa = serializers.IntegerField(min_value=1)
+    summa = serializers.IntegerField(min_value=0)  # 0 — faqat to'liq bepul zakaz bronini tasdiqlash (tolov_qabul tekshiradi)
     usul = serializers.ChoiceField(choices=Tolov.Usul.choices, default=Tolov.Usul.NAQD)
     zakaz = serializers.IntegerField(required=False)
     izoh = serializers.CharField(required=False, allow_blank=True, default='', max_length=300)

@@ -126,8 +126,8 @@ def bron_qilish(*, salon, libos, olib_ketish, qaytarish, xodim, avans_bor=False,
     if boshqa_qulf(libos, oraliq, xodim).exists():
         raise BandlikXatosi("Hozir boshqa sotuvchi rasmiylashtiryapti.")
     # Muddati o'tgan vaqtinchalik bronlar libosni band ushlab turmasligi uchun o'chiriladi (FT-2.5).
-    Bron.objects.filter(salon=salon, libos=libos, oraliq__overlap=oraliq,
-                        turi=Bron.Turi.VAQTINCHALIK, muddati__lt=timezone.now()).delete()
+    _muddati_otganlarni_boshat(Bron.objects.filter(salon=salon, libos=libos, oraliq__overlap=oraliq,
+                                                  turi=Bron.Turi.VAQTINCHALIK, muddati__lt=timezone.now()), zakaz)
     try:
         with transaction.atomic():
             return Bron.objects.create(
@@ -138,6 +138,16 @@ def bron_qilish(*, salon, libos, olib_ketish, qaytarish, xodim, avans_bor=False,
             )
     except IntegrityError:
         raise BandlikXatosi('Libos shu sanalarga band bo\'lib qoldi.')
+
+
+def _muddati_otganlarni_boshat(bronlar, zakaz=None):
+    """Muddati o'tgan vaqtinchalik bronlarni bo'shatadi. Bron zakazga tegishli bo'lsa zakazning o'zi bekor qilinadi
+    (cron kabi) — aks holda u bronsiz «vaqtinchalik» bo'lib qolar va keyin avans olib, band libosni ikkinchi marta bron qilardi."""
+    from apps.orders.changes import muddati_otganlarni_bekor_qil
+    zakaz_idlar = set(bronlar.exclude(zakaz__isnull=True).values_list('zakaz_id', flat=True)) - {getattr(zakaz, 'id', None)}
+    if zakaz_idlar:
+        muddati_otganlarni_bekor_qil(zakaz_idlar=zakaz_idlar)
+    bronlar.delete()  # zakazsiz va (pul olingani uchun) bekor qilinmagan zakazlarning muddati o'tgan bronlari
 
 
 def boshqa_qulf(libos, oraliq, xodim):
@@ -207,9 +217,9 @@ def aksessuar_bron_qilish(*, salon, aksessuar, soni, olib_ketish, qaytarish, ava
     if qaytarish < olib_ketish:
         raise BandlikXatosi("Qaytarish sanasi olib ketishdan oldin bo'lishi mumkin emas.")
     oraliq = aksessuar_oraliq(aksessuar, olib_ketish, qaytarish)
-    AksessuarBron.objects.filter(
+    _muddati_otganlarni_boshat(AksessuarBron.objects.filter(
         dona__aksessuar=aksessuar, oraliq__overlap=oraliq, turi=Bron.Turi.VAQTINCHALIK,
-        muddati__lt=timezone.now()).delete()
+        muddati__lt=timezone.now()), zakaz)
     olingan = []
     donalar = bosh_donalar(aksessuar, oraliq)
     if zakaz is not None and zakaz.filial_id:  # avval shu filialdagi, keyin biriktirilmagan, oxirida boshqa filialdagi dona

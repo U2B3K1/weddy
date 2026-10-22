@@ -208,10 +208,11 @@ class RahbarDashbordView(APIView):
         filial = request.query_params.get('filial', '')
         filial = int(filial) if filial.isdigit() else None
         zf = {'filial_id': filial} if filial else {}
-        smena = ochiq_smena(salon) if not filial else Smena.objects.filter(salon=salon, yopilgan__isnull=True, filial_id=filial).first()
-        bugungi = Tolov.objects.filter(salon=salon, vaqt__date=bugun,
-                                       tur__in=[Tolov.Tur.AVANS, Tolov.Tur.QOLDIQ, Tolov.Tur.JARIMA],
-                                       **({'smena__filial_id': filial} if filial else {}))
+        # Ochiq smenalar: filial bo'yicha yoki butun salon (filial kassalari yoqilgan bo'lsa bir nechta bo'ladi)
+        ochiq_smenalar = list(Smena.objects.filter(salon=salon, yopilgan__isnull=True, **({'filial_id': filial} if filial else {})))
+        smena = ochiq_smenalar[0] if ochiq_smenalar else None
+        bugungi = Tolov.objects.filter(reports.tolov_filiali(filial), salon=salon, vaqt__date=bugun,
+                                       tur__in=[Tolov.Tur.AVANS, Tolov.Tur.QOLDIQ, Tolov.Tur.JARIMA])
         by_usul = {r['usul']: r['s'] for r in bugungi.values('usul').annotate(s=Sum('summa'))}
         pnl = reports.foyda_zarar(salon, bugun.year, bugun.month, filial=filial)
         kutilayotgan = reports.kutilayotgan_daromad(salon, bugun, filial)
@@ -232,7 +233,8 @@ class RahbarDashbordView(APIView):
             'hozirgi_daromad': pnl['tushum'],
             'xarajatlar': pnl['togridan_togri_xarajat'] + pnl['operatsion_xarajat'],
             'taxminiy_sof_foyda': pnl['sof_foyda'], 'zakazlar_soni': pnl['zakazlar_soni'],
-            'ortacha_chek': pnl['tushum'] // pnl['zakazlar_soni'] if pnl['zakazlar_soni'] else 0,
+            # o'rtacha chek storno'siz (oldingi oydan bekor qilingan zakaz bu oy zakazlariga bo'linmaydi) — _davr_bloki kabi
+            'ortacha_chek': (pnl['tushum'] + pnl['storno']) // pnl['zakazlar_soni'] if pnl['zakazlar_soni'] else 0,
         }
         davr_dan = {'bugun': bugun, 'hafta': bugun - timedelta(days=bugun.weekday()), 'oy': bugun.replace(day=1)}[davr]
         if davr != 'oy':  # FT-19.2: «Shu oy» bloki tanlangan davrga moslashadi
@@ -253,7 +255,7 @@ class RahbarDashbordView(APIView):
                 'tushum': by_usul, 'tushum_jami': sum(by_usul.values()),
                 'smena_ochiq': bool(smena),
                 'ochiq_smenalar': Smena.objects.filter(salon=salon, yopilgan__isnull=True).count(),
-                'hisobdagi_qoldiq': kassa_hisobot(smena)['hisobdagi_qoldiq'] if smena else None,
+                'hisobdagi_qoldiq': sum(kassa_hisobot(s)['hisobdagi_qoldiq'] for s in ochiq_smenalar) if ochiq_smenalar else None,
                 'olib_ketiladi': Zakaz.objects.filter(salon=salon, olib_ketish=bugun,
                                                       holat=Zakaz.Holat.BRON, **zf).count(),
                 'qaytariladi': berilgan.filter(qaytarish=bugun).count(),

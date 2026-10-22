@@ -111,14 +111,15 @@ def sotuvchilar(salon, dan, gacha, filial=None, **_):
     tol = {r['sotuvchi_id']: r for r in _tolangan(salon, dan, gacha, filial=filial).values('sotuvchi_id')
            .annotate(n=Count('id'))}
     summa = _sof(_tolangan(salon, dan, gacha, filial=filial), _storno(salon, dan, gacha, filial=filial), 'sotuvchi_id')
-    yangi = dict(Zakaz.objects.filter(salon=salon, yaratilgan__date__range=(dan, gacha)).exclude(holat=Zakaz.Holat.BEKOR)
-                 .values_list('sotuvchi_id').annotate(n=Count('id')))
+    zf = {'zakaz__filial_id': filial} if filial else {}  # filial filtri qatorning hamma ustuniga
+    yangi = dict(Zakaz.objects.filter(salon=salon, yaratilgan__date__range=(dan, gacha), **_filtr(filial=filial))
+                 .exclude(holat=Zakaz.Holat.BEKOR).values_list('sotuvchi_id').annotate(n=Count('id')))
     cheg = defaultdict(lambda: [0, 0])
-    for sid, holat, n in (ChegirmaSorovi.objects.filter(salon=salon, yaratilgan__date__range=(dan, gacha),
+    for sid, holat, n in (ChegirmaSorovi.objects.filter(salon=salon, yaratilgan__date__range=(dan, gacha), **zf,
                                                         holat__in=[ChegirmaSorovi.Holat.TASDIQLANDI, ChegirmaSorovi.Holat.RAD])
                           .values_list('sotuvchi_id', 'holat').annotate(n=Count('id'))):
         cheg[sid][0 if holat == ChegirmaSorovi.Holat.TASDIQLANDI else 1] = n
-    baho = dict(QaytarishAkti.objects.filter(salon=salon, sana__range=(dan, gacha), baho__isnull=False)
+    baho = dict(QaytarishAkti.objects.filter(salon=salon, sana__range=(dan, gacha), baho__isnull=False, **zf)
                 .values_list('zakaz__sotuvchi_id').annotate(a=Avg('baho')))
     qatorlar, kalitlar = [], []
     for x in Xodim.objects.filter(salon=salon).order_by('ism'):
@@ -334,6 +335,15 @@ HISOBOTLAR = {
     'manba': mijoz_manbalari, 'zalog': zaloglar, 'zalog-statistika': zalog_statistikasi, 'bosh-liboslar': bosh_liboslar,
     'bekor': bekor_qilinganlar, 'kechikish': kechikish_va_jarimalar, 'xarajat': xarajatlar, 'pul-oqimi': pul_oqimi,
     'kassa': kassa, 'bandlik': bandlik, 'kelgusi': kelgusi_bronlar, 'chegirma': chegirmalar,
+}
+
+# Ro'yxat uchun sarlavhalar — hisobotni hisoblamasdan (har bir funksiya javobidagi 'sarlavha' bilan bir xil)
+SARLAVHALAR = {
+    'libos': 'Libos samaradorligi', 'kategoriya': 'Kategoriyalar', 'sotuvchi': 'Sotuvchilar', 'salonchi': 'Salonchilar',
+    'manba': 'Mijoz manbalari', 'zalog': 'Zaloglar reestri', 'zalog-statistika': 'Zalog statistikasi',
+    'bosh-liboslar': "Qoplamagan va bo'sh liboslar", 'bekor': 'Bekor qilingan zakazlar', 'kechikish': 'Kechikish va jarimalar',
+    'xarajat': 'Xarajatlar', 'pul-oqimi': 'Pul oqimi', 'kassa': 'Kunlik kassa', 'bandlik': 'Bandlik',
+    'kelgusi': 'Kelgusi bronlar', 'chegirma': 'Chegirmalar',
 }
 
 # Qaysi hisobotda qaysi filtr ishlaydi (FT-20.1); qolganlarida filtr ma'nosiz (masalan, kassa).
