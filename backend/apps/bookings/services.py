@@ -112,10 +112,11 @@ def bosh_liboslar(salon, olib_ketish, qaytarish, bandlarni_korsat=False, xodim=N
 
 
 @transaction.atomic
-def bron_qilish(*, salon, libos, olib_ketish, qaytarish, xodim, avans_bor=False, zakaz=None, qayta=False):
+def bron_qilish(*, salon, libos, olib_ketish, qaytarish, xodim, avans_bor=False, zakaz=None, qayta=False, muddati=None):
     """Libosni sanalarga band qiladi. Ikki marta bron bazadagi cheklov bilan ham to'xtatiladi.
 
     `qayta=True` — mavjud zakazning o'sha libosini yangi sanaga ko'chirish (QAYTA_BRONLANADI).
+    `muddati` — avanssiz bronning eski muddati: ko'chirish/almashtirish uni uzaytirmasin (FT-2.5).
     """
     if qaytarish < olib_ketish:
         raise BandlikXatosi('Qaytarish sanasi olib ketishdan oldin bo\'lishi mumkin emas.')
@@ -133,11 +134,14 @@ def bron_qilish(*, salon, libos, olib_ketish, qaytarish, xodim, avans_bor=False,
             return Bron.objects.create(
                 salon=salon, libos=libos, oraliq=oraliq, yaratgan=xodim, zakaz=zakaz,
                 turi=Bron.Turi.MUSTAHKAM if avans_bor else Bron.Turi.VAQTINCHALIK,
-                muddati=None if avans_bor else timezone.now() + timedelta(
-                    hours=sozlama(salon).vaqtinchalik_bron_soat),
+                muddati=None if avans_bor else muddati or _yangi_muddat(salon),
             )
     except IntegrityError:
         raise BandlikXatosi('Libos shu sanalarga band bo\'lib qoldi.')
+
+
+def _yangi_muddat(salon):
+    return timezone.now() + timedelta(hours=sozlama(salon).vaqtinchalik_bron_soat)
 
 
 def _muddati_otganlarni_boshat(bronlar, zakaz=None):
@@ -185,10 +189,14 @@ def aksessuar_oraliq(aksessuar, olib_ketish, qaytarish, standart_bufer=None):
     return Range(olib_ketish, qaytarish + timedelta(days=bufer), '[]')
 
 
-def bosh_donalar(aksessuar, oraliq):
+# Libosdagi QAYTA_BRONLANADI kabi: mavjud zakazni ko'chirishda donaning bugungi ta'miri to'siq emas
+QAYTA_BRONLANADI_DONA = (AksessuarDona.Holat.BOSH, AksessuarDona.Holat.TAMIRDA)
+
+
+def bosh_donalar(aksessuar, oraliq, holatlar=(AksessuarDona.Holat.BOSH,)):
     """Oraliqda band bo'lmagan, ishlatishga yaroqli donalar (yorliq tartibida)."""
     band = AksessuarBron.faol().filter(oraliq__overlap=oraliq).values('dona_id')
-    return list(aksessuar.donalar.filter(holat=AksessuarDona.Holat.BOSH).exclude(id__in=band))
+    return list(aksessuar.donalar.filter(holat__in=holatlar).exclude(id__in=band))
 
 
 def bosh_aksessuarlar(salon, olib_ketish, qaytarish):
@@ -204,11 +212,13 @@ def bosh_aksessuarlar(salon, olib_ketish, qaytarish):
 
 
 @transaction.atomic
-def aksessuar_bron_qilish(*, salon, aksessuar, soni, olib_ketish, qaytarish, avans_bor=False, zakaz=None):
+def aksessuar_bron_qilish(*, salon, aksessuar, soni, olib_ketish, qaytarish, avans_bor=False, zakaz=None,
+                          qayta=False, avvalgi=(), muddati=None):
     """Aksessuardan `soni` dona band qiladi va band qilingan donalarni qaytaradi.
 
     Yetarli bo'sh dona bo'lmasa hech narsa band qilinmaydi. Poyga holatida bazadagi cheklov
-    ushlagan donadan keyingisi sinab ko'riladi.
+    ushlagan donadan keyingisi sinab ko'riladi. `qayta=True` — mavjud zakazni ko'chirish: ta'mirdagi dona ham
+    olinadi va zakazning `avvalgi` donalari birinchi sinaladi (mijoz o'sha donani ko'rgan bo'lishi mumkin).
     """
     if aksessuar.salon_id != salon.id or aksessuar.holat != Aksessuar.Holat.FAOL:
         raise BandlikXatosi('Aksessuar mavjud emas.')
@@ -221,17 +231,18 @@ def aksessuar_bron_qilish(*, salon, aksessuar, soni, olib_ketish, qaytarish, ava
         dona__aksessuar=aksessuar, oraliq__overlap=oraliq, turi=Bron.Turi.VAQTINCHALIK,
         muddati__lt=timezone.now()), zakaz)
     olingan = []
-    donalar = bosh_donalar(aksessuar, oraliq)
+    donalar = bosh_donalar(aksessuar, oraliq, QAYTA_BRONLANADI_DONA if qayta else (AksessuarDona.Holat.BOSH,))
     if zakaz is not None and zakaz.filial_id:  # avval shu filialdagi, keyin biriktirilmagan, oxirida boshqa filialdagi dona
         donalar.sort(key=lambda d: 0 if d.filial_id == zakaz.filial_id else 1 if d.filial_id is None else 2)
+    avvalgi = {d.id for d in avvalgi}
+    donalar.sort(key=lambda d: d.id not in avvalgi)  # barqaror saralash: filial tartibi saqlanadi
     for dona in donalar:
         try:
             with transaction.atomic():
                 AksessuarBron.objects.create(
                     salon=salon, dona=dona, oraliq=oraliq, zakaz=zakaz,
                     turi=Bron.Turi.MUSTAHKAM if avans_bor else Bron.Turi.VAQTINCHALIK,
-                    muddati=None if avans_bor else timezone.now() + timedelta(
-                        hours=sozlama(salon).vaqtinchalik_bron_soat))
+                    muddati=None if avans_bor else muddati or _yangi_muddat(salon))
             olingan.append(dona)
         except IntegrityError:
             continue

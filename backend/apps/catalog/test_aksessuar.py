@@ -239,6 +239,21 @@ class ZakazAksessuarTests(AksBase):
         self.assertEqual(z.aksessuarlar.count(), 1)
         self.assertEqual(AksessuarBron.objects.filter(zakaz=z).count(), 1)
 
+    def test_kochirishda_tamirdagi_oz_donasi_olinadi(self):
+        bugun = timezone.localdate()
+        z = self.zakaz(aks=[self.fata.id], dan=bugun + timedelta(days=10), gacha=bugun + timedelta(days=12))
+        dona = z.aksessuarlar.get().dona
+        yangi = bugun + timedelta(days=30)
+        dona.holat = AksessuarDona.Holat.TAMIRDA  # bugun ta'mirda — 30 kun keyin qaytgan bo'ladi
+        dona.save()
+        libos2 = libos_yarat(self.salon, self.kat, 'B', ijara_narxi=1)
+        zakaz_yaratish(salon=self.salon, xodim=self.malika, telefon='+998909', olib_ketish=yangi,
+                       qaytarish=yangi + timedelta(days=2), libos_idlari=[libos2.id],
+                       aksessuar_idlari=[self.fata.id] * 2)  # qolgan 2 bo'sh dona yangi sanaga band
+        z = sanani_kochirish(salon=self.salon, xodim=self.malika, zakaz=z, olib_ketish=yangi,
+                             qaytarish=yangi + timedelta(days=2))
+        self.assertEqual(z.aksessuarlar.get().dona, dona)
+
 
 class ZakazAksessuarAPITests(AksBase):
     def test_api_oqimi(self):

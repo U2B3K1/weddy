@@ -159,12 +159,17 @@ def tekshir(promokod, zakaz, bugun=None):
         # bitta mijoz necha marta ishlata olishi — telefon raqami (mijoz) bo'yicha (FT-21.4)
         if promokod.ishlatilishlar.filter(bekor=False, mijoz_id=zakaz.mijoz_id).count() >= promokod.bir_mijozga:
             raise PromokodXatosi('Bu mijoz kodni allaqachon ishlatgan')
+    sana_shartlari(promokod, zakaz)
+    return _chegirma_hisobla(promokod, zakaz)
+
+
+def sana_shartlari(promokod, zakaz):
+    """Zakaz summasi va olib ketish kuniga bog'liq shartlar — sana ko'chirilganda ham qayta tekshiriladi."""
     asos = zakaz.asosiy_narx + zakaz.ustama
     if promokod.min_summa and asos < promokod.min_summa:
         raise PromokodXatosi(f'Minimal summa {_som(promokod.min_summa)}')
     if promokod.hafta_kunlari is not None and zakaz.olib_ketish.weekday() not in promokod.hafta_kunlari:
         raise PromokodXatosi('Bu kod tanlangan hafta kuniga amal qilmaydi')
-    return _chegirma_hisobla(promokod, zakaz)
 
 
 @transaction.atomic

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Hujjat from '../components/Hujjat'
+import CalendarPage from '../components/kalendar/CalendarPage'
 import Tasdiq from '../components/Tasdiq'
 import {
   bekorQilish, berish, chegirmaSora, mijozOzgartir, tolovHavola, primerkaBelgila, primerkaOzgartir, promokodOlibTashla, promokodQolla, qarzTolash, qaytarish, sanaKochirish, som, sozlamalar, tayyorChegirmalar,
@@ -180,7 +181,8 @@ function Karta({ id, onOrqaga }) {
       )}
       {['vaqtinchalik', 'chegirma_kutilmoqda', 'bron'].includes(h) && (
         <>
-          <KochirishForma onYuborish={(b) => bajar(() => sanaKochirish(z.id, b), 'Sana ko\'chirildi.')} />
+          <KochirishForma key={`${z.olib_ketish}-${z.qaytarish}`} z={z}
+            onYuborish={(b) => bajar(() => sanaKochirish(z.id, b), 'Sana ko\'chirildi.')} />
           <BekorForma soz={soz} onYuborish={(b) => bajar(() => bekorQilish(z.id, b), 'Zakaz bekor qilindi.')} />
         </>
       )}
@@ -560,14 +562,26 @@ function PrimerkaForma({ z, bajar, ochiq }) {
   )
 }
 
-function KochirishForma({ onYuborish }) {
-  const [dan, setDan] = useState('')
-  const [gacha, setGacha] = useState('')
+// Yangi zakazdagi kalendar: o'tgan kun tanlanmaydi, oraliq oldindan ko'rinadi. Joriy sanalar tanlangan holda ochiladi.
+function KochirishForma({ z, onYuborish }) {
+  const [dan, setDan] = useState(z.olib_ketish)
+  const [gacha, setGacha] = useState(z.qaytarish)
+  const [sabab, setSabab] = useState('')
+  const [surov, setSurov] = useState(false)
+  const ozgardi = dan && gacha && (dan !== z.olib_ketish || gacha !== z.qaytarish)
   return (
     <Amal sarlavha="Sanani ko'chirish">
-      <label>Olib ketish<input type="date" value={dan} onChange={(e) => setDan(e.target.value)} /></label>
-      <label>Qaytarish<input type="date" min={dan} value={gacha} onChange={(e) => setGacha(e.target.value)} /></label>
-      <button disabled={!dan || !gacha} onClick={() => onYuborish({ dan, gacha })}>Ko'chirish</button>
+      <CalendarPage dan={dan} gacha={gacha} onTanla={(d, g) => { setDan(d); setGacha(g) }} />
+      <label>Sabab (rahbarga xabarda ko'rinadi)<input value={sabab} onChange={(e) => setSabab(e.target.value)} /></label>
+      <button disabled={!ozgardi} onClick={() => setSurov(true)}>Ko'chirish</button>
+      {surov && (
+        <Tasdiq sarlavha="Sanani ko'chirasizmi?" tugma="Ha, ko'chirish"
+          matn={`${sanaMatni(z.olib_ketish)} – ${sanaMatni(z.qaytarish)} → ${sanaMatni(dan)} – ${sanaMatni(gacha)}. `
+            + "Mavsumiy ustama va promokod chegirmasi yangi sanaga qarab qayta hisoblanadi; "
+            + "narx to'langan summadan pastga tushmaydi."}
+          onYop={() => setSurov(false)}
+          onTasdiq={() => { setSurov(false); onYuborish({ dan, gacha, sabab: sabab.trim() }) }} />
+      )}
     </Amal>
   )
 }

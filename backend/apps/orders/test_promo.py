@@ -13,9 +13,9 @@ from apps.tenants.auth import make_staff_token
 from apps.tenants.models import Xodim, sozlama
 
 from . import promo
-from .changes import libosni_almashtirish, zakazni_bekor_qilish
+from .changes import OzgartirishXatosi, libosni_almashtirish, sanani_kochirish, zakazni_bekor_qilish
 from .discounts import ChegirmaXatosi, chegirma_qarori, chegirma_sorash
-from .models import ChegirmaSorovi, Promokod, PromokodIshlatilishi, Salonchi, Zakaz
+from .models import ChegirmaSorovi, MavsumiyNarx, Promokod, PromokodIshlatilishi, Salonchi, Zakaz
 from .promo import PromokodXatosi
 from .services import zakaz_yaratish
 
@@ -235,6 +235,36 @@ class TiklanishTests(PromoBase):
         self.zakaz.refresh_from_db()
         self.assertLessEqual(self.zakaz.promokod_chegirma, self.zakaz.chegirma)
         self.assertGreaterEqual(self.zakaz.jami, 0)
+
+
+
+class SanaKochirishTests(PromoBase):
+    """Sana ko'chganda promokod sanaga bog'liq shartlari va foizli chegirmasi qayta hisoblanadi."""
+
+    def test_hafta_kuni_sharti_buzilsa_kochirilmaydi(self):
+        self.kod('JUMA', hafta_kunlari=[4])
+        self.qolla('JUMA')
+        with self.assertRaises(OzgartirishXatosi):  # 21-noyabr — shanba
+            sanani_kochirish(salon=self.salon, xodim=self.malika, zakaz=self.zakaz,
+                             olib_ketish=date(2026, 11, 21), qaytarish=date(2026, 11, 23))
+        z = sanani_kochirish(salon=self.salon, xodim=self.malika, zakaz=self.zakaz,
+                             olib_ketish=date(2026, 11, 27), qaytarish=date(2026, 11, 29))  # keyingi juma
+        self.assertEqual(z.olib_ketish, date(2026, 11, 27))
+
+    def test_foizli_chegirma_yangi_ustamadan(self):
+        soz = sozlama(self.salon)
+        soz.mavsumiy_narx = True
+        soz.save()
+        MavsumiyNarx.objects.create(salon=self.salon, nomi='Dekabr', foiz=20,
+                                    boshlanish=date(2026, 12, 1), tugash=date(2026, 12, 31))
+        self.kod(qiymat=10)
+        z = self.qolla()  # 2 200 000 dan 10% = 220 000
+        self.assertEqual(z.promokod_chegirma, 220_000)
+        z = sanani_kochirish(salon=self.salon, xodim=self.malika, zakaz=z,
+                             olib_ketish=date(2026, 12, 4), qaytarish=date(2026, 12, 6))
+        # 2 000 000 + 20% = 2 400 000, 10% = 240 000
+        self.assertEqual((z.promokod_chegirma, z.chegirma, z.jami), (240_000, 240_000, 2_160_000))
+        self.assertEqual(PromokodIshlatilishi.objects.get(bekor=False).summa, 240_000)
 
 
 class YaratishTests(PromoBase):

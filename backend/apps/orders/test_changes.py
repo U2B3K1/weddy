@@ -14,7 +14,7 @@ from apps.tenants.models import Xodim
 
 from .changes import (OzgartirishXatosi, libosni_almashtirish, qaytariladigan_foiz,
                       sanani_kochirish, zakazni_bekor_qilish)
-from .models import Zakaz
+from .models import Primerka, Zakaz
 from .rental import libos_berish
 from .services import zakaz_yaratish
 
@@ -157,6 +157,39 @@ class SanaKochirishTests(ChangeBase):
         with self.assertRaises(OzgartirishXatosi):
             sanani_kochirish(salon=self.salon, xodim=self.malika, zakaz=z, olib_ketish=kun(20),
                              qaytarish=kun(19))
+
+    def test_ozgarmagan_sana_rad_etiladi_tarixga_yozilmaydi(self):
+        z = self.zakaz(kun(10), kun(12))
+        with self.assertRaises(OzgartirishXatosi):
+            sanani_kochirish(salon=self.salon, xodim=self.malika, zakaz=z, olib_ketish=kun(10), qaytarish=kun(12))
+        self.assertFalse(z.tarix.filter(harakat='sana_kochirildi').exists())
+
+    def test_muddati_otgan_avanssiz_bron_kochirilmaydi(self):
+        z = self.zakaz(kun(10))
+        Bron.objects.filter(zakaz=z).update(muddati=timezone.now() - timedelta(hours=1))
+        with self.assertRaises(OzgartirishXatosi):
+            sanani_kochirish(salon=self.salon, xodim=self.malika, zakaz=z, olib_ketish=kun(20), qaytarish=kun(22))
+        z.refresh_from_db()
+        self.assertEqual(z.olib_ketish, kun(10))
+        self.assertEqual(Bron.objects.filter(zakaz=z).count(), 1)  # eski bron joyida — avans bilan tiklanadi
+
+    def test_kochirish_va_almashtirish_bron_muddatini_uzaytirmaydi(self):  # FT-2.5
+        z = self.zakaz(kun(10))
+        muddat = timezone.now() + timedelta(hours=1)
+        Bron.objects.filter(zakaz=z).update(muddati=muddat)
+        z = sanani_kochirish(salon=self.salon, xodim=self.malika, zakaz=z, olib_ketish=kun(20), qaytarish=kun(22))
+        self.assertEqual(Bron.objects.get(zakaz=z).muddati, muddat)
+        z = libosni_almashtirish(salon=self.salon, xodim=self.malika, zakaz=z, eski_libos=self.a, yangi_libos=self.c)
+        self.assertEqual(Bron.objects.get(zakaz=z).muddati, muddat)
+
+    def test_primerka_olib_ketishdan_kech_qololmaydi(self):
+        z = self.zakaz(kun(10), kun(12))
+        vaqt = timezone.make_aware(timezone.datetime.combine(kun(8), timezone.datetime.min.time().replace(hour=12)))
+        Primerka.objects.create(salon=self.salon, zakaz=z, vaqt=vaqt)
+        with self.assertRaises(OzgartirishXatosi):  # primerka 8-kunda, olib ketish 6-kunga surilmoqda
+            sanani_kochirish(salon=self.salon, xodim=self.malika, zakaz=z, olib_ketish=kun(6), qaytarish=kun(7))
+        z = sanani_kochirish(salon=self.salon, xodim=self.malika, zakaz=z, olib_ketish=kun(8), qaytarish=kun(9))
+        self.assertEqual(z.olib_ketish, kun(8))  # primerka kuni olib ketish — ruxsat
 
 
 class AlmashtirishTests(ChangeBase):

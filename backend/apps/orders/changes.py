@@ -10,7 +10,7 @@ from apps.cash.services import tolangan_summa, tolov_qabul
 from apps.catalog.models import Libos
 from apps.tenants.models import Xodim, sozlama
 
-from .models import ChegirmaSorovi, TushumFarqi, Zakaz, ZakazAksessuar, ZakazPozitsiya, ZakazTarixi
+from .models import ChegirmaSorovi, Primerka, TushumFarqi, Zakaz, ZakazAksessuar, ZakazPozitsiya, ZakazTarixi
 from .pricing import mavsumiy_foiz, narx_hisobla
 
 # FT-17.4: standart qoida — (to'ygacha qolgan kun, avansdan qaytariladigan %), kattasidan kichigiga
@@ -56,13 +56,17 @@ def _ochiq_zakaz(salon, zakaz):
 
 def _qayta_hisobla(zakaz, xato=None):
     """Narxni qayta hisoblaydi va to'lov holatini moslaydi — ikkalasi doim birga, biri unutilib qolmasin."""
+    _narxni_hisobla(zakaz)
+    tolov_holatini_mosla(zakaz, xato)
+
+
+def _narxni_hisobla(zakaz):
     asosiy = (sum(p.narx for p in zakaz.pozitsiyalar.all())
               + sum(a.narx for a in zakaz.aksessuarlar.all()) + zakaz.xizmatlar)
     h = narx_hisobla(asosiy, zakaz.ustama_foiz, chegirma=zakaz.chegirma)
     zakaz.asosiy_narx, zakaz.ustama, zakaz.chegirma, zakaz.jami = (
         h['asosiy_narx'], h['ustama'], h['chegirma'], h['jami'])
     zakaz.promokod_chegirma = min(zakaz.promokod_chegirma, zakaz.chegirma)
-    tolov_holatini_mosla(zakaz, xato)
 
 
 def tolov_holatini_mosla(zakaz, xato=None):
@@ -105,22 +109,50 @@ def _tushum_farqi(zakaz, tolangan):
         TushumFarqi.objects.create(salon=zakaz.salon, zakaz=zakaz, summa=farq, sana=sana)
 
 
-def _bronlash(zakaz, xodim, olib_ketish, qaytarish):
+def _vaqtinchalik_muddat(zakaz):
+    """Avanssiz bronning eng yaqin muddati (bo'lmasa None) — qayta bronlashda uzaytirilmaydi (FT-2.5)."""
+    return min(filter(None, (
+        Bron.objects.filter(zakaz=zakaz, turi=Bron.Turi.VAQTINCHALIK).aggregate(m=Min('muddati'))['m'],
+        AksessuarBron.objects.filter(zakaz=zakaz, turi=Bron.Turi.VAQTINCHALIK).aggregate(m=Min('muddati'))['m'],
+    )), default=None)
+
+
+def _bronlash(zakaz, xodim, olib_ketish, qaytarish, muddati=None):
     avans_bor = zakaz.holat == Zakaz.Holat.BRON
     for p in zakaz.pozitsiyalar.select_related('libos__kategoriya'):
         bron_qilish(salon=zakaz.salon, libos=p.libos, olib_ketish=olib_ketish, qaytarish=qaytarish,
-                    xodim=xodim, avans_bor=avans_bor, zakaz=zakaz, qayta=True)
+                    xodim=xodim, avans_bor=avans_bor, zakaz=zakaz, qayta=True, muddati=muddati)
     # Aksessuarlar: har bir turdan shuncha dona yangi sanalarga qayta band qilinadi (boshqa dona chiqishi mumkin).
     # Narx zakazdagi narx bo'yicha qoladi — katalog narxi keyin o'zgargan bo'lsa ham, sana ko'chirish narxni o'zgartirmaydi.
     qatorlar = list(zakaz.aksessuarlar.select_related('dona__aksessuar__kategoriya'))
     zakaz.aksessuarlar.all().delete()
-    narxlar = {}
+    narxlar, donalar = {}, {}
     for q in qatorlar:
         narxlar.setdefault(q.dona.aksessuar, []).append(q.narx)
+        donalar.setdefault(q.dona.aksessuar, []).append(q.dona)
     for a, n in narxlar.items():
         for dona, narx in zip(aksessuar_bron_qilish(salon=zakaz.salon, aksessuar=a, soni=len(n), olib_ketish=olib_ketish,
-                                                    qaytarish=qaytarish, avans_bor=avans_bor, zakaz=zakaz), n):
+                                                    qaytarish=qaytarish, avans_bor=avans_bor, zakaz=zakaz,
+                                                    qayta=True, avvalgi=donalar[a], muddati=muddati), n):
             ZakazAksessuar.objects.create(salon=zakaz.salon, zakaz=zakaz, dona=dona, narx=narx)
+
+
+def _promokodni_yangila(zakaz):
+    """Sana ko'chgach promokod sanaga bog'liq shartlarini qayta tekshiradi va chegirmani qayta hisoblaydi.
+
+    Limit/muddat qayta tekshirilmaydi — kod qo'llangan paytda yaroqli edi. Shart buzilsa ko'chirish to'xtaydi:
+    chegirmani jimgina olib tashlash mijozdan kutilmagan qo'shimcha pul so'rash bo'lardi.
+    """
+    from .promo import PromokodXatosi, _chegirma_hisobla, sana_shartlari
+    try:
+        sana_shartlari(zakaz.promokod, zakaz)
+        yangi = _chegirma_hisobla(zakaz.promokod, zakaz)
+    except PromokodXatosi as e:
+        raise OzgartirishXatosi(f"«{zakaz.promokod.kod}» promokodi yangi sanaga amal qilmaydi: {e}.")
+    qolda = zakaz.chegirma - zakaz.promokod_chegirma
+    yangi = min(yangi, zakaz.asosiy_narx + zakaz.ustama - qolda)
+    zakaz.chegirma, zakaz.promokod_chegirma = qolda + yangi, yangi
+    zakaz.promokod_ishlatilishlari.filter(bekor=False).update(summa=yangi)
 
 
 @transaction.atomic
@@ -134,21 +166,43 @@ def sanani_kochirish(*, salon, xodim, zakaz, olib_ketish, qaytarish, sabab=''):
         raise OzgartirishXatosi("Qaytarish sanasi olib ketishdan oldin bo'lishi mumkin emas.")
     if olib_ketish < timezone.localdate():
         raise OzgartirishXatosi("O'tgan sanaga ko'chirib bo'lmaydi.")
+    if (olib_ketish, qaytarish) == (zakaz.olib_ketish, zakaz.qaytarish):
+        raise OzgartirishXatosi("Sanalar o'zgarmadi.")  # aks holda bo'sh yozuv va rahbarga ortiqcha xabar
+    # Primerka olib ketishdan kech bo'lolmaydi (primerka.py dagi qoida) — ko'chirish ham uni buzmasin
+    for p in zakaz.primerkalar.filter(holat=Primerka.Holat.REJALASHTIRILGAN):
+        if timezone.localtime(p.vaqt).date() > olib_ketish:
+            raise OzgartirishXatosi(f"Primerka {timezone.localtime(p.vaqt):%d.%m.%Y} ga belgilangan — yangi olib ketish "
+                                    "kunidan kech. Avval primerkani ko'chiring yoki bekor qiling.")
     eski = f'{zakaz.olib_ketish} – {zakaz.qaytarish}'
     # Avanssiz bron muddati ko'chirishda uzaymaydi: aks holda har kuni ko'chirib libosni avanssiz ushlab turish mumkin (FT-2.5)
-    eski_muddat = Bron.objects.filter(zakaz=zakaz, turi=Bron.Turi.VAQTINCHALIK).aggregate(m=Min('muddati'))['m']
+    eski_muddat = _vaqtinchalik_muddat(zakaz)
+    if eski_muddat and eski_muddat <= timezone.now():
+        # Muddati o'tgan bron yangi sanaga ham o'tgan muddat bilan yozilardi — zakaz «ko'chdi» deb ko'rinib,
+        # keyin avtomatik bekor bo'lardi. Avans bronni mustahkamlaydi (cash.services), shundan keyin ko'chiriladi.
+        raise OzgartirishXatosi("Avanssiz bron muddati tugagan. Ko'chirishdan oldin avans qabul qiling "
+                                "(bron mustahkamlanadi) yoki zakazni qaytadan rasmiylashtiring.")
     Bron.objects.filter(zakaz=zakaz).delete()  # o'z bronlari yangi sanalarni to'smasligi uchun
     AksessuarBron.objects.filter(zakaz=zakaz).delete()
-    _bronlash(zakaz, xodim, olib_ketish, qaytarish)
-    if eski_muddat:
-        Bron.objects.filter(zakaz=zakaz, turi=Bron.Turi.VAQTINCHALIK).update(muddati=eski_muddat)
-        AksessuarBron.objects.filter(zakaz=zakaz, turi=Bron.Turi.VAQTINCHALIK).update(muddati=eski_muddat)
+    _bronlash(zakaz, xodim, olib_ketish, qaytarish, eski_muddat)
     zakaz.olib_ketish, zakaz.qaytarish = olib_ketish, qaytarish
+    eski_narx = (zakaz.ustama_foiz, zakaz.chegirma, zakaz.promokod_chegirma)
     if sozlama(salon).mavsumiy_narx:  # FT-17.1: mavsumiy ustama yangi sanaga qarab qayta hisoblanadi
         zakaz.ustama_foiz = mavsumiy_foiz(salon, olib_ketish)
-    _qayta_hisobla(zakaz)
+    _narxni_hisobla(zakaz)
+    if zakaz.promokod_id:  # foizli chegirma yangi ustamadan, hafta kuni/min summa sharti yangi sanaga qarab
+        _promokodni_yangila(zakaz)
+        _narxni_hisobla(zakaz)
+    yangi = f'{olib_ketish} – {qaytarish}'
+    if tolangan_summa(zakaz) > zakaz.jami:
+        # Arzonroq sanaga ko'chirilib, narx to'langan summadan tushib ketdi — eski narx saqlanadi, pul qaytarilmaydi
+        # (salon qarori). Aks holda ko'chirish rad etilar va yagona yo'l avansni ushlab qoladigan bekor qilish bo'lardi.
+        zakaz.ustama_foiz, zakaz.chegirma, zakaz.promokod_chegirma = eski_narx
+        if zakaz.promokod_id:
+            zakaz.promokod_ishlatilishlari.filter(bekor=False).update(summa=zakaz.promokod_chegirma)
+        yangi += " (narx saqlandi: to'langan summa yangi narxdan katta)"
+    _qayta_hisobla(zakaz)  # to'lov holati yakuniy narx bo'yicha bir marta tekshiriladi
     zakaz.save()
-    _log(zakaz, xodim, 'sana_kochirildi', eski, f'{olib_ketish} – {qaytarish}', sabab)
+    _log(zakaz, xodim, 'sana_kochirildi', eski, yangi, sabab)
     return zakaz
 
 
@@ -165,10 +219,11 @@ def libosni_almashtirish(*, salon, xodim, zakaz, eski_libos, yangi_libos, sabab=
     if zakaz.pozitsiyalar.filter(libos=yangi).exists():
         raise OzgartirishXatosi('Bu libos zakazda allaqachon bor.')
 
+    muddati = _vaqtinchalik_muddat(zakaz)  # almashtirish avanssiz bronni uzaytirmasin (FT-2.5)
     Bron.objects.filter(zakaz=zakaz, libos=poz.libos).delete()
     avans_bor = zakaz.holat == Zakaz.Holat.BRON
     bron_qilish(salon=salon, libos=yangi, olib_ketish=zakaz.olib_ketish, qaytarish=zakaz.qaytarish,
-                xodim=xodim, avans_bor=avans_bor, zakaz=zakaz)
+                xodim=xodim, avans_bor=avans_bor, zakaz=zakaz, muddati=muddati)
     poz.libos, poz.narx, poz.zalog = yangi, yangi.ijara_narxi, yangi.zalog
     poz.save()
     eski_jami = zakaz.jami

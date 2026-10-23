@@ -99,6 +99,28 @@ class MavsumiyNarxTests(NarxBase):
                              qaytarish=date(self.yil, 10, 3))
         self.assertEqual((z.ustama, z.jami), (200_000, 2_200_000))
 
+    def test_toliq_tolangan_zakaz_arzon_sanaga_kochsa_narx_saqlanadi(self):
+        self.qoida(10, date(self.yil, 8, 1), date(self.yil, 10, 31))
+        z = self.zakaz(date(self.yil, 9, 15))
+        smena_ochish(salon=self.salon, xodim=self.malika, boshlangich_qoldiq=0)
+        tolov_qabul(salon=self.salon, xodim=self.malika, tur=Tolov.Tur.AVANS, summa=2_200_000, zakaz=z)
+        z.refresh_from_db()
+        z = sanani_kochirish(salon=self.salon, xodim=self.malika, zakaz=z, olib_ketish=date(self.yil, 11, 10),
+                             qaytarish=date(self.yil, 11, 12))
+        self.assertEqual((z.olib_ketish, z.ustama_foiz, z.jami), (date(self.yil, 11, 10), 10, 2_200_000))
+        self.assertIsNotNone(z.tolangan_sana)
+        self.assertIn('narx saqlandi', z.tarix.get(harakat='sana_kochirildi').yangi)
+
+    def test_qisman_tolangan_zakaz_arzon_sanaga_kochsa_narx_tushadi(self):
+        self.qoida(10, date(self.yil, 8, 1), date(self.yil, 10, 31))
+        z = self.zakaz(date(self.yil, 9, 15))
+        smena_ochish(salon=self.salon, xodim=self.malika, boshlangich_qoldiq=0)
+        tolov_qabul(salon=self.salon, xodim=self.malika, tur=Tolov.Tur.AVANS, summa=1_000_000, zakaz=z)
+        z.refresh_from_db()
+        z = sanani_kochirish(salon=self.salon, xodim=self.malika, zakaz=z, olib_ketish=date(self.yil, 11, 10),
+                             qaytarish=date(self.yil, 11, 12))
+        self.assertEqual(z.jami, 2_000_000)  # to'langandan yuqori — odatdagidek arzonlashadi
+
     def test_toliq_tolangan_zakaz_mavsumga_kochsa_qoldiq_chiqadi(self):
         self.qoida(10, date(self.yil, 8, 1), date(self.yil, 10, 31))
         z = self.zakaz(date(self.yil, 11, 10))
