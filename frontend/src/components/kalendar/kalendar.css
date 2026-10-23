@@ -27,14 +27,9 @@
 .kuz-bosh { display: grid; gap: 4px; margin-bottom: clamp(10px, 4cqi, 22px); text-align: center; text-shadow: var(--k-soya); }
 .kuz-oy-nav { display: flex; align-items: center; justify-content: space-between; gap: 6px; }
 .kuz-sarlavha { position: relative; flex: 1; min-width: 0; display: grid; place-items: center; }
-.kuz-katta {
-  font-family: var(--serif); font-weight: 400; line-height: .9; white-space: nowrap;
-  font-size: clamp(46px, 17cqi, 92px); letter-spacing: .02em; color: rgba(255, 255, 255, .5);
-  text-shadow: none; mix-blend-mode: screen;
-}
 .kuz .kuz-oy {
-  position: absolute; left: 50%; top: 52%; transform: translate(-42%, -38%) rotate(-7deg); margin: 0; white-space: nowrap;
-  font-family: 'Great Vibes', var(--kursiv); font-weight: 400; font-size: clamp(38px, 13cqi, 70px); line-height: 1;
+  margin: 0; padding: 4px .25em 2px; white-space: nowrap; transform: rotate(-5deg); /* yon bo'shliq — qo'lyozma dumlari strelkaga tegmasin */
+  font-family: 'Great Vibes', var(--kursiv); font-weight: 400; font-size: clamp(36px, 10.5cqi, 56px); line-height: 1.05;
   color: var(--k-oq); text-shadow: 0 2px 12px rgba(0, 0, 0, .35);
 }
 .kuz-yil-nav { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: clamp(8px, 3cqi, 16px); }

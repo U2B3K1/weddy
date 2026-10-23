@@ -1,12 +1,10 @@
 import { OYLAR } from './sana'
 
-// Oy nomi ikki qatlam: orqada katta shaffof bosh harflar, ustida qo'lyozma yozuv.
 export default function MonthNavigation({ oy, onOzgar }) {
   return (
     <div className="kuz-oy-nav">
       <button type="button" className="kuz-strelka" onClick={() => onOzgar(-1)} aria-label="Oldingi oy">‹</button>
       <div className="kuz-sarlavha">
-        <span className="kuz-katta" aria-hidden="true">{OYLAR[oy].toUpperCase()}</span>
         <h3 className="kuz-oy">{OYLAR[oy]}</h3>
       </div>
       <button type="button" className="kuz-strelka" onClick={() => onOzgar(1)} aria-label="Keyingi oy">›</button>
