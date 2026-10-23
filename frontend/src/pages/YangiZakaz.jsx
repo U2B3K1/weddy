@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import Vitrina from '../components/Vitrina'
 import { SalonchiForma } from './Salonchilar'
 import Manekin from '../components/Manekin'
-import { aksessuarManekinSaqla, boshAksessuarlar, filiallar, boshLiboslar, mijozQidir, qulf, manekinSaqla, salonchiQosh, salonchilar, som, ustamaFoiz, xatoMatni, zakazYarat } from '../api'
+import { aksessuarManekinSaqla, boshAksessuarlar, filiallar, boshLiboslar, mijozQidir, qulf, manekinSaqla, salonchiQosh, salonchilar, som, ustamaFoiz, zakazYarat } from '../api'
 
 // Yangi zakaz: 1) sana va mijoz telefoni, 2) libos tanlash, 3) tasdiqlash (4-bo'lim).
 const QORALAMA = 'libosa.yangi_zakaz'
@@ -323,11 +323,9 @@ export default function YangiZakaz({ onTayyor }) {
           </a>
         )}
         <SalonchiForma onYuborish={async (b) => {
-          try {
-            const yangiS = await salonchiQosh(b)
-            setSalonchiRoyxat(await salonchilar()); setSalonchi(String(yangiS.id)); setXabar('')
-            return true
-          } catch (e) { setXabar(xatoMatni(e)); return false }
+          const yangiS = await salonchiQosh(b)  // xato bo'lsa forma o'zi ko'rsatadi
+          setSalonchiRoyxat(await salonchilar()); setSalonchi(String(yangiS.id)); setXabar('')
+          return true
         }} />
               </section>
             )}

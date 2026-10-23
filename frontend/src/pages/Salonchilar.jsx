@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { salonchiOzgartir, salonchiQosh, salonchilar, som, xatoMatni } from '../api'
 
 // 4.6: salonchilar (makiyaj ustalari) bazasi. Komissiya berilmaydi — faqat statistika (FT-6.5).
@@ -67,11 +67,22 @@ function SalonchiTahrir({ s, onSaqla }) {
   )
 }
 
+// onYuborish: true/false qaytaradi yoki xato otadi — xato forma ichida ko'rsatiladi
+// (yangi zakazda forma sahifa pastida, tepadagi xabar ko'rinmay qolardi).
 export function SalonchiForma({ onYuborish, ochiq }) {
   const [f, setF] = useState({})
+  const [yuborilmoqda, setYuborilmoqda] = useState(false)
+  const [xato, setXato] = useState('')
+  const quti = useRef(null)
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value })
+  const yubor = async () => {
+    setXato(''); setYuborilmoqda(true)
+    try {
+      if (await onYuborish({ ...f, ism: f.ism.trim() })) { setF({}); if (!ochiq && quti.current) quti.current.open = false }
+    } catch (e) { setXato(xatoMatni(e)) } finally { setYuborilmoqda(false) }
+  }
   return (
-    <details className="blok amal" open={ochiq}>
+    <details ref={quti} className="blok amal" open={ochiq}>
       <summary>Salonchi qo'shish</summary>
       <div className="stack">
         <label>Ism<input value={f.ism || ''} onChange={set('ism')} /></label>
@@ -79,7 +90,10 @@ export function SalonchiForma({ onYuborish, ochiq }) {
         <label>Instagram (@nomi yoki havola)<input value={f.instagram || ''} onChange={set('instagram')} /></label>
         <label>Salon nomi<input value={f.salon_nomi || ''} onChange={set('salon_nomi')} /></label>
         <label>Manzil<input value={f.manzil || ''} onChange={set('manzil')} /></label>
-        <button disabled={!f.ism?.trim()} onClick={() => onYuborish({ ...f, ism: f.ism.trim() }).then((ok) => ok && setF({}))}>Qo'shish</button>
+        {xato && <p className="xato">{xato}</p>}
+        <button type="button" disabled={!f.ism?.trim() || yuborilmoqda} onClick={yubor}>
+          {yuborilmoqda ? "Qo'shilmoqda…" : "Qo'shish"}
+        </button>
       </div>
     </details>
   )
