@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import Vitrina from '../components/Vitrina'
 import { SalonchiForma } from './Salonchilar'
 import Manekin from '../components/Manekin'
+import CalendarPage from '../components/kalendar/CalendarPage'
 import { aksessuarManekinSaqla, boshAksessuarlar, filiallar, boshLiboslar, mijozQidir, qulf, manekinSaqla, salonchiQosh, salonchilar, som, ustamaFoiz, zakazYarat } from '../api'
 
 // Yangi zakaz: 1) sana va mijoz telefoni, 2) libos tanlash, 3) tasdiqlash (4-bo'lim).
@@ -181,8 +182,7 @@ export default function YangiZakaz({ onTayyor }) {
       {qadam === 1 && (
         <section className="blok">
           <h3>Sana</h3>
-          <label>Olib ketish<input type="date" value={dan} onChange={(e) => setDan(e.target.value)} /></label>
-          <label>Qaytarish<input type="date" value={gacha} min={dan} onChange={(e) => setGacha(e.target.value)} /></label>
+          <CalendarPage dan={dan} gacha={gacha} onTanla={(d, g) => { setDan(d); setGacha(g) }} />
           <label className="qator">
             <input type="checkbox" checked={bandlar} onChange={(e) => setBandlar(e.target.checked)} />
             Bandlarni ham ko'rsatish
