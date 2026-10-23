@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { HAFTA, OYLAR, haftalar, iso, isoOch, kunQosh, oyKunlari, oyQosh } from './sana'
 
 const QADAM = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 }
@@ -6,6 +6,9 @@ const QADAM = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 }
 // Klaviatura: strelkalar — kun/hafta, PageUp/PageDown — oy. Faqat bitta kun Tab bilan tanlanadi (roving tabindex).
 export default function CalendarGrid({ y, m, dan, gacha, bugun, fokus, klaviatura, yon, onTanla, onFokus }) {
   const jadval = useRef(null)
+  // Olib ketish tanlangach, kursor/fokus turgan kungacha oraliq oldindan ko'rsatiladi
+  const [ustida, setUstida] = useState(null)
+  const oldindan = dan && !gacha && ustida && ustida > dan ? ustida : null
   const oyBoshi = iso(y, m, 1).slice(0, 8)
   const shuOyda = (k) => k && k.startsWith(oyBoshi)
   const tabKun = [fokus, dan, gacha, bugun].find(shuOyda) || iso(y, m, 1)
@@ -35,7 +38,7 @@ export default function CalendarGrid({ y, m, dan, gacha, bugun, fokus, klaviatur
 
   return (
     <table ref={jadval} className={`kuz-jadval${yon > 0 ? ' kuz-otish-old' : yon < 0 ? ' kuz-otish-orqa' : ''}`}
-      onMouseDown={() => { klaviatura.current = false }}>
+      onMouseDown={() => { klaviatura.current = false }} onMouseLeave={() => setUstida(null)}>
       <caption className="kuz-yashirin">{OYLAR[m]} {y}</caption>
       <thead>
         <tr>{HAFTA.map(([q, t]) => <th key={q} scope="col" abbr={t}>{q}</th>)}</tr>
@@ -50,13 +53,16 @@ export default function CalendarGrid({ y, m, dan, gacha, bugun, fokus, klaviatur
               const ichida = dan && gacha && k > dan && k < gacha
               const lenta = dan && gacha && dan !== gacha // oraliq lentasi bitta kunlik tanlovda chizilmaydi
               const sinf = [chet && 'kuz-chet', lenta && k === dan && 'kuz-bosh-chet', lenta && k === gacha && 'kuz-oxir-chet',
-                ichida && 'kuz-ichida', k === bugun && 'kuz-bugun'].filter(Boolean).join(' ')
+                ichida && 'kuz-ichida', k === bugun && 'kuz-bugun',
+                oldindan && k >= dan && k <= oldindan && 'kuz-oldindan', oldindan && k === dan && 'kuz-bosh-chet',
+                oldindan && k === oldindan && 'kuz-oxir-chet kuz-oldindan-oxir'].filter(Boolean).join(' ')
               return (
                 <td key={k} className={sinf || undefined}>
                   <button type="button" className="kuz-kun" data-kun={k} tabIndex={k === tabKun ? 0 : -1}
                     aria-label={yorliq(k, ustun)} aria-pressed={Boolean(chet || ichida)} aria-disabled={otgan || undefined}
                     aria-current={k === bugun ? 'date' : undefined}
-                    onClick={() => { if (!otgan) { onFokus(k); onTanla(k) } }} onKeyDown={(e) => tugma(e, k)}>
+                    onClick={() => { if (!otgan) { onFokus(k); onTanla(k) } }} onKeyDown={(e) => tugma(e, k)}
+                    onMouseEnter={() => setUstida(k)} onFocus={() => setUstida(k)}>
                     <span className="kuz-raqam">{Number(k.slice(8))}</span>
                   </button>
                 </td>

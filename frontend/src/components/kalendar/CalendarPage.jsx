@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import { sanaMatni } from '../../api'
 import CalendarGrid from './CalendarGrid'
 import CalendarHeader from './CalendarHeader'
 import { MAVZULAR } from './mavzular'
-import { bugunIso, isoOch, kunlarSoni, oyQosh, oylarFarqi } from './sana'
+import { bugunIso, isoOch, oyQosh, oylarFarqi } from './sana'
+import TanlovPaneli from './TanlovPaneli'
 import './kalendar.css'
 
 // Yangi zakaz sanasi: 1-bosish — olib ketish, 2-bosish — qaytarish kuni.
@@ -44,11 +44,7 @@ export default function CalendarPage({ dan, gacha, onTanla }) {
           onBugun={() => almash(oylarFarqi(korinish, bugunOy))} bugunOyida={y === bugunOy.y && m === bugunOy.m} />
         <CalendarGrid key={`${y}-${m}`} y={y} m={m} dan={dan} gacha={gacha} bugun={bugun} fokus={fokus}
           klaviatura={klaviatura} yon={yon} onTanla={tanla} onFokus={fokusla} />
-        <p className="kuz-izoh">
-          {!dan && 'Olib ketish kunini tanlang.'}
-          {dan && !gacha && <>Olib ketish: <b>{sanaMatni(dan)}</b> — endi qaytarish kunini tanlang.</>}
-          {dan && gacha && <>Olib ketish: <b>{sanaMatni(dan)}</b> · Qaytarish: <b>{sanaMatni(gacha)}</b> · {kunlarSoni(dan, gacha) + 1} kun</>}
-        </p>
+        <TanlovPaneli dan={dan} gacha={gacha} onTozala={(k) => (k === 'dan' ? onTanla('', '') : onTanla(dan, ''))} />
       </div>
     </section>
   )
