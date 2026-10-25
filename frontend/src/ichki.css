@@ -18,13 +18,14 @@ b, .kpi-qiymat { font-variant-numeric: tabular-nums; }
 .blok, .kpi, .liboslar li, .dashbord-bosh, .trend, .kalendar-ora,
 .guruh, .xodim-menyu, .dona, .sozlama-saqlash, .sozlama-menu-tugma {
   background: var(--yuza-1); border: 1px solid var(--chegara); border-radius: var(--r-2);
-  backdrop-filter: none; -webkit-backdrop-filter: none;
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06);
 }
 .blok { padding: var(--o-4); }
 .qator-btn {
   align-items: center; padding: var(--o-3) var(--o-4);
   background: var(--yuza-1); border: 1px solid transparent; border-radius: var(--r-1);
-  backdrop-filter: none; -webkit-backdrop-filter: none; transition: background .15s ease;
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); transition: background .15s ease;
 }
 .qator-btn:hover { background: var(--yuza-2); }
 .blok .qator-btn { background: var(--yuza-2); }
@@ -221,7 +222,7 @@ label > input, label > select { color: var(--oq); }
 @media (min-width: 768px) {
   .shapka-ong { justify-content: flex-end; gap: 16px; }
   .ilova > main { max-width: 900px; padding: 24px 24px 40px; }
-  .pastki { background: var(--yuza-1); backdrop-filter: none; border-right: 1px solid var(--chegara); }
+  .pastki { background: var(--yuza-1); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border-right: 1px solid var(--chegara); }
   .ilova main:has(.sozlama-mazmun) { max-width: 900px; }
   .karta { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 16px; align-items: start; }
   /* qatorlar raqamlanmaydi: holat chizig'i (bekor zakazda) yoki tugma bo'lmasa bo'sh qator va ortiqcha bo'shliq qolmaydi */
@@ -670,7 +671,8 @@ main .boshlash-panel .qator-btn { text-align: left; }
 /* =================== Point uslubidagi joylashuv =================== */
 /* Yuqori panel: kontent ustidagi yaxlit chiziq — chapda nom, o'ngda qidiruv, qo'ng'iroqcha, xodim */
 .ustki { display: flex; align-items: center; gap: var(--o-3); margin-bottom: var(--o-5); padding: 10px 12px 10px 18px;
-  background: var(--yuza-1); border: 1px solid var(--chegara); border-radius: var(--r-2); }
+  background: var(--yuza-1); border: 1px solid var(--chegara); border-radius: var(--r-2);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06); }
 .ustki-nom { flex: 1 0 auto; min-width: 0; }  /* sarlavha siqilmaydi — tor ekranda qidiruv qisqaradi */
 .ustki-nom h1 { margin: 0; font-size: 18px; line-height: 1.25; text-align: left; color: var(--oq); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ustki-nom p { margin: 0; font-size: var(--t-meta); color: var(--matn-3); }

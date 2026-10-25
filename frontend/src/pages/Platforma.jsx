@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { sanaMatni, som, xatoMatni } from '../api'
 import { ZAKAZ_HOLATLARI } from '../nomlar'
 import Shapka from '../components/Shapka'
+import Logo from '../components/Logo'
 
 // Platforma egasi alohida token bilan ishlaydi: salon xodimi tokeni bu API ga, bu token esa salon ma'lumotiga yaramaydi.
 const TOKEN = 'weddy.platforma_token'
@@ -29,22 +30,21 @@ export default function Platforma({ onOrqaga }) {
   const [bolim, setBolim] = useState('salonlar')
   const [menyu, setMenyu] = useState(false)   // telefonda chapdan chiqadigan nav ochiqmi
   const chiqish = () => { sessionStorage.removeItem(TOKEN); setKirgan(false) }
+  if (!kirgan) return <Kirish onKirdi={() => setKirgan(true)} onOrqaga={onOrqaga} />
   return (
-    <>
-      {kirgan && <Shapka ochiq={menyu} onMenyu={() => setMenyu(!menyu)} />}
+    <div className="ilova">
+      <Shapka ochiq={menyu} onMenyu={() => setMenyu(!menyu)} />
       <main>
         <h1>Libosa · platforma</h1>
-        {kirgan ? <Panel bolim={bolim} onChiqish={chiqish} /> : <Kirish onKirdi={() => setKirgan(true)} onOrqaga={onOrqaga} />}
+        <Panel bolim={bolim} onChiqish={chiqish} />
       </main>
-      {kirgan && menyu && <div className="menyu-parda" onClick={() => setMenyu(false)} />}
-      {kirgan && (
-        <nav className={`pastki ${menyu ? 'ochiq' : ''}`}>
-          {BOLIMLAR.map(([k, nom]) => (
-            <button key={k} type="button" className={bolim === k ? 'faol' : ''} onClick={() => { setBolim(k); setMenyu(false) }}>{nom}</button>
-          ))}
-        </nav>
-      )}
-    </>
+      {menyu && <div className="menyu-parda" onClick={() => setMenyu(false)} />}
+      <nav className={`pastki ${menyu ? 'ochiq' : ''}`}>
+        {BOLIMLAR.map(([k, nom]) => (
+          <button key={k} type="button" className={bolim === k ? 'faol' : ''} onClick={() => { setBolim(k); setMenyu(false) }}>{nom}</button>
+        ))}
+      </nav>
+    </div>
   )
 }
 
@@ -62,13 +62,21 @@ function Kirish({ onKirdi, onOrqaga }) {
     } catch (err) { setXato(xatoMatni(err, "Login yoki parol noto'g'ri.")) }
   }
   return (
-    <form onSubmit={yubor}>
-      {xato && <p className="xato">{xato}</p>}
-      <label>Login<input value={login} onChange={(e) => setLogin(e.target.value)} autoFocus /></label>
-      <label>Parol<input type="password" value={parol} onChange={(e) => setParol(e.target.value)} /></label>
-      <button type="submit">Kirish</button>
-      <button type="button" className="ikkinchi" onClick={onOrqaga}>Salon kirishiga qaytish</button>
-    </form>
+    <>
+      <button type="button" className="kirish-orqaga ikkinchi kichik" onClick={onOrqaga}>← Bosh sahifa</button>
+      <main className="kirish">
+        <div className="kirish-panel">
+          <Logo className="kirish-logo" />
+          {xato && <p className="xato" role="alert">{xato}</p>}
+          <form onSubmit={yubor}>
+            <p className="kirish-sarlavha">Platformaga <em>kirish</em></p>
+            <label>Login<input value={login} onChange={(e) => setLogin(e.target.value)} autoFocus /></label>
+            <label>Parol<input type="password" value={parol} onChange={(e) => setParol(e.target.value)} /></label>
+            <button type="submit">Kirish</button>
+          </form>
+        </div>
+      </main>
+    </>
   )
 }
 

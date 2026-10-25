@@ -22,8 +22,8 @@
   /* ===== «Atelye» tizimi (ichki ekranlar). Yagona manba: komponentlar faqat shu tokenlardan foydalanadi. =====
      Ierarxiya ramka bilan emas, yuza tusi bilan: fon → yuza-1 (panel) → yuza-2 (panel ichidagi qator) → yuza-3 (faol). */
   /* Neytral, sal sovuq kulrang-ko'k: rang faqat urg'u va holat uchun qoladi */
-  --fon: #0B0F17; --fon-chuqur: #080B11;
-  --yuza-1: #11161F; --yuza-2: #171D29; --yuza-3: #212938;
+  --fon: #0B0F17; --fon-chuqur: rgba(8, 11, 17, .55);
+  --yuza-1: rgba(17, 22, 31, .60); --yuza-2: rgba(23, 29, 41, .55); --yuza-3: rgba(33, 41, 56, .60);
   --chegara: rgba(255, 255, 255, .07); --chegara-kuchli: rgba(255, 255, 255, .14);
   --matn-2: #A9B1BE; --matn-3: #7E8797;   /* meta matn: yuza-1 ustida 5:1 */
   /* Oltin faqat: asosiy amal, faol bo'lim, fokus, sahifa sarlavhasi */

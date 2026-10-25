@@ -128,10 +128,10 @@ export default function App() {
 
   if (!tayyor) return null
   if (platforma) return (
-    <div className="ilova">
-      <PlatformaFon bezak={false} />
+    <>
+      <PlatformaFon nurli />
       <Platforma onOrqaga={() => { window.location.hash = ''; setPlatforma(false) }} />
-    </div>
+    </>
   )
   const kirishga = (ochiq) => { window.location.hash = ochiq ? '#kirish' : ''; window.scrollTo(0, 0); setKirish(ochiq) }
   if (!xodim && !kirish) return <Reklama onKirish={() => kirishga(true)} />
@@ -244,7 +244,7 @@ export default function App() {
 
   return (
     <div className="ilova">
-      <PlatformaFon bezak={false} />
+      <PlatformaFon nurli />
       <Shapka ochiq={menyu} onMenyu={() => setMenyu(!menyu)}>
         {/* Telefon shapkasi; keng ekranda xodim chap panel pastida */}
         <span className="xodim-chip"><i aria-hidden="true">{harf}</i></span>
