@@ -34,7 +34,7 @@ class XabarlarView(APIView):
 
     def get(self, request):
         qs = Xabar.objects.filter(salon=request.salon).select_related('xodim')[:100]
-        return Response([{'xodim': x.xodim.ism, 'tur': x.tur, 'matn': x.matn, 'holat': x.holat,
+        return Response([{'xodim': x.xodim.ism, 'tur': x.tur, 'matn': x.matn, 'holat': x.holat, 'holat_nomi': x.get_holat_display(),
                           'xato': x.xato_matni, 'vaqt': x.yaratilgan} for x in qs])
 
 

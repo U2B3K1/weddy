@@ -1,7 +1,24 @@
+import re
+
 from django.db import models
 
 from apps.catalog.models import Libos
 from apps.tenants.models import SalonModel
+
+
+def telefon_normal(telefon):
+    """Telefonni bir xil ko'rinishga keltiradi: «90 123-45-67», «+998 (90) 123 45 67» → «+998901234567».
+
+    Aks holda bitta mijoz har xil yozilgan raqam bilan ikkinchi marta yaratilar va qora ro'yxatdan o'tib ketardi.
+    O'zbek raqamiga o'xshamasa faqat bo'shliq va belgilar olib tashlanadi (xorijiy raqam ham qabul qilinadi).
+    """
+    t = (telefon or '').strip()
+    raqam = re.sub(r'\D', '', t)
+    if len(raqam) == 9:
+        return '+998' + raqam
+    if len(raqam) == 12 and raqam.startswith('998'):
+        return '+' + raqam
+    return ('+' if t.startswith('+') else '') + raqam
 
 
 class Mijoz(SalonModel):

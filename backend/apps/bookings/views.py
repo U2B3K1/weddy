@@ -8,7 +8,7 @@ from rest_framework.views import APIView
 from apps.catalog.models import Libos
 from apps.tenants.permissions import SalonYozishRuxsati
 
-from .models import Bron
+from .models import Bron, LibosQulfi
 from .services import BandlikXatosi, bosh_aksessuarlar, bosh_liboslar, bron_qilish, qulflash
 
 
@@ -132,6 +132,16 @@ class QulflashView(APIView):
         except BandlikXatosi as e:
             return Response({'detail': str(e)}, status=409)
         return Response({'tugaydi': q.tugaydi}, status=201)
+
+
+class QulfOchirishView(APIView):
+    """DELETE /api/bronlar/qulf/<libos>/ — sotuvchi libosni tanlovdan olib tashlasa yoki sanani o'zgartirsa,
+    qulf darhol bo'shaydi: boshqa sotuvchi 15 daqiqa kutib turmasin. Faqat o'z qulfi o'chadi."""
+    permission_classes = [SalonYozishRuxsati]
+
+    def delete(self, request, libos):
+        LibosQulfi.objects.filter(salon=request.salon, libos_id=libos, xodim=request.user).delete()
+        return Response(status=204)
 
 
 class BoshAksessuarlarView(APIView):

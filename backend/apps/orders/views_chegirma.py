@@ -30,7 +30,8 @@ def _bajar(fn, **kw):
 def sorov_json(s):
     return {'id': s.id, 'zakaz': s.zakaz_id, 'zakaz_raqami': s.zakaz.raqam,
             'sotuvchi': s.sotuvchi.ism if s.sotuvchi else None, 'foiz': s.foiz, 'summa': s.summa,
-            'sabab': s.sabab, 'izoh': s.izoh, 'holat': s.holat,
+            'sabab': s.sabab, 'sabab_nomi': s.get_sabab_display(), 'izoh': s.izoh, 'holat': s.holat,
+            'mijoz': s.zakaz.mijoz.fio or s.zakaz.mijoz.telefon, 'zakaz_jami': s.zakaz.jami,
             'tasdiqlangan_summa': s.tasdiqlangan_summa,
             'rahbar': s.rahbar.ism if s.rahbar else None, 'rahbar_izohi': s.rahbar_izohi}
 
@@ -75,7 +76,7 @@ class ChegirmaSorovlariView(APIView):
     def get(self, request):
         holat = request.query_params.get('holat', 'kutilmoqda')
         qs = (ChegirmaSorovi.objects.filter(salon=request.salon, holat=holat)
-              .select_related('zakaz', 'sotuvchi', 'rahbar').order_by('-yaratilgan'))
+              .select_related('zakaz__mijoz', 'sotuvchi', 'rahbar').order_by('-yaratilgan'))
         return Response([sorov_json(s) for s in qs])
 
 

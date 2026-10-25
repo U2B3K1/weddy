@@ -97,7 +97,20 @@ class ZakazlarRoyxatiView(APIView):
             if q.isdigit():
                 f |= Q(raqam=int(q))
             qs = qs.filter(f)
-        return Response([_qisqa(z) for z in qs.order_by('-raqam')[:100]])
+        # Jadval uchun: to'lov progressi (to'langan / jami) va birinchi libos rasmi — bitta so'rovda, zakaz boshiga emas
+        qs = (qs.prefetch_related('pozitsiyalar__libos__rasmlar')
+              .annotate(tolangan_s=Sum('tolovlar__summa', filter=Q(tolovlar__tur__in=[Tolov.Tur.AVANS, Tolov.Tur.QOLDIQ]))))
+        natija = []
+        for z in qs.order_by('-raqam')[:100]:
+            poz = next(iter(z.pozitsiyalar.all()), None)
+            natija.append({**_qisqa(z), 'tolangan': z.tolangan_s or 0,
+                           'rasm': _libos_rasmi(request, poz.libos) if poz else None})
+        return Response(natija)
+
+
+def _libos_rasmi(request, libos):
+    r = next(iter(libos.rasmlar.all()), None)  # bookings.views._birinchi_rasm bilan bir xil tartib
+    return request.build_absolute_uri(r.kichik.url) if r else None
 
 
 class ZakazTafsilotView(APIView):
@@ -121,7 +134,9 @@ class ZakazTafsilotView(APIView):
                           'tavsif': g.tavsif, 'yorliq': g.yorliq} for g in z.zaloglar.all()],
             'aksessuar_qatorlari': [{'id': a.id, 'nomi': a.dona.aksessuar.nomi, 'yorliq': a.dona.yorliq,
                                      'narx': a.narx} for a in z.aksessuarlar.all()],
-            'libos_qatorlari': [{'id': p.libos_id, 'artikul': p.libos.artikul, 'nomi': p.libos.nomi, 'narx': p.narx}
+            # Zakaz kartasida libos fotosi ko'rinadi — sotuvchi mijoz bilan qaysi libos haqida gaplashayotganini darhol ko'radi
+            'libos_qatorlari': [{'id': p.libos_id, 'artikul': p.libos.artikul, 'nomi': p.libos.nomi, 'narx': p.narx,
+                                 'olcham': p.libos.olcham, 'rasm': _libos_rasmi(request, p.libos)}
                                 for p in z.pozitsiyalar.all()],
             'libos_zalogi': sum(p.libos.zalog for p in z.pozitsiyalar.all()),  # berishda pul zalogi shundan to'ladi
             'qarz': akt.qarz if akt else 0,
@@ -147,7 +162,12 @@ class BoshEkranView(APIView):
         bugun = timezone.localdate()
         faol = Zakaz.objects.filter(salon=request.salon).exclude(
             holat__in=[Zakaz.Holat.BEKOR, Zakaz.Holat.YOPILDI])
-        z = lambda qs: [_qisqa(x) for x in qs.select_related('mijoz').prefetch_related('pozitsiyalar__libos')]
+        def z(qs):  # jadval paneli uchun birinchi libos rasmi ham (qo'shimcha so'rovsiz — prefetch)
+            natija = []
+            for x in qs.select_related('mijoz').prefetch_related('pozitsiyalar__libos__rasmlar'):
+                poz = next(iter(x.pozitsiyalar.all()), None)
+                natija.append({**_qisqa(x), 'rasm': _libos_rasmi(request, poz.libos) if poz else None})
+            return natija
         from apps.cash.services import xodim_smenasi
         from apps.cash.views import _filial
         smena = xodim_smenasi(request.salon, request.user) or ochiq_smena(request.salon, _filial(request))

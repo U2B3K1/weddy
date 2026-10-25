@@ -1,16 +1,18 @@
 from django.db import IntegrityError
+from django.db.models import Min
 from rest_framework import serializers
 from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.bookings.models import Bron
 from apps.bookings.services import BandlikXatosi
 from apps.cash.services import KassaXatosi
 from apps.catalog.models import Libos
 from apps.tenants.permissions import SalonYozishRuxsati
 
 from apps.tenants.views_filial import joriy_filial
-from .models import Mijoz, Zakaz
+from .models import Mijoz, Zakaz, telefon_normal
 from .rental import BerishXatosi, libos_berish, libos_qaytarish, qarzni_tolash, tozalash_tugadi
 from .services import zakaz_yaratish
 
@@ -32,7 +34,9 @@ class MijozQidirishView(APIView):
 
     def get(self, request):
         telefon = request.query_params.get('telefon', '').strip()
-        mijoz = Mijoz.objects.filter(salon=request.salon, telefon=telefon).first()
+        # Eski yozuvlar normallashtirilmagan bo'lishi mumkin — ikkala ko'rinishda ham qidiriladi
+        mijoz = (Mijoz.objects.filter(salon=request.salon, telefon__in={telefon_normal(telefon), telefon} - {''})
+                 .order_by('id').first())
         if not mijoz:
             raise NotFound('Yangi mijoz.')
         tarix = (mijoz.zakazlar.prefetch_related('pozitsiyalar__libos')
@@ -57,6 +61,7 @@ class ZakazYaratishSerializer(serializers.Serializer):
     aksessuarlar = serializers.ListField(child=serializers.IntegerField(), required=False, default=list)
     salonchi = serializers.IntegerField(required=False, allow_null=True)
     manba = serializers.ChoiceField(choices=Mijoz.Manba.choices, required=False)
+    toy_sanasi = serializers.DateField(required=False, allow_null=True)
 
 
 class ZakazlarView(APIView):
@@ -78,12 +83,15 @@ class ZakazlarView(APIView):
             zakaz = zakaz_yaratish(salon=request.salon, xodim=request.user, telefon=d['telefon'],
                                    salonchi=salonchi, manba=d.get('manba'), filial=joriy_filial(request),
                                    fio=d['fio'], olib_ketish=d['dan'], qaytarish=d['gacha'],
-                                   libos_idlari=d['liboslar'], aksessuar_idlari=d['aksessuarlar'])
+                                   libos_idlari=d['liboslar'], aksessuar_idlari=d['aksessuarlar'],
+                                   toy_sanasi=d.get('toy_sanasi'))
         except BandlikXatosi as e:
             return Response({'detail': str(e)}, status=409)
         except IntegrityError:
             return Response({'detail': 'Zakaz raqami to\'qnashdi, qayta urinib ko\'ring.'}, status=409)
-        return Response(zakaz_json(zakaz), status=201)
+        # Avans kiritilmasa bron qachon bo'shashi — sotuvchi mijozga aniq vaqtni aytadi (salon sozlamasiga qarab)
+        muddati = Bron.objects.filter(zakaz=zakaz).aggregate(m=Min('muddati'))['m']
+        return Response({**zakaz_json(zakaz), 'bron_muddati': muddati}, status=201)
 
 
 def _zakaz(request, pk):

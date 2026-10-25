@@ -155,6 +155,18 @@ def _promokodni_yangila(zakaz):
     zakaz.promokod_ishlatilishlari.filter(bekor=False).update(summa=yangi)
 
 
+def _toy_sanasini_kochir(mijoz, eski_dan, eski_gacha, dan, gacha):
+    """Mijozning to'y sanasi shu ijara ichida bo'lsa, u ham shuncha kunga (oldinga yoki orqaga) suriladi
+    va yangi oraliqdan chiqib ketmaydi. Boshqa to'y sanasiga (masalan, oldingi zakazniki) tegilmaydi."""
+    toy = mijoz.toy_sanasi
+    if toy is None or not eski_dan <= toy <= eski_gacha:
+        return
+    yangi = min(max(toy + (dan - eski_dan), dan), gacha)
+    if yangi != toy:
+        mijoz.toy_sanasi = yangi
+        mijoz.save(update_fields=['toy_sanasi'])
+
+
 @transaction.atomic
 def sanani_kochirish(*, salon, xodim, zakaz, olib_ketish, qaytarish, sabab=''):
     """Yangi sanalarga libos bo'sh bo'lsa zakaz ko'chadi, to'lovlar saqlanadi (FT-17.1).
@@ -184,6 +196,7 @@ def sanani_kochirish(*, salon, xodim, zakaz, olib_ketish, qaytarish, sabab=''):
     Bron.objects.filter(zakaz=zakaz).delete()  # o'z bronlari yangi sanalarni to'smasligi uchun
     AksessuarBron.objects.filter(zakaz=zakaz).delete()
     _bronlash(zakaz, xodim, olib_ketish, qaytarish, eski_muddat)
+    _toy_sanasini_kochir(zakaz.mijoz, zakaz.olib_ketish, zakaz.qaytarish, olib_ketish, qaytarish)
     zakaz.olib_ketish, zakaz.qaytarish = olib_ketish, qaytarish
     eski_narx = (zakaz.ustama_foiz, zakaz.chegirma, zakaz.promokod_chegirma)
     if sozlama(salon).mavsumiy_narx:  # FT-17.1: mavsumiy ustama yangi sanaga qarab qayta hisoblanadi

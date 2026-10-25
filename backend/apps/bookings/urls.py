@@ -7,5 +7,6 @@ urlpatterns = [
     path('bosh-aksessuarlar/', views.BoshAksessuarlarView.as_view()),
     path('kalendar/', views.KalendarView.as_view()),
     path('qulf/', views.QulflashView.as_view()),
+    path('qulf/<int:libos>/', views.QulfOchirishView.as_view()),
     path('', views.BronYaratishView.as_view()),
 ]

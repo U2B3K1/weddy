@@ -136,6 +136,11 @@ class ChegirmaAPITests(ChegirmaBase):
         self.assertEqual(sotuvchi.get('/api/chegirma-sorovlari/').status_code, 403)
         kutayotgan = rahbar.get('/api/chegirma-sorovlari/').json()
         self.assertEqual((len(kutayotgan), kutayotgan[0]['sotuvchi']), (1, 'Malika'))
+        # bosh sahifadagi «Tasdiq kutmoqda» bloki rahbarga nimani tasdiqlayotganini ko'rsatadi
+        self.assertEqual(kutayotgan[0]['sabab_nomi'], 'Libosda kichik nuqson')
+        self.assertEqual(kutayotgan[0]['zakaz_jami'], self.zakaz.jami)
+        self.assertTrue(kutayotgan[0]['mijoz'])
+        self.assertEqual(rahbar.get('/api/dashbord/').json()['tasdiq_kutmoqda']['chegirmalar'], 1)
 
         qurl = f"/api/chegirma-sorovlari/{kutayotgan[0]['id']}/qaror/"
         self.assertEqual(sotuvchi.post(qurl, {'qaror': 'tasdiq'}, format='json').status_code, 403)
