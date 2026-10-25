@@ -51,17 +51,21 @@ export default function Kalendar({ onZakaz }) {
 
   return (
     <div className="stack kalendar-sahifa">
-      <div className="segment">
-        {Object.keys(KUNLAR).map((k) => (
-          <button key={k} className={korinish === k ? '' : 'ikkinchi'} onClick={() => setKorinish(k)}>
-            {k === 'kun' ? 'Kun' : k === 'hafta' ? 'Hafta' : 'Oy'}
-          </button>
-        ))}
-      </div>
-      <div className="qator kalendar-nav">
-        <button className="ikkinchi kichik" onClick={() => siljit(qosh(bosh, -KUNLAR[korinish]))}>‹</button>
-        <input type="date" value={sanaMatn} min="2000-01-01" max="2100-12-31" onChange={(e) => sanaTer(e.target.value)} />
-        <button className="ikkinchi kichik" onClick={() => siljit(qosh(bosh, KUNLAR[korinish]))}>›</button>
+      {/* Ko'rinish va sana — bitta ixcham qatorda (sahifa tepasida zakazlar segmenti allaqachon bor) */}
+      <div className="kalendar-asboblar">
+        <div className="segment kalendar-korinish" role="group" aria-label="Ko'rinish">
+          {Object.keys(KUNLAR).map((k) => (
+            <button key={k} className={korinish === k ? '' : 'ikkinchi'} aria-pressed={korinish === k} onClick={() => setKorinish(k)}>
+              {k === 'kun' ? 'Kun' : k === 'hafta' ? 'Hafta' : 'Oy'}
+            </button>
+          ))}
+        </div>
+        <div className="qator kalendar-nav">
+          <button className="ikkinchi kichik" aria-label="Oldingi davr" onClick={() => siljit(qosh(bosh, -KUNLAR[korinish]))}>‹</button>
+          <input type="date" aria-label="Boshlanish sanasi" value={sanaMatn} min="2000-01-01" max="2100-12-31" onChange={(e) => sanaTer(e.target.value)} />
+          <button className="ikkinchi kichik" aria-label="Keyingi davr" onClick={() => siljit(qosh(bosh, KUNLAR[korinish]))}>›</button>
+          <button className="ikkinchi kichik" onClick={() => siljit((() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d })())}>Bugun</button>
+        </div>
       </div>
       {xato && <p className="xato">{xato}</p>}
       <div className="kalendar-ora">

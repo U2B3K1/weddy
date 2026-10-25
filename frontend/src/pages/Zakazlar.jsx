@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import Hujjat from '../components/Hujjat'
 import CalendarPage from '../components/kalendar/CalendarPage'
 import Tasdiq from '../components/Tasdiq'
+import LibosSiluet from '../components/LibosSiluet'
+import NavIkona from '../components/NavIkona'
 import {
   bekorQilish, berish, chegirmaSora, mijozOzgartir, tolovHavola, primerkaBelgila, primerkaOzgartir, promokodOlibTashla, promokodQolla, qarzTolash, qaytarish, sanaKochirish, som, sozlamalar, tayyorChegirmalar,
   tolovQabul, xatoMatni, zakazAksessuarOchir, zakazAksessuarQosh, zakazTafsilot, zakazTarixi, zakazlarRoyxat,
@@ -33,8 +35,14 @@ function asosiyTugma(z) {
 }
 const holatSinfi = (h) => ({ vaqtinchalik: 'vaqtinchalik', chegirma_kutilmoqda: 'vaqtinchalik', bron: 'bron', berildi: 'berildi', qaytarildi: 'qarz', yopildi: 'qaytarildi', bekor: 'qarz' }[h] || 'bron')
 
-export default function Zakazlar({ tanlangan, onTanla }) {
-  const [q, setQ] = useState('')
+// Tezkor holat tablari — eng ko'p qidiriladiganlari; qolganlari (chegirma tasdig'i) «Hammasi» ichida ko'rinadi
+const HOLAT_TABLARI = [['', 'Hammasi'], ['vaqtinchalik', 'Vaqtinchalik'], ['bron', 'Bron'], ['berildi', 'Berildi'],
+  ['qaytarildi', 'Qarz bor'], ['yopildi', 'Yopilgan'], ['bekor', 'Bekor']]
+const mln = (n) => `${(n / 1e6).toLocaleString('ru-RU', { maximumFractionDigits: 2 })} mln`
+
+export default function Zakazlar({ tanlangan, onTanla, onYangi, boshQ }) {
+  // boshQ — yuqori paneldagi qidiruv matni; har yangi qidiruvda App komponentni key bilan qayta ochadi
+  const [q, setQ] = useState(boshQ || '')
   const [holat, setHolat] = useState('')
   const [royxat, setRoyxat] = useState([])
   const [xato, setXato] = useState('')
@@ -47,21 +55,60 @@ export default function Zakazlar({ tanlangan, onTanla }) {
   if (tanlangan) return <Karta id={tanlangan} onOrqaga={() => onTanla(null)} />
 
   return (
-    <div className="stack">
-      <input placeholder="Raqam, telefon yoki ism" aria-label="Zakaz qidirish" value={q} onChange={(e) => setQ(e.target.value)} />
-      <select value={holat} onChange={(e) => setHolat(e.target.value)} aria-label="Holat bo'yicha filtr">
-        <option value="">Barcha holatlar</option>
-        {Object.entries(ZAKAZ_HOLATLARI).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-      </select>
+    <section className="blok jadval-panel">
+      {/* Asboblar paneli: tepada holat tablari, o'ngda qidiruv va asosiy amal — hammasi bir joyda, ixcham */}
+      <div className="jadval-asboblar">
+        <div className="tezkor-tablar" role="tablist" aria-label="Holat bo'yicha">
+          {HOLAT_TABLARI.map(([k, nom]) => (
+            <button key={k || 'hammasi'} type="button" role="tab" aria-selected={holat === k}
+              className={holat === k ? 'faol' : ''} onClick={() => setHolat(k)}>{nom}</button>
+          ))}
+        </div>
+        <label className="qidiruv-maydon">
+          <NavIkona nom="qidiruv" className="tugma-ikon" />
+          <input type="search" className="jadval-qidiruv" placeholder="Raqam, telefon yoki ism" aria-label="Zakaz qidirish"
+            value={q} onChange={(e) => setQ(e.target.value)} />
+        </label>
+        {onYangi && <button type="button" className="kichik" onClick={onYangi}><NavIkona nom="qosh" className="tugma-ikon" />Yangi zakaz</button>}
+      </div>
       {xato && <p className="xato">{xato}</p>}
-      {royxat.length === 0 && <p className="malumot">Zakaz topilmadi.</p>}
-      {royxat.map((z) => (
-        <button key={z.id} className="qator-btn" onClick={() => onTanla(z.id)}>
-          <b>#{z.raqam}</b> {z.mijoz} · {sanaMatni(z.olib_ketish)}
-          <span>{ZAKAZ_HOLATLARI[z.holat]} · {som(z.jami)}</span>
-        </button>
-      ))}
-    </div>
+      {royxat.length === 0 ? <p className="malumot jadval-bosh">Bu filtr bo'yicha zakaz yo'q.</p> : (
+        <div className="jadval-ora">
+          <table className="zakaz-jadval">
+            <thead>
+              <tr><th>Zakaz</th><th className="tor-yashir">Ijara</th><th>Holat</th><th className="tor-yashir">To'lov</th><th className="ong">Jami</th></tr>
+            </thead>
+            <tbody>
+              {royxat.map((z) => {
+                const foiz = z.jami ? Math.min(100, Math.round((z.tolangan / z.jami) * 100)) : 100
+                return (
+                  <tr key={z.id} onClick={() => onTanla(z.id)}>
+                    <td>
+                      {/* tugma — klaviatura uchun; bosish hodisasi qatorga ko'tariladi */}
+                      <button type="button" className="zakaz-katak">
+                        <span className="zakaz-eskiz">{z.rasm ? <img src={z.rasm} alt="" loading="lazy" /> : <LibosSiluet />}</span>
+                        <span className="zakaz-nom"><b>#{z.raqam} {z.mijoz}</b><small>{z.liboslar.join(', ')}</small></span>
+                      </button>
+                    </td>
+                    <td className="tor-yashir">{sanaMatni(z.olib_ketish)} – {sanaMatni(z.qaytarish)}</td>
+                    <td><span className={`holat ${holatSinfi(z.holat)}`}>{ZAKAZ_HOLATLARI[z.holat]}</span></td>
+                    <td className="tor-yashir">
+                      {z.holat === 'bekor' ? <span className="malumot">—</span> : (
+                        <span className="tolov-progress" title={`${som(z.tolangan)} to'langan`}>
+                          <i style={{ '--foiz': `${foiz}%` }} className={foiz >= 100 ? 'toliq' : ''} />
+                          <small>{foiz >= 100 ? "To'liq" : `${mln(z.tolangan)} / ${mln(z.jami)}`}</small>
+                        </span>
+                      )}
+                    </td>
+                    <td className="ong"><b>{som(z.jami)}</b></td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
   )
 }
 
@@ -98,7 +145,7 @@ function Karta({ id, onOrqaga }) {
   return (
     <div className="stack karta">
       <div className="karta-bosh">
-        <button className="ikkinchi karta-orqaga" aria-label="Zakazlar ro'yxatiga qaytish" onClick={onOrqaga}>‹</button>
+        <button className="ikkinchi karta-orqaga" aria-label="Zakazlar ro'yxatiga qaytish" onClick={onOrqaga}><NavIkona nom="chap" className="tugma-ikon" /></button>
         <h2>Zakaz #{z.raqam}</h2>
         <span className={`holat ${holatSinfi(h)}`}>{ZAKAZ_HOLATLARI[h]}</span>
       </div>
@@ -114,15 +161,26 @@ function Karta({ id, onOrqaga }) {
         }}>{asosiyTugma(z)}</button>
       )}
       <section className="blok karta-asosiy">
-        <p>{z.mijoz === z.telefon ? z.telefon : `${z.mijoz} · ${z.telefon}`}</p>
-        <p>{z.liboslar.join(', ')}</p>
-        {z.aksessuarlar.length > 0 && <p className="malumot">Aksessuarlar: {z.aksessuarlar.join(', ')}</p>}
-        <p>{sanaMatni(z.olib_ketish)} – {sanaMatni(z.qaytarish)}</p>
-        {z.salonchi && (
-          <p className="malumot">Salonchi: {z.salonchi.ism}
-            {z.salonchi.instagram && <> · <a href={z.salonchi.instagram} target="_blank" rel="noreferrer">Instagram</a></>}
-          </p>
-        )}
+        {/* Libos fotosi birinchi: sotuvchi mijoz bilan qaysi libos haqida gaplashayotganini bir qarashda ko'radi */}
+        <div className="karta-liboslar">
+          {z.libos_qatorlari.map((p) => (
+            <figure key={p.id} className="karta-libos">
+              <span className="karta-libos-foto">{p.rasm ? <img src={p.rasm} alt="" /> : <LibosSiluet />}</span>
+              <figcaption><b>{p.artikul}</b> {p.nomi}{p.olcham ? <span className="malumot">o'lcham {p.olcham}</span> : null}</figcaption>
+            </figure>
+          ))}
+        </div>
+        <dl className="karta-malumot">
+          {z.mijoz !== z.telefon && <div><dt>Mijoz</dt><dd>{z.mijoz}</dd></div>}
+          <div><dt>Telefon</dt><dd><a href={`tel:${z.telefon}`}>{z.telefon}</a></dd></div>
+          <div><dt>Ijara</dt><dd>{sanaMatni(z.olib_ketish)} – {sanaMatni(z.qaytarish)}</dd></div>
+          {z.aksessuarlar.length > 0 && <div><dt>Aksessuarlar</dt><dd>{z.aksessuarlar.join(', ')}</dd></div>}
+          {z.salonchi && (
+            <div><dt>Salonchi</dt><dd>{z.salonchi.ism}
+              {z.salonchi.instagram && <> · <a href={z.salonchi.instagram} target="_blank" rel="noreferrer">Instagram</a></>}
+            </dd></div>
+          )}
+        </dl>
         <table className="jadval"><tbody>
           <tr><td>Asosiy narx</td><td>{som(z.asosiy_narx - z.xizmatlar)}</td></tr>
           {z.xizmatlar > 0 && <tr><td>Moslash xizmati</td><td>{som(z.xizmatlar)}</td></tr>}

@@ -34,7 +34,7 @@ export default function Xarajatlar() {
   const tasdiqlangan = royxat.filter((x) => x.holat === 'tasdiqlandi').reduce((s, x) => s + x.summa, 0)
 
   return (
-    <details className="blok amal">
+    <details className="blok amal" open>
       <summary>Xarajatlar</summary>
       <div className="stack">
         {xabar.matn && <p className={xabar.turi === 'xato' ? 'xato' : 'malumot'}>{xabar.matn}</p>}

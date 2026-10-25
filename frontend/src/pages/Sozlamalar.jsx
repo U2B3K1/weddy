@@ -2,6 +2,11 @@ import { useCallback, useEffect, useState } from 'react'
 import Integratsiyalar from '../components/Integratsiyalar'
 import MavsumiyNarx from '../components/MavsumiyNarx'
 import TayyorChegirmalar from '../components/TayyorChegirmalar'
+import Promokodlar from './Promokodlar'
+import Jurnal from '../components/Jurnal'
+import NavIkona from '../components/NavIkona'
+import Oyna from '../components/Oyna'
+import { GURUHLAR, SOZLAMA_BOLIMLAR } from './sozlamaBolimlari'
 import {
   smsJurnali, filialOzgartir, filialQosh, filiallar, qurilmaFilial, qurilmaOchirish, qurilmaTasdiq, qurilmalar, salonParol, salonRekvizit, salonRekvizitSaqla, yordamBekor, yordamBer,
   yordamRuxsati, sozlamalar, sozlamaSaqla, xatoMatni, xodimOzgartir, xodimQosh, xodimTelegramUlash, xodimlarBoshqaruv,
@@ -12,29 +17,8 @@ const faqatSozlama = ({ fiskal_eslatma: _f, fiskal_izoh: _i, tolov_havolasi: _t,
 
 // Sozlama bo'limlarining statik ro'yxati — chap paneldagi nav (App.jsx) ham, mazmun ham shu ro'yxatga mos.
 // Pastdagi `bolimlar` massivi bilan bir xil tartibda va nomlarda bo'lishi shart.
-export const SOZLAMA_BOLIMLAR = [
-  { id: 'bandlik', nomi: 'Bandlik' },
-  { id: 'zalog', nomi: 'Zalog turlari' },
-  { id: 'kechikish', nomi: 'Kechikish jarimasi' },
-  { id: 'qaytarish', nomi: 'Avans qaytarish' },
-  { id: 'katalog', nomi: 'Katalog' },
-  { id: 'dashbord', nomi: 'Dashbord va hisobot' },
-  { id: 'sms', nomi: 'SMS eslatma' },
-  { id: 'shartnoma', nomi: 'Shartnoma bandlari' },
-  { id: 'primerka', nomi: 'Primerka va baho' },
-  { id: 'mavsumiy', nomi: 'Mavsumiy narx' },
-  { id: 'bonus', nomi: 'Sotuvchi bonusi' },
-  { id: 'promokod', nomi: 'Promokodlar' },
-  { id: 'chegirmalar', nomi: 'Tayyor chegirmalar' },
-  { id: 'integratsiyalar', nomi: 'Integratsiyalar' },
-  { id: 'rekvizitlar', nomi: 'Rekvizitlar' },
-  { id: 'filiallar', nomi: 'Filiallar' },
-  { id: 'qurilmalar', nomi: 'Qurilmalar' },
-  { id: 'yordam', nomi: 'Texnik yordam' },
-  { id: 'xodimlar', nomi: 'Xodimlar' },
-]
 
-// 4.16: admin panel. Bo'limlar chap paneldagi umumiy navda chiqadi (App.jsx); bu yerda faqat mazmun.
+// 4.16: admin panel. Keng ekranda bo'limlar chap paneldagi Sozlama menyusida (App, akkordeon); telefonda — sahifa tepasidagi ochiladigan menyu.
 export default function Sozlamalar({ menId, bolim, onBolim }) {
   const [s, setS] = useState(null)
   const [xodimlar, setXodimlar] = useState([])
@@ -47,12 +31,15 @@ export default function Sozlamalar({ menId, bolim, onBolim }) {
   useEffect(() => { smsJurnali().then(setSms).catch(() => {}) }, [])
   const [yangiFilial, setYangiFilial] = useState({ nomi: '', manzil: '' })
   const [xabar, setXabar] = useState({ turi: '', matn: '' })
-  // Tor ekranda bo'lim almashish menyusi (keng ekranda chap paneldagi sidebar ishlaydi).
+  // Serverdagi holat — o'zgarish bor-yo'qligini bilish uchun (saqlash paneli faqat o'zgarishda chiqadi)
+  const [asl, setAsl] = useState(null)
+  const [xodimOyna, setXodimOyna] = useState(false)
+  // Tor ekranda bo'lim almashish menyusi (keng ekranda bo'limlar chapda doim ko'rinadi).
   const [menuOchiq, setMenuOchiq] = useState(false)
 
   const yukla = useCallback(async () => {
     const [a, b, c, d, e, f] = await Promise.all([sozlamalar(), xodimlarBoshqaruv(), salonRekvizit(), qurilmalar(), yordamRuxsati(), filiallar(true)])
-    setS(a); setXodimlar(b); setRek(c); setQur(d); setYordam(e); setFil(f.filiallar)
+    setS(a); setAsl(JSON.stringify(a)); setXodimlar(b); setRek(c); setQur(d); setYordam(e); setFil(f.filiallar)
   }, [])
   useEffect(() => { yukla().catch((e) => setXabar({ turi: 'xato', matn: xatoMatni(e) })) }, [yukla])
 
@@ -73,10 +60,10 @@ export default function Sozlamalar({ menId, bolim, onBolim }) {
 
   const bolimlar = [
     {
-      id: 'bandlik', nomi: 'Bandlik',
+      id: 'bandlik', nomi: 'Bron va bandlik',
       render: () => (
         <section className="blok stack">
-          <h3>Bandlik</h3>
+          <h3>Bron va bandlik</h3>
           <label>Tozalash uchun bufer kun (kategoriya yoki libosda alohida belgilanmagan bo'lsa)
             <input type="number" min="0" max="30" value={s.bufer_kun} onChange={son('bufer_kun')} />
           </label>
@@ -166,10 +153,10 @@ export default function Sozlamalar({ menId, bolim, onBolim }) {
       ),
     },
     {
-      id: 'dashbord', nomi: 'Dashbord va hisobot',
+      id: 'dashbord', nomi: 'Dashboard va hisobot',
       render: () => (
         <section className="blok stack">
-          <h3>Dashbord va kunlik hisobot</h3>
+          <h3>Dashboard va kunlik hisobot</h3>
           <label className="qator">
             <input type="checkbox" checked={s.qoplamagan_royxat} onChange={(e) => set('qoplamagan_royxat', e.target.checked)} />
             Qoplamagan va uzoq bo'sh turgan liboslar ro'yxati
@@ -295,7 +282,7 @@ export default function Sozlamalar({ menId, bolim, onBolim }) {
               <label>Bonus, tushumdan %
                 <input type="number" min="0" max="100" step="0.5" value={s.bonus_foiz} onChange={son('bonus_foiz')} />
               </label>
-              <p className="malumot">Bonus foyda va zarar hisobotida operatsion xarajatga avtomatik qo'shiladi — xarajat sifatida qayta kiritmang. Har bir sotuvchi summasi «Hisobot» bo'limida.</p>
+              <p className="malumot">Bonus foyda va zarar hisobotida operatsion xarajatga avtomatik qo'shiladi — xarajat sifatida qayta kiritmang. Har bir sotuvchi summasi: Hisobot → «Sotuvchi bonusi».</p>
             </>
           )}
         </section>
@@ -322,20 +309,22 @@ export default function Sozlamalar({ menId, bolim, onBolim }) {
             <input type="checkbox" checked={s.salonchi_kodlari} onChange={(e) => set('salonchi_kodlari', e.target.checked)} />
             Salonchi kodi zakazni o'sha salonchiga bog'laydi
           </label>
-          <p className="malumot">Kodlarni «Mijozlar» → «Promokodlar» bo'limida yaratasiz.</p>
         </section>
       ),
+      // Qoidalar va kodlar bir joyda: bo'lim o'chirilgan bo'lsa kodlar ro'yxati ko'rinmaydi
+      keyin: () => s.promokodlar_bolimi && <Promokodlar />,
     },
     {
-      id: 'chegirmalar', nomi: 'Tayyor chegirmalar',
+      id: 'chegirmalar', nomi: 'Tayyor chegirmalar', saqlashsiz: true, // o'z formalari bilan saqlanadi
       render: () => <TayyorChegirmalar />,
     },
+    { id: 'jurnal', nomi: 'Jurnal', saqlashsiz: true, render: () => <Jurnal /> },
     {
-      id: 'integratsiyalar', nomi: 'Integratsiyalar',
+      id: 'integratsiyalar', nomi: 'Integratsiyalar', saqlashsiz: true,
       render: () => <Integratsiyalar />,
     },
     {
-      id: 'rekvizitlar', nomi: 'Rekvizitlar',
+      id: 'rekvizitlar', nomi: 'Rekvizitlar', saqlashsiz: true,
       render: () => !rek ? <p className="malumot">Yuklanmoqda…</p> : (
         <section className="blok stack">
           <h3>Salon va shartnoma rekvizitlari</h3>
@@ -387,7 +376,7 @@ export default function Sozlamalar({ menId, bolim, onBolim }) {
       ),
     },
     {
-      id: 'qurilmalar', nomi: 'Qurilmalar',
+      id: 'qurilmalar', nomi: 'Qurilmalar', saqlashsiz: true,
       render: () => (
         <section className="blok stack">
           <h3>Qurilmalar</h3>
@@ -421,7 +410,7 @@ export default function Sozlamalar({ menId, bolim, onBolim }) {
       ),
     },
     {
-      id: 'yordam', nomi: 'Texnik yordam',
+      id: 'yordam', nomi: 'Texnik yordam', saqlashsiz: true,
       render: () => !yordam ? <p className="malumot">Yuklanmoqda…</p> : (
         <section className="blok stack">
           <h3>Texnik yordam ruxsati</h3>
@@ -444,15 +433,22 @@ export default function Sozlamalar({ menId, bolim, onBolim }) {
       ),
     },
     {
-      id: 'xodimlar', nomi: 'Xodimlar',
+      id: 'xodimlar', nomi: 'Xodimlar', saqlashsiz: true,
       render: () => (
         <section className="blok stack">
-          <h3>Xodimlar</h3>
+          <div className="blok-sarlavha">
+            <h3>Xodimlar ({xodimlar.length})</h3>
+            <button type="button" className="kichik" onClick={() => setXodimOyna(true)}><NavIkona nom="qosh" className="tugma-ikon" />Xodim qo'shish</button>
+          </div>
           {xodimlar.map((x) => (
             <Xodim key={x.id} x={x} men={x.id === menId}
               onOzgartir={(b, ok) => bajar(() => xodimOzgartir(x.id, b), ok)} />
           ))}
-          <XodimForma onYuborish={(b) => bajar(() => xodimQosh(b), "Xodim qo'shildi.")} />
+          {xodimOyna && (
+            <Oyna sarlavha="Xodim qo'shish" onYop={() => setXodimOyna(false)}>
+              <XodimForma onYuborish={async (b) => { const ok = await bajar(() => xodimQosh(b), "Xodim qo'shildi."); if (ok) setXodimOyna(false); return ok }} />
+            </Oyna>
+          )}
         </section>
       ),
     },
@@ -461,6 +457,7 @@ export default function Sozlamalar({ menId, bolim, onBolim }) {
   const joriy = bolimlar.find((b) => b.id === bolim) || bolimlar[0]
 
   return (
+    <div className="sozlama-joy">
     <div className="sozlama-mazmun">
       <div className="sozlama-menu">
         <button type="button" className="sozlama-menu-tugma" aria-expanded={menuOchiq}
@@ -471,22 +468,36 @@ export default function Sozlamalar({ menId, bolim, onBolim }) {
         </button>
         {menuOchiq && (
           <div className="sozlama-menu-rohat">
-            {SOZLAMA_BOLIMLAR.map((b) => (
-              <button key={b.id} type="button" className={b.id === bolim ? 'faol' : ''}
-                onClick={() => { onBolim(b.id); setMenuOchiq(false) }}>
-                {b.nomi}
-              </button>
-            ))}
+            <BolimRoyxati bolim={bolim} onTanla={(id) => { onBolim(id); setMenuOchiq(false) }} />
           </div>
         )}
       </div>
       {joriy.render()}
-      <div className="sozlama-saqlash">
-        {xabar.matn && <p className={xabar.turi === 'xato' ? 'xato' : 'malumot'}>{xabar.matn}</p>}
-        <button onClick={saqlash}>Sozlamalarni saqlash</button>
-      </div>
+      {xabar.matn && <p className={xabar.turi === 'xato' ? 'xato' : 'malumot sozlama-xabar'}>{xabar.matn}</p>}
+      {/* Saqlash paneli faqat o'zgarish bo'lganda (professional sozlama sahifalaridagidek); bo'lim almashsa ham turadi */}
+      {JSON.stringify(s) !== asl && (
+        <div className="sozlama-saqlash" role="region" aria-label="Saqlanmagan o'zgarishlar">
+          <span>Saqlanmagan o'zgarishlar bor</span>
+          <button type="button" className="ikkinchi kichik" onClick={() => setS(JSON.parse(asl))}>Bekor qilish</button>
+          <button type="button" className="kichik" onClick={saqlash}>Saqlash</button>
+        </div>
+      )}
+      {joriy.keyin?.()}
+    </div>
     </div>
   )
+}
+
+function BolimRoyxati({ bolim, onTanla }) {
+  return GURUHLAR.map(({ nomi: g }) => (
+    <div key={g} className="sozlama-guruh">
+      <h4>{g}</h4>
+      {SOZLAMA_BOLIMLAR.filter((b) => b.guruh === g).map((b) => (
+        <button key={b.id} type="button" className={b.id === bolim ? 'faol' : ''} aria-current={b.id === bolim ? 'page' : undefined}
+          onClick={() => onTanla(b.id)}><NavIkona nom={b.ikon} /><span>{b.nomi}</span></button>
+      ))}
+    </div>
+  ))
 }
 
 function FilialTahrir({ f, onSaqla }) {
@@ -513,9 +524,14 @@ function Xodim({ x, men, onOzgartir }) {
   return (
     <div className={`xodim ${x.faol ? '' : 'nofaol'}`}>
       <div className="xodim-sarlavha">
-        <span className="xodim-ism">
-          {x.ism} · {x.rol === 'rahbar' ? 'rahbar' : 'sotuvchi'}{men ? ' (siz)' : ''}
-          {!x.faol && ' · nofaol'}{x.bloklangan && ' · PIN bloklangan'}
+        <span className="xodim-chip">
+          <i aria-hidden="true">{(x.ism || '?').trim().charAt(0).toUpperCase()}</i>
+          <span><b className="xodim-ism">{x.ism}{men ? ' (siz)' : ''}</b>{x.telefon && <small>{x.telefon}</small>}</span>
+        </span>
+        <span className="xodim-belgilar">
+          <span className={`holat ${x.rol === 'rahbar' ? 'berildi' : 'qaytarildi'}`}>{x.rol === 'rahbar' ? 'Rahbar' : 'Sotuvchi'}</span>
+          {!x.faol && <span className="holat qarz">Nofaol</span>}
+          {x.bloklangan && <span className="holat vaqtinchalik">PIN bloklangan</span>}
         </span>
         <button className="xodim-menu" aria-label="Xodim menyusi" aria-expanded={ochiq} onClick={() => setOchiq(!ochiq)}>⋮</button>
       </div>
@@ -591,14 +607,14 @@ function XodimForma({ onYuborish }) {
   const [f, setF] = useState({ rol: 'sotuvchi' })
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value })
   return (
-    <details className="amal">
-      <summary>Xodim qo'shish</summary>
-      <div className="stack">
+    <div className="stack">
         <label>Ism<input value={f.ism || ''} onChange={set('ism')} /></label>
         <label>Telefon<input inputMode="tel" value={f.telefon || ''} onChange={set('telefon')} /></label>
-        <select value={f.rol} onChange={set('rol')}>
-          <option value="sotuvchi">Sotuvchi</option><option value="rahbar">Rahbar</option>
-        </select>
+        <label>Rol
+          <select value={f.rol} onChange={set('rol')}>
+            <option value="sotuvchi">Sotuvchi</option><option value="rahbar">Rahbar</option>
+          </select>
+        </label>
         <label>PIN (4–6 raqam)
           <input type="password" inputMode="numeric" maxLength={6} value={f.pin || ''} onChange={set('pin')} />
         </label>
@@ -606,7 +622,6 @@ function XodimForma({ onYuborish }) {
           onClick={() => onYuborish({ ism: f.ism, telefon: f.telefon || '', rol: f.rol, pin: f.pin }).then((ok) => ok && setF({ rol: 'sotuvchi' }))}>
           Qo'shish
         </button>
-      </div>
-    </details>
+    </div>
   )
 }

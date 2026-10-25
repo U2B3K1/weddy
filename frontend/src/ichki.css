@@ -1,39 +1,45 @@
-/* Libosa ichki sahifalari — «A. Qasr kechasi» uslubi (docs/LIBOSA_A_USLUB_YORIQNOMA.md).
-   index.css dan KEYIN yuklanadi: tokenlar :root da, bu yerda komponentlar, navigatsiya va maketlar. */
+/* Libosa ichki sahifalari — «Atelye» tizimi: kirish ekranining sokin davomi.
+   index.css dan KEYIN yuklanadi: tokenlar index.css :root da, bu yerda komponentlar, navigatsiya va maketlar.
+   Qoida: ierarxiya — yuza tusi (ramka emas); oltin — faqat asosiy amal, faol bo'lim, fokus va sahifa sarlavhasi;
+   holat — o'z rangi (nuqta + matn). Kirish ekrani o'zgarmaydi: ichki uslublar :where(.ilova) ichida. */
 
-/* ---------- Fon: rasm va yomg'irsiz, tepadan tilla nur ---------- */
-.platforma-fon.ichki {
-  background:
-    radial-gradient(ellipse 70% 40% at 50% 0%, rgba(228, 193, 150, .20), transparent 70%),
-    radial-gradient(ellipse 60% 50% at 50% 110%, rgba(47, 73, 110, .55), transparent 70%),
-    var(--tun);
-}
+/* ---------- Fon: tekis tun foni, tepada juda xira tilla nur (kinodek lahza faqat bosh sahifa bannerida) ---------- */
+.platforma-fon.ichki { background: radial-gradient(ellipse 60% 30% at 50% 0%, rgba(228, 193, 150, .07), transparent 70%), var(--fon); }
 
 /* ---------- Shriftlar ---------- */
-h1, h2 { font-family: var(--serif); font-weight: 400; }
-h1 { font-size: 34px; }
-.blok h2, .karta-bosh h2 { font-size: 28px; }
-h3 { font-weight: 600; font-size: 17px; }
-b, .kpi-qiymat, .bugun-widget b { font-variant-numeric: tabular-nums; }
+:where(.ilova) { font-size: var(--t-asos); line-height: 1.5; }
+h1, h2 { font-family: var(--serif); font-weight: 400; line-height: 1.15; }
+h1 { font-size: var(--t-h1); }
+.blok h2, .karta-bosh h2 { font-size: var(--t-h2); }
+h3 { font-weight: 600; font-size: var(--t-h3); line-height: 1.3; }
+b, .kpi-qiymat { font-variant-numeric: tabular-nums; }
 
-/* ---------- Panellar (shisha) ---------- */
-.blok, .kpi, .qator-btn, .liboslar li, .bugun-widget button, .dashbord-bosh, .trend, .kalendar-ora,
+/* ---------- Yuzalar: ramka o'rniga tus. Panel ichidagi qator bir pog'ona yorug'roq ---------- */
+.blok, .kpi, .liboslar li, .dashbord-bosh, .trend, .kalendar-ora,
 .guruh, .xodim-menyu, .dona, .sozlama-saqlash, .sozlama-menu-tugma {
-  background: var(--shisha); border: 1px solid var(--shisha-chet); border-radius: var(--r-panel);
-  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  background: var(--yuza-1); border: 1px solid var(--chegara); border-radius: var(--r-2);
+  backdrop-filter: none; -webkit-backdrop-filter: none;
 }
-.blok { padding: 16px; }
-.liboslar li.tanlandi, .qator-btn.tanlandi { border-color: var(--shisha-chet-faol); box-shadow: 0 0 0 1px var(--tilla); }
-.ogohlantirish { background: var(--shisha); border: 1px solid rgba(255, 138, 128, .45); color: var(--xavf); border-radius: var(--r-ichki); padding: 12px; }
-.diqqat-blok { background: var(--shisha); }
+.blok { padding: var(--o-4); }
+.qator-btn {
+  align-items: center; padding: var(--o-3) var(--o-4);
+  background: var(--yuza-1); border: 1px solid transparent; border-radius: var(--r-1);
+  backdrop-filter: none; -webkit-backdrop-filter: none; transition: background .15s ease;
+}
+.qator-btn:hover { background: var(--yuza-2); }
+.blok .qator-btn { background: var(--yuza-2); }
+.blok .qator-btn:hover { background: var(--yuza-3); }
+.liboslar li.tanlandi, .qator-btn.tanlandi { border-color: var(--tilla); box-shadow: none; }
+.ogohlantirish { background: rgba(255, 155, 146, .07); border: 1px solid rgba(255, 155, 146, .28); color: var(--h-qarz); border-radius: var(--r-1); padding: var(--o-3); }
 
-/* ---------- Matn: xira qiymatlar o'rniga --matn-2, 13px dan kichik matn yo'q ---------- */
-.malumot, .kpi-nom, .kpi-izoh, .trend-nom, .bugun-nom, .dashbord-sarlavha .sana, .hisobot th, .grafik figcaption,
-.guruh legend, .kalendar th small, .liboslar li.band, .dona-yaroqsiz, .xodim.nofaol .xodim-ism, .dashbord-yon h4,
-.boshlash-panel h4, .kichik-qator td, .bosh-eskiz, .dashbord-sahifa .blok h4 { color: var(--matn-2); }
-.kpi-izoh, .belgi, .dashbord-yon h4, .boshlash-panel h4, .bosh-eskiz, .dashbord-yon .malumot, .kalendar, .kpi-nom, .bugun-nom, .trend-nom { font-size: 13px; }
-.liboslar li.band { background: var(--shisha); opacity: .8; }
-.kpi-qiymat.qizil, .belgi, .qizil, .xato { color: var(--xavf); }
+/* ---------- Matn: ikkinchi daraja --matn-2, meta --matn-3; 13px dan kichik matn yo'q ---------- */
+.malumot, .kpi-nom, .kpi-izoh, .trend-nom, .dashbord-sarlavha .sana, .hisobot th, .grafik figcaption,
+.guruh legend, .kalendar th small, .liboslar li.band, .dona-yaroqsiz, .xodim.nofaol .xodim-ism, .sozlama-guruh h4,
+.kichik-qator td, .bosh-eskiz, .dashbord-sahifa .blok h4 { color: var(--matn-2); }
+.kpi-izoh, .belgi, .bosh-eskiz, .kalendar, .kpi-nom, .trend-nom { font-size: var(--t-meta); }
+.kpi-izoh { color: var(--matn-3); }
+.liboslar li.band { background: var(--yuza-1); opacity: .8; }
+.kpi-qiymat.qizil, .belgi, .qizil, .xato { color: var(--h-qarz); }
 .xato { text-align: left; }
 .kpi-delta.past { color: var(--xavf); }
 
@@ -55,14 +61,14 @@ button.havola, .havola-tugma { min-height: 0; background: none; box-shadow: none
 .havola-tugma { cursor: pointer; padding: 10px 0; display: inline-block; }
 .tugma-havola { border-radius: var(--r-tugma); color: var(--siyoh); }
 /* Doira / ikonka tugmalar o'z o'lchamini saqlaydi (44px tegish maydoni keyinroq .karta-orqaga va shu kabilarda) */
-.shapka-menyu, .rasm-ochir, .vitrina-chiqish, .xodim-menu { min-height: 0; box-shadow: none; }
+.shapka-menyu, .rasm-ochir, .xodim-menu { min-height: 0; box-shadow: none; }
 .xodim-menu { min-width: 44px; min-height: 44px; }
 .rasm-ochir { min-width: 24px; }
 .qator-btn { min-height: 48px; box-shadow: none; font-weight: 500; color: var(--oq); }
-.qator-btn.qizil { border-color: rgba(255, 155, 146, .45); }
+.qator-btn.qizil { box-shadow: inset 3px 0 0 var(--h-qarz); }  /* qizil ramka emas — chap chiziq */
 
 /* Chip / filtr */
-.chiplar button, .segment button, .ichki-segment button { min-height: 40px; border-radius: var(--r-tugma); font-size: 14px; padding: 8px 16px; box-shadow: none; }
+.chiplar button, .segment button { min-height: 40px; border-radius: var(--r-tugma); font-size: 14px; padding: 8px 16px; box-shadow: none; }
 .chiplar button.ikkinchi, .segment button.ikkinchi { background: transparent; }
 
 /* ---------- Maydonlar ---------- */
@@ -79,13 +85,44 @@ input[type="checkbox"], input[type="radio"] { width: 22px; height: 22px; accent-
 label { font-size: 14px; color: var(--matn-2); }
 label > input, label > select { color: var(--oq); }
 
-/* ---------- Holat yorlig'i va zakaz chizig'i ---------- */
-.holat { display: inline-flex; align-items: center; min-height: 26px; padding: 2px 12px; border-radius: var(--r-tugma); font-size: 13px; font-weight: 600; white-space: nowrap; }
-.holat.vaqtinchalik { border: 1px dashed var(--ogoh); color: var(--ogoh); }
-.holat.bron { background: rgba(228, 193, 150, .18); color: var(--tilla); }
-.holat.berildi { background: rgba(141, 180, 232, .16); color: var(--ber); }
-.holat.qaytarildi { background: rgba(126, 214, 160, .16); color: var(--yaxshi); }
-.holat.qarz { background: rgba(255, 155, 146, .16); color: var(--xavf); }
+/* ---------- Ilova ichi: tugmalar 3 turda. Asosiy — tekis oltin (porlashsiz), ikkinchi — kontur, uchinchi — havola.
+   Tabletka shakli faqat chip va holat belgisida; tugmalar — yumaloq burchakli to'rtburchak. ---------- */
+:where(.ilova) button {
+  min-height: 48px; padding: 0 var(--o-5); border-radius: var(--r-1); font-size: var(--t-asos);
+  background: var(--tilla); color: var(--siyoh); border: 1px solid transparent; box-shadow: none;
+  transition: background .15s ease, border-color .15s ease, color .15s ease, transform .1s ease, filter .15s ease;
+}
+:where(.ilova) button:hover:not(:disabled) { filter: brightness(1.06); }
+:where(.ilova) button.ikkinchi { min-height: 44px; background: transparent; color: var(--oq); border: 1px solid var(--chegara-kuchli); }
+:where(.ilova) button.ikkinchi:hover:not(:disabled) { background: var(--yuza-2); filter: none; }
+:where(.ilova) button.kichik { min-height: 40px; padding: 0 var(--o-4); font-size: 14px; }
+:where(.ilova) button.xavfli { background: transparent; color: var(--h-qarz); border: 1px solid rgba(255, 155, 146, .4); }
+:where(.ilova) button.havola { min-height: 0; padding: 0; border: 0; background: none; color: var(--tilla); }
+:where(.ilova) .tugma-havola { border-radius: var(--r-1); background: var(--tilla); }
+:where(.ilova) input:not([type="checkbox"]):not([type="radio"]), :where(.ilova) select, :where(.ilova) textarea {
+  border-radius: var(--r-1); background: var(--fon-chuqur); border: 1px solid var(--chegara-kuchli);
+}
+:where(.ilova) input:not([type="checkbox"]):not([type="radio"]):focus, :where(.ilova) select:focus, :where(.ilova) textarea:focus {
+  background: var(--fon-chuqur); border: 1px solid var(--tilla); box-shadow: 0 0 0 3px var(--tilla-xira);
+}
+/* Chip — filtr (kategoriya va h.k.): tabletka, tanlangani yorug' yuza */
+:where(.ilova) .chiplar button { min-height: 36px; padding: 0 var(--o-4); border-radius: var(--r-tugma); background: var(--yuza-3); color: var(--oq); }
+:where(.ilova) .chiplar button.ikkinchi { background: transparent; color: var(--matn-2); border-color: var(--chegara-kuchli); }
+/* Segmentlangan boshqaruv (davr, Kun/Hafta/Oy): bitta «quti» ichida, tanlangani yorug' yuza — oltin emas */
+.segment { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; background: var(--fon-chuqur); border: 1px solid var(--chegara); border-radius: calc(var(--r-1) + 3px); }
+:where(.ilova) .segment button { flex: none; min-height: 36px; padding: 0 var(--o-4); font-size: 14px; border: 0; border-radius: var(--r-1); background: var(--yuza-3); color: var(--oq); }
+:where(.ilova) .segment button.ikkinchi { background: transparent; color: var(--matn-2); }
+:where(.ilova) .segment button.ikkinchi:hover:not(:disabled) { background: transparent; color: var(--oq); }
+
+/* ---------- Holat belgisi: rangli nuqta + matn (rang yolg'iz ma'no tashimaydi) va zakaz chizig'i ---------- */
+.holat { display: inline-flex; align-items: center; gap: 6px; min-height: 24px; padding: 2px 10px 2px 8px; border-radius: var(--r-tugma);
+  font-size: var(--t-meta); font-weight: 600; white-space: nowrap; background: var(--yuza-2); color: var(--matn-2); }
+.holat::before { content: ''; flex: none; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.holat.vaqtinchalik { color: var(--h-vaqt); }
+.holat.bron { color: var(--h-bron); }
+.holat.berildi { color: var(--h-berildi); }
+.holat.qaytarildi { color: var(--h-yopildi); }  /* yopilgan zakaz */
+.holat.qarz { color: var(--h-qarz); }
 
 .karta-bosh { display: flex; align-items: center; gap: 12px; }
 .karta-bosh h2 { flex: 1; margin: 0; font-size: 24px; }
@@ -94,7 +131,7 @@ label > input, label > select { color: var(--oq); }
 .holat-chizigi li { display: flex; flex-direction: column; gap: 6px; font-size: 13px; color: var(--matn-2); }
 .holat-chizigi li i { display: block; height: 4px; border-radius: 4px; background: rgba(251, 246, 238, .18); }
 .holat-chizigi li.otdi i, .holat-chizigi li.joriy i { background: var(--tilla); }
-.holat-chizigi li.joriy { color: var(--tilla); font-weight: 600; }
+.holat-chizigi li.joriy { color: var(--oq); font-weight: 600; }
 .asosiy-tugma { min-height: 56px; font-size: 17px; width: 100%; }
 .karta-asosiy table .jami-qator td, .karta-asosiy .jadval td { font-variant-numeric: tabular-nums; }
 .karta-asosiy .jadval tr:nth-last-child(2) td:last-child, .karta-asosiy .jadval tr:last-child td:last-child { font-size: 15px; }
@@ -112,7 +149,7 @@ label > input, label > select { color: var(--oq); }
 .oyna {
   width: min(560px, 100%); max-height: 92vh; overflow: auto; display: flex; flex-direction: column; gap: 12px;
   padding: 20px 20px calc(20px + env(safe-area-inset-bottom, 0px));
-  background: rgba(16, 26, 44, .97); border: 1px solid var(--shisha-chet); border-radius: 24px 24px 0 0;
+  background: rgba(16, 26, 44, .97); border: 1px solid var(--chegara); border-radius: 24px 24px 0 0;
   box-shadow: 0 -20px 60px -20px rgba(0, 0, 0, .7);
 }
 .oyna h3 { margin: 0; font-family: var(--serif); font-weight: 400; font-size: 22px; }
@@ -125,28 +162,35 @@ label > input, label > select { color: var(--oq); }
   .oyna-tugmalar button { min-width: 160px; }
 }
 @keyframes paydo { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
-.stack > *, .dashbord-sahifa > * { animation: paydo .2s cubic-bezier(.2, .8, .2, 1) both; }
 
-/* ---------- Ichki bo'limlar segmenti (sahifa tepasida) ---------- */
-.ichki-segment { display: flex; gap: 8px; overflow-x: auto; padding: 2px 0 12px; margin-bottom: 4px; scrollbar-width: none; }
+/* ---------- Ichki bo'limlar: tagiga chiziladigan tablar — navigatsiya amal tugmalaridan farq qiladi ---------- */
+.ichki-segment { display: flex; gap: var(--o-5); overflow-x: auto; padding: 0; margin-bottom: var(--o-5); border-bottom: 1px solid var(--chegara); scrollbar-width: none; }
 .ichki-segment::-webkit-scrollbar { display: none; }
-.ichki-segment button { flex: none; background: transparent; color: var(--oq); border: 1px solid var(--shisha-chet); }
-.ichki-segment button.faol { background: rgba(228, 193, 150, .16); border-color: var(--tilla); color: var(--tilla); }
-.ichki-segment.faqat-planshet { display: none; }
+:where(.ilova) .ichki-segment button {
+  flex: none; min-height: 44px; margin-bottom: -1px; padding: 0 2px; border: 0; border-bottom: 2px solid transparent; border-radius: 0;
+  background: transparent; color: var(--matn-2); font-size: var(--t-asos); font-weight: 600;
+}
+:where(.ilova) .ichki-segment button:hover:not(:disabled) { color: var(--oq); filter: none; }
+:where(.ilova) .ichki-segment button.faol { color: var(--oq); border-bottom-color: var(--tilla); }
 
 /* ---------- Navigatsiya ----------
    T (<768): pastki tab-bar + chapdan chiqadigan «Ko'proq» menyusi.
    P (768–1199): chapda 80px ikonka paneli.
-   K (>=1200): chapda 240px matnli panel (ichki bo'limlar bilan). */
+   K (>=1200): chapda 240px matnli panel.
+   Panel doim bir xil asosiy bo'limlarni ko'rsatadi; ichki bo'limlar faqat sahifa tepasidagi segmentda. */
 .nav-ikon { width: 22px; height: 22px; flex: none; }
-.nav-kichik, .nav-desk { display: flex; flex-direction: column; gap: 6px; }
-.nav-desk { display: none; }
+.nav-asosiy { display: flex; flex-direction: column; gap: 6px; }
 .tab-bar { display: none; }
-.boshlash-asosiy .boshlash-panel { display: block; padding: 12px; background: var(--shisha); border: 1px solid var(--shisha-chet); border-radius: var(--r-panel); }
-.boshlash-asosiy:empty { display: none; }
-.pastki button { display: flex; align-items: center; gap: 12px; min-height: 48px; box-shadow: none; font-weight: 600; border-radius: 14px; color: var(--oq); background: transparent; border: 1px solid transparent; text-align: left; }
-.pastki button.faol { background: rgba(228, 193, 150, .16); color: var(--tilla); border-color: transparent; }
-.pastki .boshlash-panel button { background: transparent; }
+.pastki button { display: flex; align-items: center; gap: 12px; min-height: 44px; box-shadow: none; font-weight: 600; border-radius: var(--r-1); color: var(--matn-2); background: transparent; border: 0; text-align: left; }
+.pastki button:hover { color: var(--oq); background: var(--yuza-2); filter: none; }
+.pastki button.faol { background: var(--yuza-2); color: var(--oq); box-shadow: inset 3px 0 0 var(--tilla); }
+.pastki button.faol .nav-ikon { color: var(--tilla); }
+/* Brend: chap panel tepasida logo va salon nomi — kirish ekrani bilan bog'liqlik */
+.nav-brend { display: flex; align-items: center; gap: 10px; padding: 6px 8px 18px; margin-bottom: 8px; border-bottom: 1px solid var(--chegara); color: var(--oq); }
+.nav-brend svg { width: 30px; height: 30px; flex: none; color: var(--tilla); }
+.nav-brend-matn { display: flex; flex-direction: column; min-width: 0; }
+.nav-brend-matn b { font-family: var(--serif); font-weight: 400; font-size: 17px; letter-spacing: 5px; }
+.nav-brend-matn small { font-size: var(--t-meta); color: var(--matn-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 @media (max-width: 767px) {
   .shapka-menyu { display: none; }
@@ -156,7 +200,7 @@ label > input, label > select { color: var(--oq); }
   .tab-bar {
     position: fixed; z-index: 4; left: 12px; right: 12px; bottom: calc(10px + env(safe-area-inset-bottom, 0px)); height: 64px;
     display: grid; grid-template-columns: repeat(5, 1fr); align-items: center; padding: 0 6px;
-    background: rgba(16, 26, 44, .94); border: 1px solid var(--shisha-chet); border-radius: 32px;
+    background: rgba(16, 26, 44, .94); border: 1px solid var(--chegara); border-radius: 32px;
     backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); box-shadow: 0 14px 40px -12px rgba(0, 0, 0, .8);
   }
   .tab-bar button {
@@ -167,7 +211,7 @@ label > input, label > select { color: var(--oq); }
   .tab-bar button span { font-size: 12px; line-height: 1; }
   .tab-bar .tab-qoshish { width: 46px; height: 46px; min-height: 46px; margin: 0 auto; padding: 0; border-radius: 50%; background: linear-gradient(110deg, var(--tilla-toq), var(--tilla)); color: var(--siyoh); box-shadow: 0 8px 20px -8px rgba(228, 193, 150, .8); }
   .tab-qoshish .nav-ikon { width: 26px; height: 26px; }
-  .ichki-segment { margin: 0 -12px 4px; padding: 2px 12px 12px; }
+  .ichki-segment { margin: 0 -12px var(--o-4); padding: 0 12px; gap: var(--o-4); }
   h1 { font-size: 28px; }
   .karta { display: flex; }
   .karta-ong { display: contents; }
@@ -177,9 +221,8 @@ label > input, label > select { color: var(--oq); }
 @media (min-width: 768px) {
   .shapka-ong { justify-content: flex-end; gap: 16px; }
   .ilova > main { max-width: 900px; padding: 24px 24px 40px; }
-  .pastki { background: rgba(11, 18, 32, .86); backdrop-filter: blur(14px); border-right: 1px solid var(--shisha-chet); }
+  .pastki { background: var(--yuza-1); backdrop-filter: none; border-right: 1px solid var(--chegara); }
   .ilova main:has(.sozlama-mazmun) { max-width: 900px; }
-  .ichki-segment.faqat-planshet { display: flex; }
   .karta { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 16px; align-items: start; }
   /* qatorlar raqamlanmaydi: holat chizig'i (bekor zakazda) yoki tugma bo'lmasa bo'sh qator va ortiqcha bo'shliq qolmaydi */
   .karta > .karta-bosh, .karta > .holat-chizigi { grid-column: 1 / -1; }
@@ -193,26 +236,20 @@ label > input, label > select { color: var(--oq); }
 @media (min-width: 768px) and (max-width: 1199px) {
   .ilova { padding-left: 80px; }
   .pastki { width: 80px; padding: 12px 6px; align-items: stretch; }
-  .nav-desk { display: none; }
   .pastki button { flex-direction: column; justify-content: center; gap: 4px; width: 100%; padding: 8px 2px; text-align: center; font-size: 13px; line-height: 1.15; border-radius: 14px; }
   .pastki button .nav-nom { font-size: 13px; overflow-wrap: anywhere; }
-  .pastki button[aria-label="Yangi zakaz"] { background: linear-gradient(110deg, var(--tilla-toq), var(--tilla)); color: var(--siyoh); }
-  .nav-kichik { gap: 6px; }
+  .nav-brend { justify-content: center; padding: 4px 0 14px; }
+  .nav-brend-matn { display: none; }
 }
 
 /* K: 240px matnli panel */
 @media (min-width: 1200px) {
   .ilova { padding-left: 240px; }
   .pastki { width: 240px; }
-  .nav-kichik { display: none; }
-  .nav-desk { display: flex; }
   .ilova > main { max-width: 1180px; padding: 28px 32px 48px; }
   .ilova main:has(.dashbord-sahifa) { max-width: 1180px; }
   .ilova main:has(.hisobot-sahifa) { max-width: 1180px; }
-  .boshlash-asosiy { display: none; }
-  .dashbord-yon { display: flex; }
 }
-@media (min-width: 768px) and (max-width: 1199px) { .dashbord-yon { display: none; } .boshlash-asosiy { display: block; } }
 
 /* ---------- Dashbord: KPI tor ---------- */
 @media (max-width: 767px) { .kpi-tor { grid-template-columns: repeat(2, 1fr); } .kpi-qiymat { font-size: 22px; } }
@@ -223,7 +260,7 @@ label > input, label > select { color: var(--oq); }
 .zakaz-qadamlar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .zakaz-qadamlar .raqam { font-family: var(--kursiv); font-style: italic; color: var(--tilla); font-size: 22px; }
 .zakaz-qadamlar ol { list-style: none; display: flex; gap: 8px; margin: 0; padding: 0; flex-wrap: wrap; }
-.zakaz-qadamlar li { padding: 6px 14px; border-radius: var(--r-tugma); border: 1px solid var(--shisha-chet); color: var(--matn-2); font-size: 14px; }
+.zakaz-qadamlar li { padding: 6px 14px; border-radius: var(--r-tugma); border: 1px solid var(--chegara); color: var(--matn-2); font-size: 14px; }
 .zakaz-qadamlar li.joriy { color: var(--tilla); border-color: var(--tilla); background: rgba(228, 193, 150, .16); font-weight: 600; }
 .zakaz-qadamlar li.otdi { color: var(--oq); }
 .zakaz-tugmalar { display: flex; gap: 10px; }
@@ -238,11 +275,11 @@ label > input, label > select { color: var(--oq); }
 .zakaz-jami { display: flex; flex-direction: column; gap: 10px; }
 .zakaz-jami .jami { position: static; margin: 0; border: 0; background: none; backdrop-filter: none; box-shadow: none; padding: 0; flex-direction: column; align-items: stretch; }
 @media (max-width: 767px) {
-  .zakaz-jami { position: sticky; bottom: 84px; z-index: 2; padding: 10px; background: rgba(16, 26, 44, .94); border: 1px solid var(--shisha-chet); border-radius: var(--r-panel); backdrop-filter: blur(16px); }
+  .zakaz-jami { position: sticky; bottom: 84px; z-index: 2; padding: 10px; background: rgba(16, 26, 44, .94); border: 1px solid var(--chegara); border-radius: var(--r-panel); backdrop-filter: blur(16px); }
 }
 @media (min-width: 768px) {
   .zakaz-joy { display: grid; grid-template-columns: minmax(0, 1fr) 300px; align-items: start; }
-  .zakaz-jami { position: sticky; top: 16px; padding: 16px; background: var(--shisha); border: 1px solid var(--shisha-chet); border-radius: var(--r-panel); }
+  .zakaz-jami { position: sticky; top: 16px; padding: 16px; background: var(--yuza-1); border: 1px solid var(--chegara); border-radius: var(--r-panel); }
   .libos-grid { grid-template-columns: repeat(3, 1fr); }
 }
 @media (min-width: 1200px) {
@@ -328,3 +365,593 @@ label > input, label > select { color: var(--oq); }
     radial-gradient(ellipse 70% 70% at 50% 0%, rgba(228, 193, 150, .42), rgba(228, 193, 150, .14) 45%, transparent 75%),
     radial-gradient(ellipse 90% 30% at 50% 100%, rgba(228, 193, 150, .10), transparent 70%); }
 }
+
+/* ---------- Soddalashtirilgan tuzilma ---------- */
+/* «Yangi zakaz» menyuda boshqa bo'limlar bilan bir xil (alohida oltin fon yo'q) */
+/* Bosh sahifadagi bo'lim sarlavhasi (masalan, «Bugungi ishlar») */
+.bolim-sarlavha { margin: var(--o-3) 0 0; font-size: var(--t-h2); text-align: left; color: var(--oq); }
+/* Yangi salon rahbari uchun boshlash ro'yxati — bosh sahifa tepasida oddiy blok */
+main .boshlash-panel { display: flex; flex-direction: column; gap: 8px; }
+main .boshlash-panel .qator-btn { text-align: left; }
+
+/* Sozlama: bo'limlar guruhlari. Keng ekranda chapda doim ko'rinadi, telefonda ochiladigan menyuda. */
+.sozlama-guruh { display: flex; flex-direction: column; gap: 2px; }
+.sozlama-guruh + .sozlama-guruh { margin-top: 12px; }
+.sozlama-guruh h4 { margin: 0 10px 4px; font-size: var(--t-meta); font-weight: 600; color: var(--matn-3); }
+.sozlama-guruh button { min-height: 40px; padding: 8px 10px; text-align: left; font-size: 14px; font-weight: 500; background: transparent; color: var(--oq); border: 1px solid transparent; border-radius: 10px; box-shadow: none; }
+.sozlama-guruh button:hover { background: rgba(255, 255, 255, .05); }
+.sozlama-guruh button.faol { background: rgba(228, 193, 150, .16); color: var(--tilla); }
+.sozlama-yon { display: none; }
+@media (min-width: 768px) {
+  .ilova main:has(.sozlama-joy) { max-width: 1180px; }
+  .sozlama-joy { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 20px; align-items: start; }
+  .sozlama-yon { display: block; position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow-y: auto; padding: 12px 8px; background: var(--yuza-1); border: 1px solid var(--chegara); border-radius: var(--r-panel); }
+}
+
+/* Bandlik kalendari asboblar qatori: ko'rinish (kun/hafta/oy) va sana bir qatorda */
+.kalendar-asboblar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px; }
+.kalendar-asboblar .kalendar-korinish { flex: 0 0 auto; gap: 4px; }
+.kalendar-asboblar .kalendar-korinish button { flex: none; padding: 8px 14px; }
+.kalendar-asboblar .kalendar-nav { flex: 0 0 auto; margin: 0; }
+
+/* Ro'yxat qatori: chap guruh (raqam, mijoz) va o'ngdagi summa — oradagi matn o'rtaga suzib ketmaydi */
+.qator-btn .qator-chap { flex: 1; min-width: 0; text-align: left; overflow: hidden; text-overflow: ellipsis; }
+.qator-btn .qator-ong { display: flex; align-items: center; gap: 10px; flex: none; }
+/* Qidiruv + filtr bir qatorda (tor ekranda ustma-ust) */
+.asboblar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.asboblar > input { flex: 1 1 240px; }
+.asboblar > select { flex: 0 1 220px; }
+.asboblar .davr-tugmalar { flex: 0 0 auto; margin-right: auto; }
+.asboblar .davr-tugmalar button { flex: none; }
+.asboblar .sana-oraliq { flex: 0 0 auto; margin: 0; }
+/* Qaror kutayotgan va diqqat bloklari: urg'u sarlavhada va chap chiziqda — butun matn qizil emas (o'qilishi oson) */
+.diqqat-blok { box-shadow: inset 3px 0 0 var(--h-vaqt); }  /* e'tibor — sariq chiziq; oltin asosiy amal uchun band */
+.diqqat-blok > h3 { color: var(--oq); }
+.diqqat-blok .havola.qator-matn { color: var(--oq); text-align: left; }
+/* Keng ekranda shapka (xodim nomi, almashtirish) o'ng yuqori burchakda */
+@media (min-width: 768px) {
+  .yuqori { max-width: none; justify-content: flex-end; padding: 12px 32px 0; }
+}
+
+/* ---------- Sahifa sarlavhasi: chapga tekislangan serif, ostida ichki bo'limlar ---------- */
+.sahifa-nomi { margin: 0 0 14px; text-align: left; font-size: 32px; line-height: 1.1; color: var(--tilla); }
+@media (max-width: 767px) { .sahifa-nomi { font-size: 26px; margin-bottom: 10px; } }
+
+/* ---------- Katalog: libos kartochkalari to'ri ---------- */
+/* dense: tafsilot butun qatorni egallaganda tanlangan qatordagi bo'sh kataklarni keyingi kartochkalar to'ldiradi */
+.libos-tor { display: grid; grid-template-columns: repeat(auto-fill, minmax(168px, 1fr)); grid-auto-flow: row dense; gap: 14px; }
+@media (max-width: 767px) { .libos-tor { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; } }
+.libos-karta {
+  display: flex; flex-direction: column; align-items: stretch; gap: 0; padding: 0; min-height: 0; overflow: hidden; text-align: left;
+  background: var(--yuza-1); color: var(--oq); border: 1px solid var(--chegara); border-radius: 14px; box-shadow: none; font-weight: 400;
+}
+.libos-karta:hover { border-color: rgba(228, 193, 150, .4); }
+.libos-karta.tanlandi { border-color: var(--tilla); }
+.libos-karta:focus-visible { outline: 2px solid var(--tilla); outline-offset: 2px; }
+.libos-foto { position: relative; display: flex; align-items: center; justify-content: center; aspect-ratio: 2 / 3; background: rgba(251, 246, 238, .04); }
+.libos-foto img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.libos-siluet { width: 42%; height: auto; color: rgba(228, 193, 150, .45); }
+.libos-holat { position: absolute; left: 8px; top: 8px; padding: 3px 8px; border-radius: 999px; font-size: 12px; background: rgba(20, 27, 38, .82); color: var(--tilla); }
+.libos-matn { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px 12px; }
+.libos-nom { font-size: 14px; line-height: 1.3; }
+.libos-kat { font-size: 13px; color: var(--matn-2); }
+.libos-narx { margin-top: 4px; font-size: 15px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.libos-tafsilot { grid-column: 1 / -1; }
+.libos-tafsilot-bosh { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.libos-tafsilot-bosh h3 { margin: 0; }
+
+/* ---------- Hisobot: butun qator bosiladi ---------- */
+.hisobot tr.bosiladi { cursor: pointer; }
+.hisobot tr.bosiladi:hover td, .hisobot tr.bosiladi.ochiq td { background: rgba(228, 193, 150, .08); }
+.hisobot tr.bosiladi td { padding-top: 11px; padding-bottom: 11px; }
+
+/* ---------- Telegram: bir qatorli ixcham blok ---------- */
+.telegram-blok { padding: 10px 14px; border: 1px dashed var(--chegara); border-radius: var(--r-ichki); }
+.telegram-blok > summary { cursor: pointer; font-size: 14px; color: var(--matn-2); }
+.telegram-blok[open] > summary { margin-bottom: 10px; }
+.telegram-blok.ulangan { border-style: solid; border-color: transparent; padding: 4px 2px; }
+.libos-narxlar { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; }
+
+/* ---------- Mijozga ko'rsatish (vitrina): ilova uslubida, chiqish yo'li aniq yozilgan ---------- */
+.vitrina { position: fixed; inset: 0; z-index: 30; display: flex; flex-direction: column; color: var(--oq);
+  background: radial-gradient(120% 80% at 50% 0%, #1d2d4a 0%, var(--siyoh) 70%); }
+.vitrina-yuqori { display: flex; align-items: center; justify-content: flex-end; gap: 12px; padding: 12px 16px; }
+.vitrina-hisob { margin-right: auto; color: var(--matn-2); font-variant-numeric: tabular-nums; }
+.vitrina-sahna { position: relative; flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; gap: 12px; padding: 0 12px; touch-action: pan-y; }
+.vitrina-rasm { position: relative; height: 100%; flex: 1; min-width: 0; display: flex; align-items: center; justify-content: center; }
+.vitrina-rasm img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 12px; cursor: pointer; }
+.vitrina-siluet { height: 60%; width: auto; color: rgba(228, 193, 150, .5); }
+.vitrina-strelka { flex: none; width: 56px; height: 56px; min-height: 56px; padding: 0; border-radius: 50%; font-size: 30px; line-height: 1;
+  background: rgba(251, 246, 238, .08); color: var(--oq); border: 1px solid var(--chegara); box-shadow: none; }
+.vitrina-strelka:hover { border-color: var(--tilla); color: var(--tilla); }
+.vitrina-nuqtalar { position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%); display: flex; gap: 4px; }
+.vitrina-nuqtalar button { width: 28px; height: 28px; min-height: 28px; padding: 0; background: transparent; border: 0; box-shadow: none; position: relative; }
+.vitrina-nuqtalar button::after { content: ''; position: absolute; inset: 10px; border-radius: 50%; background: rgba(251, 246, 238, .35); }
+.vitrina-nuqtalar button.faol::after { background: var(--tilla); }
+.vitrina-malumot { padding: 14px 20px 24px; text-align: center; }
+.vitrina-malumot h2 { margin: 0; font-size: 34px; color: var(--tilla); }
+.vitrina-kategoriya { margin: 6px 0 0; color: var(--matn-2); }
+.vitrina-narx { margin: 8px 0 0; font-size: 26px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.vitrina-pin-parda { position: absolute; inset: 0; z-index: 3; display: flex; align-items: center; justify-content: center; padding: 24px; background: rgba(11, 18, 32, .78); backdrop-filter: blur(8px); }
+.vitrina-pin { width: min(100%, 360px); display: flex; flex-direction: column; gap: 12px; padding: 24px; text-align: center;
+  background: var(--yuza-1); border: 1px solid var(--chegara); border-radius: var(--r-panel); }
+.vitrina-pin h3 { margin: 0; font-family: var(--serif); font-weight: 400; font-size: 22px; }
+.vitrina-pin input { text-align: center; font-size: 26px; letter-spacing: 8px; }
+.vitrina-pin-tugmalar { display: flex; gap: 10px; }
+.vitrina-pin-tugmalar button { flex: 1; }
+@media (max-width: 767px) {
+  .vitrina-strelka { display: none; }  /* telefonda barmoq bilan suriladi */
+  .vitrina-malumot h2 { font-size: 26px; }
+}
+
+/* ---------- Bosh sahifa: salom banneri — ichkaridagi yagona kinodek lahza (kirish ekranidagi qasr) ---------- */
+.bosh-sahifa { display: flex; flex-direction: column; gap: var(--o-5); }
+.salom-banner {
+  position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-end; align-items: flex-start; gap: var(--o-1);
+  min-height: 176px; margin: 0; padding: var(--o-6); border-radius: var(--r-3); border: 1px solid var(--chegara);
+  background:
+    linear-gradient(90deg, rgba(10, 18, 32, .94) 0%, rgba(10, 18, 32, .72) 55%, rgba(10, 18, 32, .35) 100%),
+    radial-gradient(ellipse 40% 90% at 78% 0%, rgba(228, 193, 150, .28), transparent 70%),
+    url('/kelinlar/saroy.jpg') center 35% / cover no-repeat;
+}
+.salom-banner h1 { margin: 0; text-align: left; font-size: var(--t-katta); color: var(--oq); }
+.salom-sana { margin: 0; font-size: var(--t-meta); color: var(--tilla); letter-spacing: .02em; }
+.salom-xulosa { margin: var(--o-1) 0 0; max-width: 60ch; color: var(--matn-2); font-size: var(--t-asos); }
+@media (max-width: 767px) {
+  .salom-banner { min-height: 140px; padding: var(--o-5) var(--o-4); }
+  .salom-banner h1 { font-size: var(--t-h1); }
+}
+.bosh-ustunlar { display: grid; gap: var(--o-5); align-items: start; }
+@media (min-width: 1200px) { .bosh-ustunlar.ikki { grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr); } }
+.bosh-yon .dashbord-sahifa { gap: var(--o-4); }
+.bosh-yon .dashbord-ustunlar { grid-template-columns: 1fr; }
+.kpi-sarlavha { display: flex; flex-wrap: wrap; align-items: center; gap: var(--o-3); margin-top: var(--o-2); }
+.kpi-sarlavha .bolim-sarlavha { margin: 0 auto 0 0; }
+.kpi-sarlavha select { min-height: 40px; padding: 0 var(--o-3); font-size: 14px; }
+@media (min-width: 1200px) { .bosh-yon .kpi-tor { grid-template-columns: repeat(2, 1fr); } }
+
+/* ---------- Zakaz kartasi: libos fotosi va yorliqli ma'lumotlar ---------- */
+.karta-liboslar { display: flex; gap: var(--o-3); overflow-x: auto; margin-bottom: var(--o-4); }
+.karta-libos { flex: 0 0 120px; margin: 0; display: flex; flex-direction: column; gap: var(--o-2); }
+.karta-libos-foto { display: flex; align-items: center; justify-content: center; aspect-ratio: 2 / 3; overflow: hidden; border-radius: var(--r-1); background: var(--yuza-2); }
+.karta-libos-foto img { width: 100%; height: 100%; object-fit: cover; }
+.karta-libos figcaption { font-size: 14px; line-height: 1.35; }
+.karta-libos figcaption .malumot { display: block; }
+.karta-malumot { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: var(--o-3) var(--o-5); margin: 0 0 var(--o-4); }
+.karta-malumot dt { font-size: var(--t-meta); color: var(--matn-3); }
+.karta-malumot dd { margin: 2px 0 0; }
+.karta-malumot a { color: var(--oq); }
+
+/* ---------- Jadval paneli (zakazlar): ixcham asboblar + ustunli jadval ---------- */
+.jadval-panel { padding: 0; overflow: hidden; }
+.jadval-asboblar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--o-3); padding: var(--o-3) var(--o-4); border-bottom: 1px solid var(--chegara); }
+.tezkor-tablar { display: flex; flex-wrap: wrap; gap: 2px; margin-right: auto; }
+:where(.ilova) .tezkor-tablar button { min-height: 32px; padding: 0 var(--o-3); border: 0; border-radius: var(--r-1); background: transparent; color: var(--matn-2); font-size: 14px; font-weight: 600; }
+:where(.ilova) .tezkor-tablar button:hover:not(:disabled) { color: var(--oq); background: var(--yuza-2); filter: none; }
+:where(.ilova) .tezkor-tablar button.faol { background: var(--yuza-3); color: var(--oq); }
+:where(.ilova) .jadval-qidiruv { flex: 0 1 260px; min-height: 36px; padding: 0 var(--o-3); font-size: 14px; }
+.jadval-bosh { padding: var(--o-5) var(--o-4); }
+.jadval-ora { overflow-x: auto; }
+.zakaz-jadval { width: 100%; border-collapse: collapse; font-size: 14px; }
+.zakaz-jadval th { padding: var(--o-2) var(--o-4); text-align: left; font-size: var(--t-meta); font-weight: 600; color: var(--matn-3); border-bottom: 1px solid var(--chegara); white-space: nowrap; }
+.zakaz-jadval td { padding: var(--o-2) var(--o-4); border-bottom: 1px solid var(--chegara); vertical-align: middle; white-space: nowrap; }
+.zakaz-jadval tbody tr { cursor: pointer; transition: background .12s ease; }
+.zakaz-jadval tbody tr:hover { background: var(--yuza-2); }
+.zakaz-jadval tbody tr:last-child td { border-bottom: 0; }
+.zakaz-jadval .ong { text-align: right; font-variant-numeric: tabular-nums; }
+:where(.ilova) .zakaz-katak { display: flex; align-items: center; gap: var(--o-3); min-height: 0; padding: 0; border: 0; background: none; color: var(--oq); font-weight: 400; text-align: left; }
+:where(.ilova) .zakaz-katak:hover:not(:disabled) { filter: none; }
+.zakaz-eskiz { flex: none; width: 34px; height: 48px; display: flex; align-items: center; justify-content: center; overflow: hidden; border-radius: 6px; background: var(--yuza-2); }
+.zakaz-eskiz img { width: 100%; height: 100%; object-fit: cover; }
+.zakaz-eskiz .libos-siluet { width: 60%; }
+.zakaz-nom { display: flex; flex-direction: column; min-width: 0; }
+.zakaz-nom small { max-width: 240px; overflow: hidden; text-overflow: ellipsis; color: var(--matn-3); font-size: var(--t-meta); }
+/* To'lov progressi: to'langan / jami */
+.tolov-progress { display: flex; align-items: center; gap: var(--o-2); }
+.tolov-progress i { position: relative; width: 72px; height: 6px; border-radius: 6px; background: var(--yuza-3); overflow: hidden; }
+.tolov-progress i::after { content: ''; position: absolute; inset: 0 auto 0 0; width: var(--foiz); border-radius: 6px; background: var(--h-vaqt); }
+.tolov-progress i.toliq::after { background: var(--h-bron); }
+.tolov-progress small { font-size: var(--t-meta); color: var(--matn-2); font-variant-numeric: tabular-nums; }
+/* Telefon: jadval qatori ikki qatorli kartochka — tepada zakaz, ostida holat va summa (gorizontal aylantirishsiz) */
+@media (max-width: 767px) {
+  .jadval-asboblar > button { display: none; }  /* yangi zakaz — pastki paneldagi «+» */
+  :where(.ilova) .jadval-qidiruv { flex: 1 1 100%; }
+  .tezkor-tablar { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; width: 100%; }
+  .zakaz-jadval thead { display: none; }
+  .zakaz-jadval tbody tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--o-2) var(--o-3);
+    padding: var(--o-3); border-bottom: 1px solid var(--chegara); }
+  .zakaz-jadval td { display: block; padding: 0; border: 0; }
+  .zakaz-jadval td:first-child { grid-column: 1 / -1; white-space: normal; }
+  .zakaz-jadval .tor-yashir { display: none; }
+  .zakaz-nom small { max-width: none; }
+}
+/* Sensorli ekranda (planshet) ixcham tugmalar ham 44px bosish maydonini saqlaydi */
+@media (pointer: coarse) {
+  :where(.ilova) .tezkor-tablar button { min-height: 44px; }
+  :where(.ilova) .jadval-qidiruv { min-height: 44px; }
+}
+
+/* Ixcham tanlov: bo'lim sarlavhasidagi filtr (davr, filial) */
+:where(.ilova) select.kichik-tanlov { min-height: 34px; padding: 0 28px 0 var(--o-3); font-size: 14px; background-color: var(--yuza-1); }
+@media (pointer: coarse) { :where(.ilova) select.kichik-tanlov { min-height: 44px; } }
+/* Shapka: xodim avatari (bosh harf), ismi va roli */
+.xodim-chip { display: inline-flex; align-items: center; gap: var(--o-2); }
+.xodim-chip > i { width: 34px; height: 34px; flex: none; display: flex; align-items: center; justify-content: center; border-radius: 50%;
+  background: var(--tilla-xira); color: var(--tilla); font-family: var(--serif); font-style: normal; font-size: 17px; }
+.xodim-chip > span { display: flex; flex-direction: column; line-height: 1.2; }
+.xodim-chip b { font-size: 14px; font-weight: 600; }
+.xodim-chip small { font-size: var(--t-meta); color: var(--matn-3); }
+@media (max-width: 767px) { .xodim-chip > span { display: none; } }
+
+/* =================== Professional qobiq (ish dasturi) =================== */
+/* Bitta sans shrift: serif faqat logo, salom banneri va mijozga ko'rsatish (vitrina) rejimida */
+:where(.ilova) h1, :where(.ilova) h2, :where(.ilova) h3, :where(.ilova) .oyna h3 { font-family: var(--sans); font-weight: 600; letter-spacing: -.01em; }
+:where(.ilova) h1 { font-size: var(--t-h1); }
+:where(.ilova) h2 { font-size: var(--t-h2); }
+:where(.ilova) h3 { font-size: var(--t-h3); }
+.blok h2, .karta-bosh h2 { font-size: var(--t-h2); }
+.karta-bosh h2 { font-size: 20px; }
+.vitrina-malumot h2, .vitrina-pin h3 { font-family: var(--serif); font-weight: 400; letter-spacing: 0; }
+.vitrina-malumot h2 { font-size: 34px; }
+.bolim-sarlavha { font-size: var(--t-h2); font-weight: 600; margin: 0; }
+.malumot { font-size: 13px; }
+
+/* Sahifa sarlavhasi: chapda nom, o'ngda asosiy amal — bir qatorda */
+.sahifa-bosh { display: flex; align-items: center; justify-content: space-between; gap: var(--o-4); min-height: 40px; margin-bottom: var(--o-4); }
+.sahifa-nomi { margin: 0; font-size: var(--t-h1); color: var(--oq); line-height: 1.2; }
+@media (max-width: 767px) { .sahifa-nomi { font-size: 22px; } }
+
+/* Kontent maydoni: kengroq va bir xil chekka */
+@media (min-width: 1200px) { .ilova > main { max-width: 1240px; padding: 32px 40px 56px; } }
+/* Keng ekranda yuqoridagi suzib turgan shapka yo'q — xodim chap panel pastida */
+@media (min-width: 768px) { .yuqori { display: none !important; } }
+
+/* Tugma va maydonlar: sichqonchada ixcham (36–40px), sensorli ekranda 44px */
+:where(.ilova) button { min-height: 40px; padding: 0 var(--o-4); font-size: 14px; font-weight: 600; }
+:where(.ilova) button.ikkinchi { min-height: 40px; }
+:where(.ilova) button.kichik { min-height: 34px; padding: 0 var(--o-3); font-size: 13.5px; }
+:where(.ilova) input:not([type="checkbox"]):not([type="radio"]), :where(.ilova) select { min-height: 40px; font-size: 14px; }
+@media (pointer: coarse) {
+  :where(.ilova) button, :where(.ilova) button.ikkinchi { min-height: 44px; }
+  :where(.ilova) button.kichik { min-height: 40px; }
+  :where(.ilova) input:not([type="checkbox"]):not([type="radio"]), :where(.ilova) select { min-height: 44px; font-size: 16px; }
+}
+.tugma-ikon { width: 16px; height: 16px; flex: none; }
+:where(.ilova) button:has(> .tugma-ikon) { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.karta-orqaga { width: 36px !important; min-height: 36px !important; }
+.asosiy-tugma { min-height: 48px; font-size: 15px; }
+
+/* Chap panel: kim ishlayapti — pastda */
+.pastki { display: flex; flex-direction: column; }
+.nav-asosiy { flex: 1; }
+.nav-xodim { display: flex; align-items: center; gap: var(--o-2); margin-top: var(--o-4); padding-top: var(--o-3); border-top: 1px solid var(--chegara); }
+.nav-xodim .xodim-chip { flex: 1; min-width: 0; }
+.nav-xodim .xodim-chip > span { display: flex; flex-direction: column; min-width: 0; }
+.nav-xodim .xodim-chip b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+:where(.ilova) .pastki button.nav-almashtir { flex: none; width: 36px; min-height: 36px; padding: 0; justify-content: center; color: var(--matn-2); }
+.xodim-chip > i { width: 30px; height: 30px; font-size: 14px; font-family: var(--sans); font-weight: 700; }
+@media (min-width: 768px) and (max-width: 1199px) {
+  .nav-xodim { flex-direction: column; }
+  .nav-xodim .xodim-chip > span { display: none; }
+}
+@media (max-width: 767px) { .nav-xodim { display: none; } }
+
+/* Bosh sahifa banneri: ixchamroq, sans sarlavha */
+.salom-banner { min-height: 128px; padding: var(--o-5) var(--o-6); }
+.salom-banner h1 { font-family: var(--serif); font-weight: 400; font-size: 30px; letter-spacing: 0; }
+
+/* Boshlash: ixcham progress karta */
+.boshlash { display: flex; flex-direction: column; gap: var(--o-3); }
+.boshlash-bosh { display: flex; align-items: center; gap: var(--o-3); }
+.boshlash-bosh b { font-size: var(--t-h3); }
+.boshlash-bosh .havola { margin-left: auto; font-size: 13px; }
+.progress { height: 4px; border-radius: 4px; background: var(--yuza-3); overflow: hidden; }
+.progress i { display: block; height: 100%; width: var(--foiz); background: var(--h-bron); border-radius: 4px; }
+.boshlash-qadamlar { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: var(--o-1) var(--o-4); }
+:where(.ilova) .boshlash-qadamlar button { width: 100%; min-height: 36px; padding: 0 var(--o-2); justify-content: flex-start; gap: var(--o-2);
+  background: transparent; color: var(--oq); font-weight: 500; text-align: left; border-radius: var(--r-1); }
+:where(.ilova) .boshlash-qadamlar button:hover:not(:disabled) { background: var(--yuza-2); filter: none; }
+:where(.ilova) .boshlash-qadamlar button:disabled { opacity: 1; cursor: default; color: var(--matn-3); }
+.boshlash-qadamlar .bajarildi .tugma-ikon { color: var(--h-bron); }
+.boshlash-qadamlar .tugma-ikon.oxirgi { margin-left: auto; color: var(--matn-3); }
+
+/* KPI: ish dasturi o'lchamida */
+.kpi { padding: var(--o-4); gap: 2px; }
+.kpi-qiymat { font-size: 22px; font-weight: 700; letter-spacing: -.01em; }
+.kpi-asosiy .kpi-qiymat { font-size: 26px; }
+.kpi-nom { font-size: 13px; }
+
+/* Qidiruv maydoni ichida ikonka */
+.qidiruv-maydon { position: relative; flex: 0 1 260px; display: block; }
+.qidiruv-maydon .tugma-ikon { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--matn-3); pointer-events: none; }
+:where(.ilova) .qidiruv-maydon input { width: 100%; padding-left: 34px; }
+@media (max-width: 767px) { .qidiruv-maydon { flex: 1 1 100%; } }
+
+/* =================== Point uslubidagi joylashuv =================== */
+/* Yuqori panel: kontent ustidagi yaxlit chiziq — chapda nom, o'ngda qidiruv, qo'ng'iroqcha, xodim */
+.ustki { display: flex; align-items: center; gap: var(--o-3); margin-bottom: var(--o-5); padding: 10px 12px 10px 18px;
+  background: var(--yuza-1); border: 1px solid var(--chegara); border-radius: var(--r-2); }
+.ustki-nom { flex: 1 0 auto; min-width: 0; }  /* sarlavha siqilmaydi — tor ekranda qidiruv qisqaradi */
+.ustki-nom h1 { margin: 0; font-size: 18px; line-height: 1.25; text-align: left; color: var(--oq); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ustki-nom p { margin: 0; font-size: var(--t-meta); color: var(--matn-3); }
+.ustki-qidiruv { flex: 0 1 300px; }
+:where(.ilova) .ustki-qidiruv input { min-height: 36px; background: var(--fon-chuqur); border-radius: 999px; }
+.ustki-joy { position: relative; }
+:where(.ilova) .ustki-tugma { position: relative; width: 38px; min-height: 38px; padding: 0; border-radius: 50%; background: var(--yuza-2); color: var(--oq); border: 1px solid var(--chegara); }
+:where(.ilova) .ustki-tugma .tugma-ikon { width: 18px; height: 18px; }
+.ustki-son { position: absolute; top: -4px; right: -4px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px;
+  background: var(--h-qarz); color: #2a0b08; font-size: 11px; font-weight: 700; line-height: 18px; text-align: center; }
+:where(.ilova) .ustki-xodim { min-height: 38px; padding: 0 8px 0 4px; gap: 8px; background: transparent; color: var(--oq); border: 0; }
+:where(.ilova) .ustki-xodim:hover:not(:disabled) { background: var(--yuza-2); filter: none; }
+.ustki-xodim .pastga { transform: rotate(90deg); color: var(--matn-3); }
+.ustki-xodim .xodim-chip > span { display: flex; flex-direction: column; text-align: left; }
+.ustki-menyu { position: absolute; right: 0; top: calc(100% + 8px); z-index: 20; min-width: 240px; display: flex; flex-direction: column; gap: 2px; padding: 8px;
+  background: var(--yuza-2); border: 1px solid var(--chegara-kuchli); border-radius: var(--r-2); box-shadow: 0 18px 40px -16px rgba(0, 0, 0, .7); }
+.ustki-menyu > b { padding: 6px 8px; font-size: 14px; }
+.ustki-menyu > .malumot { padding: 4px 8px; }
+:where(.ilova) .ustki-menyu button { justify-content: flex-start; gap: 10px; min-height: 36px; padding: 6px 8px; background: transparent; color: var(--oq);
+  border: 0; border-radius: var(--r-1); font-weight: 500; text-align: left; white-space: normal; }
+:where(.ilova) .ustki-menyu button:hover:not(:disabled) { background: var(--yuza-3); filter: none; }
+.xabar-menyu { width: 340px; }
+.nuqta { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--matn-3); }
+.nuqta.vaqt { background: var(--h-vaqt); } .nuqta.qarz { background: var(--h-qarz); } .nuqta.yopildi { background: var(--h-yopildi); }
+@media (max-width: 767px) {
+  .ustki { padding: 8px 8px 8px 12px; margin-bottom: var(--o-4); }
+  .ustki-qidiruv, .ustki-xodim { display: none !important; }  /* telefonda: shapkada avatar, zakaz qidiruvi Zakazlarda */
+  .xabar-menyu { width: min(320px, calc(100vw - 32px)); }
+}
+/* Yangi zakazda nom yuqori panelda — qadamlar qatoridagi takror sarlavha yashiriladi */
+/* Kassa ichida: sarlavha yuqori panelda, joriy qadam qadamlar tugmasida — sarlavha va «1 / 3» takrorlanmaydi */
+.zakaz-qadamlar h2, .zakaz-qadamlar .raqam { display: none; }
+
+/* KPI qatori (3 karta) va grafiklar qatori (2 karta) */
+.kpi-qator { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--o-4); }
+.kpi-qator .kpi-bosh { display: flex; align-items: center; gap: 8px; min-height: 30px; margin-bottom: var(--o-2); }
+.kpi-qator .kpi-nom { font-size: 14px; font-weight: 600; color: var(--oq); }
+:where(.ilova) select.karta-tanlov { margin-left: auto; min-height: 28px; padding: 0 24px 0 8px; font-size: 12.5px; border-radius: 6px; }
+.kpi-qator .kpi-qiymat { font-size: 26px; margin-top: var(--o-2); }
+.kpi-qator .kpi-izoh { margin-top: 2px; }
+.filial-qator { display: flex; justify-content: flex-end; }
+.grafik-qator { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.6fr); gap: var(--o-4); }
+.grafik-karta { display: flex; flex-direction: column; gap: var(--o-3); min-height: 230px; }
+.karta-sarlavha { display: flex; align-items: center; justify-content: space-between; gap: var(--o-3); }
+.karta-sarlavha h3 { margin: 0; }
+.grafik-karta .grafik { flex: 1; margin: 0; display: flex; flex-direction: column; justify-content: flex-end; }
+.grafik-karta .grafik figcaption { min-height: 18px; }
+.olchagich { flex: 1; margin: 0; position: relative; display: flex; align-items: center; justify-content: center; }
+.olchagich svg { width: min(100%, 300px); height: auto; }
+.olchagich figcaption { position: absolute; top: 58%; left: 0; right: 0; display: flex; flex-direction: column; align-items: center; }
+.olchagich figcaption b { font-size: 30px; font-weight: 700; letter-spacing: -.01em; }
+.olchagich figcaption span { font-size: var(--t-meta); color: var(--matn-3); }
+@media (max-width: 1199px) { .grafik-qator { grid-template-columns: 1fr; } }
+@media (max-width: 767px) { .kpi-qator { grid-template-columns: 1fr; gap: var(--o-3); } }
+
+/* Jadval paneli sarlavhasi va tab sonlari */
+.jadval-asboblar .panel-nom { margin: 0 var(--o-3) 0 0; line-height: 32px; }
+.tab-son { margin-left: 6px; padding: 0 6px; min-width: 20px; border-radius: 10px; background: var(--yuza-3); color: var(--matn-2); font-size: 12px; line-height: 18px; display: inline-block; text-align: center; }
+.tezkor-tablar button.faol .tab-son { background: var(--tilla-xira); color: var(--tilla); }
+.qator-ogoh { display: flex; align-items: center; justify-content: space-between; gap: var(--o-3); }
+/* Tasdiq va eslatma qatorlari (jadval paneli ichida) */
+.tasdiq-royxat, .eslatmalar { display: flex; flex-direction: column; }
+.tasdiq-qator { display: flex; align-items: center; justify-content: space-between; gap: var(--o-4); padding: var(--o-3) var(--o-4); border-bottom: 1px solid var(--chegara); }
+.tasdiq-qator:last-child { border-bottom: 0; }
+.tasdiq-qator.bajarilgan { opacity: .6; }
+.tasdiq-matn { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.tasdiq-matn small { color: var(--matn-3); font-size: var(--t-meta); }
+.tasdiq-matn a { color: var(--oq); }
+.tasdiq-tugmalar { display: flex; align-items: center; gap: var(--o-2); flex: none; }
+:where(.ilova) .tasdiq-tugmalar input { min-height: 34px; width: 180px; }
+:where(.ilova) button.havola-qator { width: 100%; justify-content: flex-start; min-height: 44px; background: transparent; color: var(--tilla); border: 0; border-radius: 0; font-weight: 600; }
+@media (max-width: 767px) { .tasdiq-qator { flex-direction: column; align-items: stretch; } }
+
+/* ---------- Katalog (Point uslubi): kichik ko'rsatkichlar, asboblar paneli ichida to'r ---------- */
+.stat-qator { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--o-3); }
+.stat { display: flex; flex-direction: column; gap: 4px; padding: var(--o-3) var(--o-4); background: var(--yuza-1); border: 1px solid var(--chegara); border-radius: var(--r-2); }
+.stat span { font-size: 13px; color: var(--matn-2); }
+.stat b { font-size: 22px; font-weight: 700; letter-spacing: -.01em; font-variant-numeric: tabular-nums; }
+@media (max-width: 767px) { .stat-qator { grid-template-columns: repeat(2, minmax(0, 1fr)); } .stat b { font-size: 18px; } }
+.libos-tor.panel-ichi { padding: var(--o-4); }
+.libos-holat.holat { position: absolute; left: 8px; top: 8px; background: rgba(11, 15, 23, .86); }
+.kategoriya-forma { display: flex; flex-wrap: wrap; gap: var(--o-2); }
+.kategoriya-forma input { flex: 1 1 220px; }
+.kategoriya-forma select { flex: 0 1 200px; }
+/* Forma oynasi: sarlavha va yopish tugmasi bir qatorda */
+.oyna-bosh { display: flex; align-items: center; justify-content: space-between; gap: var(--o-3); }
+.oyna-bosh h3 { margin: 0; }
+:where(.ilova) .oyna-yop { width: 34px; padding: 0; }
+.oyna-keng { width: min(760px, 100%); }
+.kategoriya-qator { display: flex; align-items: center; gap: var(--o-2); padding: var(--o-2) 0; border-top: 1px solid var(--chegara); }
+.kategoriya-qator input { flex: 1; min-width: 0; }
+.kategoriya-qator .malumot { width: 80px; flex: none; }
+@media (max-width: 479px) { .kategoriya-qator { flex-wrap: wrap; } .kategoriya-qator input { flex-basis: 100%; } }
+
+/* ---------- Aksessuarlar jadvali: kod belgisi, ochiladigan tafsilot qatori ---------- */
+.kod-belgi { flex: none; min-width: 46px; padding: 4px 8px; border-radius: 6px; background: var(--yuza-2); color: var(--tilla);
+  font-size: 12.5px; font-weight: 700; text-align: center; letter-spacing: .02em; }
+.aks-jadval tbody tr.ochiq { background: var(--yuza-2); }
+.aks-jadval tr.tafsilot-qator { cursor: default; }
+.aks-jadval tr.tafsilot-qator:hover { background: transparent; }
+.aks-jadval tr.tafsilot-qator > td { padding: var(--o-4); background: var(--fon-chuqur); white-space: normal; }
+.aks-tafsilot { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: var(--o-5); }
+.aks-tafsilot h4 { margin: 0; font-size: 13px; color: var(--matn-3); font-weight: 600; }
+.ixcham-forma { display: flex; align-items: flex-end; gap: var(--o-2); }
+.ixcham-forma label { flex: 1; }
+.dona { background: var(--yuza-2); border-color: var(--chegara); }
+@media (max-width: 767px) {
+  .aks-tafsilot { grid-template-columns: 1fr; }
+  .aks-jadval tr.tafsilot-qator { display: block; }
+  .aks-jadval tr.tafsilot-qator > td { display: block; }
+}
+
+/* =================== Kassa — POS ish joyi =================== */
+.pos { display: flex; flex-direction: column; gap: var(--o-4); }
+.pos-xabar { padding: var(--o-2) var(--o-3); border-radius: var(--r-1); background: rgba(126, 214, 160, .08); color: var(--h-bron); }
+/* Smena paneli: kassir chizig'i */
+.smena-panel { display: flex; flex-wrap: wrap; align-items: center; gap: var(--o-3) var(--o-4); padding: var(--o-3) var(--o-4);
+  background: var(--yuza-1); border: 1px solid var(--chegara); border-radius: var(--r-2); }
+.smena-holat { display: inline-flex; align-items: center; gap: 8px; font-weight: 700; }
+.smena-holat i { width: 9px; height: 9px; border-radius: 50%; background: var(--h-qarz); box-shadow: 0 0 0 4px rgba(255, 155, 146, .15); }
+.smena-holat.ochiq i { background: var(--h-bron); box-shadow: 0 0 0 4px rgba(126, 214, 160, .15); }
+.smena-kim { color: var(--matn-2); font-size: 14px; }
+:where(.ilova) .smena-naqd { display: flex; flex-direction: column; align-items: flex-start; gap: 0; min-height: 0; margin-left: auto; padding: 4px 12px;
+  background: var(--yuza-2); color: var(--oq); border: 1px solid var(--chegara); border-radius: var(--r-1); font-weight: 400; }
+.smena-naqd small { font-size: 12px; color: var(--matn-3); }
+.smena-naqd b { font-size: 17px; font-variant-numeric: tabular-nums; }
+.smena-amallar { display: flex; gap: var(--o-2); }
+.smena-panel.yopiq .malumot { margin-right: auto; }
+.pos-bosh { display: flex; flex-direction: column; align-items: flex-start; gap: var(--o-3); }
+.pos-bosh .malumot { max-width: 60ch; }
+.pos-tor { max-width: 560px; }
+
+/* Ish ekrani: chapda ro'yxat / tanlov, o'ngda chek */
+.pos-ish { display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 400px); gap: var(--o-4); align-items: start; }
+@media (max-width: 1023px) { .pos-ish { grid-template-columns: 1fr; } }
+.pos-royxat { display: flex; flex-direction: column; gap: var(--o-3); }
+.pos-royxat-bosh { display: flex; flex-wrap: wrap; align-items: center; gap: var(--o-3); }
+.pos-royxat-bosh h3 { margin: 0 auto 0 0; }
+.pos-royxat-bosh input { flex: 0 1 260px; }
+.pos-zakazlar { display: flex; flex-direction: column; gap: var(--o-2); max-height: 62vh; overflow-y: auto; }
+:where(.ilova) .pos-zakaz { display: flex; align-items: center; gap: var(--o-3); min-height: 64px; padding: var(--o-2) var(--o-3); text-align: left;
+  background: var(--yuza-2); color: var(--oq); border: 1px solid transparent; border-radius: var(--r-1); font-weight: 400; }
+:where(.ilova) .pos-zakaz:hover:not(:disabled) { background: var(--yuza-3); filter: none; }
+:where(.ilova) .pos-zakaz.tanlandi { border-color: var(--tilla); background: var(--yuza-3); }
+.pos-zakaz .zakaz-nom { flex: 1; min-width: 0; }
+.pos-zakaz-summa { display: flex; flex-direction: column; align-items: flex-end; flex: none; }
+.pos-zakaz-summa b { font-variant-numeric: tabular-nums; }
+.pos-zakaz-summa small { font-size: 12px; color: var(--matn-3); }
+
+/* Chek paneli */
+.pos-chek { display: flex; flex-direction: column; gap: var(--o-3); position: sticky; top: var(--o-4); }
+.pos-chek-bosh { display: flex; flex-direction: column; gap: 2px; }
+.pos-hisob td { padding: 4px 0; }
+.pos-bosh-matn { padding: var(--o-5) 0; text-align: center; }
+.pos-summa { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: flex-end; gap: 6px; padding: var(--o-3) var(--o-4);
+  background: var(--fon-chuqur); border: 1px solid var(--chegara-kuchli); border-radius: var(--r-1); }
+.pos-summa b { font-size: 34px; font-weight: 700; letter-spacing: -.01em; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.pos-summa span { color: var(--matn-3); }
+.pos-summa small { flex-basis: 100%; text-align: right; font-size: 12.5px; color: var(--h-vaqt); }
+.pos-tez { display: flex; flex-wrap: wrap; gap: var(--o-2); }
+.klaviatura { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--o-2); }
+:where(.ilova) .klaviatura button { min-height: 56px; font-size: 22px; font-weight: 600; background: var(--yuza-2); border-color: var(--chegara); }
+:where(.ilova) .klaviatura button:active:not(:disabled) { background: var(--yuza-3); }
+.pos-usullar, .pos-plitkalar { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--o-2); }
+.pos-plitkalar { grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); margin-bottom: var(--o-3); }
+:where(.ilova) .pos-usullar button, :where(.ilova) .pos-plitkalar button { min-height: 48px; padding: 0 8px; background: var(--yuza-2); color: var(--oq);
+  border: 1px solid var(--chegara); font-weight: 600; }
+:where(.ilova) .pos-usullar button.tanlandi, :where(.ilova) .pos-plitkalar button.tanlandi { border-color: var(--tilla); background: var(--tilla-xira); color: var(--tilla); }
+:where(.ilova) button.pos-tugma { min-height: 56px; font-size: 16px; }
+.pos-tayyor { display: flex; flex-direction: column; align-items: center; gap: var(--o-2); padding: var(--o-4) 0; text-align: center; }
+.pos-tayyor h3 { margin: 0; }
+.pos-tayyor-belgi { width: 56px; height: 56px; display: flex; align-items: center; justify-content: center; border-radius: 50%;
+  background: rgba(126, 214, 160, .14); color: var(--h-bron); font-size: 28px; font-weight: 700; }
+@media (max-width: 767px) {
+  .smena-naqd { margin-left: 0; }
+  .pos-usullar { grid-template-columns: repeat(2, 1fr); }
+  .pos-chek { position: static; }
+}
+
+/* =================== Sozlama: professional sozlamalar sahifasi =================== */
+/* Chap bo'limlar ro'yxati — asosiy menyu uslubida (quti emas) */
+@media (min-width: 768px) {
+  .sozlama-joy { grid-template-columns: 220px minmax(0, 1fr); gap: var(--o-6); }
+  .sozlama-yon { padding: 0; background: transparent; border: 0; }
+}
+.sozlama-guruh h4 { margin: 0 10px 6px; }
+.sozlama-guruh + .sozlama-guruh { margin-top: var(--o-4); }
+:where(.ilova) .sozlama-guruh button { min-height: 34px; padding: 0 10px; color: var(--matn-2); font-weight: 500; }
+:where(.ilova) .sozlama-guruh button:hover:not(:disabled) { color: var(--oq); background: var(--yuza-2); filter: none; }
+:where(.ilova) .sozlama-guruh button.faol { color: var(--oq); background: var(--yuza-2); box-shadow: inset 3px 0 0 var(--tilla); }
+
+/* Bo'lim kartasi: sarlavha, ostida sozlama qatorlari (chapda nom, o'ngda boshqaruv; orasida ingichka chiziq) */
+.sozlama-mazmun > section.blok { padding: var(--o-5) var(--o-5) var(--o-3); gap: 0; }
+.sozlama-mazmun > section.blok > h3 { margin: 0 0 var(--o-2); font-size: var(--t-h2); }
+.sozlama-mazmun > section.blok > label:not(.qator) {
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(160px, 260px); align-items: center; gap: var(--o-2) var(--o-5);
+  padding: var(--o-3) 0; border-top: 1px solid var(--chegara); color: var(--oq); font-size: 14px;
+}
+.sozlama-mazmun > section.blok > label.qator {
+  display: flex; flex-direction: row-reverse; justify-content: space-between; align-items: center; gap: var(--o-5);
+  padding: var(--o-3) 0; border-top: 1px solid var(--chegara); color: var(--oq); font-size: 14px;
+}
+.sozlama-mazmun > section.blok > h3 + label { border-top: 0; }
+.sozlama-mazmun > section.blok > .malumot { margin: var(--o-1) 0 var(--o-3); color: var(--matn-3); }
+.sozlama-mazmun > section.blok > button { align-self: flex-start; margin: var(--o-3) 0; }
+@media (max-width: 767px) {
+  .sozlama-mazmun > section.blok { padding: var(--o-4) var(--o-4) var(--o-2); }
+  .sozlama-mazmun > section.blok > label:not(.qator) { grid-template-columns: 1fr; }
+}
+
+/* Yoqish/o'chirish — o'chirgich (checkbox o'rniga) */
+.sozlama-mazmun label.qator > input[type="checkbox"] {
+  appearance: none; -webkit-appearance: none; flex: none; position: relative; width: 40px; height: 22px; margin: 0; cursor: pointer;
+  border-radius: 11px; background: var(--yuza-3); border: 1px solid var(--chegara-kuchli); transition: background .15s ease, border-color .15s ease;
+}
+.sozlama-mazmun label.qator > input[type="checkbox"]::before {
+  content: ''; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: var(--matn-2); transition: transform .15s ease, background .15s ease;
+}
+.sozlama-mazmun label.qator > input[type="checkbox"]:checked { background: var(--h-bron); border-color: var(--h-bron); }
+.sozlama-mazmun label.qator > input[type="checkbox"]:checked::before { transform: translateX(18px); background: #0B0F17; }
+.sozlama-mazmun label.qator > input[type="checkbox"]:focus-visible { outline: 2px solid var(--tilla); outline-offset: 2px; }
+
+/* Saqlash paneli: faqat o'zgarishda, pastda yopishib turadi */
+.sozlama-saqlash { position: sticky; bottom: var(--o-4); z-index: 3; display: flex; flex-direction: row; align-items: center; gap: var(--o-2);
+  padding: var(--o-2) var(--o-2) var(--o-2) var(--o-4); background: var(--yuza-2); border: 1px solid var(--chegara-kuchli); border-radius: var(--r-2);
+  box-shadow: 0 16px 40px -18px rgba(0, 0, 0, .8); }
+.sozlama-saqlash span { margin-right: auto; font-size: 14px; color: var(--h-vaqt); }
+@media (max-width: 767px) { .sozlama-saqlash { bottom: 84px; } }
+.sozlama-xabar { padding: var(--o-2) var(--o-3); border-radius: var(--r-1); background: rgba(126, 214, 160, .08); color: var(--h-bron); }
+
+/* Bo'lim sarlavhasi + amal (masalan, «Xodimlar» va «+ Xodim qo'shish») */
+.blok-sarlavha { display: flex; align-items: center; justify-content: space-between; gap: var(--o-3); margin-bottom: var(--o-2); }
+.blok-sarlavha h3 { margin: 0; }
+/* Xodim qatori: avatar, ism/telefon, rol va holat belgilari, menyu */
+.xodim { padding: var(--o-3) 0; border-top: 1px solid var(--chegara); }
+.xodim-sarlavha { display: flex; align-items: center; gap: var(--o-3); }
+.xodim-sarlavha .xodim-chip { flex: 1; min-width: 0; }
+.xodim-sarlavha .xodim-chip > span { display: flex; flex-direction: column; min-width: 0; }
+.xodim-sarlavha .xodim-chip small { color: var(--matn-3); font-size: 12.5px; }
+.xodim-belgilar { display: flex; flex-wrap: wrap; gap: 6px; justify-content: flex-end; }
+:where(.ilova) .xodim-menu { width: 36px; min-width: 36px; min-height: 36px; padding: 0; border-radius: var(--r-1); background: var(--yuza-2); border: 1px solid var(--chegara); color: var(--oq); font-size: 18px; }
+.xodim-menyu { margin-top: var(--o-3); padding: var(--o-4); background: var(--fon-chuqur); border: 1px solid var(--chegara); border-radius: var(--r-2); }
+@media (max-width: 479px) { .xodim-sarlavha { flex-wrap: wrap; } }
+
+/* Sozlama bo'limlari ro'yxati — asosiy menyu bilan to'liq bir xil: ikonka, o'lcham, shrift, ranglar, faol holat */
+:where(.ilova) .sozlama-guruh button {
+  display: flex; align-items: center; gap: 12px; width: 100%; min-height: 44px; padding: 0 var(--o-3);
+  border: 0; border-radius: var(--r-1); background: transparent; color: var(--matn-2);
+  font-size: var(--t-asos); font-weight: 600; text-align: left; box-shadow: none;
+}
+:where(.ilova) .sozlama-guruh button:hover:not(:disabled) { color: var(--oq); background: var(--yuza-2); filter: none; }
+:where(.ilova) .sozlama-guruh button.faol { color: var(--oq); background: var(--yuza-2); box-shadow: inset 3px 0 0 var(--tilla); }
+.sozlama-guruh button .nav-ikon { width: 22px; height: 22px; }
+.sozlama-guruh button.faol .nav-ikon { color: var(--tilla); }
+.sozlama-guruh { gap: 6px; }
+.sozlama-guruh h4 { margin: 0 var(--o-3) 2px; font-size: 12.5px; font-weight: 600; color: var(--matn-3); }
+@media (min-width: 768px) { .sozlama-joy { grid-template-columns: 240px minmax(0, 1fr); } }
+.sozlama-yon { scrollbar-width: thin; scrollbar-color: var(--yuza-3) transparent; }
+.sozlama-yon::-webkit-scrollbar { width: 6px; }
+.sozlama-yon::-webkit-scrollbar-thumb { background: var(--yuza-3); border-radius: 3px; }
+
+/* =================== Chap panel: Sozlama menyusi (akkordeon) =================== */
+/* Keng ekranda sozlama bo'limlari chap panelda — sahifa ichida faqat mazmun */
+@media (min-width: 768px) { .sozlama-joy { display: block; } }
+:where(.ilova) .pastki button.nav-orqaga { color: var(--oq); margin-bottom: var(--o-1); }
+.nav-bolim-nom { margin: var(--o-2) var(--o-3) var(--o-1); font-size: 12.5px; font-weight: 600; color: var(--matn-3); }
+.nav-guruh { display: flex; flex-direction: column; gap: 2px; }
+.nav-chevron { margin-left: auto; color: var(--matn-3); transition: transform .15s ease; }
+.nav-guruh.ochiq .nav-chevron { transform: rotate(90deg); }
+:where(.ilova) .pastki .nav-guruh.ochiq > .nav-guruh-tugma { color: var(--oq); }
+.nav-guruh-ichi { display: flex; flex-direction: column; gap: 2px; margin: 2px 0 var(--o-2) var(--o-4); padding-left: var(--o-2); border-left: 1px solid var(--chegara); }
+.nav-guruh-ichi button .nav-ikon { width: 18px; height: 18px; }
+:where(.ilova) .pastki .nav-guruh-ichi button { min-height: 38px; font-weight: 500; }
+/* Planshet: Sozlama rejimida 80px ikonka paneli 240px matnli panelga kengayadi — uzun nomlar bo'linmaydi */
+@media (min-width: 768px) and (max-width: 1199px) {
+  .ilova:has(.nav-sozlama) { padding-left: 240px; }
+  .pastki:has(.nav-sozlama) { width: 240px; padding: 12px; }
+  .pastki:has(.nav-sozlama) button { flex-direction: row; justify-content: flex-start; gap: 12px; padding: 0 var(--o-3); text-align: left; line-height: 1.3; border-radius: var(--r-1); }
+  .pastki:has(.nav-sozlama) .nav-brend { justify-content: flex-start; padding: 4px 8px 14px; }
+  .pastki:has(.nav-sozlama) .nav-brend-matn { display: flex; }
+}
+
+/* Hisobot: keng ekranda bo'limlar chap panelda — tepadagi segment faqat telefonda */
+@media (min-width: 768px) { .ichki-segment.faqat-telefon { display: none; } }

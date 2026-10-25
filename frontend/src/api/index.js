@@ -129,6 +129,8 @@ export const boshLiboslar = (dan, gacha, bandlarniKorsat = false, q = '') =>
 
 export const qulf = (libos, dan, gacha) =>
   api.post('/bronlar/qulf/', { libos, dan, gacha }).then((r) => r.data)
+// Javob kutilmaydi: qulf baribir 15 daqiqada o'zi tugaydi, xato foydalanuvchini to'xtatmasin
+export const qulfOchir = (libos) => api.delete(`/bronlar/qulf/${libos}/`).catch(() => {})
 export const mijozQidir = (telefon) =>
   api.get('/mijozlar/qidirish/', { params: { telefon } }).then((r) => r.data)
 export const zakazYarat = (body) => api.post('/zakazlar/', body).then((r) => r.data)
@@ -160,6 +162,8 @@ export const smenaYopish = (summa, izoh) => post('/kassa/smena/yopish/', { summa
 
 export const dashbord = (davr = 'oy', filial) => get('/dashbord/', { davr, filial: filial || undefined })
 export const chegirmaSorovlari = () => get('/chegirma-sorovlari/')
+export const amallarJurnali = () => get('/jurnal/')
+export const telegramXabarlari = () => get('/xabarlar/')
 export const chegirmaQaror = (id, body) => post(`/chegirma-sorovlari/${id}/qaror/`, body)
 export const xarajatlar = (params) => get('/xarajatlar/', params)
 export const xarajatYarat = (body) => post('/xarajatlar/', body)

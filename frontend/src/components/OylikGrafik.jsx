@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { som } from '../api'
 
 // 12 oylik ustunli grafik (6.5). Bitta o'lchov — bitta grafik: tushum va sof foyda alohida chiziladi (ikki o'qli grafik emas).
-// Rang validatsiyadan o'tgan (#9a4c95, och fon uchun); matn doim matn rangida, ustun rangida emas.
+// Rang validatsiyadan o'tgan: #9a4c95 — och fon, #B9833A — qorong'i fon (dataviz validator, dark band). Matn doim matn rangida.
 const RANG = '#9a4c95'
 const OYLAR = ['Yan', 'Fev', 'Mar', 'Apr', 'May', 'Iyn', 'Iyl', 'Avg', 'Sen', 'Okt', 'Noy', 'Dek']
 const W = 440
@@ -19,7 +19,8 @@ const qisqa = (n) => {
   return String(n)
 }
 
-export default function OylikGrafik({ sarlavha, qator, kalit }) {
+// yashirinSarlavha — karta o'z sarlavhasiga ega bo'lsa: nom takrorlanmaydi, faqat ustiga olib borilgan oy ko'rinadi
+export default function OylikGrafik({ sarlavha, qator, kalit, rang = RANG, yashirinSarlavha = false }) {
   const [hover, setHover] = useState(null)
   const qiymatlar = qator.map((q) => q[kalit])
   const maks = Math.max(0, ...qiymatlar)
@@ -47,7 +48,7 @@ export default function OylikGrafik({ sarlavha, qator, kalit }) {
 
   return (
     <figure className="grafik">
-      <figcaption>{sarlavha}{hover !== null && <span> · {qator[hover].oy}: <b>{som(qator[hover][kalit])}</b></span>}</figcaption>
+      <figcaption>{!yashirinSarlavha && sarlavha}{hover !== null && <span>{yashirinSarlavha ? '' : ' · '}{qator[hover].oy}: <b>{som(qator[hover][kalit])}</b></span>}</figcaption>
       {hammasiNol ? <p className="malumot">Bu davrda ma'lumot yo'q.</p> : (
         <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`${sarlavha}, oxirgi 12 oy`} onMouseLeave={() => setHover(null)}>
           <line x1={CHAP} x2={W - CHAP} y1={nol} y2={nol} className="grafik-oq" />
@@ -57,7 +58,7 @@ export default function OylikGrafik({ sarlavha, qator, kalit }) {
             const oy = OYLAR[Number(q.oy.slice(5)) - 1]
             return (
               <g key={q.oy}>
-                {v !== 0 && <path d={ustun(x, v)} fill={RANG} opacity={hover === null || hover === i ? 1 : 0.45} />}
+                {v !== 0 && <path d={ustun(x, v)} fill={rang} opacity={hover === null || hover === i ? 1 : 0.45} />}
                 {/* faqat eng katta va oxirgi oy yoziladi; qolgani — ustiga olib borganda */}
                 {(i === engKatta || i === oxirgi) && v !== 0 && (
                   <text x={x + eni / 2} y={v >= 0 ? y(v) - 4 : y(v) + 11} className="grafik-qiymat">{qisqa(v)}</text>

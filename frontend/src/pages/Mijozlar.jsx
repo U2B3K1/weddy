@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useState } from 'react'
-import Promokodlar from './Promokodlar'
 import Salonchilar from './Salonchilar'
 import { mijozKarta, mijozOzgartir, mijozQoraRoyxat, mijozlar, sanaMatni, som, xatoMatni } from '../api'
 import { ZAKAZ_HOLATLARI } from '../nomlar'
@@ -8,12 +7,12 @@ const MANBA = { instagram: 'Instagram', tavsiya: 'Tavsiya', salonchi: 'Salonchi'
 const OLCHAMLAR = [['kokrak', "Ko'krak"], ['bel', 'Bel'], ['son', 'Son'], ['boy', "Bo'y"], ['oyoq_olchami', 'Oyoq kiyim']]
 
 // Ekran 14: mijozlar. To'liq ro'yxat faqat rahbarga; sotuvchi kamida 4 ta belgi bilan qidiradi (7.4, Ilova B).
-export default function Mijozlar({ rahbar, onZakaz, bolim, promoYoq }) {
+// Promokodlar bu yerda emas — Sozlama → Narx va chegirma → Promokodlar (qoidalari bilan bir joyda).
+export default function Mijozlar({ rahbar, onZakaz, bolim }) {
   return (
     <div className="stack">
       {bolim === 'mijozlar' && <MijozlarRoyxati rahbar={rahbar} onZakaz={onZakaz} />}
       {bolim === 'salonchilar' && <Salonchilar rahbar={rahbar} />}
-      {bolim === 'promokodlar' && rahbar && promoYoq && <Promokodlar />}
     </div>
   )
 }

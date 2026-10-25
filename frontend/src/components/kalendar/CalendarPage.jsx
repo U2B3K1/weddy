@@ -7,7 +7,7 @@ import TanlovPaneli from './TanlovPaneli'
 import './kalendar.css'
 
 // Yangi zakaz sanasi: 1-bosish — olib ketish, 2-bosish — qaytarish kuni.
-// Fon — ko'rsatilayotgan oyning fotosi (mavzular.js), fasl va oyga qarab almashadi.
+// Fon — ko'rsatilayotgan oy faslining oltin chiziqli rasmi (mavzular.js); u kalendar turgan blokning (Sana) o'ziga xira yoyiladi.
 export default function CalendarPage({ dan, gacha, onTanla }) {
   const bugun = bugunIso()
   const [korinish, setKorinish] = useState(() => { const s = isoOch(dan || bugun); return { y: s.y, m: s.m } })
@@ -15,13 +15,12 @@ export default function CalendarPage({ dan, gacha, onTanla }) {
   const [fokus, setFokus] = useState(null)
   const klaviatura = useRef(false)
 
-  // Qo'shni oylar fotosini oldindan yuklash — strelka bosilganda fon miltillamaydi
+  // Qo'shni oylar rasmini oldindan yuklash — strelka bosilganda fon miltillamaydi
   useEffect(() => {
     for (const d of [-1, 1]) new Image().src = MAVZULAR[(korinish.m + d + 12) % 12].rasm
   }, [korinish.m])
 
   const almash = (n) => { if (!n) return; setYon(Math.sign(n)); setKorinish((k) => oyQosh(k, n)) }
-  const bugunOy = isoOch(bugun)
   const fokusla = (kun) => {
     almash(oylarFarqi(korinish, isoOch(kun)))
     setFokus(kun)
@@ -36,16 +35,16 @@ export default function CalendarPage({ dan, gacha, onTanla }) {
   const mavzu = MAVZULAR[m]
 
   return (
-    <section className="kuz" style={{ '--k-urgu': mavzu.urgu, '--k-parda': mavzu.parda }} aria-label="Sana tanlash kalendari">
-      <img key={m} className="kuz-foto" src={mavzu.rasm} alt="" decoding="async" />
-      <div className="kuz-parda" aria-hidden="true" />
+    <>
+    <img key={mavzu.fasl} className="kalendar-fon" src={mavzu.rasm} alt="" decoding="async" />
+    <section className="kuz" aria-label="Sana tanlash kalendari">
       <div className="kuz-ichi">
-        <CalendarHeader y={y} m={m} fasl={mavzu.nomi} onOy={almash} onYil={(n) => almash(n * 12)}
-          onBugun={() => almash(oylarFarqi(korinish, bugunOy))} bugunOyida={y === bugunOy.y && m === bugunOy.m} />
+        <CalendarHeader y={y} m={m} onOy={almash} onYil={(n) => almash(n * 12)} />
         <CalendarGrid key={`${y}-${m}`} y={y} m={m} dan={dan} gacha={gacha} bugun={bugun} fokus={fokus}
           klaviatura={klaviatura} yon={yon} onTanla={tanla} onFokus={fokusla} />
         <TanlovPaneli dan={dan} gacha={gacha} onTozala={(k) => (k === 'dan' ? onTanla('', '') : onTanla(dan, ''))} />
       </div>
     </section>
+    </>
   )
 }

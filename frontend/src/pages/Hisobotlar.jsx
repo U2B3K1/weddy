@@ -3,7 +3,7 @@ import Xarajatlar from '../components/Xarajatlar'
 import OylikGrafik from '../components/OylikGrafik'
 import Tasdiq from '../components/Tasdiq'
 import {
-  bankHolati, bankKirit, bonusHisobot, dashbord, filiallar, hisobot, hisobotTafsilot, hisobotlarRoyxati, kategoriyalar,
+  bankHolati, bankKirit, bonusHisobot, filiallar, hisobot, hisobotTafsilot, hisobotlarRoyxati, kategoriyalar,
   oylikQator, oyniOch, oyniYop, pnl, pnlTafsilot, som, xatoMatni, xodimlarBoshqaruv,
   sanaMatni,
 } from '../api'
@@ -27,10 +27,14 @@ const DAVRLAR = [
 ]
 
 // 6.6: hisobotlar faqat rahbarga va faqat sahifada ko'rsatiladi — fayl sifatida yuklab olinmaydi (FT-18.3, FT-20.2).
-// Bo'limlar chap paneldagi tugmalar bilan almashtiriladi (kassa uslubi): hisobot, foyda/zarar, bildirishnoma, grafik.
-export default function Hisobotlar({ bolim, onBolim }) {
+// Bo'limlar sahifa tepasidagi segment bilan almashtiriladi: umumiy hisobot, foyda/zarar, xarajatlar, sotuvchi bonusi,
+// bank solishtirish, grafik (avval oxirgi uchtasi umumiy hisobot ostida yashiringan edi).
+// Bildirishnomalar (chora ko'rish kerak bo'lganlar) — bosh sahifadagi «Diqqat talab qiladi» blokida.
+export default function Hisobotlar({ bolim }) {
   if (bolim === 'pnl') return <PnlBolim />
-  if (bolim === 'bildirishnoma') return <BildirishnomaBolim onBolim={onBolim} />
+  if (bolim === 'xarajat') return <div className="stack hisobot-sahifa"><Xarajatlar /></div>
+  if (bolim === 'bonus') return <div className="stack hisobot-sahifa"><Bonus /></div>
+  if (bolim === 'bank') return <div className="stack hisobot-sahifa"><Bank /></div>
   if (bolim === 'grafik') return <GrafikBolim />
   return <HisobotBolim />
 }
@@ -73,28 +77,34 @@ function HisobotBolim() {
 
   return (
     <div className="stack hisobot-sahifa">
-      <BugunXulosa />
-      <select value={kalit} onChange={(e) => setKalit(e.target.value)}>
+      <select value={kalit} aria-label="Hisobot turi" onChange={(e) => setKalit(e.target.value)}>
         {royxat.map((r) => <option key={r.kalit} value={r.kalit}>{r.sarlavha}</option>)}
       </select>
-      <div className="qator davr-tugmalar">
-        {DAVRLAR.map(([nom, fn]) => (
-          <button key={nom} type="button" className="ikkinchi kichik" onClick={() => { const [a, b] = fn(new Date()); setDan(iso(a)); setGacha(iso(b)) }}>{nom}</button>
-        ))}
-      </div>
-      <div className="qator">
-        <input type="date" value={dan} max={gacha} onChange={(e) => e.target.value && setDan(e.target.value)} />
-        <span>—</span>
-        <input type="date" value={gacha} min={dan} onChange={(e) => e.target.value && setGacha(e.target.value)} />
+      <div className="asboblar">
+        <div className="segment davr-tugmalar" role="group" aria-label="Davr">
+          {DAVRLAR.map(([nom, fn], i) => {
+            const [a, b] = fn(new Date())
+            // Faqat birinchi mos davr belgilanadi (chorak boshida «Shu oy» va «Shu chorak» bir xil oraliq);
+            // qo'lda kiritilgan oraliqda hech biri tanlanmaydi
+            const faol = i === DAVRLAR.findIndex(([, f]) => f(new Date()).map(iso).join() === `${dan},${gacha}`)
+            return <button key={nom} type="button" className={faol ? 'kichik' : 'ikkinchi kichik'} aria-pressed={faol}
+              onClick={() => { setDan(iso(a)); setGacha(iso(b)) }}>{nom}</button>
+          })}
+        </div>
+        <div className="qator sana-oraliq">
+          <input type="date" aria-label="Boshlanish sanasi" value={dan} max={gacha} onChange={(e) => e.target.value && setDan(e.target.value)} />
+          <span aria-hidden="true">—</span>
+          <input type="date" aria-label="Tugash sanasi" value={gacha} min={dan} onChange={(e) => e.target.value && setGacha(e.target.value)} />
+        </div>
       </div>
       {h?.filtrlar?.includes('kategoriya') && (
-        <select value={filtr.kategoriya} onChange={(e) => setFiltr({ ...filtr, kategoriya: e.target.value })}>
+        <select value={filtr.kategoriya} aria-label="Kategoriya" onChange={(e) => setFiltr({ ...filtr, kategoriya: e.target.value })}>
           <option value="">Barcha kategoriyalar</option>
           {kats.map((k) => <option key={k.id} value={k.id}>{k.nomi}</option>)}
         </select>
       )}
       {h?.filtrlar?.includes('sotuvchi') && (
-        <select value={filtr.sotuvchi} onChange={(e) => setFiltr({ ...filtr, sotuvchi: e.target.value })}>
+        <select value={filtr.sotuvchi} aria-label="Sotuvchi" onChange={(e) => setFiltr({ ...filtr, sotuvchi: e.target.value })}>
           <option value="">Barcha sotuvchilar</option>
           {xodimlar.map((x) => <option key={x.id} value={x.id}>{x.ism}</option>)}
         </select>
@@ -118,11 +128,12 @@ function HisobotBolim() {
                 </thead>
                 <tbody>
                   {h.qatorlar.map((q, i) => (
-                    <tr key={i}>
+                    <tr key={i} className={h.kalitlar ? `bosiladi ${taf?.i === i ? 'ochiq' : ''}` : undefined}
+                      onClick={h.kalitlar ? () => och(i) : undefined}>
                       {q.map((v, j) => (
                         <td key={j} className={`${h.ustunlar[j].tur === 'matn' ? '' : 'ong'} ${typeof v === 'number' && v < 0 ? 'qizil' : ''}`}>
                           {j === 0 && h.kalitlar
-                            ? <button type="button" className="havola" aria-expanded={taf?.i === i} onClick={() => och(i)}>{korsat(v, h.ustunlar[j].tur)}</button>
+                            ? <button type="button" className="havola" aria-expanded={taf?.i === i}>{korsat(v, h.ustunlar[j].tur)}</button>
                             : korsat(v, h.ustunlar[j].tur)}
                         </td>
                       ))}
@@ -139,7 +150,7 @@ function HisobotBolim() {
               </table>
             </div>
           )}
-          {h.kalitlar && h.qatorlar.length > 0 && !taf && <p className="malumot">Qator nomini bosing — shu davrda to'liq to'langan zakazlari ochiladi.</p>}
+          {h.kalitlar && h.qatorlar.length > 0 && !taf && <p className="malumot">Qatorni bosing — shu davrda to'liq to'langan zakazlari ochiladi.</p>}
           {taf && (
             <div className="tafsilot">
               <b>{taf.nom} — {taf.qatorlar.length} ta zakaz</b>
@@ -159,33 +170,7 @@ function HisobotBolim() {
           )}
         </section>
       )}
-      <Xarajatlar />
-      <Bonus />
-      <Bank />
     </div>
-  )
-}
-
-// Bugungi tezkor xulosa (Tushum, Smena, Olib/qaytar) — dashborddagi bilan bir xil (FT-1.2).
-function BugunXulosa() {
-  const [d, setD] = useState(null)
-  useEffect(() => {
-    let faol = true
-    const yukla = async () => {
-      try { const r = await dashbord('oy', ''); if (faol) setD(r.bugun) } catch { /* jimgina */ }
-    }
-    yukla()
-    const t = setInterval(yukla, 60000)
-    return () => { faol = false; clearInterval(t) }
-  }, [])
-  if (!d) return null
-  return (
-    <section className="blok bugun-xulosa">
-      <h3>Bugun</h3>
-      <div className="qator-btn"><span>Tushum</span><b>{som(d.tushum_jami)}</b></div>
-      <div className="qator-btn"><span>Smena</span><b>{d.smena_ochiq ? 'ochiq' : 'yopiq'}</b></div>
-      <div className="qator-btn"><span>Olib / qaytar</span><b>{d.olib_ketiladi} / {d.qaytariladi}</b></div>
-    </section>
   )
 }
 
@@ -231,41 +216,6 @@ function PnlBolim() {
                 onYop={() => setOyniYopSurov(false)} onTasdiq={() => { setOyniYopSurov(false); amal(() => oyniYop(oy))() }} />
             )}
           </>
-        ))}
-      </section>
-    </div>
-  )
-}
-
-// Bildirishnomalar — dashbord ogohlantirishlari, bosilganda tegishli bo'limga olib boradi (FT-19.3).
-function BildirishnomaBolim({ onBolim }) {
-  const [d, setD] = useState(null)
-  const [xato, setXato] = useState('')
-  useEffect(() => {
-    let faol = true
-    const yukla = async () => {
-      try { const r = await dashbord('oy', ''); if (faol) setD(r) } catch (e) { if (faol) setXato(xatoMatni(e)) }
-    }
-    yukla()
-    const t = setInterval(yukla, 60000)
-    return () => { faol = false; clearInterval(t) }
-  }, [])
-  if (!d) return <p className="malumot">{xato || 'Yuklanmoqda…'}</p>
-  const { bugun, ogohlantirishlar: og } = d
-  const ogList = [
-    og.kassa_farqi !== 0 && [`Kassa farqi (${og.kassa_farqi_sana}): ${som(og.kassa_farqi)}`, 'kassa'],
-    og.tannarxsiz_liboslar > 0 && [`${og.tannarxsiz_liboslar} ta libosning tannarxi kiritilmagan`, 'katalog'],
-    og.qarzdorlar > 0 && [`${og.qarzdorlar} ta qarzdor`, 'zakazlar'],
-    og.saqlanayotgan_zaloglar > 0 && [`${og.saqlanayotgan_zaloglar} ta hujjat/tillo zalog saqlanmoqda`, 'zakazlar'],
-    bugun.kechikkan > 0 && [`${bugun.kechikkan} ta kechikkan qaytarish`, 'bosh'],
-    og.tugayotgan_promokodlar > 0 && [`${og.tugayotgan_promokodlar} ta promokod muddati 7 kun ichida tugaydi`, 'mijozlar'],
-  ].filter(Boolean)
-  return (
-    <div className="stack hisobot-sahifa">
-      <section className="blok ogohlantirish">
-        <h3>Bildirishnomalar</h3>
-        {ogList.length === 0 ? <p className="malumot">Hozircha bildirishnoma yo'q.</p> : ogList.map(([t, bolim]) => (
-          <button key={t} type="button" className="havola qator-matn" onClick={() => onBolim?.(bolim)}>{t}</button>
         ))}
       </section>
     </div>
@@ -400,7 +350,7 @@ function Bank() {
   }
 
   return (
-    <details className="blok amal">
+    <details className="blok amal" open>
       <summary>Bank ko'chirmasi bilan solishtirish</summary>
       <div className="stack">
         <input type="month" value={oy} onChange={(e) => e.target.value && setOy(e.target.value)} />
@@ -439,9 +389,9 @@ function Bonus() {
     return () => { bekor = true }
   }, [oy])
 
-  if (d && !d.yoqilgan) return null
+  if (d && !d.yoqilgan) return <p className="malumot">Sotuvchi bonusi o'chirilgan. Yoqish: Sozlama → Narx va chegirma → Sotuvchi bonusi.</p>
   return (
-    <details className="blok amal">
+    <details className="blok amal" open>
       <summary>Sotuvchi bonusi</summary>
       <div className="stack">
         <input type="month" value={oy} onChange={(e) => e.target.value && setOy(e.target.value)} />

@@ -215,13 +215,15 @@ function XodimTanlash({ setXato, onKirdi, onQurilmaOchirildi }) {
 
   // Kompyuter klaviaturasi ham ishlaydi (matn maydonida yozilayotganda bo'lmasa)
   const amallar = useRef(null)
-  amallar.current = { raqam, ochir }
+  amallar.current = { raqam, ochir, yubor: () => { if (pin.length >= 4) yuborish(null, pin) }, orqaga }
   useEffect(() => {
     if (!tanlangan) return undefined
     const h = (e) => {
       if (e.target.tagName === 'INPUT') return
       if (/^[0-9]$/.test(e.key)) amallar.current.raqam(e.key)
       else if (e.key === 'Backspace') amallar.current.ochir()
+      else if (e.key === 'Enter') { e.preventDefault(); amallar.current.yubor() }
+      else if (e.key === 'Escape') amallar.current.orqaga()
     }
     window.addEventListener('keydown', h)
     return () => window.removeEventListener('keydown', h)

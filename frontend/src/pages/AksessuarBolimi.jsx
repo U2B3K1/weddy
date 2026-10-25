@@ -1,5 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
 import Manekin from '../components/Manekin'
+import NavIkona from '../components/NavIkona'
+import Oyna from '../components/Oyna'
 import {
   aksessuarManekinOchir, aksessuarManekinSaqla, aksessuarManekinYukla, aksessuarOzgartir, aksessuarTafsilot, aksessuarTasdiq, aksessuarYarat, aksessuarlar, donaFilial, donaHolati, filiallar, donaTamirTugat, donaTamirga, donalarQosh,
   kategoriyalar, som, xatoMatni,
@@ -8,11 +10,17 @@ import {
 const DONA_HOLAT = { bosh: "Bo'sh", tamirda: "Ta'mirda", yoqolgan: "Yo'qolgan", arxiv: 'Arxiv' }
 
 // 4.4: aksessuarlar faqat ijaraga; har bir dona alohida raqamli yorliq bilan hisobga olinadi.
+// Ko'rinish liboslar bilan bir xil (Point uslubi): kichik ko'rsatkichlar, bitta asboblar paneli, ustunli jadval,
+// qator bosilganda tafsilot shu joyda ochiladi; qo'shish — oynada.
 export default function AksessuarBolimi({ rahbar }) {
   const [royxat, setRoyxat] = useState([])
   const [kats, setKats] = useState([])
   const [ochiq, setOchiq] = useState(null)
   const [xabar, setXabar] = useState({ turi: '', matn: '' })
+  const [kat, setKat] = useState('')
+  const [holat, setHolat] = useState('faol')
+  const [q, setQ] = useState('')
+  const [oyna, setOyna] = useState(false)
 
   const yukla = useCallback(async () => {
     const [a, k] = await Promise.all([aksessuarlar(), kategoriyalar()])
@@ -28,16 +36,32 @@ export default function AksessuarBolimi({ rahbar }) {
   }
 
   const kutayotgan = royxat.filter((a) => a.holat === 'tasdiq_kutilmoqda')
+  const katalogda = royxat.filter((a) => a.holat !== 'tasdiq_kutilmoqda')
+  const faol = katalogda.filter((a) => a.holat !== 'arxiv')
+  const s = q.trim().toLowerCase()
+  const korinadi = katalogda.filter((a) => (!kat || a.kategoriya === kat)
+    && (holat === 'hammasi' || (holat === 'arxiv' ? a.holat === 'arxiv' : a.holat !== 'arxiv'))
+    && (!s || a.nomi.toLowerCase().includes(s) || a.kod.toLowerCase().includes(s)))
+  const katNomlari = [...new Set(katalogda.map((a) => a.kategoriya))].sort()
+  const jamiDona = faol.reduce((n, a) => n + a.donalar_soni, 0)
+  const yaroqli = faol.reduce((n, a) => n + a.yaroqli_donalar, 0)
 
   return (
     <div className="stack">
       {xabar.matn && <p className={xabar.turi === 'xato' ? 'xato' : 'malumot'}>{xabar.matn}</p>}
       {kats.length === 0 && (
-        <p className="ogohlantirish">Aksessuar kategoriyasi yo'q{rahbar ? ": «Libosler» bo'limida «Kategoriya qo'shish» orqali turi «aksessuar» bo'lgan kategoriya yarating." : '. Rahbar kategoriya yaratishi kerak.'}</p>
+        <p className="ogohlantirish">Aksessuar kategoriyasi yo'q{rahbar ? ": «Liboslar» bo'limidagi «Kategoriyalar» tugmasi orqali turi «Aksessuar» bo'lgan kategoriya yarating." : '. Rahbar kategoriya yaratishi kerak.'}</p>
       )}
 
+      <div className="stat-qator">
+        <div className="stat"><span>Aksessuar turlari</span><b>{faol.length}</b></div>
+        <div className="stat"><span>Jami donalar</span><b>{jamiDona}</b></div>
+        <div className="stat"><span>Ijaraga yaroqli</span><b>{yaroqli}</b></div>
+        <div className="stat"><span>Ta'mirda yoki yo'qolgan</span><b>{jamiDona - yaroqli}</b></div>
+      </div>
+
       {rahbar && kutayotgan.length > 0 && (
-        <section className="blok ogohlantirish-blok">
+        <section className="blok diqqat-blok">
           <h3>Tasdiq kutmoqda ({kutayotgan.length})</h3>
           {kutayotgan.map((a) => (
             <Tasdiq key={a.id} a={a}
@@ -46,21 +70,76 @@ export default function AksessuarBolimi({ rahbar }) {
         </section>
       )}
 
-      {kats.length > 0 && (
-        <Forma kats={kats} rahbar={rahbar}
-          onYuborish={(b) => bajar(() => aksessuarYarat(b), rahbar ? "Aksessuar qo'shildi." : "Aksessuar rahbar tasdig'iga yuborildi.")} />
+      {oyna && kats.length > 0 && (
+        <Oyna sarlavha="Aksessuar qo'shish" onYop={() => setOyna(false)}>
+          <Forma kats={kats} rahbar={rahbar}
+            onYuborish={async (b) => {
+              const ok = await bajar(() => aksessuarYarat(b), rahbar ? "Aksessuar qo'shildi." : "Aksessuar rahbar tasdig'iga yuborildi.")
+              if (ok) setOyna(false)
+              return ok
+            }} />
+        </Oyna>
       )}
 
-      {royxat.filter((a) => a.holat !== 'tasdiq_kutilmoqda').map((a) => (
-        <div key={a.id} className="blok">
-          <button className="qator-btn" onClick={() => setOchiq(ochiq === a.id ? null : a.id)}>
-            <span><b>{a.kod}</b> {a.nomi} · {a.kategoriya}</span>
-            <span>{som(a.ijara_narxi)} · {a.yaroqli_donalar}/{a.donalar_soni} dona{a.holat === 'arxiv' ? ' · arxiv' : ''}</span>
+      <section className="blok jadval-panel">
+        <div className="jadval-asboblar">
+          <h3 className="panel-nom">Aksessuarlar</h3>
+          <div className="tezkor-tablar" role="tablist" aria-label="Kategoriya">
+            {[['', 'Hammasi'], ...katNomlari.map((k) => [k, k])].map(([k, nom]) => (
+              <button key={k || 'hammasi'} type="button" role="tab" aria-selected={kat === k} className={kat === k ? 'faol' : ''} onClick={() => setKat(k)}>{nom}</button>
+            ))}
+          </div>
+          <select className="kichik-tanlov" value={holat} aria-label="Holat" onChange={(e) => setHolat(e.target.value)}>
+            <option value="faol">Faol</option><option value="arxiv">Arxiv</option><option value="hammasi">Hammasi</option>
+          </select>
+          <label className="qidiruv-maydon">
+            <NavIkona nom="qidiruv" className="tugma-ikon" />
+            <input type="search" className="jadval-qidiruv" placeholder="Nom yoki kod" aria-label="Aksessuar qidirish" value={q} onChange={(e) => setQ(e.target.value)} />
+          </label>
+          <button type="button" className="kichik" disabled={kats.length === 0} onClick={() => setOyna(true)}>
+            <NavIkona nom="qosh" className="tugma-ikon" />Aksessuar qo'shish
           </button>
-          {ochiq === a.id && <Tafsilot id={a.id} rahbar={rahbar} bajar={bajar} />}
         </div>
-      ))}
-      {royxat.length === 0 && <p className="malumot">Aksessuar yo'q.</p>}
+        {korinadi.length === 0 ? (
+          <p className="malumot jadval-bosh">{royxat.length === 0 ? "Hali aksessuar yo'q — birinchisini qo'shing." : "Bu filtr bo'yicha aksessuar yo'q."}</p>
+        ) : (
+          <div className="jadval-ora">
+            <table className="zakaz-jadval aks-jadval">
+              <thead>
+                <tr><th>Aksessuar</th><th className="tor-yashir">Kategoriya</th><th>Donalar</th><th className="ong">Ijara narxi</th></tr>
+              </thead>
+              <tbody>
+                {korinadi.map((a) => {
+                  const foiz = a.donalar_soni ? Math.round((a.yaroqli_donalar / a.donalar_soni) * 100) : 0
+                  return (
+                    <Fragment key={a.id}>
+                      <tr className={ochiq === a.id ? 'ochiq' : ''} onClick={() => setOchiq(ochiq === a.id ? null : a.id)}>
+                        <td>
+                          <button type="button" className="zakaz-katak" aria-expanded={ochiq === a.id}>
+                            <span className="kod-belgi">{a.kod}</span>
+                            <span className="zakaz-nom"><b>{a.nomi}</b>{a.holat === 'arxiv' && <small>Arxivda</small>}</span>
+                          </button>
+                        </td>
+                        <td className="tor-yashir">{a.kategoriya}</td>
+                        <td>
+                          <span className="tolov-progress" title={`${a.yaroqli_donalar} ta dona ijaraga yaroqli`}>
+                            <i style={{ '--foiz': `${foiz}%` }} className={foiz >= 100 ? 'toliq' : ''} />
+                            <small>{a.yaroqli_donalar} / {a.donalar_soni}</small>
+                          </span>
+                        </td>
+                        <td className="ong"><b>{som(a.ijara_narxi)}</b></td>
+                      </tr>
+                      {ochiq === a.id && (
+                        <tr className="tafsilot-qator"><td colSpan={4}><Tafsilot id={a.id} rahbar={rahbar} bajar={bajar} /></td></tr>
+                      )}
+                    </Fragment>
+                  )
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
     </div>
   )
 }
@@ -78,7 +157,9 @@ function Tafsilot({ id, rahbar, bajar }) {
   const [manekinOyna, setManekinOyna] = useState(false)
   if (!a) return <p className="malumot">Yuklanmoqda…</p>
   return (
-    <div className="stack" style={{ marginTop: 10 }}>
+    <div className="aks-tafsilot">
+      <div className="stack">
+      <h4>Donalar</h4>
       <div className="dona-tor">
         {a.donalar.map((d) => (
           <span key={d.id} className={`dona ${d.holat !== 'bosh' ? 'dona-yaroqsiz' : ''}`}>
@@ -102,6 +183,9 @@ function Tafsilot({ id, rahbar, bajar }) {
         ))}
       </div>
       <DonaTamir a={a} rahbar={rahbar} amal={amal} />
+      </div>
+      <div className="stack">
+      <h4>Manekin va sozlamalar</h4>
       {/* FT-5.2: aksessuarning fonsiz rasmi manekinda libos ustidan qo'yiladi */}
       <div className="qator">
         <input ref={fayl} type="file" accept="image/jpeg,image/png,image/webp" hidden
@@ -120,18 +204,23 @@ function Tafsilot({ id, rahbar, bajar }) {
       )}
       {rahbar && (
         <>
-          <label>Ijara narxi<input type="number" value={narx} onChange={(e) => setNarx(e.target.value)} /></label>
-          <button onClick={() => amal(() => aksessuarOzgartir(id, { ijara_narxi: Number(narx) }), "Narx saqlandi.")}>Narxni saqlash</button>
-          <div className="qator">
-            <input type="number" min="1" max="200" value={soni} onChange={(e) => setSoni(e.target.value)} />
-            <button className="ikkinchi" onClick={() => amal(() => donalarQosh(id, Number(soni)), "Donalar qo'shildi.")}>Dona qo'shish</button>
+          <div className="ixcham-forma">
+            <label>Ijara narxi<input type="number" value={narx} onChange={(e) => setNarx(e.target.value)} /></label>
+            <button className="kichik" onClick={() => amal(() => aksessuarOzgartir(id, { ijara_narxi: Number(narx) }), "Narx saqlandi.")}>Saqlash</button>
           </div>
-          <button className="ikkinchi" onClick={() => amal(() => aksessuarOzgartir(id, { holat: a.holat === 'arxiv' ? 'faol' : 'arxiv' }), 'Holat o\'zgardi.')}>
-            {a.holat === 'arxiv' ? 'Arxivdan chiqarish' : 'Arxivga'}
-          </button>
-          {a.tannarx != null && <p className="malumot">Tannarx: {som(a.tannarx)}</p>}
+          <div className="ixcham-forma">
+            <label>Yangi donalar soni<input type="number" min="1" max="200" value={soni} onChange={(e) => setSoni(e.target.value)} /></label>
+            <button className="ikkinchi kichik" onClick={() => amal(() => donalarQosh(id, Number(soni)), "Donalar qo'shildi.")}>Dona qo'shish</button>
+          </div>
+          <div className="qator">
+            <button className="ikkinchi kichik" onClick={() => amal(() => aksessuarOzgartir(id, { holat: a.holat === 'arxiv' ? 'faol' : 'arxiv' }), 'Holat o\'zgardi.')}>
+              {a.holat === 'arxiv' ? 'Arxivdan chiqarish' : 'Arxivga'}
+            </button>
+            {a.tannarx != null && <span className="malumot">Tannarx: {som(a.tannarx)}</span>}
+          </div>
         </>
       )}
+      </div>
     </div>
   )
 }
@@ -206,9 +295,7 @@ function Forma({ kats, rahbar, onYuborish }) {
     if (await onYuborish(body)) setF({ soni: '1' })
   }
   return (
-    <details className="blok amal">
-      <summary>Aksessuar qo'shish</summary>
-      <div className="stack">
+    <div className="stack">
         <label>Nomi<input value={f.nomi || ''} onChange={set('nomi')} /></label>
         <label>Kod (yorliq prefiksi, masalan FT → FT-01, FT-02)<input maxLength={10} value={f.kod || ''} onChange={set('kod')} /></label>
         <label>Kategoriya
@@ -216,11 +303,12 @@ function Forma({ kats, rahbar, onYuborish }) {
             {kats.map((k) => <option key={k.id} value={k.id}>{k.nomi}</option>)}
           </select>
         </label>
-        <label>Ijara narxi<input type="number" value={f.ijara_narxi || ''} onChange={set('ijara_narxi')} /></label>
-        <label>Dona soni<input type="number" min="1" max="200" value={f.soni} onChange={set('soni')} /></label>
-        {rahbar && <label>Tannarx<input type="number" value={f.tannarx || ''} onChange={set('tannarx')} /></label>}
+        <div className="libos-narxlar">
+          <label>Ijara narxi<input type="number" value={f.ijara_narxi || ''} onChange={set('ijara_narxi')} /></label>
+          <label>Dona soni<input type="number" min="1" max="200" value={f.soni} onChange={set('soni')} /></label>
+          {rahbar && <label>Tannarx<input type="number" value={f.tannarx || ''} onChange={set('tannarx')} /></label>}
+        </div>
         <button disabled={!f.nomi || !f.kod} onClick={yubor}>Qo'shish</button>
-      </div>
-    </details>
+    </div>
   )
 }

@@ -1,15 +1,34 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Vitrina from '../components/Vitrina'
+import LibosSiluet from '../components/LibosSiluet'
 import { SalonchiForma } from './Salonchilar'
 import Manekin from '../components/Manekin'
 import CalendarPage from '../components/kalendar/CalendarPage'
-import { aksessuarManekinSaqla, boshAksessuarlar, filiallar, boshLiboslar, mijozQidir, qulf, manekinSaqla, salonchiQosh, salonchilar, som, ustamaFoiz, zakazYarat } from '../api'
+import { aksessuarManekinSaqla, boshAksessuarlar, filiallar, boshLiboslar, mijozQidir, qulf, qulfOchir, manekinSaqla, salonchiQosh, salonchilar, som, ustamaFoiz, zakazYarat } from '../api'
 
 // Yangi zakaz: 1) sana va mijoz telefoni, 2) libos tanlash, 3) tasdiqlash (4-bo'lim).
 const QORALAMA = 'libosa.yangi_zakaz'
-const qoralamaOl = () => { try { return JSON.parse(sessionStorage.getItem(QORALAMA)) || {} } catch { return {} } }
+const bugunIso = () => { const t = new Date(); return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}` }
+const qoralamaOl = () => {
+  let q
+  try { q = JSON.parse(sessionStorage.getItem(QORALAMA)) || {} } catch { return {} }
+  // Kecha qoldirilgan qoralama: o'tgan sana bilan davom etib bo'lmaydi (server rad etadi) — sana qaytadan tanlanadi
+  if (q.dan && q.dan < bugunIso()) q = { ...q, dan: '', gacha: '', qadam: 1 }
+  // Tanlangan liboslar qoralamada saqlanmaydi — 3-qadamga libossiz qaytib qolmaslik uchun libos tanloviga
+  return { ...q, qadam: Math.min(q.qadam || 1, 2) }
+}
+// Telefondagi raqamlar soni: 9 (90 123 45 67) yoki 12 (998 90 123 45 67) — to'liq raqam
+const telefonRaqamlari = (t) => t.replace(/\D/g, '').length
+// Shundan uzoq ijara odatda kalendarda adashib bosilgan bo'ladi — sotuvchi ogohlantiriladi
+const UZOQ_IJARA_KUN = 7
+// Server vaqti UTC da keladi — mahalliy vaqtda «25.10.2026 14:30»
+const vaqtMatni = (s) => {
+  const t = new Date(s), n = (x) => String(x).padStart(2, '0')
+  return `${n(t.getDate())}.${n(t.getMonth() + 1)}.${t.getFullYear()} ${n(t.getHours())}:${n(t.getMinutes())}`
+}
+const kunlar = (a, b) => Math.round((Date.parse(b) - Date.parse(a)) / 86400000) + 1
 
-export default function YangiZakaz({ onTayyor }) {
+export default function YangiZakaz({ onTayyor, onTolov }) {
   const q0 = useState(qoralamaOl)[0]
   const [qadam, setQadam] = useState(q0.qadam || 1) // 1 Sana → 2 Libos → 3 Mijoz va tasdiq
   const [dan, setDan] = useState(q0.dan || '')
@@ -17,6 +36,7 @@ export default function YangiZakaz({ onTayyor }) {
   const [telefon, setTelefon] = useState(q0.telefon || '')
   const [mijoz, setMijoz] = useState(null)
   const [fio, setFio] = useState(q0.fio || '')
+  const [saqlanmoqda, setSaqlanmoqda] = useState(false)
   const [manba, setManba] = useState('boshqa')
   const [salonchiRoyxat, setSalonchiRoyxat] = useState([])
   const [salonchi, setSalonchi] = useState(q0.salonchi || '')
@@ -25,6 +45,11 @@ export default function YangiZakaz({ onTayyor }) {
   const [bandlar, setBandlar] = useState(false)
   const [liboslar, setLiboslar] = useState(null)
   const [tanlangan, setTanlangan] = useState([])
+  // Sahifadan chiqib ketilsa yoki sana o'zgarsa qulflar bo'shatiladi — boshqa sotuvchi 15 daqiqa kutmasin
+  const qulflangan = useRef([])
+  useEffect(() => { qulflangan.current = tanlangan.map((l) => l.id) }, [tanlangan])
+  const qulflarniOchir = () => { qulflangan.current.forEach(qulfOchir); qulflangan.current = [] }
+  useEffect(() => qulflarniOchir, [])
   const [aksessuarlar, setAksessuarlar] = useState([])
   const [aksSoni, setAksSoni] = useState({})
   const [xabar, setXabar] = useState('')
@@ -71,6 +96,7 @@ export default function YangiZakaz({ onTayyor }) {
   const tanlash = async (l) => {
     setXabar('')
     if (tanlangan.some((t) => t.id === l.id)) {
+      qulfOchir(l.id)
       return setTanlangan(tanlangan.filter((t) => t.id !== l.id))
     }
     try {
@@ -85,16 +111,26 @@ export default function YangiZakaz({ onTayyor }) {
   const saqlash = async () => {
     setXabar('')
     if (!telefon) return setXabar('Mijoz telefonini kiriting.')
+    if (telefonRaqamlari(telefon) < 9) return setXabar("Telefon raqami to'liq emas: masalan, +998 90 123 45 67.")
+    if (saqlanmoqda) return undefined // ikki marta bosilsa ikkinchi so'rov yuborilmaydi
+    setSaqlanmoqda(true)
     try {
       const yaratildi = await zakazYarat({ telefon, fio: mijoz?.yangi ? fio : '', manba: mijoz?.yangi && !salonchi ? manba : undefined,
         salonchi: salonchi ? Number(salonchi) : undefined, dan, gacha, liboslar: tanlangan.map((l) => l.id),
         aksessuarlar: Object.entries(aksSoni).flatMap(([id, n]) => Array(n).fill(Number(id))) })
       try { sessionStorage.removeItem(QORALAMA) } catch { /* xotira yopiq */ }
+      qulflangan.current = [] // server qulflarni o'zi olib tashladi
       setZakaz(yaratildi)
     } catch (e) {
       setXabar(e.response?.data?.detail || 'Zakazni saqlab bo\'lmadi.')
-      setLiboslar(await boshLiboslar(dan, gacha, bandlar, filtr.q))
-      setTanlangan([])
+      // Faqat band bo'lib qolgan liboslar tanlovdan chiqadi; qolganlari (va mijoz ma'lumotlari) saqlanadi
+      try {
+        const l = await boshLiboslar(dan, gacha, bandlar, filtr.q)
+        setLiboslar(l)
+        setTanlangan((eski) => eski.filter((t) => l.some((x) => x.id === t.id && !x.band && !x.qulflangan)))
+      } catch { /* tarmoq: tanlov o'zgarmaydi */ }
+    } finally {
+      setSaqlanmoqda(false)
     }
   }
 
@@ -107,6 +143,7 @@ export default function YangiZakaz({ onTayyor }) {
   useEffect(() => {
     if (!dan || !gacha || gacha < dan || zakaz) return undefined
     let bekor = false
+    qulflarniOchir() // eski sanalar uchun olingan qulflar endi kerak emas — tanlov baribir tozalanadi
     Promise.all([boshLiboslar(dan, gacha, bandlar, filtr.q), boshAksessuarlar(dan, gacha)]).then(([l, a]) => {
       if (bekor) return
       setLiboslar(l); setAksessuarlar(a); setTanlangan([]); setAksSoni({})
@@ -124,6 +161,11 @@ export default function YangiZakaz({ onTayyor }) {
         const [l, a] = await Promise.all([boshLiboslar(dan, gacha, bandlar, filtr.q), boshAksessuarlar(dan, gacha)])
         setLiboslar(l)
         setAksessuarlar(a)
+        // Aksessuar donasi orada boshqa zakazga ketgan bo'lsa, tanlangan soni bo'sh donalardan oshmasin
+        setAksSoni((eski) => {
+          const yangiSon = Object.fromEntries(Object.entries(eski).map(([id, n]) => [id, Math.min(n, a.find((x) => String(x.id) === id)?.bosh_soni || 0)]))
+          return Object.keys(eski).some((id) => yangiSon[id] !== eski[id]) ? yangiSon : eski
+        })
         // tanlangan libos orada band bo'lib qolgan bo'lsa (masalan, qulf muddati o'tib), tanlovdan chiqariladi
         setTanlangan((eski) => {
           const mavjud = eski.filter((t2) => l.some((x) => x.id === t2.id && !x.band && !x.qulflangan))
@@ -159,8 +201,10 @@ export default function YangiZakaz({ onTayyor }) {
       <div className="stack">
         <h2>Zakaz #{zakaz.raqam} saqlandi</h2>
         <p>Jami: <b>{som(zakaz.jami)}</b></p>
-        <p>Holat: vaqtinchalik bron (24 soat). Avans kiritilmasa bekor bo'ladi.</p>
-        <button onClick={() => onTayyor(zakaz.id)}>Zakaz kartasini ochish</button>
+        <p>Holat: vaqtinchalik bron{zakaz.bron_muddati ? ` — ${vaqtMatni(zakaz.bron_muddati)} gacha` : ''}.
+          Avans kiritilmasa bron bekor bo'ladi.</p>
+        {onTolov && zakaz.jami > 0 && <button onClick={() => onTolov(zakaz.id)}>Avans qabul qilish</button>}
+        <button className={onTolov ? 'ikkinchi' : ''} onClick={() => onTayyor(zakaz.id)}>Zakaz kartasini ochish</button>
         <button className="ikkinchi" onClick={yangi}>Yangi zakaz</button>
       </div>
     )
@@ -183,6 +227,9 @@ export default function YangiZakaz({ onTayyor }) {
         <section className="blok">
           <h3>Sana</h3>
           <CalendarPage dan={dan} gacha={gacha} onTanla={(d, g) => { setDan(d); setGacha(g) }} />
+          {sanaTayyor && kunlar(dan, gacha) > UZOQ_IJARA_KUN && (
+            <p className="ogohlantirish">Ijara {kunlar(dan, gacha)} kun — odatdagidan uzoq. Qaytarish kuni to'g'ri tanlanganini tekshiring.</p>
+          )}
           <label className="qator">
             <input type="checkbox" checked={bandlar} onChange={(e) => setBandlar(e.target.checked)} />
             Bandlarni ham ko'rsatish
@@ -238,7 +285,7 @@ export default function YangiZakaz({ onTayyor }) {
             const yopiq = l.band || l.qulflangan
             return (
               <li key={l.id} className={`${yopiq ? 'band' : ''} ${tanlandi ? 'tanlandi' : ''}`}>
-                {l.rasm ? <img className="eskiz" src={l.rasm} alt="" /> : <span className="eskiz bosh-eskiz">rasm yo'q</span>}
+                {l.rasm ? <img className="eskiz" src={l.rasm} alt="" /> : <span className="eskiz bosh-eskiz"><LibosSiluet /></span>}
                 {tanlandi && <span className="tanlov-belgi" aria-hidden="true">✓</span>}
                 <span className="matn-ustun">
                   <span><b>{l.artikul}</b> {l.nomi}</span>
@@ -292,6 +339,7 @@ export default function YangiZakaz({ onTayyor }) {
           <input value={telefon} inputMode="tel" placeholder="+998 90 123 45 67"
             onChange={(e) => setTelefon(e.target.value)} onBlur={mijozniTekshir} />
         </label>
+        {telefon && telefonRaqamlari(telefon) < 9 && <p className="malumot">Raqam to'liq emas: masalan, +998 90 123 45 67.</p>}
         {mijoz?.yangi && (
           <label>Yangi mijoz — F.I.O.<input value={fio} onChange={(e) => setFio(e.target.value)} /></label>
         )}
@@ -353,8 +401,8 @@ export default function YangiZakaz({ onTayyor }) {
             <span>Jami: <b>{som(jami)}</b></span>
             <div className="zakaz-tugmalar">
               <button className="ikkinchi" onClick={() => setQadam(qadam - 1)}>Orqaga</button>
-              <button onClick={davom} disabled={tanlangan.length === 0 || (qadam === 3 && (!telefon || mijoz?.qora_royxat))}>
-                {qadam === 2 ? 'Davom etish' : 'Zakazni saqlash'}
+              <button onClick={davom} disabled={saqlanmoqda || tanlangan.length === 0 || (qadam === 3 && (!telefon || mijoz?.qora_royxat))}>
+                {qadam === 2 ? 'Davom etish' : saqlanmoqda ? 'Saqlanmoqda…' : 'Zakazni saqlash'}
               </button>
             </div>
           </aside>

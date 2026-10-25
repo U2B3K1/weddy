@@ -24,8 +24,8 @@ export default function TelegramBlok({ rahbar }) {
   const bajar = (fn) => async () => { setXato(''); try { await fn() } catch (e) { setXato(xatoMatni(e)) } }
 
   return (
-    <details className="blok amal">
-      <summary>Telegram xabarlari · {h.ulangan ? 'ulangan' : 'ulanmagan'}</summary>
+    <details className={`telegram-blok ${h.ulangan ? 'ulangan' : ''}`}>
+      <summary>{h.ulangan ? 'Telegram ulangan — eslatmalar u yerga ham keladi' : 'Eslatmalarni Telegramda ham olish'}</summary>
       <div className="stack">
         {xato && <p className="xato">{xato}</p>}
         {!h.sozlangan && <p className="ogohlantirish">Bot hali serverda sozlanmagan — xabarlar yuborilmaydi (bosh ekrandagi eslatmalar ishlayveradi).</p>}

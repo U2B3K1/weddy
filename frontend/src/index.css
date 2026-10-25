@@ -1,6 +1,5 @@
 :root {
-  --rang: #8b5e83;                     /* faqat vitrina (ochiq modal) ishlatadi */
-  --fon: #faf7fa;                      /* ochiq fon — vitrina/hujjat modal ichida ishlatiladi */
+  --rang: #8b5e83;                     /* faqat manekin muharriri (oq modal) ishlatadi */
   --xato: #b3261e;
   /* fon */
   --tun: #0B1220; --tun-chuqur: #070C16;
@@ -19,9 +18,28 @@
   --serif: 'Casagrande Deco', 'Forum', Georgia, serif;
   --kursiv: 'Cormorant Garamond', Georgia, serif;
   --sans: 'Manrope', system-ui, -apple-system, 'Segoe UI', sans-serif;
+
+  /* ===== «Atelye» tizimi (ichki ekranlar). Yagona manba: komponentlar faqat shu tokenlardan foydalanadi. =====
+     Ierarxiya ramka bilan emas, yuza tusi bilan: fon → yuza-1 (panel) → yuza-2 (panel ichidagi qator) → yuza-3 (faol). */
+  /* Neytral, sal sovuq kulrang-ko'k: rang faqat urg'u va holat uchun qoladi */
+  --fon: #0B0F17; --fon-chuqur: #080B11;
+  --yuza-1: #11161F; --yuza-2: #171D29; --yuza-3: #212938;
+  --chegara: rgba(255, 255, 255, .07); --chegara-kuchli: rgba(255, 255, 255, .14);
+  --matn-2: #A9B1BE; --matn-3: #7E8797;   /* meta matn: yuza-1 ustida 5:1 */
+  /* Oltin faqat: asosiy amal, faol bo'lim, fokus, sahifa sarlavhasi */
+  --tilla-xira: rgba(228, 193, 150, .14);
+  /* Holat ranglari — zakaz yo'li bo'yicha */
+  --h-bron: #7ED6A0; --h-vaqt: #F2C46D; --h-berildi: #8DB4E8; --h-qarz: #FF9B92; --h-yopildi: #A9B3C2;
+  /* Shrift shkalasi (~1.2): meta · asosiy · kichik sarlavha · bo'lim · sahifa · ko'rgazma */
+  --t-meta: 12.5px; --t-asos: 14px; --t-h3: 15px; --t-h2: 17px; --t-h1: 24px; --t-katta: 28px;
+  /* Radius 3 darajada: boshqaruv elementi · karta · katta yuza (banner, oyna) */
+  --r-1: 8px; --r-2: 12px; --r-3: 16px;
+  /* Oraliq 4px asosida */
+  --o-1: 4px; --o-2: 8px; --o-3: 12px; --o-4: 16px; --o-5: 24px; --o-6: 32px;
+
   font-family: var(--sans);
   color: var(--matn);
-  background: var(--tun);
+  background: var(--fon);
 }
 
 * { box-sizing: border-box; }
@@ -156,23 +174,6 @@ select option { color: #0e1a2b; background: #fff; }
 .dona-yaroqsiz { background: rgba(255, 255, 255, .05); color: rgba(251, 246, 238, .55); }
 .jami { bottom: 60px; z-index: 2; box-shadow: 0 -12px 30px -18px rgba(14, 26, 43, .9), inset 0 0 0 1px rgba(255, 255, 255, .18); border-radius: 14px; }
 
-/* Mijozga ko'rsatish (FT-23.1): vitrina ekrani, menyular ustida */
-.vitrina { position: fixed; inset: 0; z-index: 20; display: flex; flex-direction: column; background: #fff; }
-.vitrina-chiqish { position: absolute; top: 8px; right: 8px; z-index: 2; width: 36px; height: 36px; padding: 0; border-radius: 50%; background: rgba(0,0,0,.25); font-size: 20px; line-height: 1; }
-.vitrina-rasm { flex: 1; min-height: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; background: var(--fon); }
-.vitrina-rasm img { max-width: 100%; max-height: 100%; object-fit: contain; }
-.vitrina-rasmsiz { color: #8d8691; }
-.vitrina-nuqtalar { position: absolute; display: flex; gap: 6px; margin-top: auto; bottom: 190px; }
-.vitrina-nuqtalar span { width: 8px; height: 8px; border-radius: 50%; background: rgba(0,0,0,.2); }
-.vitrina-nuqtalar span.faol { background: var(--rang); }
-.vitrina-malumot { padding: 12px 20px 4px; text-align: center; }
-.vitrina-malumot h2 { margin: 0; font-size: 26px; }
-.vitrina-kategoriya { margin: 4px 0; color: #6b6270; }
-.vitrina-narx { margin: 4px 0; font-size: 24px; font-weight: 700; color: var(--rang); }
-.vitrina-nav { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 16px 16px; }
-.vitrina-nav button { flex: 1; max-width: 200px; }
-.vitrina-pin { position: absolute; inset: 0; z-index: 3; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; padding: 24px; background: rgba(255,255,255,.97); }
-.vitrina-pin input { width: 160px; text-align: center; font-size: 24px; letter-spacing: 6px; }
 .tamir { padding: 8px 0; border-top: 1px solid var(--chiziq); border-bottom: 1px solid var(--chiziq); }
 .xodim { padding: 8px 0; border-top: 1px solid var(--chiziq); }
 .xodim-sarlavha { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
@@ -343,7 +344,6 @@ textarea:focus {
   background: linear-gradient(110deg, var(--tilla-toq), var(--tilla)); color: var(--siyoh);
 }
 @media (min-width: 768px) { .sozlama-menu { display: none; } }
-@media (max-width: 767px) { .pastki .sozlama-bolim { display: none; } }
 
 /* Keng ekranda: pastdagi nav chap tarafdagi panel (sidebar) bo'ladi — ChatGPT uslubi.
    Tor ekranlarda (telefon) avvalgi pastki nav saqlanib qoladi. */
@@ -360,8 +360,6 @@ textarea:focus {
     flex: none; max-width: none; width: 100%; padding: 12px 16px;
     font-size: 15px; text-align: left; border-radius: 10px;
   }
-  .boshlash-panel { display: block; margin-bottom: 10px; padding: 10px; border: 1px solid rgba(255, 255, 255, .16); border-radius: 12px; background: rgba(253, 250, 245, .05); }
-  .boshlash-panel .qator-btn { padding: 8px 10px; font-size: 13px; }
   .jami { bottom: 0; }
 
   /* Sozlamalar: chap panel umumiy nav (yuqoridagi .pastki), markazda tanlangan bo'lim mazmuni */
@@ -377,13 +375,8 @@ textarea:focus {
 .kpi-qiymat { font-size: 22px; font-weight: 700; color: var(--oq); }
 .kpi-qiymat.qizil { color: var(--xato); }
 .kpi-izoh { font-size: 11px; color: rgba(251, 246, 238, .55); }
-.dashbord-sahifa .blok > h3 { padding-left: 10px; border-left: 3px solid var(--tilla); font-size: 15px; }
 /* Birlashtirilgan bildirishnoma va diqqat bloklari ichidagi kichik sarlavhalar */
 .dashbord-sahifa .blok h4 { margin: 10px 0 4px; font-size: 13px; color: rgba(251, 246, 238, .78); }
-/* Boshlash ro'yxati: tor ekranda (pastki nav) yashirin, keng ekranda chap paneldagi sidebar'da ko'rinadi */
-.boshlash-panel { display: none; }
-.boshlash-panel h4 { margin: 4px 2px 6px; font-size: 12px; letter-spacing: .04em; text-transform: uppercase; color: rgba(251, 246, 238, .55); }
-.boshlash-panel .qator-btn { text-align: left; }
 .dashbord-sahifa .tasdiq { padding: 10px 12px; border: 1px solid rgba(255, 255, 255, .16); border-radius: 12px; background: rgba(253, 250, 245, .05); }
 .dashbord-ustunlar { display: grid; grid-template-columns: 1fr; gap: 12px; }
 @media (min-width: 768px) {
@@ -397,7 +390,6 @@ textarea:focus {
   padding: 14px 16px; margin-bottom: 4px;
   background: rgba(253, 250, 245, .08); border: 1px solid rgba(255, 255, 255, .16);
   border-radius: 16px; backdrop-filter: blur(12px);
-  box-shadow: inset 0 2px 0 rgba(228, 193, 150, .35);
 }
 .dashbord-sarlavha { display: flex; flex-direction: column; gap: 2px; }
 .dashbord-sarlavha h1 { margin: 0; text-align: left; font-size: 24px; letter-spacing: .01em; }
@@ -407,69 +399,15 @@ textarea:focus {
 .dashbord-bosh .segment button { flex: none; padding: 8px 14px; font-size: 14px; border-radius: 10px; }
 .dashbord-bosh select { flex: 0 0 auto; padding: 9px 12px; font-size: 14px; border-radius: 10px; min-width: 160px; }
 
-/* KPI kartalar: oltin yuqori chiziq + hover ko'tarilishi */
-.kpi { position: relative; overflow: hidden; transition: transform .18s ease, box-shadow .18s ease; }
-.kpi::before {
-  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
-  background: linear-gradient(90deg, var(--tilla-toq), var(--tilla));
-}
-.kpi:hover { transform: translateY(-2px); box-shadow: 0 10px 28px -14px rgba(0, 0, 0, .7), inset 0 0 0 1px rgba(228, 193, 150, .35); }
 .kpi-qiymat { font-variant-numeric: tabular-nums; }
-
-/* Ikkilamchi bloklar: tor ekranda markazda, keng ekranda chap panelga ko'chiriladi */
-.dashbord-yon-mobil { display: flex; flex-direction: column; gap: 12px; }
-
-/* Chap panel (sidebar) dagi ixcham dashbord xulosasi: faqat keng ekranda */
-.dashbord-yon { display: none; }
-.dashbord-yon h4 {
-  margin: 12px 4px 4px; font-size: 11px; letter-spacing: .05em; text-transform: uppercase;
-  color: rgba(251, 246, 238, .5); font-weight: 600;
-}
-.dashbord-yon h4:first-child { margin-top: 0; }
-.dashbord-yon .qator-btn { padding: 10px 12px; font-size: 13px; border-radius: 10px; }
-.dashbord-yon .qator-btn b { font-weight: 600; color: var(--oq); font-variant-numeric: tabular-nums; }
-.dashbord-yon .qator-btn.qizil b { color: #ffb4ab; }
-.dashbord-yon .malumot { font-size: 12px; margin: 2px 4px; }
-
-/* Hisobot sahifasidagi «Bugun» xulosasi */
-.bugun-xulosa { display: flex; flex-direction: column; gap: 8px; }
-.bugun-xulosa h3 { margin-bottom: 4px; }
-.bugun-xulosa .qator-btn { padding: 10px 12px; font-size: 13px; }
-.bugun-xulosa .qator-btn b { font-weight: 600; color: var(--oq); font-variant-numeric: tabular-nums; }
-
-/* Dashbord asosiy ekranidagi «Bugun» xulosasi (uch katak) */
-.bugun-widget { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 4px; }
-.bugun-widget button {
-  display: flex; flex-direction: column; align-items: flex-start; gap: 4px;
-  padding: 12px 14px; text-align: left;
-  background: rgba(253, 250, 245, .08); border: 1px solid rgba(255, 255, 255, .16);
-  border-radius: 14px; backdrop-filter: blur(12px);
-  transition: border-color .18s ease;
-}
-.bugun-widget button:hover { border-color: rgba(228, 193, 150, .4); }
-.bugun-nom { font-size: 12px; color: rgba(251, 246, 238, .62); letter-spacing: .02em; }
-.bugun-widget b { font-size: 16px; font-weight: 700; color: var(--oq); font-variant-numeric: tabular-nums; }
-
-@media (min-width: 768px) {
-  .dashbord-yon-mobil { display: none; }
-  .dashbord-yon {
-    display: flex; flex-direction: column; gap: 2px;
-    margin: 2px 0 10px; padding-bottom: 10px;
-    border-bottom: 1px solid rgba(255, 255, 255, .12);
-  }
-}
 
 /* KPI kartaning sarlavhasi: belgi + nom bir qatorda (Lucide uslubidagi inline SVG) */
 .kpi-bosh { display: flex; align-items: center; gap: 7px; margin-bottom: 2px; }
-.kpi-ikon { width: 16px; height: 16px; color: var(--tilla); flex: none; }
+.kpi-ikon { width: 16px; height: 16px; color: var(--matn-3); flex: none; }
 .kpi-bosh .kpi-nom { margin: 0; }
 
-/* Asosiy (qahramon) KPI — bugungi tushum: to'yingan oltin fon + kattaroq qiymat */
-.kpi-asosiy {
-  background: linear-gradient(140deg, rgba(228, 193, 150, .22), rgba(204, 152, 102, .1));
-  border-color: rgba(228, 193, 150, .4);
-}
-.kpi-asosiy::before { height: 3px; }
+/* Asosiy KPI — bugungi tushum: bir pog'ona yorug' yuza va kattaroq qiymat (oltin bezaksiz) */
+.kpi-asosiy { background: var(--yuza-2); }
 .kpi-asosiy .kpi-qiymat { font-size: 30px; letter-spacing: -.01em; }
 
 /* Shu oy — o'tgan oy trend qatori (P&L taqqos ma'lumotlaridan) */
@@ -493,9 +431,6 @@ textarea:focus {
   border: 1px solid rgba(126, 203, 143, .3);
 }
 
-/* Diqqat (tannarxsiz liboslar) bloki: qizil chap chiziq + qizil tus */
-.diqqat-blok { border-left: 3px solid var(--xato); background: rgba(179, 38, 30, .08); }
-.diqqat-blok h3 { border-left-color: var(--xato) !important; color: #ffb4ab; }
 
 /* Klaviatura foydalanuvchilari uchun fokus halqasi (butun ilova) */
 button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible, textarea:focus-visible {
@@ -555,7 +490,6 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
   }
   .pastki.ochiq { transform: none; visibility: visible; box-shadow: 30px 0 60px -20px rgba(0, 0, 0, .7); }
   .pastki button { flex: none; max-width: none; width: 100%; padding: 12px 14px; font-size: 15px; text-align: left; }
-  .pastki .sozlama-bolim { display: block; }
   .menyu-parda { position: fixed; inset: 0; z-index: 5; background: rgba(6, 10, 18, .55); }
   .ilova > main { padding-bottom: 24px; }
   .jami { bottom: 0; }
