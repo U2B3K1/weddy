@@ -259,11 +259,14 @@ const ozgarish = (hozir, oldin) => {
 function Pnl({ r, filial }) {
   // FT-18.2: hisoblanmaydigan qatorni bosganda uni tashkil qilgan zakaz va xarajatlar ochiladi
   const qatorlar = [
-    [r.storno ? `1. Tushum (bekor qilinganlar storno: −${som(r.storno)})` : '1. Tushum', r.tushum, false, 'tushum'], ["2. To'g'ridan-to'g'ri xarajat", -r.togridan_togri_xarajat, false, 'togridan'],
-    ['3. Yalpi foyda', r.yalpi_foyda, true],
-    ['4. Operatsion xarajatlar', -r.operatsion_xarajat, false, 'operatsion'], ['5. Operatsion foyda', r.operatsion_foyda, true],
-    ['6. Boshqa daromad', r.boshqa_daromad, false, 'boshqa'], [`7. Soliq (${r.soliq_foizi}%)`, -r.soliq],
-    ['8. Sof foyda (zarar)', r.sof_foyda, true],
+    { raqam: 1, nom: 'Tushum', izoh: r.storno ? `storno: −${som(r.storno)}` : '', v: r.tushum, kalit: 'tushum' },
+    { raqam: 2, nom: "To'g'ridan-to'g'ri xarajat", v: -r.togridan_togri_xarajat, kalit: 'togridan' },
+    { raqam: 3, nom: 'Yalpi foyda', v: r.yalpi_foyda, oralik: true },
+    { raqam: 4, nom: 'Operatsion xarajatlar', v: -r.operatsion_xarajat, kalit: 'operatsion' },
+    { raqam: 5, nom: 'Operatsion foyda', v: r.operatsion_foyda, oralik: true },
+    { raqam: 6, nom: 'Boshqa daromad', v: r.boshqa_daromad, kalit: 'boshqa' },
+    { raqam: 7, nom: `Soliq (${r.soliq_foizi}%)`, v: -r.soliq },
+    { raqam: 8, nom: 'Sof foyda (zarar)', v: r.sof_foyda, yakuniy: true },
   ]
   const [taf, setTaf] = useState(null)
   const [tafOy, setTafOy] = useState(`${r.oy}/${filial}`)
@@ -282,12 +285,16 @@ function Pnl({ r, filial }) {
       {r.tasdiqlanmagan_xarajatlar > 0 && (
         <p className="ogohlantirish">{r.tasdiqlanmagan_xarajatlar} ta xarajat hali tasdiqlanmagan va hisobga kirmagan.</p>
       )}
-      <table className="jadval"><tbody>
-        {qatorlar.map(([n, v, qalin, kalit]) => (
-          <tr key={n}>
-            <td>{qalin ? <b>{n}</b> : kalit
-              ? <button type="button" className="havola" aria-expanded={taf?.qator === kalit} onClick={() => och(kalit)}>{n}</button> : n}</td>
-            <td>{qalin ? <b>{som(v)}</b> : som(v)}</td>
+      <table className="jadval pnl"><tbody>
+        {qatorlar.map((q) => (
+          <tr key={q.raqam} className={q.yakuniy ? 'pnl-yakuniy' : q.oralik ? 'pnl-oralik' : ''}>
+            <td>
+              <span className="pnl-raqam">{q.raqam}</span>
+              {q.oralik || q.yakuniy ? <b>{q.nom}</b> : q.kalit
+                ? <button type="button" className="pnl-havola" aria-expanded={taf?.qator === q.kalit} onClick={() => och(q.kalit)}>{q.nom}</button> : q.nom}
+              {q.izoh && <span className="pnl-izoh">{q.izoh}</span>}
+            </td>
+            <td>{q.oralik || q.yakuniy ? <b>{som(q.v)}</b> : som(q.v)}</td>
           </tr>
         ))}
       </tbody></table>

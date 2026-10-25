@@ -299,6 +299,16 @@ label > input, label > select { color: var(--oq); }
 .hisobot td:first-child, .hisobot th:first-child { position: sticky; left: 0; background: rgba(16, 26, 44, .96); z-index: 1; }
 .hisobot td.ong, .jadval td:last-child { font-variant-numeric: tabular-nums; }
 
+/* ---------- P&L schyotlari: raqam xira indeks, oraliq/yakuniy qator ustki chiziq bilan ajraladi ---------- */
+.pnl td { padding: 7px 0; }
+.pnl-raqam { display: inline-block; min-width: 22px; margin-right: 10px; color: var(--matn-3); font-variant-numeric: tabular-nums; text-align: right; }
+.pnl-izoh { color: var(--matn-3); font-size: var(--t-meta); margin-left: 8px; }
+.pnl tr.pnl-oralik td, .pnl tr.pnl-yakuniy td { border-top: 1px solid var(--chegara); padding-top: 11px; }
+.pnl tr.pnl-yakuniy td { padding-top: 13px; }
+/* Tafsilot ochiladigan schyot — oddiy matndek, oltin/o'stki chiziqsiz; kursiv emas, faqat kursorni bildiradi */
+.pnl-havola { padding: 0; border: 0; background: none; font: inherit; color: inherit; font-weight: 400; text-align: left; cursor: pointer; }
+.pnl-havola:hover { color: var(--oq); }
+
 /* ---------- Fokus va harakat ---------- */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation: none !important; transition: none !important; }
