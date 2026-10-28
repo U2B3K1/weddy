@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { arizaYubor, xatoMatni } from '../api'
 import { sahnaYarat } from './reklamaSahna'
+import { tutqichga } from './gildirakTutqich'
 import { BELGI_D } from './ezazBelgi'
 import './reklama.css'
 import './reklama-qasr.css'
@@ -43,7 +44,7 @@ export default function Reklama({ onKirish }) {
     return () => { s.yop(); sahna.current = null }
   }, [])
 
-  // Aylantirishga bog'liq harakat: har sahnaga 0..1 oralig'idagi --p, bosh kadr uchun --bp, fondagi shakl uchun T, tezlik --tez.
+  // Aylantirishga bog'liq harakat: har sahnaga 0..1 oralig'idagi --p, bosh kadr uchun --bp, fondagi shakl uchun T.
   useEffect(() => {
     const el = ildiz.current
     if (!el || !ochiq) return undefined
@@ -51,30 +52,33 @@ export default function Reklama({ onKirish }) {
     const langarlar = [...el.querySelectorAll('[data-t]')].map((x) => ({ x, t: Number(x.dataset.t) }))
     const bosh = el.querySelector('.rk-bosh')
     const kirlar = [...el.querySelectorAll('[data-kir]')]   // ekranni to'liq egallamaguncha qorong'i turadigan bo'limlar (a'zo, kelinlar, imkoniyatlar, yakun) — hammasida bir xil kirish
-    let kadr = 0, oldingiY = window.scrollY, tinchlanish = 0
+    // --jami va --bp ni faqat o'zini ishlatadigan element oladi: ildizga yozilsa, har kadrda butun sahifa stili qayta hisoblanadi
+    const yolChizigi = el.querySelector('.rk-yol-chizigi')
+    const xira = el.querySelector('.rk-qasr-xira')
+    let kadr = 0
     const hisobla = () => {
       kadr = 0
-      const vh = window.innerHeight
+      // Avval hamma o'lchovlar, keyin hamma yozuvlar. Aralashtirilsa, har yozuvdan keyingi getBoundingClientRect
+      // brauzerni stil va layout'ni qayta hisoblashga majbur qiladi (bir kadrda o'nlab marta) — bosh kadr shundan qotardi.
+      const vh = window.innerHeight, y = window.scrollY
       const jami = document.documentElement.scrollHeight - vh
-      el.style.setProperty('--jami', jami > 0 ? (window.scrollY / jami).toFixed(4) : '0')
-      el.classList.toggle('rk-aylandi', window.scrollY > 40)
-      // Aylantirish tezligi: lentalar shunga qarab qiyshayadi, to'xtaganda qaytadi
-      el.style.setProperty('--tez', chekla((window.scrollY - oldingiY) / 60, -1, 1).toFixed(3))
-      oldingiY = window.scrollY
-      clearTimeout(tinchlanish)
-      tinchlanish = setTimeout(() => el.style.setProperty('--tez', '0'), 140)
-      sahnalar.forEach((s) => {
+      const plar = sahnalar.map((s) => {
         const r = s.getBoundingClientRect()
         const yol = r.height - vh
         // baland sahna — ichidagi yo'l; qolgani — ekrandan o'tishi
-        const xom = yol > 0 ? -r.top / yol : (vh - r.top) / (vh + r.height)
-        const p = chekla(xom, 0, 1)
-        s.style.setProperty('--p', p.toFixed(4))
-        if (s === bosh) el.style.setProperty('--bp', p.toFixed(4))
+        return chekla(yol > 0 ? -r.top / yol : (vh - r.top) / (vh + r.height), 0, 1)
       })
-      kirlar.forEach((k) => k.style.setProperty('--kir', chekla(1 - k.getBoundingClientRect().top / (vh * .3), 0, 1).toFixed(3)))
+      const kirQ = kirlar.map((k) => chekla(1 - k.getBoundingClientRect().top / (vh * .3), 0, 1))
       // Fondagi shakl: ekran markaziga eng yaqin ikki langar orasida silliq o'tadi
       const m = langarlar.map((l) => { const r = l.x.getBoundingClientRect(); return { t: l.t, c: r.top + r.height / 2 - vh / 2 } })
+
+      yolChizigi?.style.setProperty('--jami', jami > 0 ? (y / jami).toFixed(4) : '0')
+      el.classList.toggle('rk-aylandi', y > 40)
+      sahnalar.forEach((s, i) => {
+        s.style.setProperty('--p', plar[i].toFixed(4))
+        if (s === bosh) xira?.style.setProperty('--bp', plar[i].toFixed(4))
+      })
+      kirlar.forEach((k, i) => k.style.setProperty('--kir', kirQ[i].toFixed(3)))
       let T = m[0].t
       for (let i = 0; i < m.length; i++) {
         if (m[i].c > 0) break
@@ -103,7 +107,7 @@ export default function Reklama({ onKirish }) {
     window.addEventListener('resize', aylan)
     return () => {
       window.removeEventListener('scroll', aylan); window.removeEventListener('resize', aylan)
-      kuzat.disconnect(); cancelAnimationFrame(kadr); clearTimeout(tinchlanish); clearTimeout(sinov)
+      kuzat.disconnect(); cancelAnimationFrame(kadr); clearTimeout(sinov)
     }
   }, [ochiq])
 
@@ -122,6 +126,8 @@ export default function Reklama({ onKirish }) {
       if (e.ctrlKey || e.target.closest?.('textarea')) return
       e.preventDefault()
       if (menyuOchiq.current) return
+      // Hodisani bo'lim o'zi oldi (gildirakTutqich.js) — sahifaning inersiyasi shu joyda to'xtaydi
+      if (tutqichga(e)) { cancelAnimationFrame(kadr); kadr = 0; maqsad = joriy = window.scrollY; return }
       const d = e.deltaMode === 1 ? e.deltaY * 32 : e.deltaMode === 2 ? e.deltaY * window.innerHeight : e.deltaY
       maqsad = chekla(maqsad + d, 0, chegara())
       if (!kadr) kadr = requestAnimationFrame(qadam)
@@ -188,14 +194,15 @@ export default function Reklama({ onKirish }) {
           ))}
           <button onClick={() => { setMenyu(false); onKirish() }} style={{ '--i': MENYU.length }}><span><small>→</small>Kirish</span></button>
         </div>
-        <p className="rk-menyu-oyoq">Libosa — kelin liboslari salonlari uchun ijara tizimi</p>
+        <p className="rk-menyu-oyoq">Libosa — nafislik tartibdan boshlanadi</p>
       </div>
       <span className="rk-yol-chizigi" aria-hidden="true"><i /></span>
 
       {/* 1-sahna: bosh kadr. Ulkan so'z-belgi harflari aylantirganda qayrilib ketadi, ortidan bayonot qatorma-qator chiqadi. */}
       <div className="rk-bosh" id="bosh" data-sahna data-t="0">
         <div className="rk-bosh-sahna">
-          <p className="rk-bosh-ustki">Kelin liboslari salonlari uchun<br />ijara tizimi</p>
+          {/* brend shiori — ulkan LIBOSA so'z-belgisi bilan bir kadrda */}
+          <p className="rk-bosh-ustki">Nafislik tartibdan<br />boshlanadi</p>
           <div className="rk-bayonot">
             <div className="rk-bayonot-chap">
               <h1>
@@ -252,17 +259,15 @@ export default function Reklama({ onKirish }) {
       </div>
       </div>
 
-      {/* Oyoq: ixcham — logo, katta «Tizimga kirish» va ingichka pastki tasma */}
+      {/* Oyoq: bitta ingichka qator — logo, «Tizimga kirish», © va tepaga tugmasi */}
       <footer className="rk-oyoq">
         <span className="rk-oyoq-brend"><Belgi /><b>LIBOSA</b></span>
         <button className="rk-keyingi" onClick={onKirish} data-kursor="Kirish" data-magnit>
           <b>Tizimga kirish</b>
           <span className="rk-keyingi-yol"><i />→</span>
         </button>
-        <div className="rk-oyoq-past">
-          <span>© {YIL} Libosa</span>
-          <button className="rk-tepaga" aria-label="Tepaga" onClick={ot('bosh')} data-magnit>↑</button>
-        </div>
+        <span className="rk-oyoq-mualliflik">© {YIL} Libosa</span>
+        <button className="rk-tepaga" aria-label="Tepaga" onClick={ot('bosh')} data-magnit>↑</button>
       </footer>
     </div>
   )

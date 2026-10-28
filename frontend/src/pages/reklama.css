@@ -61,19 +61,25 @@
 .rk-kirish-btn:not(:disabled):hover { background: var(--tilla); color: var(--siyoh); box-shadow: 0 0 40px rgba(228, 193, 150, .55); }
 
 /* Shapka: chapda logo, o'ngda dumaloq ovoz tugmasi va ikkita «pill» */
-.rk-nav { position: fixed; top: 0; left: 0; right: 0; z-index: 30; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 22px var(--chet); pointer-events: none; }
+/* ichki.css dagi umumiy button { min-height: 52px; box-shadow: … } (ilova ichki sahifalari uchun) reklama sahifasiga tegmasin.
+   :where tufayli ustunlik oddiy klassnikidek — har tugmaning o'z klassidagi o'lcham va soya baribir ishlaydi. */
+.rk :where(button) { min-height: 0; box-shadow: none; }
+
+/* Shapkadagi hamma boshqaruv (tabletkalar, ovoz doirasi) bir xil balandlikda: kompyuterda 48 px (8 px shkala), telefonda 44 px
+   (eng kichik bosish maydoni). */
+.rk-nav { --nav-h: 48px; position: fixed; top: 0; left: 0; right: 0; z-index: 30; display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 22px var(--chet); pointer-events: none; }
 .rk-nav > * { pointer-events: auto; }
 .rk-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--oq); font-family: var(--serif); font-size: 22px; letter-spacing: 7px; }
 .rk-belgi { width: 36px; height: 36px; color: var(--tilla); overflow: visible; }
 .rk-belgi-halqa { transform-origin: 260px 280px; animation: rk-aylan 14s linear infinite; }
 @keyframes rk-aylan { to { transform: rotate(360deg); } }
 .rk-nav-ong { display: flex; align-items: center; gap: 10px; }
-.rk-pill { display: inline-flex; align-items: center; gap: 12px; height: 46px; padding: 0 22px; border-radius: 999px; border: 0; background: var(--oq); color: var(--siyoh);
+.rk-pill { display: inline-flex; align-items: center; gap: 12px; height: var(--nav-h); padding: 0 22px; border-radius: 999px; border: 0; background: var(--oq); color: var(--siyoh);
   font: 700 13px/1 'Manrope', sans-serif; letter-spacing: 1.6px; text-transform: uppercase; text-decoration: none; cursor: pointer; box-shadow: 0 10px 30px -14px rgba(14, 26, 43, .8); }
 .rk-pill b { font-size: 16px; letter-spacing: 2px; transition: transform .4s var(--yumshoq); }
 .rk-pill:hover b { transform: scale(1.5) rotate(90deg); }
 .rk-pill-toq { background: rgba(14, 26, 43, .72); color: var(--oq); backdrop-filter: blur(12px); box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .16); }
-.rk-dumaloq { position: relative; width: 46px; height: 46px; padding: 0; display: flex; align-items: center; justify-content: center; gap: 3px; border-radius: 50%; border: 0; background: var(--oq); cursor: pointer; }
+.rk-dumaloq { position: relative; width: var(--nav-h); height: var(--nav-h); padding: 0; display: flex; align-items: center; justify-content: center; gap: 3px; border-radius: 50%; border: 0; background: var(--oq); cursor: pointer; }
 .rk-dumaloq i { width: 3px; height: 3px; border-radius: 2px; background: var(--siyoh); transition: height .3s ease; }
 .rk-ovozli i { animation: rk-ovoz .9s ease-in-out infinite; }
 .rk-ovozli i:nth-child(2) { animation-delay: .2s; }
@@ -83,10 +89,18 @@
 
 /* To'liq ekranli menyu: o'ng yuqoridan doira bo'lib ochiladi, havolalar qatorma-qator ko'tariladi */
 .rk-menyu { position: fixed; inset: 0; z-index: 25; display: flex; flex-direction: column; justify-content: center; padding: 110px var(--chet) 60px; background: var(--siyoh);
-  clip-path: circle(0 at calc(100% - var(--chet) - 50px) 45px); transition: clip-path .8s cubic-bezier(.7, 0, .2, 1); visibility: hidden; }
-.rk-menyuli .rk-menyu { clip-path: circle(150vmax at calc(100% - var(--chet) - 50px) 45px); visibility: visible; }
+  clip-path: circle(0 at calc(100% - var(--chet) - 50px) 46px); transition: clip-path .8s cubic-bezier(.7, 0, .2, 1); visibility: hidden; }
+/* Menyu foni — «Imkoniyatlar → Eslatmalar» slaydidagi sharqona ayvon (tilla chizma), xira va sal yumshatilgan;
+   chap tomonda (menyu bandlari turgan joy) qorong'iroq, katta matn o'qilsin */
+.rk-menyu::before { content: ''; position: absolute; inset: -12px; z-index: -1; pointer-events: none;
+  background: url('/tashvish/fon-7.jpg') 62% 50% / cover no-repeat; opacity: .3; filter: blur(2px) saturate(.9); }
+.rk-menyu::after { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: linear-gradient(90deg, rgba(14, 26, 43, .82), rgba(14, 26, 43, .35) 55%, rgba(14, 26, 43, .55)); }
+.rk-menyuli .rk-menyu { clip-path: circle(150vmax at calc(100% - var(--chet) - 50px) 46px); visibility: visible; }
 .rk-menyu-havolalar { display: flex; flex-direction: column; align-items: flex-start; gap: clamp(4px, 1.2vh, 14px); }
-.rk-menyu-havolalar a, .rk-menyu-havolalar button { display: block; padding: 0; overflow: hidden; border: 0; background: none; color: var(--oq); font-family: var(--serif); font-size: clamp(38px, 8.4vh, 96px); line-height: 1.06; text-decoration: none; text-align: left; cursor: pointer; }
+/* «Kirish» — button, qolganlari havola: yumaloqlik va qalin shrift ham bir xil bo'lsin */
+/* Kesish faqat pastdan (bandlar ostidan chiqib keladi); o'ngda joy bor — kursor borganda yozuv siljiydi, oxirgi harflar kesilmasin */
+.rk-menyu-havolalar a, .rk-menyu-havolalar button { display: block; padding: 0; clip-path: inset(-.3em -1em 0 0); border: 0; border-radius: 0; background: none; color: var(--oq); font-family: var(--serif); font-size: clamp(38px, 8.4vh, 96px); font-weight: 400; line-height: 1.06; text-decoration: none; text-align: left; cursor: pointer; }
 .rk-menyu-havolalar span { display: flex; align-items: baseline; gap: 22px; transform: translateY(110%); transition: transform .8s var(--yumshoq), color .25s ease; }
 .rk-menyuli .rk-menyu-havolalar span { transform: none; transition-delay: calc(var(--i) * 80ms + 250ms), 0s; }
 .rk-menyu-havolalar small { min-width: 34px; font: 700 13px/1 'Manrope', sans-serif; letter-spacing: 2px; color: var(--tilla); }
@@ -277,38 +291,36 @@
 .rk-aloqa a { padding: 12px 24px; border-radius: 999px; border: 1.5px solid var(--tilla); color: var(--tilla); font-weight: 600; text-decoration: none; transition: background .2s ease, color .2s ease; }
 .rk-aloqa a:hover { background: var(--tilla); color: var(--siyoh); }
 
-/* Oyoq: ixcham — tepada tilla chiziq, logo, katta «Tizimga kirish» (ustiga borganda tilla chiziq chiziladi), ingichka pastki tasma */
-.rk-oyoq { position: relative; z-index: 2; display: grid; gap: clamp(10px, 1.8vh, 18px); padding: clamp(22px, 3.6vh, 36px) var(--chet) 12px; background: linear-gradient(180deg, #4a3718, #2e2210 45%, #1a1208); color: var(--oq); overflow: hidden; margin-top: -32px; border-radius: 32px 32px 0 0; box-shadow: inset 0 1px 0 color-mix(in srgb, var(--tilla) 70%, transparent); }
+/* Oyoq: ixcham — bitta qator: chapda logo, o'ngda «Tizimga kirish», © va tepaga tugmasi; jigarrang-tilla fon, yumaloq tepa, tilla chiziq va nur */
+.rk-oyoq { position: relative; z-index: 2; display: flex; align-items: center; gap: 28px; padding: 22px var(--chet); overflow: hidden; margin-top: -32px; border-radius: 32px 32px 0 0;
+  background: linear-gradient(180deg, #4a3718, #2e2210 45%, #1a1208); color: var(--oq); box-shadow: inset 0 1px 0 color-mix(in srgb, var(--tilla) 70%, transparent); }
 .rk-oyoq::after { content: ''; position: absolute; right: -12vw; bottom: -34vh; width: 70vw; height: 80vh; pointer-events: none; background: radial-gradient(closest-side, rgba(228, 193, 150, .2), transparent 70%); }
 .rk-oyoq > * { position: relative; z-index: 1; }
-.rk-oyoq-brend { display: flex; align-items: center; gap: 10px; font-family: var(--serif); font-size: 20px; letter-spacing: 7px; color: var(--oq); }
+.rk-oyoq-brend { display: flex; align-items: center; gap: 8px; margin-right: auto; font-family: var(--serif); font-size: 14px; letter-spacing: 5px; color: var(--oq); }
 .rk-oyoq-brend b { font-weight: 400; }
-.rk-oyoq-brend .rk-belgi { width: 32px; height: 32px; color: var(--tilla); }
-.rk-keyingi { position: relative; display: grid; grid-template-columns: 1fr auto; align-items: end; gap: 6px 30px; width: 100%; padding: 0; border: 0; background: transparent; color: var(--oq); text-align: left; cursor: pointer; }
-.rk-keyingi b { font-family: var(--serif); font-size: clamp(28px, 3.8vw, 60px); line-height: 1; font-weight: 400; text-transform: uppercase; transition: transform .6s var(--yumshoq), color .3s ease; }
-.rk-keyingi:hover b { transform: translateX(22px); color: var(--tilla); }
-.rk-keyingi-yol { display: flex; align-items: center; gap: 14px; padding-bottom: .4em; font-size: 20px; }
-.rk-keyingi-yol i { position: relative; width: clamp(40px, 8vw, 120px); height: 2px; background: rgba(255, 255, 255, .22); overflow: hidden; }
-.rk-keyingi-yol i::after { content: ''; position: absolute; inset: 0; background: var(--tilla); transform: translateX(-101%); transition: transform .9s var(--yumshoq); }
+.rk-oyoq-brend .rk-belgi { width: 22px; height: 22px; color: var(--tilla); }
+.rk-keyingi { display: flex; align-items: center; gap: 10px; padding: 0; border: 0; border-radius: 0; background: none; color: var(--oq); font: 600 12px/1 'Manrope', sans-serif; letter-spacing: 1.6px; text-transform: uppercase; cursor: pointer; transition: color .25s ease; }
+.rk-keyingi b { font-weight: inherit; }
+.rk-keyingi:hover { color: var(--tilla); }
+.rk-keyingi-yol { display: flex; align-items: center; gap: 8px; }
+.rk-keyingi-yol i { position: relative; width: 28px; height: 1px; background: rgba(255, 255, 255, .25); overflow: hidden; }
+.rk-keyingi-yol i::after { content: ''; position: absolute; inset: 0; background: var(--tilla); transform: translateX(-101%); transition: transform .6s var(--yumshoq); }
 .rk-keyingi:hover .rk-keyingi-yol i::after { transform: none; }
-.rk-oyoq-past { display: flex; align-items: center; gap: 22px; padding-top: 10px; border-top: 1px solid rgba(251, 246, 238, .12); font-size: 11px; letter-spacing: 1.5px; color: rgba(251, 246, 238, .5); }
-.rk-oyoq-kichik { padding: 0; border: 0; background: none; font: inherit; letter-spacing: inherit; color: inherit; cursor: pointer; transition: color .25s ease; }
-.rk-oyoq-kichik:hover { color: var(--tilla); }
-.rk-tepaga { margin-left: auto; width: 30px; height: 30px; padding: 0; border-radius: 50%; border: 1px solid rgba(251, 246, 238, .3); background: transparent; color: var(--oq); font-size: 14px; cursor: pointer; transition: background .3s ease, color .3s ease, border-color .3s ease; }
+.rk-oyoq-mualliflik { font-size: 11px; letter-spacing: 1.5px; color: rgba(251, 246, 238, .45); }
+.rk-tepaga { width: 32px; height: 32px; padding: 0; border-radius: 50%; border: 1px solid rgba(251, 246, 238, .25); background: transparent; color: var(--oq); font-size: 13px; cursor: pointer; transition: background .3s ease, color .3s ease, border-color .3s ease; }
 .rk-tepaga:hover { background: var(--tilla); color: var(--siyoh); border-color: var(--tilla); }
 /* Telefonda oyoq yanada ixcham: logo va «Tizimga kirish» bitta qatorda, ostida ingichka tasma */
 @media (max-width: 759px) {
   /* shapka ham ixcham: logo, ovoz tugmasi va «Menyu» kichikroq */
-  .rk-nav { gap: 10px; padding: 14px var(--chet); }
+  .rk-nav { --nav-h: 44px; gap: 10px; padding: 14px var(--chet); }
   .rk-logo { gap: 8px; font-size: 17px; letter-spacing: 5px; }
-  .rk-logo .rk-belgi { width: 28px; height: 28px; }
+  .rk-logo .rk-belgi { width: 32px; height: 32px; }
   .rk-nav-ong { gap: 8px; }
-  .rk-pill { gap: 8px; height: 36px; padding: 0 14px; font-size: 11px; letter-spacing: 1.2px; }
+  .rk-pill { gap: 8px; padding: 0 16px; font-size: 11px; letter-spacing: 1.2px; }
   .rk-pill b { font-size: 13px; letter-spacing: 1px; }
-  .rk-dumaloq { width: 36px; height: 36px; }
   .rk-ovozli i { animation-name: rk-ovoz-kichik; }
-  .rk-menyu { clip-path: circle(0 at calc(100% - var(--chet) - 38px) 32px); }
-  .rk-menyuli .rk-menyu { clip-path: circle(150vmax at calc(100% - var(--chet) - 38px) 32px); }
+  .rk-menyu { clip-path: circle(0 at calc(100% - var(--chet) - 38px) 36px); }
+  .rk-menyuli .rk-menyu { clip-path: circle(150vmax at calc(100% - var(--chet) - 38px) 36px); }
   /* a'zo bo'lish: matn va ariza formasi ixcham — bo'lim taxminan bitta ekranga sig'adi */
   .rk-azo { gap: 20px; padding: 72px var(--chet) 44px; }
   .rk-azo .rk-ustki { margin-bottom: 10px !important; font-size: 11px; letter-spacing: 4px; }
@@ -321,15 +333,10 @@
   .rk-forma label { gap: 4px; font-size: 12px; }
   .rk-forma input, .rk-forma textarea { padding: 9px 12px; border-radius: 11px; }
   .rk-forma .rk-tugma { margin-top: 2px; padding: 13px 24px; font-size: 15px; }
-  .rk-oyoq { grid-template-columns: auto 1fr; align-items: center; gap: 10px 12px; padding: 16px var(--chet) 8px; margin-top: -22px; border-radius: 22px 22px 0 0; }
-  .rk-oyoq-brend { gap: 8px; font-size: 15px; letter-spacing: 5px; }
-  .rk-oyoq-brend .rk-belgi { width: 24px; height: 24px; }
-  .rk-keyingi { width: auto; justify-self: end; grid-template-columns: auto auto; align-items: center; gap: 10px; }
-  .rk-keyingi b { font-size: 15px; letter-spacing: 1px; }
-  .rk-keyingi-yol { gap: 8px; padding-bottom: 0; font-size: 15px; }
-  .rk-keyingi-yol i { width: 20px; height: 1px; }
-  .rk-oyoq-past { grid-column: 1 / -1; gap: 16px; padding-top: 8px; font-size: 10px; }
-  .rk-tepaga { width: 26px; height: 26px; font-size: 12px; }
+  /* telefon: logo, kirish va tepaga bir qatorda; © ostida */
+  .rk-oyoq { flex-wrap: wrap; gap: 8px 12px; padding: 16px var(--chet) 12px; margin-top: -22px; border-radius: 22px 22px 0 0; }
+  .rk-keyingi-yol i { width: 14px; }
+  .rk-oyoq-mualliflik { order: 3; flex-basis: 100%; font-size: 10px; }
 }
 
 @media (min-width: 760px) {
@@ -373,7 +380,6 @@
   .rk-kino-yopishqoq { align-items: flex-end; padding-bottom: 9vh; }
   .rk-kadr { width: calc(100vw - 2 * var(--chet)); transform-origin: left bottom; }
   .rk-yol-chizigi { right: 8px; height: 80px; margin-top: -40px; }
-  .rk-keyingi { grid-template-columns: 1fr; }
 }
 
 /* Harakatni kamaytirish so'ralgan bo'lsa: sahnalar oddiy oqimda, animatsiyasiz */

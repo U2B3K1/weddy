@@ -71,7 +71,7 @@
 
 
 /* ===== 1-slayd (bosh kadr) ssenariysi — keng ekran =====
-   --p — bosh kadr ulushi (sizdagi JS hisoblaydi), .rk ildizida xuddi shu qiymat --bp nomi bilan ham bor.
+   --p — bosh kadr ulushi (sizdagi JS hisoblaydi), .rk-qasr-xira da xuddi shu qiymat --bp nomi bilan ham bor.
      0–45%    LIBOSA harflari yiqiladi, video boshlanadi (kamera girdobdan chiqadi)
      40–48%   "A'zo bo'lish" / "Kirish" tugmalari paydo bo'ladi
      48–59%   tugmalar turadi, kamera chekinishda
@@ -100,7 +100,7 @@
   .rk-bayonot h1, .rk-bayonot-ong { opacity: clamp(0, calc((1 - var(--p, 0)) / .05), 1); }
 
   /* Saroyni xiralashtiruvchi parda — QasrVideo ichida, video va gulbarglar ustida.
-     U .rk-bosh dan tashqarida bo'lgani uchun --p emas, .rk ildizidagi --bp ishlatiladi. */
+     U .rk-bosh dan tashqarida bo'lgani uchun --p emas, --bp ishlatiladi (Reklama.jsx uni shu elementning o'ziga yozadi). */
   .rk-qasr-xira {
     position: absolute; inset: 0; pointer-events: none;
     --x: clamp(0, calc((var(--bp, 0) - .64) / .08), 1);

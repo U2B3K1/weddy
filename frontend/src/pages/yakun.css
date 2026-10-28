@@ -38,14 +38,18 @@
 }
 .rk-yk-chaqiriq .rk-yk-pin > :not(video) { z-index: 2; }
 
+/* «Navbat sizda.» katta sarlavha bilan bir xil ko'rinadi va aynan uning joyida turadi: o'lcham, 2-qatorning ichkariga
+   surilishi, ranglar va soyalar bir xil — so'nishi bilan o'sha joyda «Saloningiz Libosaga tayyormi?» ko'tariladi */
 .rk-yk-kichik {
-  position: absolute; left: 0; right: 0; top: 50%; margin: 0 !important; transform: translateY(-50%); text-align: center; pointer-events: none;
+  position: absolute; left: 0; right: 0; top: clamp(110px, 17vh, 190px); width: fit-content; margin: 0 auto !important; text-align: left; pointer-events: none;
   font-family: var(--serif); font-weight: 400; text-transform: uppercase; line-height: 1.04; letter-spacing: .02em;
-  font-size: clamp(30px, 4vw, 72px); color: #fff6dc; text-shadow: 0 2px 30px rgba(12, 19, 33, .55);
+  font-size: clamp(34px, 6vw, 118px); color: #fff6dc; text-shadow: 0 2px 40px rgba(12, 19, 33, .45);
   opacity: calc(1 - var(--kc));
 }
-.rk-yk-kichik i { display: block; font-style: normal; opacity: calc(.0 + var(--ka)); transform: translateY(calc((1 - var(--ka)) * .5em)); }
-.rk-yk-kichik i + i { opacity: var(--kb); transform: translateY(calc((1 - var(--kb)) * .5em)); color: var(--tilla); }
+/* line-height qatorning o'zida: .rk p { line-height: 1.6 } ustunroq va <p> nikini bosib ketadi */
+.rk-yk-kichik i { display: block; padding: .04em .04em .1em; line-height: 1.04; font-style: normal; opacity: calc(.0 + var(--ka)); transform: translateY(calc((1 - var(--ka)) * .5em)); }
+.rk-yk-kichik i + i { margin-left: 1.9em; opacity: var(--kb); transform: translateY(calc((1 - var(--kb)) * .5em)); color: #f3d6a8;
+  text-shadow: 0 2px 22px rgba(12, 19, 33, .75), 0 0 60px rgba(12, 19, 33, .5); }
 
 .rk-yk-savol { position: absolute; left: 0; right: 0; top: clamp(110px, 17vh, 190px); text-align: center; pointer-events: none; }
 .rk-yk-chaqiriq h2 {
@@ -155,7 +159,8 @@
 
 /* ---------- Telefon va tik ekran ---------- */
 @media (max-width: 899px), (max-aspect-ratio: 11/10) {
-  .rk-yk-chaqiriq h2 { font-size: clamp(24px, 8.8vw, 64px); line-height: 1; }
+  .rk-yk-chaqiriq h2, .rk-yk-kichik { font-size: clamp(24px, 8.8vw, 64px); line-height: 1; }
+  .rk-yk-kichik i + i { margin-left: 1.5em; }
   /* uch qator zinapoya emas, «tartibsiz» turadi: ikkinchisi o'ngga surilgan, uchinchisi yarim qaytadi */
   .rk-yk-chaqiriq h2 span + span { display: block; margin-left: 1.5em; }
   .rk-yk-chaqiriq h2 span + span + span { display: block; margin-left: .55em; }

@@ -89,7 +89,7 @@ export function gulbargYarat(canvas) {
   const chiz = (hozir) => {
     const dt = Math.min(0.05, (hozir - oldingi) / 1000); oldingi = hozir
     const t = hozir / 1000
-    P += (maqsadP - P) * 0.1
+    P = maqsadP   // silliqlashsiz: video va matnlar bilan bir xil aylantirish holatida turadi (QasrVideo.jsx)
     const e = 1 - Math.pow(1 - P, 3)                 // kamera chekinishi: boshida tez, oxirida sekin
 
     // Sichqoncha tezligi — gulbarglarga "shamol" shu tezlik yo'nalishida beriladi

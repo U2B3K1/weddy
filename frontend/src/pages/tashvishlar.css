@@ -138,13 +138,6 @@
 .rk-tv-nuqtalar button:hover::before { background: var(--oq); }
 .rk-tv-nuqtalar .rk-tv-faol { width: 46px; }
 .rk-tv-nuqtalar .rk-tv-faol::before { background: var(--tilla); }
-/* avtomatik almashish sanayotganda joriy nuqta oq bilan to'lib boradi (Tashvishlar.jsx dagi AVTO = 5 s; matn o'tishning o'rtasida almashgani uchun 4.5 s) */
-.rk-tv-nuqtalar .rk-tv-faol::after {
-  content: ''; position: absolute; left: 0; top: 50%; height: 2px; margin-top: -1px; width: 100%;
-  background: var(--oq); transform-origin: 0 50%; transform: scaleX(0);
-}
-.rk-tv-avto .rk-tv-nuqtalar .rk-tv-faol::after { animation: rk-tv-tolish 4.5s linear both; }
-@keyframes rk-tv-tolish { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 .rk-tv-nuqtalar button:focus-visible { outline: 2px solid var(--tilla); outline-offset: 2px; }
 
 .rk-tv-jim .rk-tv-matn { opacity: 0; transform: translateY(calc(-50% + 18px)); filter: blur(6px); }

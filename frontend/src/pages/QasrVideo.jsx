@@ -32,7 +32,7 @@ export function QasrVideo() {
     const xato = () => { w.style.display = 'none'; g?.yop() }
     v.addEventListener('error', xato)
 
-    let maqsad = 0, joriy = 0, kadr
+    let maqsad = 0, kadr
     const olch = () => {
       const H = window.innerHeight
       // 0 — sahifa tepasida (girdob ichida), 1 — video to'liq so'nadigan nuqta (zal uzoqdan, kelin nuqtadek).
@@ -50,13 +50,14 @@ export function QasrVideo() {
       w.style.opacity = String(1 - chiq * 0.3)            // keyingi bo'limlarda saroy 70% ko'rinadi
       if (tuval.current) tuval.current.style.opacity = String(1 - chiq)   // jonli gulbarglar esa to'liq so'nadi
     }
-    // Silliqlash: video vaqti aylantirishga darhol sakramaydi, yumshoq yetib boradi
+    // Video vaqti aylantirishga qo'shimcha silliqlashsiz bog'lanadi: sahifa aylantirishining o'zi inersiyali
+    // (Reklama.jsx), matnlar va qorayish ham aynan shu holatga ergashadi. Bu yerda yana silliqlansa, tez
+    // aylantirganda video ulardan orqada qolib, to'xtagandan keyin ham yurib turardi.
     const sil = () => {
-      joriy += (maqsad - joriy) * 0.12
       // Oldingi kadrga o'tish (seek) tugamaguncha yangisini so'ramaymiz — aks holda so'rovlar navbatga
       // yig'ilib, video sakrab-sakrab yuradi. Shu bitta shart harakatni silliq qiladi.
       if (v.duration && !v.seeking) {
-        const t = BOSHLANISH + joriy * (v.duration - BOSHLANISH - 0.05)
+        const t = BOSHLANISH + maqsad * (v.duration - BOSHLANISH - 0.05)
         if (Math.abs(v.currentTime - t) > 0.03) v.currentTime = t
       }
       kadr = requestAnimationFrame(sil)

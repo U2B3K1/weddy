@@ -9,12 +9,13 @@
 // (eski kadr ostida turadi). «Keyingi» — nur o'ngdan chapga, «oldingi» — chapdan o'ngga yuradi.
 //
 // Qaysi slayd ko'rinishini sahifaning aylantirilgan joyi belgilaydi: bo'lim baland (.rk-tv-yol), ichidagi sahna
-// yopishqoq (.rk-tv) — aylantirganda slaydlar birin-ketin almashadi. Strelkalar, nuqtalar va 5 soniyalik
-// avtomatik almashish ham shu orqali ishlaydi: ular sahifani kerakli slaydning joyiga aylantirib qo'yadi.
+// yopishqoq (.rk-tv) — aylantirganda slaydlar birin-ketin almashadi. Strelkalar va nuqtalar ham shu orqali ishlaydi:
+// ular sahifani kerakli slaydning joyiga aylantirib qo'yadi. Avtomatik almashish yo'q — slayd o'zi o'tmaydi.
 //
 // Kelin — aylanma video, bosish bilan boshqariladi: bir marta bosilsa to'liq bir aylanadi, bosib turib yonga
 // surilsa qo'lda aylantiriladi. Videolar har kadri kalit kadr qilib kodlangan, shuning uchun surishda sakramaydi.
 import { useEffect, useRef, useState } from 'react'
+import { tutqichQoy } from './gildirakTutqich'
 import './tashvishlar.css'
 
 // Kelinning kadrdagi o'rni: x, y — oyog'i turadigan nuqta (bo'lim kengligi / balandligidan %), h — bo'yi (vh).
@@ -38,7 +39,6 @@ const SLAYDLAR = [
     qatorlar: ['Bir hisobda bir nechta filial', "Har filialga o'z qurilmasi", 'Alohida kassa', "Filial bo'yicha foyda"] },
 ]
 const SONI = SLAYDLAR.length
-const AVTO = 8000      // ms — bo'lim ekranda turganda slayd shuncha vaqtdan keyin o'zi almashadi
 const OTISH = 1150     // ms — skaner nuri ekranni kesib o'tadigan vaqt (tashvishlar.css dagi --tv-vaqt bilan bir xil)
 const BOSH = 0.25      // s — videoning birinchi kadrlari (asl rasm) keyingilaridan farq qiladi, tashlab yuboriladi
 const TEZLIK = 1.7     // bir bosishdagi to'liq aylanish tezligi (5 s lik video ≈ 3 s da)
@@ -54,23 +54,29 @@ export function Tashvishlar() {
   const [yon, setYon] = useState(1)               // 1 — keyingi (nur o'ngdan chapga), -1 — oldingi
   const [ochildi, setOchildi] = useState(false)   // bo'lim ekranga kirib, birinchi kadr ochilganmi
   const [jim, setJim] = useState(true)            // matn yashirin (o'tishning birinchi yarmida)
-  const [avto, setAvto] = useState(false)         // avtomatik almashish hozir sanayaptimi (nuqtadagi to'lish chizig'i uchun)
   const faolRef = useRef(0), band = useRef(true), vaqtlar = useRef([])
-  const ozgardi = useRef(0)                       // oxirgi almashish yoki foydalanuvchi harakati vaqti (ms)
+  // Strelka/nuqta yoki g'ildirak tanlagan slayd: sahifa uning joyiga silliq aylanguncha oraliq slaydlar ko'rsatilmaydi
+  const nishon = useRef(null)
+  const oxirgiGildirak = useRef(0)                // oxirgi g'ildirak hodisasi vaqti (ms) — harakatlarni ajratish uchun
   const ushlash = useRef(null)                    // { x, t, surildi } — kelin bosib turilgan paytda
   const keyin = (ms, f) => { vaqtlar.current.push(setTimeout(f, ms)) }
 
   // Aylantirilgan joyga to'g'ri keladigan slayd (0..SONI-1) va slaydning sahifadagi joyi
   const yolUzunligi = () => yol.current.offsetHeight - window.innerHeight
-  const joydagi = () => {
+  const joyUlushi = () => {          // 0..SONI-1 oralig'ida, kasr bilan
     const u = yolUzunligi()
-    return u > 0 ? Math.round(Math.min(1, Math.max(0, -yol.current.getBoundingClientRect().top / u)) * (SONI - 1)) : faolRef.current
+    return u > 0 ? Math.min(1, Math.max(0, -yol.current.getBoundingClientRect().top / u)) * (SONI - 1) : faolRef.current
   }
+  const joydagi = () => (nishon.current !== null ? nishon.current : Math.round(joyUlushi()))
+  // Slaydga o'tish: o'tish darhol shu slaydga boshlanadi, sahifa esa uning joyiga aylanadi (oraliq slaydlar chiqmaydi)
   const borish = (i) => {
     i = aylana(i)
-    ozgardi.current = performance.now()
+    nishon.current = i
+    // zaxira: aylanish to'xtatilsa (masalan, chiziqni ushlab olishsa) ham nishon osilib qolmasin
+    keyin(1500, () => { if (nishon.current === i) { nishon.current = null; moslaRef.current() } })
     const y = yol.current.getBoundingClientRect().top + window.scrollY + (i / (SONI - 1)) * yolUzunligi()
     window.scrollTo({ top: y, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' })
+    moslaRef.current()
   }
 
   // Bo'lim ekranga kirganda birinchi kadr ham skaner bilan ochiladi
@@ -81,7 +87,7 @@ export function Tashvishlar() {
       kuzat.disconnect()
       setOchildi(true); setKir(0)
       keyin(OTISH * .45, () => setJim(false))
-      keyin(OTISH, () => { setKir(null); band.current = false; ozgardi.current = performance.now(); moslaRef.current() })
+      keyin(OTISH, () => { setKir(null); band.current = false; moslaRef.current() })
     }, { threshold: 0.98 })   // birinchi kadr sahna ekranni to'liq egallaganda ochiladi (shu paytgacha qorong'ilik)
     kuzat.observe(bolim.current)
     return () => { kuzat.disconnect(); v.forEach(clearTimeout) }
@@ -105,7 +111,6 @@ export function Tashvishlar() {
     const yangi = joydagi(), eski = faolRef.current
     if (band.current || yangi === eski) return
     band.current = true
-    ozgardi.current = performance.now()                     // 5 soniya slayd almasha boshlagan paytdan sanaladi
     videolar.current[eski]?.pause()
     setYon(yangi > eski ? 1 : -1); setKir(yangi); setJim(true)
     faolRef.current = yangi
@@ -120,25 +125,31 @@ export function Tashvishlar() {
   const moslaRef = useRef(mosla)
   useEffect(() => { moslaRef.current = mosla })
 
-  // Aylantirish va 5 soniyalik avtomatik almashish
+  // Aylantirish: slayd faqat sahifa aylantirilganda (yoki strelka/nuqta bosilganda) almashadi
   useEffect(() => {
-    const aylandi = () => moslaRef.current()
+    const aylandi = () => {
+      // sahifa nishon slayd joyiga yetib keldi — endi yana aylantirilgan joy hal qiladi
+      if (nishon.current !== null && Math.abs(joyUlushi() - nishon.current) < 0.02) nishon.current = null
+      moslaRef.current()
+    }
     window.addEventListener('scroll', aylandi, { passive: true })
     window.addEventListener('resize', aylandi)
-    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return () => { window.removeEventListener('scroll', aylandi); window.removeEventListener('resize', aylandi) }
-    // Avtomatik almashish faqat bo'lim ekranni egallab turganda, sahifa ko'rinib turganda va kelin bilan
-    // o'ynalmayotganda sanaydi; oxirgi slaydda to'xtaydi (sahifani bo'limdan o'zi chiqarib yubormaydi).
-    const soat = setInterval(() => {
-      const r = yol.current.getBoundingClientRect(), vh = window.innerHeight, hozir = performance.now()
-      const v = videolar.current[faolRef.current]
-      const sanaydi = !document.hidden && r.top < vh * .4 && r.bottom > vh * .6
-        && faolRef.current < SONI - 1 && !ushlash.current && (!v || v.paused)
-      if (!sanaydi) ozgardi.current = hozir
-      else if (!band.current && hozir - ozgardi.current >= AVTO) borish(faolRef.current + 1)
-      setAvto(sanaydi)
-    }, 250)
-    return () => { clearInterval(soat); window.removeEventListener('scroll', aylandi); window.removeEventListener('resize', aylandi) }
+    return () => { window.removeEventListener('scroll', aylandi); window.removeEventListener('resize', aylandi) }
   }, [])   // eslint-disable-line react-hooks/exhaustive-deps
+
+  // G'ildirak: bo'lim ekranga yopishib turganda bitta harakat — bitta slayd. Trackpad inersiyasi uzluksiz hodisalar
+  // oqimi, shuning uchun yangi harakat faqat 220 ms tanaffusdan keyin va o'tish tugagach sanaladi. Birinchi slayddan
+  // yuqoriga, oxirgisidan pastga aylantirilsa — hodisa olinmaydi, sahifa odatdagidek aylanadi.
+  useEffect(() => tutqichQoy((e) => {
+    // vaqt har hodisada yangilanadi: bo'limga inersiya bilan kirilganda o'sha harakat yangi slaydga o'tkazib yubormasin
+    const hozir = performance.now(), yangiHarakat = hozir - oxirgiGildirak.current > 220
+    oxirgiGildirak.current = hozir
+    const r = yol.current.getBoundingClientRect(), vh = window.innerHeight
+    const yon = Math.sign(e.deltaY), i = faolRef.current
+    if (r.top > 1 || r.bottom < vh - 1 || !yon || (yon < 0 && i === 0) || (yon > 0 && i === SONI - 1)) return false
+    if (yangiHarakat && !band.current && nishon.current === null) borish(i + yon)
+    return true
+  }), [])   // eslint-disable-line react-hooks/exhaustive-deps
 
   // --- Kelinni bosish bilan boshqarish ---
   const oxiri = (v) => v.duration - 0.05
@@ -148,12 +159,11 @@ export function Tashvishlar() {
     v.playbackRate = TEZLIK
     v.play().catch(() => {})
   }
-  const tugadi = (e) => { const v = e.currentTarget; v.pause(); v.currentTime = BOSH; ozgardi.current = performance.now() }
+  const tugadi = (e) => { const v = e.currentTarget; v.pause(); v.currentTime = BOSH }
   const bosildi = (e, i) => {
     const v = videolar.current[i]
     if (!v || !v.duration || band.current) return
     e.currentTarget.setPointerCapture(e.pointerId)
-    ozgardi.current = performance.now()
     v.pause()
     ushlash.current = { x: e.clientX, t: v.currentTime, surildi: false }
   }
@@ -180,7 +190,7 @@ export function Tashvishlar() {
   const yaqin = [...new Set([faol, aylana(faol + 1), aylana(faol - 1), ...(kir === null ? [] : [kir])])]
   return (
     <div className="rk-tv-yol" ref={yol} id="imkoniyatlar" data-sahna data-kir style={{ '--soni': SONI }}>
-    <div className={'rk-tv' + (jim ? ' rk-tv-jim' : '') + (avto ? ' rk-tv-avto' : '')} ref={bolim}>
+    <div className={'rk-tv' + (jim ? ' rk-tv-jim' : '')} ref={bolim}>
       {/* Kadrlar: har slaydga tilla chizma + kelin. Ostida joriy kadr, ustida — skaner bilan ochilayotgani */}
       <div className="rk-tv-sahna">
         {yaqin.map((i) => {
