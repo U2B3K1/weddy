@@ -187,6 +187,7 @@ select option { color: #0e1a2b; background: #fff; }
 .xodim-menu[aria-expanded="true"] { border-color: var(--tilla); color: var(--tilla); }
 .xodim-menyu { margin-top: 10px; padding: 12px; border-radius: 14px; background: rgba(253, 250, 245, .08); border: 1px solid rgba(255, 255, 255, .16); }
 .qator input[type="number"] { width: 84px; }
+.qator input.summa-input { width: 120px; }
 .pastki button { min-width: 0; }
 
 /* Chop etiladigan hujjatlar */
@@ -263,7 +264,7 @@ select option { color: #0e1a2b; background: #fff; }
 
 /* Promokod formasi */
 .qator.keng > label { flex: 1; min-width: 0; }
-.qator.keng input[type="number"] { width: 100%; }
+.qator.keng input[type="number"], .qator.keng input.summa-input { width: 100%; }
 .guruh { border: 1px solid rgba(255, 255, 255, .16); border-radius: 14px; padding: 8px 10px; margin: 0; }
 .guruh legend { font-size: 13px; color: rgba(251, 246, 238, .55); padding: 0 4px; }
 .qator.kunlar { flex-wrap: wrap; gap: 12px; }
@@ -509,7 +510,7 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
 
   /* Bir qatordagi maydonlar ekrandan chiqib ketmaydi: torayadi, sig'magan tugma keyingi qatorga tushadi */
   .qator { flex-wrap: wrap; }
-  .qator > input:not([type="checkbox"]):not([type="radio"]):not([type="number"]), .qator > select { flex: 1 1 0; min-width: 0; }
+  .qator > input:not([type="checkbox"]):not([type="radio"]):not([type="number"]):not(.summa-input), .qator > select { flex: 1 1 0; min-width: 0; }
   .qator:not(.kunlar) > label { flex: 1 1 120px; min-width: 0; }
   .qator:not(.kunlar) > label > input:not([type="checkbox"]):not([type="radio"]), .qator > label > select { width: 100%; min-width: 0; }
   /* Ro'yxat kartasi ichidagi qator-tugma ikkinchi ramka chizmaydi (karta ichida karta bo'lmasin) */

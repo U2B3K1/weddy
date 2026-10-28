@@ -11,6 +11,7 @@ import {
   smsJurnali, filialOzgartir, filialQosh, filiallar, qurilmaFilial, qurilmaOchirish, qurilmaTasdiq, qurilmalar, salonParol, salonRekvizit, salonRekvizitSaqla, yordamBekor, yordamBer,
   yordamRuxsati, sozlamalar, sozlamaSaqla, xatoMatni, xodimOzgartir, xodimQosh, xodimTelegramUlash, xodimlarBoshqaruv,
 } from '../api'
+import SummaInput from '../components/SummaInput'
 
 // GET /sozlamalar/ javobidagi faqat o'qiladigan belgilar (integratsiyalardan) saqlashga yuborilmaydi
 const faqatSozlama = ({ fiskal_eslatma: _f, fiskal_izoh: _i, tolov_havolasi: _t, ...qolgan }) => qolgan
@@ -100,7 +101,7 @@ export default function Sozlamalar({ menId, bolim, onBolim }) {
           </label>
           {s.kechikish_jarimasi && (
             <label>Kunlik summa, so'm
-              <input type="number" min="0" value={s.kechikish_kunlik_summa} onChange={son('kechikish_kunlik_summa')} />
+              <SummaInput value={s.kechikish_kunlik_summa} onChange={son('kechikish_kunlik_summa')} />
             </label>
           )}
         </section>

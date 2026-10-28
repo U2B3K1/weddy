@@ -5,6 +5,7 @@ import { SalonchiForma } from './Salonchilar'
 import Manekin from '../components/Manekin'
 import CalendarPage from '../components/kalendar/CalendarPage'
 import { aksessuarManekinSaqla, boshAksessuarlar, filiallar, boshLiboslar, mijozQidir, qulf, qulfOchir, manekinSaqla, salonchiQosh, salonchilar, som, ustamaFoiz, zakazYarat } from '../api'
+import SummaInput from '../components/SummaInput'
 
 // Yangi zakaz: 1) sana va mijoz telefoni, 2) libos tanlash, 3) tasdiqlash (4-bo'lim).
 const QORALAMA = 'libosa.yangi_zakaz'
@@ -272,7 +273,7 @@ export default function YangiZakaz({ onTayyor, onTolov }) {
               <option value="">Rang</option>
               {noyob('rang').map((o) => <option key={o} value={o}>{o}</option>)}
             </select>
-            <input className="narx-filtr" type="number" min="0" placeholder="Narx gacha" value={filtr.narx}
+            <SummaInput className="narx-filtr" placeholder="Narx gacha" value={filtr.narx}
               onChange={(e) => setFiltr({ ...filtr, narx: e.target.value })} />
           </div>
         </section>

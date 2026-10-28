@@ -4,6 +4,7 @@ import {
   xarajatBekor, xarajatQaror, xarajatTuzat, xarajatYarat, xarajatlar, xatoMatni,
   sanaMatni,
 } from '../api'
+import SummaInput from './SummaInput'
 
 const HOLAT = { kutilmoqda: 'tasdiq kutmoqda', tasdiqlandi: 'tasdiqlangan', rad: 'rad etilgan' }
 const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -71,7 +72,7 @@ function Qator({ x, bajar, moddalar }) {
       </span>
       {x.holat === 'kutilmoqda' && (
         <div className="qator">
-          {!x.kassadan && <input type="number" min="1" value={summa} aria-label="Summa" onChange={(e) => setSumma(e.target.value)} />}
+          {!x.kassadan && <SummaInput value={summa} aria-label="Summa" onChange={(e) => setSumma(e.target.value)} />}
           <button className="kichik" onClick={() => bajar(() => xarajatQaror(x.id, 'tasdiq', x.kassadan ? undefined : Number(summa)), 'Tasdiqlandi.')}>Tasdiqlash</button>
           {/* kassadan to'langan pul chiqib bo'lgan — rad etilmaydi, faqat tasdiqlanadi */}
           {!x.kassadan && <button className="ikkinchi kichik" onClick={() => bajar(() => xarajatQaror(x.id, 'rad'), 'Rad etildi.')}>Rad etish</button>}
@@ -100,7 +101,7 @@ function XarajatTahrir({ x, moddalar, bajar }) {
         </select>
         {x.kassadan ? <p className="malumot">Kassadan to'langan: summa va sana o'zgartirilmaydi, bekor ham qilinmaydi.</p> : (
           <>
-            <label>Summa, so'm<input type="number" min="1" value={f.summa} onChange={set('summa')} /></label>
+            <label>Summa, so'm<SummaInput value={f.summa} onChange={set('summa')} /></label>
             <label>Sana<input type="date" value={f.sana} onChange={set('sana')} /></label>
           </>
         )}
@@ -124,7 +125,7 @@ function DoimiyQator({ d, bajar }) {
     <div className={`tasdiq ${d.faol ? '' : 'bajarilgan'}`}>
       <span><b>{d.modda_nomi}</b> · {som(d.summa)}{d.izoh ? ` · ${d.izoh}` : ''}{d.faol ? '' : " · o'chirilgan"}</span>
       <div className="qator">
-        <input type="number" min="1" value={summa} aria-label="Summa" onChange={(e) => setSumma(e.target.value)} />
+        <SummaInput value={summa} aria-label="Summa" onChange={(e) => setSumma(e.target.value)} />
         <input value={izoh} maxLength={300} placeholder="Izoh" aria-label="Izoh" onChange={(e) => setIzoh(e.target.value)} />
       </div>
       <div className="qator">
@@ -169,7 +170,7 @@ function Forma({ moddalar, onYuborish, doimiy, fil = [], tugma = 'Xarajat kiriti
         <option value="">Moddani tanlang</option>
         {moddalar.map((m) => <option key={m.kod} value={m.kod}>{m.nomi}</option>)}
       </select>
-      <label>Summa, so'm<input type="number" min="1" value={f.summa} onChange={set('summa')} /></label>
+      <label>Summa, so'm<SummaInput value={f.summa} onChange={set('summa')} /></label>
       {!doimiy && <label>Sana<input type="date" value={f.sana} onChange={set('sana')} /></label>}
       {doimiy && fil.length > 0 && (
         <select value={f.filial} onChange={set('filial')} aria-label="Filial">

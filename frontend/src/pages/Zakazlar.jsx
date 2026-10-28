@@ -10,6 +10,7 @@ import {
   boshAksessuarlar, boshLiboslar, libosAlmashtirish, salonchilar, zakazSalonchi,
   sanaMatni,
 } from '../api'
+import SummaInput from '../components/SummaInput'
 import { TARIX_HARAKATLARI, ZAKAZ_HOLATLARI } from '../nomlar'
 
 // Zakaz yo'li: 4 qadam; «yopildi» — hammasi o'tilgan, «bekor» — hech biri.
@@ -389,7 +390,7 @@ function TolovForma({ sarlavha, maks, onYuborish, usulsiz, zakazId }) {
   return (
     <Amal sarlavha={sarlavha} id="asosiy-amal">
       <label>Summa (maks. {som(maks)})
-        <input type="number" min="1" max={maks} value={summa} onChange={(e) => setSumma(e.target.value)} />
+        <SummaInput value={summa} onChange={(e) => setSumma(e.target.value)} />
       </label>
       {!usulsiz && (
         <select value={usul} onChange={(e) => setUsul(e.target.value)}>
@@ -462,7 +463,9 @@ function ChegirmaForma({ zakazId, z, bajar }) {
         <button type="button" className={tur === 'summa' ? '' : 'ikkinchi'} onClick={() => { setTur('summa'); setFoiz('') }}>Summada</button>
       </div>
       <label>{tur === 'foiz' ? 'Boshqa chegirma, %' : "Boshqa chegirma, so'm"}
-        <input type="number" min="1" max={tur === 'foiz' ? 100 : asos} value={foiz} onChange={(e) => setFoiz(e.target.value)} />
+        {tur === 'foiz'
+          ? <input type="number" min="1" max="100" value={foiz} onChange={(e) => setFoiz(e.target.value)} />
+          : <SummaInput value={foiz} onChange={(e) => setFoiz(e.target.value)} />}
       </label>
       {Number(foiz) > 0 && (
         <p className="malumot">Chegirma: {som(miqdor)} · yangi jami: <b>{som(asos - (z.promokod_chegirma || 0) - miqdor)}</b> (rahbar tasdiqlasa)</p>
@@ -498,7 +501,7 @@ function BerishForma({ onYuborish, soz, libosZalogi }) {
       <select value={turi} onChange={(e) => { setTuri(e.target.value); setF({}) }}>
         {TURLAR.map(([t, nom]) => <option key={t} value={t}>{nom}</option>)}
       </select>
-      {turi === 'pul' && <label>Zalog summasi<input type="number" value={pulSumma} onChange={set('summa')} /></label>}
+      {turi === 'pul' && <label>Zalog summasi<SummaInput value={pulSumma} onChange={set('summa')} /></label>}
       {turi === 'hujjat' && (<>
         <label>Hujjat turi<input placeholder="pasport" onChange={set('hujjat_turi')} /></label>
         <label>Raqami<input onChange={set('hujjat_raqami')} /></label>
@@ -506,7 +509,7 @@ function BerishForma({ onYuborish, soz, libosZalogi }) {
       {turi === 'tillo' && (<>
         <label>Tavsif<input placeholder="uzuk" onChange={set('tavsif')} /></label>
         <label>Og'irligi, g<input type="number" step="0.01" onChange={set('ogirlik_gr')} /></label>
-        <label>Taxminiy qiymat<input type="number" onChange={set('summa')} /></label>
+        <label>Taxminiy qiymat<SummaInput onChange={set('summa')} /></label>
       </>)}
       <button onClick={() => onYuborish([zalog])}>Zalogni qabul qilib berish</button>
     </Amal>
@@ -529,8 +532,8 @@ function QaytarishForma({ onYuborish, baholash, tillo }) {
           <option value="yirtiq">Yirtiq</option><option value="aksessuar_yoq">Aksessuar yo'q</option>
         </select>
       </label>
-      <label>Jarima<input type="number" min="0" onChange={set('jarima')} /></label>
-      <label>Shu zahoti to'langan jarima (zalogdan ortig'i)<input type="number" min="0" onChange={set('jarima_tolandi')} /></label>
+      <label>Jarima<SummaInput onChange={set('jarima')} /></label>
+      <label>Shu zahoti to'langan jarima (zalogdan ortig'i)<SummaInput onChange={set('jarima_tolandi')} /></label>
       {tillo && <label>Tillo qayta tortildi, g<input type="number" step="0.01" onChange={set('tortilgan_gr')} /></label>}
       {baholash && <label>Mijoz bahosi (1–5)<input type="number" min="1" max="5" onChange={set('baho')} /></label>}
       <button onClick={() => onYuborish(body)}>Qaytarishni rasmiylashtirish</button>
@@ -592,7 +595,7 @@ function PrimerkaForma({ z, bajar, ochiq }) {
             <>
               <label>Natija<input value={qiymat(p, 'natija')} maxLength={300} onChange={set(p, 'natija')} /></label>
               <label>Moslash narxi, so'm (kerak bo'lmasa 0)
-                <input type="number" min="0" value={qiymat(p, 'moslash_narxi')} onChange={set(p, 'moslash_narxi')} />
+                <SummaInput value={qiymat(p, 'moslash_narxi')} onChange={set(p, 'moslash_narxi')} />
               </label>
               <div className="qator">
                 <button className="ikkinchi kichik" onClick={() => bajar(() => primerkaOzgartir(p.id, {

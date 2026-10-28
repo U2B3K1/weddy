@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { som, tamirBer, tamirTugat, tamirlar, xatoMatni } from '../api'
+import SummaInput from './SummaInput'
 
 // FT-3.10: ta'mir va moslash jurnali — nima qilindi, kim qildi, narxi, libos necha kun ta'mirda turdi.
 export default function TamirBlok({ libosId, rahbar, onOzgardi }) {
@@ -36,7 +37,7 @@ export default function TamirBlok({ libosId, rahbar, onOzgardi }) {
             <p className="ogohlantirish">
               Ta'mirda: {ochiq.ish_turi}{ochiq.kim ? ` (${ochiq.kim})` : ''} · {ochiq.boshlangan} dan, {ochiq.kunlar} kun
             </p>
-            <label>Ta'mir narxi<input type="number" min="0" value={f.narx || ''} onChange={set('narx')} /></label>
+            <label>Ta'mir narxi<SummaInput value={f.narx || ''} onChange={set('narx')} /></label>
             {!rahbar && <p className="malumot">Narx kassadan chiqim bo'ladi va rahbar tasdig'ini kutadi (ochiq smena kerak).</p>}
             <button onClick={() => bajar(() => tamirTugat(ochiq.id, { narx: Number(f.narx || 0) }), "Ta'mir tugatildi, libos bo'sh.")}>
               Ta'mirni tugatish

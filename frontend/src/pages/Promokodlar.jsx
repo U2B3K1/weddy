@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import {
   aksessuarlar, kategoriyalar, promokodOzgartir, promokodYarat, promokodlar, salonchilar, som, xatoMatni,
 } from '../api'
+import SummaInput from '../components/SummaInput'
 
 const HOLAT = {
   faol: 'Faol', rejalashtirilgan: 'Rejalashtirilgan', muddati_otgan: "Muddati o'tgan", limiti_tugagan: 'Limiti tugagan',
@@ -171,7 +172,9 @@ function PromokodForma({ onYuborish }) {
           </select>
         ) : (
           <label>{f.chegirma_turi === 'foiz' ? 'Foiz (1–100)' : "Summa, so'm"}
-            <input type="number" min="1" max={f.chegirma_turi === 'foiz' ? 100 : undefined} value={f.qiymat} onChange={set('qiymat')} />
+            {f.chegirma_turi === 'foiz'
+              ? <input type="number" min="1" max="100" value={f.qiymat} onChange={set('qiymat')} />
+              : <SummaInput value={f.qiymat} onChange={set('qiymat')} />}
           </label>
         )}
         <label>Boshlanish (bo'sh — bugundan)
@@ -190,8 +193,8 @@ function PromokodForma({ onYuborish }) {
           </div>
         )}
         <div className="qator keng">
-          <label>Minimal summa<input type="number" min="1" value={f.min_summa || ''} onChange={set('min_summa')} /></label>
-          <label>Maks. chegirma<input type="number" min="1" value={f.maks_chegirma || ''} onChange={set('maks_chegirma')} /></label>
+          <label>Minimal summa<SummaInput value={f.min_summa || ''} onChange={set('min_summa')} /></label>
+          <label>Maks. chegirma<SummaInput value={f.maks_chegirma || ''} onChange={set('maks_chegirma')} /></label>
         </div>
         {kats.length > 0 && (
           <fieldset className="guruh stack">

@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { som, tayyorChegirmaOzgartir, tayyorChegirmaQosh, tayyorChegirmalarHammasi, xatoMatni } from '../api'
+import SummaInput from './SummaInput'
 
 const qiymat = (t) => (t.foiz != null ? `${Number(t.foiz)}%` : som(t.summa))
 
@@ -42,8 +43,9 @@ export default function TayyorChegirmalar() {
           <select value={f.turi} aria-label="Chegirma turi" onChange={(e) => setF({ ...f, turi: e.target.value, qiymat: '' })}>
             <option value="foiz">Foiz, %</option><option value="summa">Summa, so'm</option>
           </select>
-          <input type="number" min="1" max={f.turi === 'foiz' ? 100 : undefined} value={f.qiymat} aria-label="Qiymat"
-            onChange={(e) => setF({ ...f, qiymat: e.target.value })} />
+          {f.turi === 'foiz'
+            ? <input type="number" min="1" max="100" value={f.qiymat} aria-label="Qiymat" onChange={(e) => setF({ ...f, qiymat: e.target.value })} />
+            : <SummaInput value={f.qiymat} aria-label="Qiymat" onChange={(e) => setF({ ...f, qiymat: e.target.value })} />}
         </div>
         <button className="ikkinchi" disabled={!yaroqli(f)} onClick={qosh}>Qo'shish</button>
       </div>
@@ -61,7 +63,9 @@ function Qator({ t, tana, yaroqli, onSaqla }) {
         <select value={f.turi} aria-label="Chegirma turi" onChange={(e) => setF({ ...f, turi: e.target.value, qiymat: '' })}>
           <option value="foiz">%</option><option value="summa">so'm</option>
         </select>
-        <input type="number" min="1" value={f.qiymat} aria-label="Qiymat" onChange={(e) => setF({ ...f, qiymat: e.target.value })} />
+        {f.turi === 'foiz'
+          ? <input type="number" min="1" value={f.qiymat} aria-label="Qiymat" onChange={(e) => setF({ ...f, qiymat: e.target.value })} />
+          : <SummaInput value={f.qiymat} aria-label="Qiymat" onChange={(e) => setF({ ...f, qiymat: e.target.value })} />}
       </div>
       <div className="qator">
         <button className="ikkinchi kichik" disabled={!yaroqli(f)} onClick={() => onSaqla(tana(f), 'Chegirma saqlandi.')}>Saqlash</button>

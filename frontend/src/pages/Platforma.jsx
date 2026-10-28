@@ -1,6 +1,7 @@
 import axios from 'axios'
 import { useCallback, useEffect, useState } from 'react'
 import { sanaMatni, som, xatoMatni } from '../api'
+import SummaInput from '../components/SummaInput'
 import { ZAKAZ_HOLATLARI } from '../nomlar'
 import Shapka from '../components/Shapka'
 import Logo from '../components/Logo'
@@ -388,7 +389,7 @@ function TarifForma({ onYuborish }) {
       <summary>Tarif qo'shish</summary>
       <div className="stack">
         <label>Nomi<input value={f.nomi || ''} onChange={set('nomi')} /></label>
-        <label>Oylik narx<input type="number" min="0" value={f.oylik_narx || ''} onChange={set('oylik_narx')} /></label>
+        <label>Oylik narx<SummaInput value={f.oylik_narx || ''} onChange={set('oylik_narx')} /></label>
         <label>Xodimlar limiti<input type="number" min="1" max="50" value={f.xodim_limit || ''} onChange={set('xodim_limit')} /></label>
         <button disabled={!f.nomi || !f.xodim_limit}
           onClick={() => onYuborish({ nomi: f.nomi, oylik_narx: Number(f.oylik_narx || 0), xodim_limit: Number(f.xodim_limit) }).then((ok) => ok && setF({}))}>
@@ -435,7 +436,7 @@ function TarifTahrir({ t, onSaqla }) {
   return (
     <div className="tasdiq">
       <label>Nomi<input value={f.nomi} maxLength={100} onChange={set('nomi')} /></label>
-      <label>Oylik narx<input type="number" min="0" value={f.oylik_narx} onChange={set('oylik_narx')} /></label>
+      <label>Oylik narx<SummaInput value={f.oylik_narx} onChange={set('oylik_narx')} /></label>
       <div className="qator">
         <label>Xodimlar limiti<input type="number" min="1" max="50" value={f.xodim_limit} onChange={set('xodim_limit')} /></label>
         <label>Filiallar limiti<input type="number" min="1" max="10" value={f.filial_limit} onChange={set('filial_limit')} /></label>

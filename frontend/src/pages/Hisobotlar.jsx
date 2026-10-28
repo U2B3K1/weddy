@@ -7,6 +7,7 @@ import {
   oylikQator, oyniOch, oyniYop, pnl, pnlTafsilot, som, xatoMatni, xodimlarBoshqaruv,
   sanaMatni,
 } from '../api'
+import SummaInput from '../components/SummaInput'
 
 const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 
@@ -369,9 +370,9 @@ function Bank() {
               {u.farq !== null && <> · farq: <b className={u.farq === 0 ? '' : 'qizil'}>{som(u.farq)}</b></>}
             </span>
             <div className="qator">
-              <input type="number" min="0" placeholder="Ko'chirmadagi summa" value={f[`${u.usul}_k`] ?? u.kochirma ?? ''}
+              <SummaInput placeholder="Ko'chirmadagi summa" value={f[`${u.usul}_k`] ?? u.kochirma ?? ''}
                 onChange={(e) => setF({ ...f, [`${u.usul}_k`]: e.target.value })} />
-              <input type="number" min="0" placeholder="Komissiya" value={f[`${u.usul}_m`] ?? u.komissiya ?? ''}
+              <SummaInput placeholder="Komissiya" value={f[`${u.usul}_m`] ?? u.komissiya ?? ''}
                 onChange={(e) => setF({ ...f, [`${u.usul}_m`]: e.target.value })} />
               <button className="ikkinchi kichik" onClick={() => saqla(u.usul)}>Saqlash</button>
             </div>

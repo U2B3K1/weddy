@@ -7,6 +7,7 @@ import AksessuarBolimi from './AksessuarBolimi'
 import {
   filiallar, kategoriyalar, kategoriyaOchir, kategoriyaOzgartir, kategoriyaYarat, libosOzgartir, libosTasdiq, libosYarat, liboslar, som, xatoMatni,
 } from '../api'
+import SummaInput from '../components/SummaInput'
 import LibosSiluet from '../components/LibosSiluet'
 
 // Ro'yxatda odatda faqat ishlaydigan liboslar; sotilgan/arxiv — holat filtri bilan
@@ -197,9 +198,9 @@ function Tafsilot({ l, rahbar, onSaqla, onRasm, fil = [] }) {
       {rahbar ? (
         <>
           <div className="libos-narxlar">
-            <label>Ijara narxi<input type="number" value={f.ijara_narxi} onChange={set('ijara_narxi')} /></label>
-            <label>Zalog<input type="number" value={f.zalog} onChange={set('zalog')} /></label>
-            <label>Tannarx<input type="number" value={f.tannarx} onChange={set('tannarx')} /></label>
+            <label>Ijara narxi<SummaInput value={f.ijara_narxi} onChange={set('ijara_narxi')} /></label>
+            <label>Zalog<SummaInput value={f.zalog} onChange={set('zalog')} /></label>
+            <label>Tannarx<SummaInput value={f.tannarx} onChange={set('tannarx')} /></label>
           </div>
           <button onClick={() => onSaqla({
             ijara_narxi: Number(f.ijara_narxi), zalog: Number(f.zalog),
@@ -231,8 +232,8 @@ function TasdiqForma({ libos, onYuborish, rahbar, onRasm }) {
       <span><b>{libos.artikul}</b> {libos.nomi} ({libos.qoshgan} qo'shdi, narx {som(libos.ijara_narxi)})</span>
       <RasmBlok libosId={libos.id} rahbar={rahbar} onOzgardi={onRasm} />
       <div className="qator">
-        <input type="number" placeholder="Ijara narxi" value={narx} onChange={(e) => setNarx(e.target.value)} />
-        <input type="number" placeholder="Tannarx" value={tannarx} onChange={(e) => setTannarx(e.target.value)} />
+        <SummaInput placeholder="Ijara narxi" value={narx} onChange={(e) => setNarx(e.target.value)} />
+        <SummaInput placeholder="Tannarx" value={tannarx} onChange={(e) => setTannarx(e.target.value)} />
       </div>
       <button disabled={narx === '' || tannarx === ''}
         onClick={() => onYuborish({ ijara_narxi: Number(narx), tannarx: Number(tannarx) })}>Tasdiqlash</button>
@@ -266,9 +267,9 @@ function LibosForma({ kats, rahbar, onYuborish }) {
           <label>Rang<input placeholder="oq" value={f.rang || ''} onChange={set('rang')} /></label>
         </div>
         <div className="libos-narxlar">
-          <label>Ijara narxi<input type="number" value={f.ijara_narxi || ''} onChange={set('ijara_narxi')} /></label>
-          <label>Tavsiya etilgan zalog<input type="number" value={f.zalog || ''} onChange={set('zalog')} /></label>
-          {rahbar && <label>Tannarx<input type="number" value={f.tannarx || ''} onChange={set('tannarx')} /></label>}
+          <label>Ijara narxi<SummaInput value={f.ijara_narxi || ''} onChange={set('ijara_narxi')} /></label>
+          <label>Tavsiya etilgan zalog<SummaInput value={f.zalog || ''} onChange={set('zalog')} /></label>
+          {rahbar && <label>Tannarx<SummaInput value={f.tannarx || ''} onChange={set('tannarx')} /></label>}
         </div>
         {!rahbar && <p className="malumot">Libos rahbar narx va tannarxni tasdiqlagach katalogga chiqadi.</p>}
         <button disabled={!tayyor} onClick={yubor}>Qo'shish</button>

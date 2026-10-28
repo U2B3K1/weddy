@@ -6,8 +6,9 @@ import Tasdiq from '../components/Tasdiq'
 import {
   kassaZaloglar, smenaChiqish, smenaHolati, smenaOchish, smenaQoshilish, smenaTuzat, smenaYopish, smenalar, som, sozlamalar, tolovQabul,
   xarajatModdalari, xarajatYarat, xatoMatni, zakazlarRoyxat, zalogBelgila,
-  sanaMatni,
+  guruhla, sanaMatni,
 } from '../api'
+import SummaInput from '../components/SummaInput'
 
 // Sotuvchi kassadan to'laydigan kundalik xarajatlar; salonning o'z moddalari ham chiqadi (FT-13.1)
 const KASSA_MODDALARI = ['tozalash', 'tamir', 'transport', 'kommunal', 'reklama', 'boshqa']
@@ -154,7 +155,7 @@ function Klaviatura({ qiymat, onOzgar }) {
 
 const Summa = ({ qiymat, izoh }) => (
   <div className="pos-summa" aria-live="polite">
-    <b>{Number(qiymat || 0).toLocaleString('ru-RU')}</b><span>so'm</span>
+    <b>{guruhla(qiymat)}</b><span>so'm</span>
     {izoh && <small>{izoh}</small>}
   </div>
 )
@@ -431,7 +432,7 @@ function YopilganSmenalar() {
           </div>
           {s.yopilgan && (
             <div className="tasdiq-tugmalar">
-              <input type="number" min="0" aria-label="Fakt qoldiq" value={f[`${s.id}_q`] ?? s.fakt_qoldiq} onChange={(e) => setF({ ...f, [`${s.id}_q`]: e.target.value })} />
+              <SummaInput aria-label="Fakt qoldiq" value={f[`${s.id}_q`] ?? s.fakt_qoldiq} onChange={(e) => setF({ ...f, [`${s.id}_q`]: e.target.value })} />
               <input placeholder="Izoh" aria-label="Izoh" value={f[`${s.id}_i`] ?? s.izoh} onChange={(e) => setF({ ...f, [`${s.id}_i`]: e.target.value })} />
               <button className="ikkinchi kichik" onClick={() => saqla(s)}>Tuzatish</button>
             </div>

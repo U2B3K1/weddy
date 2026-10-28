@@ -296,9 +296,10 @@ export const xatoMatni = (e, standart = 'Xatolik yuz berdi.') => {
   return Object.values(d).flat().join(' ') || standart
 }
 
-// Brauzerdan qat'i nazar bir xil ko'rinish: 2 400 000 so'm (hujjatlardagi matn bilan mos)
 // ISO sana (2026-10-22 yoki to'liq vaqt) → 22.10.2026; bo'sh qiymat — bo'sh satr
 export const sanaMatni = (s) => (s ? String(s).slice(0, 10).split('-').reverse().join('.') : '')
-export const som = (n) => `${String(Math.round(Number(n || 0))).replace(/\B(?=(\d{3})+(?!\d))/g, ' ')} so'm`
+// Brauzerdan qat'i nazar bir xil ko'rinish: 2 400 000 so'm (hujjatlardagi matn bilan mos)
+export const guruhla = (n) => String(Math.round(Number(n || 0))).replace(/\B(?=(\d{3})+(?!\d))/g, ' ')
+export const som = (n) => `${guruhla(n)} so'm`
 
 export default api

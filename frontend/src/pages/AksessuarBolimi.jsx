@@ -6,6 +6,7 @@ import {
   aksessuarManekinOchir, aksessuarManekinSaqla, aksessuarManekinYukla, aksessuarOzgartir, aksessuarTafsilot, aksessuarTasdiq, aksessuarYarat, aksessuarlar, donaFilial, donaHolati, filiallar, donaTamirTugat, donaTamirga, donalarQosh,
   kategoriyalar, som, xatoMatni,
 } from '../api'
+import SummaInput from '../components/SummaInput'
 
 const DONA_HOLAT = { bosh: "Bo'sh", tamirda: "Ta'mirda", yoqolgan: "Yo'qolgan", arxiv: 'Arxiv' }
 
@@ -205,7 +206,7 @@ function Tafsilot({ id, rahbar, bajar }) {
       {rahbar && (
         <>
           <div className="ixcham-forma">
-            <label>Ijara narxi<input type="number" value={narx} onChange={(e) => setNarx(e.target.value)} /></label>
+            <label>Ijara narxi<SummaInput value={narx} onChange={(e) => setNarx(e.target.value)} /></label>
             <button className="kichik" onClick={() => amal(() => aksessuarOzgartir(id, { ijara_narxi: Number(narx) }), "Narx saqlandi.")}>Saqlash</button>
           </div>
           <div className="ixcham-forma">
@@ -241,7 +242,7 @@ function DonaTamir({ a, rahbar, amal }) {
           <div key={d.id} className="tasdiq">
             <span><b>{d.yorliq}</b> · {d.tamir.ish_turi}{d.tamir.kim ? ` · ${d.tamir.kim}` : ''} · {d.tamir.kunlar} kun</span>
             <div className="qator">
-              <input type="number" min="0" placeholder="Narxi, so'm" value={narx[d.id] ?? ''} onChange={(e) => setNarx({ ...narx, [d.id]: e.target.value })} />
+              <SummaInput placeholder="Narxi, so'm" value={narx[d.id] ?? ''} onChange={(e) => setNarx({ ...narx, [d.id]: e.target.value })} />
               <button className="ikkinchi kichik" onClick={() => amal(
                 () => donaTamirTugat(d.tamir.id, { narx: Number(narx[d.id]) || 0, ...(rahbar ? {} : { kassadan: true }) }),
                 `${d.yorliq}: ta'mir tugadi.`)}>Tugatish</button>
@@ -275,8 +276,8 @@ function Tasdiq({ a, onYuborish }) {
     <div className="tasdiq">
       <span><b>{a.kod}</b> {a.nomi} · {a.donalar_soni} dona ({a.qoshgan} qo'shdi, narx {som(a.ijara_narxi)})</span>
       <div className="qator">
-        <input type="number" placeholder="Ijara narxi" value={narx} onChange={(e) => setNarx(e.target.value)} />
-        <input type="number" placeholder="Tannarx" value={tannarx} onChange={(e) => setTannarx(e.target.value)} />
+        <SummaInput placeholder="Ijara narxi" value={narx} onChange={(e) => setNarx(e.target.value)} />
+        <SummaInput placeholder="Tannarx" value={tannarx} onChange={(e) => setTannarx(e.target.value)} />
       </div>
       <button disabled={narx === '' || tannarx === ''}
         onClick={() => onYuborish({ ijara_narxi: Number(narx), tannarx: Number(tannarx) })}>Tasdiqlash</button>
@@ -304,9 +305,9 @@ function Forma({ kats, rahbar, onYuborish }) {
           </select>
         </label>
         <div className="libos-narxlar">
-          <label>Ijara narxi<input type="number" value={f.ijara_narxi || ''} onChange={set('ijara_narxi')} /></label>
+          <label>Ijara narxi<SummaInput value={f.ijara_narxi || ''} onChange={set('ijara_narxi')} /></label>
           <label>Dona soni<input type="number" min="1" max="200" value={f.soni} onChange={set('soni')} /></label>
-          {rahbar && <label>Tannarx<input type="number" value={f.tannarx || ''} onChange={set('tannarx')} /></label>}
+          {rahbar && <label>Tannarx<SummaInput value={f.tannarx || ''} onChange={set('tannarx')} /></label>}
         </div>
         <button disabled={!f.nomi || !f.kod} onClick={yubor}>Qo'shish</button>
     </div>
