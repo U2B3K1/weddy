@@ -15,12 +15,14 @@ import { gologrammaYarat } from './gologramma'
 import { yomgirYarat } from './yomgir'
 import './kelinlar.css'
 
+// ?v= — rasm almashtirilganda oshiriladi: nomi o'zgarmagan faylni brauzer keshdagi eski nusxadan ko'rsatmasin
+const V = 2
 const OBRAZLAR = [
-  ['/kelinlar/1.jpg', 'Sirena', "Atlas, ochiq yelka, tanaga yopishgan siluet"],
-  ['/kelinlar/2.jpg', 'Malika', "Hajmli tyul etak, yaltiroq bezak"],
-  ['/kelinlar/3.jpg', "Nafis to'r", "To'r bilan qoplangan A-siluet"],
-  ['/kelinlar/4.jpg', 'Zamonaviy', 'Minimal krep, uzun plash'],
-  ['/kelinlar/5.jpg', 'Orzu', "Shaffof to'r yeng, uzun fata"],
+  [`/kelinlar/1.jpg?v=${V}`, 'Sirena', "Atlas, ochiq yelka, tanaga yopishgan siluet"],
+  [`/kelinlar/2.jpg?v=${V}`, 'Malika', "Hajmli tyul etak, yaltiroq bezak"],
+  [`/kelinlar/3.jpg?v=${V}`, "Nafis to'r", "To'r bilan qoplangan A-siluet"],
+  [`/kelinlar/4.jpg?v=${V}`, 'Zamonaviy', 'Minimal krep, uzun plash'],
+  [`/kelinlar/5.jpg?v=${V}`, 'Orzu', "Shaffof to'r yeng, uzun fata"],
 ]
 // Katta tartib raqami (1–5) — gologramma: kvadratchalardan yig'ilgan, tilla-oq ranglarda, skaner chiziqlari bilan.
 // Raqam katta (14×18) katakli to'rda, serif shriftda (tekis raqamli — Times) chiziladi — kichik to'rdagidek qo'pol chiqmaydi.

@@ -77,7 +77,7 @@ export function QasrVideo() {
 
   return (
     <div ref={qobiq} className="rk-qasr" aria-hidden="true">
-      <video ref={video} src="/video/qasr.mp4" poster="/video/qasr-poster.jpg" muted playsInline preload="auto" />
+      <video ref={video} src="/video/qasr.mp4?v=2" poster="/video/qasr-poster.jpg" muted playsInline preload="auto" />
       <i className="rk-qasr-vinyetka" />
       <canvas ref={tuval} className="rk-gulbarg" />
       {/* sarlavhalar chiqishidan oldin saroyni qoraytirib, blur beradigan parda (reklama-qasr.css) */}
