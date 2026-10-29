@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { createPortal } from 'react-dom'
 
 // Xavfli amallar uchun tasdiq oynasi: telefonda pastdan chiqadi, keng ekranda markazda turadi.
 // `matn` — amal natijasi aytiladi («Zakaz #124 bekor qilinadi, 450 000 so'm qaytariladi»).
@@ -10,7 +11,8 @@ export default function Tasdiq({ sarlavha, matn, tugma = 'Tasdiqlash', xavfli = 
     window.addEventListener('keydown', esc)
     return () => window.removeEventListener('keydown', esc)
   }, [onYop])
-  return (
+  // body'ga chiqariladi: shisha (backdrop-filter) bloklar ichida `position: fixed` ota blokka bog'lanib, oyna kichrayib qolardi
+  return createPortal(
     <div className="oyna-parda" onClick={onYop}>
       <div className="oyna" role="alertdialog" aria-modal="true" aria-label={sarlavha} onClick={(e) => e.stopPropagation()}>
         <h3>{sarlavha}</h3>
@@ -20,6 +22,7 @@ export default function Tasdiq({ sarlavha, matn, tugma = 'Tasdiqlash', xavfli = 
           <button type="button" className={xavfli ? 'xavfli' : ''} onClick={onTasdiq}>{tugma}</button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

@@ -14,7 +14,7 @@ const Ikona = ({ nom }) => (
     {BELGILAR[nom]}
   </svg>
 )
-const DAVR = { bugun: 'Bugun', hafta: 'Shu hafta', oy: 'Shu oy' }
+const DAVR = { bugun: 'Bugun', hafta: 'Shu hafta', oy: 'Shu oy', yil: 'Shu yil' }
 // Qorong'i yuza uchun dataviz validatordan o'tgan bitta rang (bitta qator — legenda kerak emas, sarlavha nomlaydi)
 const GRAFIK_RANG = '#B9833A'
 
@@ -23,7 +23,7 @@ const GRAFIK_RANG = '#B9833A'
 // ogohlantirishlar — yuqori paneldagi qo'ng'iroqchada.
 export default function Dashbord() {
   const [d, setD] = useState(null)
-  const [davr, setDavr] = useState('oy') // FT-19.2: bugun, hafta, oy
+  const [davr, setDavr] = useState('oy') // FT-19.2: bugun, hafta, oy, yil
   const [fil, setFil] = useState([])
   const [filial, setFilial] = useState('')
   const [oylik, setOylik] = useState(null)
@@ -61,12 +61,15 @@ export default function Dashbord() {
         </div>
       )}
       <div className="kpi-qator">
-        <div className="kpi">
-          <div className="kpi-bosh"><Ikona nom="tushum" /><span className="kpi-nom">Bugun tushum</span></div>
+        <div className="kpi" title="Bugun qabul qilingan barcha to'lovlar: avans, qoldiq va jarima. Daromaddan farqi — hali to'liq to'lanmagan zakazlarning avanslari ham kiradi.">
+          <div className="kpi-bosh"><Ikona nom="tushum" /><span className="kpi-nom">Bugun kassaga kirdi</span></div>
           <span className="kpi-qiymat">{som(bugun.tushum_jami)}</span>
-          <span className="kpi-izoh">{bugun.smena_ochiq ? 'Kassa ochiq' : 'Kassa yopiq'}</span>
+          <span className="kpi-izoh">
+            {bugun.smena_ochiq ? 'Kassa ochiq' : 'Kassa yopiq'}
+            {bugun.qaytarilgan > 0 && <> · shundan <b className="qizil">{som(bugun.qaytarilgan)}</b> qaytarildi</>}
+          </span>
         </div>
-        <div className="kpi">
+        <div className="kpi" title="Faqat to'liq to'langan zakazlar (libos ijarasi, aksessuar va ustama; chegirma ayirilgan). Avans va bronlar kirmaydi.">
           <div className="kpi-bosh">
             <Ikona nom="daromad" /><span className="kpi-nom">Daromad</span>
             {/* Filtr o'zi ta'sir qiladigan kartada (Point uslubi) */}
@@ -78,6 +81,7 @@ export default function Dashbord() {
           <span className="kpi-izoh">
             {oyb.zakazlar_soni} ta to'langan zakaz
             {oyb.taxminiy_sof_foyda !== null && <> · sof foyda <b className={oyb.taxminiy_sof_foyda < 0 ? 'qizil' : ''}>{som(oyb.taxminiy_sof_foyda)}</b></>}
+            {oyb.tasdiqlanmagan_xarajat > 0 && <> · <span className="qizil">{som(oyb.tasdiqlanmagan_xarajat)} xarajat tasdiq kutmoqda (foydaga kirmagan)</span></>}
           </span>
         </div>
         <div className="kpi">

@@ -5,7 +5,7 @@ from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.cash.services import KassaXatosi
+from apps.cash.services import KassaXatosi, xato_tanasi
 from apps.tenants.models import Xodim
 from apps.tenants.permissions import IsRahbar, IsStaff, SalonYozishRuxsati, salon_yoza_oladimi
 from django.utils import timezone
@@ -63,7 +63,7 @@ class XarajatlarView(APIView):
             from apps.tenants.views_filial import joriy_filial
             x = xarajat_kiritish(salon=request.salon, xodim=request.user, filial=joriy_filial(request), **ser.validated_data)
         except (XarajatXatosi, KassaXatosi) as e:
-            return Response({'detail': str(e)}, status=409)
+            return Response(xato_tanasi(e), status=409)
         return Response(xarajat_json(x), status=201)
 
 

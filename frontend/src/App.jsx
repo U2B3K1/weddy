@@ -204,6 +204,7 @@ export default function App() {
     t.liboslar > 0 && { matn: `${t.liboslar} ta yangi libos tasdiq kutmoqda`, soni: t.liboslar, bolim: 'katalog:liboslar', tur: 'vaqt' },
     t.xarajatlar > 0 && { matn: `${t.xarajatlar} ta xarajat tasdiq kutmoqda`, soni: t.xarajatlar, bolim: 'hisobotlar:xarajat', tur: 'vaqt' },
     xabarD.bugun.kechikkan > 0 && { matn: `${xabarD.bugun.kechikkan} ta kechikkan qaytarish`, soni: xabarD.bugun.kechikkan, bolim: 'bosh', tur: 'qarz' },
+    xabarD.bugun.kechikkan > 0 && og.kechikish_jarimasi_yoqilgan === false && { matn: "Kechikkan qaytarishlar bor, lekin kechikish jarimasi o'chirilgan", soni: 1, bolim: 'sozlamalar:kechikish', tur: 'vaqt' },
     og.kassa_farqi !== 0 && { matn: `Kassa farqi (${og.kassa_farqi_sana}): ${som(og.kassa_farqi)}`, soni: 1, bolim: 'kassa:tarix', tur: 'qarz' },
     og.tannarxsiz_liboslar > 0 && { matn: `${og.tannarxsiz_liboslar} ta libosning tannarxi kiritilmagan`, soni: 1, bolim: 'katalog', tur: 'vaqt' },
     og.saqlanayotgan_zaloglar > 0 && { matn: `${og.saqlanayotgan_zaloglar} ta hujjat/tillo zalog saqlanmoqda`, soni: 1, bolim: 'kassa:zalog', tur: 'yopildi' },
@@ -278,7 +279,7 @@ export default function App() {
         )}
         {sahifa === 'zakazlar' && (zakazlarBolim === 'bandlik' && !zakazId
           ? <Kalendar onZakaz={zakaz} />
-          : <Zakazlar key={qidiruv?.n} tanlangan={zakazId} onTanla={setZakazId} onYangi={() => setSahifa('yangi')} boshQ={qidiruv?.q} />)}
+          : <Zakazlar key={qidiruv?.n} tanlangan={zakazId} onTanla={setZakazId} onYangi={() => setSahifa('yangi')} onKassa={() => setSahifa('kassa')} boshQ={qidiruv?.q} />)}
         {sahifa === 'mijozlar' && <Mijozlar rahbar={rahbar} onZakaz={zakaz} bolim={mijozlarBolim} />}
         {sahifa === 'katalog' && <Katalog rahbar={rahbar} bolim={katalogBolim} />}
         {sahifa === 'kassa' && (

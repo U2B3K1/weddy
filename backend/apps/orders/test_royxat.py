@@ -112,7 +112,17 @@ class DashbordDavrTests(RoyxatTests):
         d = self.d()
         self.assertEqual((d['davr']['kalit'], d['shu_oy']['hozirgi_daromad'], d['shu_oy']['zakazlar_soni']), ('oy', 2_000_000, 1))
         self.assertIsNotNone(d['shu_oy']['taxminiy_sof_foyda'])
-        self.assertEqual(self.d(davr='xato')['davr']['kalit'], 'oy')
+        r = self.api(self.rahbar).get('/api/dashbord/', {'davr': 'xato'})  # noma'lum davr jimgina «oy»ga aylanmaydi
+        self.assertEqual((r.status_code, list(r.json())), (400, ['davr']))
+        self.assertEqual(self.d(davr='yil')['davr']['dan'], str(timezone.localdate().replace(month=1, day=1)))
+
+    def test_kechikish_jarimasi_holati_ogohlantirishda(self):
+        from apps.tenants.models import sozlama
+        self.assertFalse(self.d()['ogohlantirishlar']['kechikish_jarimasi_yoqilgan'])  # standart — o'chirilgan
+        soz = sozlama(self.salon)
+        soz.kechikish_jarimasi, soz.kechikish_kunlik_summa = True, 50_000
+        soz.save()
+        self.assertTrue(self.d()['ogohlantirishlar']['kechikish_jarimasi_yoqilgan'])
 
     def test_bugun_va_hafta(self):
         from apps.finance.services import xarajat_kiritish

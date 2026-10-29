@@ -18,8 +18,12 @@ class BerishXatosi(Exception):
     pass
 
 
+class ErtaBerishXatosi(BerishXatosi):
+    """Libos olib ketish sanasidan oldin berilmoqda — sotuvchi tasdiqlashi kerak (tasodifiy bosishdan himoya)."""
+
+
 @transaction.atomic
-def libos_berish(*, salon, xodim, zakaz, zaloglar, usul=Tolov.Usul.NAQD):
+def libos_berish(*, salon, xodim, zakaz, zaloglar, usul=Tolov.Usul.NAQD, erta=True):
     """Qoldiq to'liq to'langan va zalog olingan bo'lsagina libos beriladi (FT-7.x, 5-bo'lim).
 
     `zaloglar`: [{'turi': 'pul', 'summa': ...}, {'turi': 'hujjat', 'hujjat_turi', 'hujjat_raqami'},
@@ -32,6 +36,11 @@ def libos_berish(*, salon, xodim, zakaz, zaloglar, usul=Tolov.Usul.NAQD):
         raise BerishXatosi("Qoldiq to'lanmaguncha libos berilmaydi.")
     if not zaloglar:
         raise BerishXatosi('Zalog olinmagan.')
+    if zakaz.olib_ketish > timezone.localdate() and not erta:
+        raise ErtaBerishXatosi(f"Olib ketish sanasi {zakaz.olib_ketish:%d.%m.%Y} — hali kelmagan. "
+                               "Libosni oldinroq berishni tasdiqlaysizmi?")
+    from apps.catalog.services import tozalashni_yakunla
+    tozalashni_yakunla(salon)
     for p in zakaz.pozitsiyalar.select_related('libos'):  # libos jismonan salonda va berishga tayyor bo'lsin
         if p.libos.holat in (Libos.Holat.TOZALASHDA, Libos.Holat.TAMIRDA):
             raise BerishXatosi(f"«{p.libos.nomi}» hozir {p.libos.get_holat_display().lower()} — avval «bo'sh» qiling.")

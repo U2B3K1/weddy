@@ -26,6 +26,8 @@ def xarajat_kiritish(*, salon, xodim, modda, summa, sana=None, usul='naqd', izoh
         raise XarajatXatosi('Summa musbat bo\'lishi kerak.')
     rahbar = xodim.rol == Xodim.Rol.RAHBAR
     xsana = sana or timezone.localdate()
+    if xsana > timezone.localdate():
+        raise XarajatXatosi("Xarajat sanasi kelajakda bo'lishi mumkin emas.")
     if oy_yopilgan(salon, xsana.year, xsana.month):  # tuzatish va bekor qilishdagi qoida bilan bir xil
         raise XarajatXatosi("Bu oy yopilgan: avval oyni oching." if rahbar
                             else "Bu oy yopilgan: uni faqat rahbar o'zgartira oladi.")
@@ -90,6 +92,8 @@ def xarajatni_tuzatish(*, salon, rahbar, xarajat, modda=None, summa=None, sana=N
         raise XarajatXatosi("Summa musbat bo'lishi kerak.")
     if modda is not None and modda != xarajat.modda and not modda_bormi(salon, modda):
         raise XarajatXatosi("Xarajat moddasi noto'g'ri.")
+    if sana is not None and sana > timezone.localdate():
+        raise XarajatXatosi("Xarajat sanasi kelajakda bo'lishi mumkin emas.")
     if sana is not None and oy_yopilgan(salon, sana.year, sana.month):
         raise XarajatXatosi("Yangi sana yopilgan oyga to'g'ri keladi.")
     eski = f'{xarajat.sana} {xarajat.modda} {xarajat.summa}'

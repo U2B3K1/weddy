@@ -1,10 +1,13 @@
 import axios from 'axios'
-import { useCallback, useEffect, useState } from 'react'
+import { Fragment, useCallback, useEffect, useState } from 'react'
 import { sanaMatni, som, xatoMatni } from '../api'
 import SummaInput from '../components/SummaInput'
 import { ZAKAZ_HOLATLARI } from '../nomlar'
 import Shapka from '../components/Shapka'
 import Logo from '../components/Logo'
+import NavIkona from '../components/NavIkona'
+import Oyna from '../components/Oyna'
+import { BELGI_D } from './ezazBelgi'
 
 // Platforma egasi alohida token bilan ishlaydi: salon xodimi tokeni bu API ga, bu token esa salon ma'lumotiga yaramaydi.
 const TOKEN = 'weddy.platforma_token'
@@ -18,32 +21,49 @@ papi.interceptors.request.use((cfg) => {
 const HOLAT = { sinov: 'Sinov', faol: 'Faol', faqat_korish: "Faqat ko'rish", bloklangan: 'Bloklangan' }
 
 // 4.19: salonlarni ulash, bloklash, tarif va obuna. Egasi faqat umumiy faollikni ko'radi (FT-22.5).
-// Chap tarafdagi panel (desktopda yon panel, telefonda pastki nav) — rahbar tomonidagi «.pastki» uslubi bilan bir xil.
+// Chap panel, yuqori panel, ko'rsatkichlar va jadval — rahbar ilovasi bilan bir xil sinflar (ichki.css).
 const BOLIMLAR = [
-  ['salonlar', 'Salonlar'],
-  ['tariflar', 'Tariflar'],
-  ['so\'rovlar', "So'rovlar"],
-  ['telegram', 'Telegram bot'],
+  ['salonlar', 'Salonlar', 'bino'],
+  ['tariflar', 'Tariflar', 'yorliq'],
+  ['so\'rovlar', "So'rovlar", 'mijozlar'],
+  ['telegram', 'Telegram bot', 'xabar'],
 ]
 
 export default function Platforma({ onOrqaga }) {
   const [kirgan, setKirgan] = useState(Boolean(sessionStorage.getItem(TOKEN)))
   const [bolim, setBolim] = useState('salonlar')
   const [menyu, setMenyu] = useState(false)   // telefonda chapdan chiqadigan nav ochiqmi
-  const chiqish = () => { sessionStorage.removeItem(TOKEN); setKirgan(false) }
+  const chiqish = useCallback(() => { sessionStorage.removeItem(TOKEN); setKirgan(false) }, [])
   if (!kirgan) return <Kirish onKirdi={() => setKirgan(true)} onOrqaga={onOrqaga} />
   return (
     <div className="ilova">
-      <Shapka ochiq={menyu} onMenyu={() => setMenyu(!menyu)} />
+      <Shapka ochiq={menyu} onMenyu={() => setMenyu(!menyu)}>
+        <button className="ikkinchi kichik" onClick={chiqish}>Chiqish</button>
+      </Shapka>
       <main>
-        <h1>Libosa · platforma</h1>
+        <header className="ustki">
+          <div className="ustki-nom">
+            <h1>{BOLIMLAR.find(([k]) => k === bolim)[1]}</h1>
+            <p>Libosa · platforma egasi</p>
+          </div>
+          <button type="button" className="ikkinchi kichik" onClick={chiqish}><NavIkona nom="almashtir" className="tugma-ikon" />Chiqish</button>
+        </header>
         <Panel bolim={bolim} onChiqish={chiqish} />
       </main>
       {menyu && <div className="menyu-parda" onClick={() => setMenyu(false)} />}
-      <nav className={`pastki ${menyu ? 'ochiq' : ''}`}>
-        {BOLIMLAR.map(([k, nom]) => (
-          <button key={k} type="button" className={bolim === k ? 'faol' : ''} onClick={() => { setBolim(k); setMenyu(false) }}>{nom}</button>
-        ))}
+      <nav className={`pastki ${menyu ? 'ochiq' : ''}`} aria-label="Bo'limlar">
+        <div className="nav-brend">
+          <svg viewBox="-60 -40 640 640" aria-hidden="true"><path d={BELGI_D} fill="currentColor" /></svg>
+          <span className="nav-brend-matn"><b>LIBOSA</b><small>Platforma</small></span>
+        </div>
+        <div className="nav-asosiy">
+          {BOLIMLAR.map(([k, nom, ikon]) => (
+            <button key={k} type="button" className={bolim === k ? 'faol' : undefined} aria-label={nom} aria-current={bolim === k ? 'page' : undefined}
+              onClick={() => { setBolim(k); setMenyu(false); window.scrollTo(0, 0) }}>
+              <NavIkona nom={ikon} /><span className="nav-nom">{nom}</span>
+            </button>
+          ))}
+        </div>
       </nav>
     </div>
   )
@@ -108,85 +128,216 @@ function Panel({ bolim, onChiqish }) {
 
   return (
     <div className="stack">
-      <button className="ikkinchi kichik" onClick={onChiqish}>Chiqish</button>
       {xabar.matn && <p className={xabar.turi === 'xato' ? 'xato' : 'malumot'}>{xabar.matn}</p>}
 
       {bolim === 'telegram' && sozlamalar && <TelegramSozlama s={sozlamalar} bajar={bajar} />}
 
       {bolim === 'so\'rovlar' && <Arizalar arizalar={arizalar} bajar={bajar} />}
 
-      {bolim === 'tariflar' && (
-        <>
-          <TarifForma onYuborish={(b) => bajar(() => papi.post('/tariflar/', b), "Tarif qo'shildi.")} />
-          {tariflar.length > 0 && (
-            <details className="blok amal">
-              <summary>Tariflar ({tariflar.length})</summary>
-              <div className="stack">
-                {tariflar.map((t) => (
-                  <TarifTahrir key={`${t.id}-${t.nomi}-${t.oylik_narx}-${t.xodim_limit}-${t.filial_limit}`} t={t}
-                    onSaqla={(b, ok) => bajar(() => papi.patch(`/tariflar/${t.id}/`, b), ok)} />
-                ))}
-              </div>
-            </details>
-          )}
-        </>
+      {bolim === 'tariflar' && <TariflarBolimi tariflar={tariflar} bajar={bajar} />}
+
+      {bolim === 'salonlar' && <SalonlarBolimi salonlar={salonlar} tariflar={tariflar} bajar={bajar} />}
+    </div>
+  )
+}
+
+const HOLAT_SINF = { sinov: 'vaqtinchalik', faol: 'berildi', faqat_korish: 'qarz', bloklangan: 'qarz' }
+
+// Salonlar: ko'rsatkichlar, asboblar paneli, ustunli jadval; qator bosilsa tafsilot shu joyda ochiladi; qo'shish — oynada.
+function SalonlarBolimi({ salonlar, tariflar, bajar }) {
+  const [oyna, setOyna] = useState(false)
+  const [ochiq, setOchiq] = useState(null)
+  const [holat, setHolat] = useState('')
+  const [q, setQ] = useState('')
+  const kutayotgan = salonlar.filter((s) => s.faqat_korishgacha_kun != null || s.holat === 'faqat_korish').length
+  const soz = q.trim().toLowerCase()
+  const korinadi = salonlar.filter((s) => (!holat || s.holat === holat)
+    && (!soz || `${s.nomi} ${s.login} ${s.rahbar_telefon || ''}`.toLowerCase().includes(soz)))
+  return (
+    <>
+      <div className="stat-qator">
+        <div className="stat"><span>Jami salonlar</span><b>{salonlar.length}</b></div>
+        <div className="stat"><span>Faol</span><b>{salonlar.filter((s) => s.holat === 'faol').length}</b></div>
+        <div className="stat"><span>Sinov muddatida</span><b>{salonlar.filter((s) => s.holat === 'sinov').length}</b></div>
+        <div className="stat"><span>To'lov kutilmoqda / bloklangan</span><b>{kutayotgan + salonlar.filter((s) => s.holat === 'bloklangan').length}</b></div>
+      </div>
+
+      {oyna && (
+        <Oyna sarlavha="Salon qo'shish" onYop={() => setOyna(false)}>
+          <SalonForma tariflar={tariflar}
+            onYuborish={async (b) => {
+              const ok = await bajar(() => papi.post('/salonlar/', b), "Salon qo'shildi. Login va boshlang'ich parolni rahbarga bering.")
+              if (ok) setOyna(false)
+              return ok
+            }} />
+        </Oyna>
       )}
 
-      {bolim === 'salonlar' && (
-        <>
-          <SalonForma tariflar={tariflar}
-            onYuborish={(b) => bajar(() => papi.post('/salonlar/', b), "Salon qo'shildi. Login va boshlang'ich parolni rahbarga bering.")} />
-          {salonlar.length === 0 && <p className="malumot">Hali salon yo'q.</p>}
-          {salonlar.map((s) => (
-            <details key={s.id} className="blok amal">
-              <summary>
-                {s.nomi} · <span className={s.holat === 'faol' || s.holat === 'sinov' ? '' : 'qizil'}>{HOLAT[s.holat]}</span>
-                {s.faqat_korishgacha_kun != null && <span className="qizil"> · to'lov kutilmoqda ({s.faqat_korishgacha_kun} kun)</span>}
-              </summary>
-              <div className="stack">
-                <table className="jadval"><tbody>
-                  <tr><td>Login</td><td>{s.login}</td></tr>
-                  <tr><td>Rahbar telefoni</td><td>{s.rahbar_telefon || '—'}</td></tr>
-                  <tr><td>Tarif</td><td>{s.tarif || '—'}</td></tr>
-                  <tr><td>Sinov / obuna tugaydi</td><td>{s.sinov_tugaydi || '—'} / {s.obuna_tugaydi || '—'}</td></tr>
-                  <tr><td>Zakazlar soni</td><td>{s.zakazlar_soni}</td></tr>
-                  <tr><td>Faol xodimlar</td><td>{s.faol_xodimlar}</td></tr>
-                  <tr><td>Oxirgi kirish</td><td>{s.oxirgi_kirish ? s.oxirgi_kirish.slice(0, 16).replace('T', ' ') : '—'}</td></tr>
-                </tbody></table>
-                <div className="qator">
-                  {[1, 3, 12].map((oy) => (
-                    <button key={oy} className="ikkinchi kichik"
-                      onClick={() => bajar(() => papi.post(`/salonlar/${s.id}/tolov/`, { oylar: oy }), `To'lov belgilandi: ${oy} oy.`)}>
-                      To'lov: {oy} oy
-                    </button>
-                  ))}
-                </div>
-                <ObunaSana key={`${s.id}-${s.sinov_tugaydi}-${s.obuna_tugaydi}`} s={s} bajar={bajar} />
-                <select value={s.tarif_id || ''}
-                  onChange={(e) => bajar(() => papi.patch(`/salonlar/${s.id}/`, { tarif: e.target.value ? Number(e.target.value) : null }), "Tarif o'zgartirildi.")}>
-                  <option value="">Tarifsiz (limit yo'q)</option>
-                  {tariflar.map((t) => <option key={t.id} value={t.id}>{t.nomi} · {som(t.oylik_narx)} · {t.xodim_limit} xodim</option>)}
-                </select>
-                <button className="ikkinchi kichik"
-                  onClick={() => bajar(() => papi.patch(`/salonlar/${s.id}/`, { qurilmalarni_tozala: true }),
-                    "Qurilmalar tozalandi: keyingi kirgan qurilma yana ishonchli bo'ladi.")}>
-                  Ishonchli qurilmalarni tozalash (rahbar qurilmasini yo'qotganda)
-                </button>
-                {s.yordam_ruxsati && <Yordam salonId={s.id} />}
-                {!s.chiqish_sanasi && (
-                  <button className={s.holat === 'bloklangan' ? 'ikkinchi' : 'xavfli'}
-                    onClick={() => bajar(() => papi.patch(`/salonlar/${s.id}/`, { bloklangan: s.holat !== 'bloklangan' }),
-                      s.holat === 'bloklangan' ? 'Salon blokdan chiqarildi.' : 'Salon bloklandi.')}>
-                    {s.holat === 'bloklangan' ? 'Blokdan chiqarish' : 'Bloklash'}
-                  </button>
-                )}
-                <Chiqish s={s} bajar={bajar} />
-              </div>
-            </details>
+      <section className="blok jadval-panel">
+        <div className="jadval-asboblar">
+          <h3 className="panel-nom">Salonlar</h3>
+          <div className="tezkor-tablar" role="tablist" aria-label="Holat">
+            {[['', 'Hammasi'], ...Object.entries(HOLAT)].map(([k, nom]) => (
+              <button key={k || 'hammasi'} type="button" role="tab" aria-selected={holat === k} className={holat === k ? 'faol' : ''} onClick={() => setHolat(k)}>{nom}</button>
+            ))}
+          </div>
+          <label className="qidiruv-maydon">
+            <NavIkona nom="qidiruv" className="tugma-ikon" />
+            <input type="search" className="jadval-qidiruv" placeholder="Nom, login yoki telefon" aria-label="Salon qidirish" value={q} onChange={(e) => setQ(e.target.value)} />
+          </label>
+          <button type="button" className="kichik" onClick={() => setOyna(true)}><NavIkona nom="qosh" className="tugma-ikon" />Salon qo'shish</button>
+        </div>
+        {korinadi.length === 0 ? (
+          <p className="malumot jadval-bosh">{salonlar.length === 0 ? "Hali salon yo'q — birinchisini qo'shing." : "Bu filtr bo'yicha salon yo'q."}</p>
+        ) : (
+          <div className="jadval-ora">
+            <table className="zakaz-jadval aks-jadval">
+              <thead>
+                <tr><th>Salon</th><th>Holat</th><th className="tor-yashir">Tarif</th><th className="tor-yashir">Obuna tugaydi</th><th className="ong">Zakazlar</th></tr>
+              </thead>
+              <tbody>
+                {korinadi.map((s) => (
+                  <Fragment key={s.id}>
+                    <tr className={ochiq === s.id ? 'ochiq' : ''} onClick={() => setOchiq(ochiq === s.id ? null : s.id)}>
+                      <td>
+                        <button type="button" className="zakaz-katak" aria-expanded={ochiq === s.id}>
+                          <span className="kod-belgi">{(s.nomi || '?').trim().charAt(0).toUpperCase()}</span>
+                          <span className="zakaz-nom"><b>{s.nomi}</b><small>{s.login}</small></span>
+                        </button>
+                      </td>
+                      <td>
+                        <span className={`holat ${HOLAT_SINF[s.holat] || ''}`}>{HOLAT[s.holat]}</span>
+                        {s.faqat_korishgacha_kun != null && <small className="qizil"> {s.faqat_korishgacha_kun} kun</small>}
+                      </td>
+                      <td className="tor-yashir">{s.tarif || '—'}</td>
+                      <td className="tor-yashir">{s.obuna_tugaydi || s.sinov_tugaydi || '—'}</td>
+                      <td className="ong"><b>{s.zakazlar_soni}</b></td>
+                    </tr>
+                    {ochiq === s.id && (
+                      <tr className="tafsilot-qator"><td colSpan={5}><SalonTafsilot s={s} tariflar={tariflar} bajar={bajar} /></td></tr>
+                    )}
+                  </Fragment>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+    </>
+  )
+}
+
+function SalonTafsilot({ s, tariflar, bajar }) {
+  return (
+    <div className="aks-tafsilot">
+      <div className="stack">
+        <h4>Ma'lumot</h4>
+        <table className="jadval"><tbody>
+          <tr><td>Login</td><td>{s.login}</td></tr>
+          <tr><td>Rahbar telefoni</td><td>{s.rahbar_telefon || '—'}</td></tr>
+          <tr><td>Sinov / obuna tugaydi</td><td>{s.sinov_tugaydi || '—'} / {s.obuna_tugaydi || '—'}</td></tr>
+          <tr><td>Faol xodimlar</td><td>{s.faol_xodimlar}</td></tr>
+          <tr><td>Oxirgi kirish</td><td>{s.oxirgi_kirish ? s.oxirgi_kirish.slice(0, 16).replace('T', ' ') : '—'}</td></tr>
+        </tbody></table>
+        {s.yordam_ruxsati && <Yordam salonId={s.id} />}
+        <Chiqish s={s} bajar={bajar} />
+      </div>
+      <div className="stack">
+        <h4>Obuna va tarif</h4>
+        <div className="qator">
+          {[1, 3, 12].map((oy) => (
+            <button key={oy} className="ikkinchi kichik"
+              onClick={() => bajar(() => papi.post(`/salonlar/${s.id}/tolov/`, { oylar: oy }), `To'lov belgilandi: ${oy} oy.`)}>
+              To'lov: {oy} oy
+            </button>
           ))}
-        </>
-      )}
+        </div>
+        <ObunaSana key={`${s.id}-${s.sinov_tugaydi}-${s.obuna_tugaydi}`} s={s} bajar={bajar} />
+        <select value={s.tarif_id || ''} aria-label="Tarif"
+          onChange={(e) => bajar(() => papi.patch(`/salonlar/${s.id}/`, { tarif: e.target.value ? Number(e.target.value) : null }), "Tarif o'zgartirildi.")}>
+          <option value="">Tarifsiz (limit yo'q)</option>
+          {tariflar.map((t) => <option key={t.id} value={t.id}>{t.nomi} · {som(t.oylik_narx)} · {t.xodim_limit} xodim</option>)}
+        </select>
+        <button className="ikkinchi kichik"
+          onClick={() => bajar(() => papi.patch(`/salonlar/${s.id}/`, { qurilmalarni_tozala: true }),
+            "Qurilmalar tozalandi: keyingi kirgan qurilma yana ishonchli bo'ladi.")}>
+          Ishonchli qurilmalarni tozalash (rahbar qurilmasini yo'qotganda)
+        </button>
+        {!s.chiqish_sanasi && (
+          <button className={s.holat === 'bloklangan' ? 'ikkinchi' : 'xavfli'}
+            onClick={() => bajar(() => papi.patch(`/salonlar/${s.id}/`, { bloklangan: s.holat !== 'bloklangan' }),
+              s.holat === 'bloklangan' ? 'Salon blokdan chiqarildi.' : 'Salon bloklandi.')}>
+            {s.holat === 'bloklangan' ? 'Blokdan chiqarish' : 'Bloklash'}
+          </button>
+        )}
+      </div>
     </div>
+  )
+}
+
+// Tariflar: ko'rsatkichlar + jadval; tarifni tuzatish qator ostida, qo'shish — oynada.
+function TariflarBolimi({ tariflar, bajar }) {
+  const [oyna, setOyna] = useState(false)
+  const [ochiq, setOchiq] = useState(null)
+  return (
+    <>
+      <div className="stat-qator">
+        <div className="stat"><span>Faol tariflar</span><b>{tariflar.length}</b></div>
+        <div className="stat"><span>Eng arzon oylik narx</span><b>{tariflar.length ? som(Math.min(...tariflar.map((t) => Number(t.oylik_narx)))) : '—'}</b></div>
+        <div className="stat"><span>Eng qimmat oylik narx</span><b>{tariflar.length ? som(Math.max(...tariflar.map((t) => Number(t.oylik_narx)))) : '—'}</b></div>
+        <div className="stat"><span>Eng katta xodim limiti</span><b>{tariflar.length ? Math.max(...tariflar.map((t) => t.xodim_limit)) : '—'}</b></div>
+      </div>
+      {oyna && (
+        <Oyna sarlavha="Tarif qo'shish" onYop={() => setOyna(false)}>
+          <TarifForma onYuborish={async (b) => {
+            const ok = await bajar(() => papi.post('/tariflar/', b), "Tarif qo'shildi.")
+            if (ok) setOyna(false)
+            return ok
+          }} />
+        </Oyna>
+      )}
+      <section className="blok jadval-panel">
+        <div className="jadval-asboblar">
+          <h3 className="panel-nom">Tariflar</h3>
+          <span className="tezkor-tablar" />
+          <button type="button" className="kichik" onClick={() => setOyna(true)}><NavIkona nom="qosh" className="tugma-ikon" />Tarif qo'shish</button>
+        </div>
+        {tariflar.length === 0 ? (
+          <p className="malumot jadval-bosh">Hali tarif yo'q — birinchisini qo'shing.</p>
+        ) : (
+          <div className="jadval-ora">
+            <table className="zakaz-jadval aks-jadval">
+              <thead>
+                <tr><th>Tarif</th><th className="ong">Oylik narx</th><th className="tor-yashir ong">Xodimlar</th><th className="tor-yashir ong">Filiallar</th></tr>
+              </thead>
+              <tbody>
+                {tariflar.map((t) => (
+                  <Fragment key={t.id}>
+                    <tr className={ochiq === t.id ? 'ochiq' : ''} onClick={() => setOchiq(ochiq === t.id ? null : t.id)}>
+                      <td>
+                        <button type="button" className="zakaz-katak" aria-expanded={ochiq === t.id}>
+                          <span className="kod-belgi">{(t.nomi || '?').trim().charAt(0).toUpperCase()}</span>
+                          <span className="zakaz-nom"><b>{t.nomi}</b></span>
+                        </button>
+                      </td>
+                      <td className="ong"><b>{som(t.oylik_narx)}</b></td>
+                      <td className="tor-yashir ong">{t.xodim_limit}</td>
+                      <td className="tor-yashir ong">{t.filial_limit}</td>
+                    </tr>
+                    {ochiq === t.id && (
+                      <tr className="tafsilot-qator"><td colSpan={4}>
+                        <TarifTahrir key={`${t.id}-${t.nomi}-${t.oylik_narx}-${t.xodim_limit}-${t.filial_limit}`} t={t}
+                          onSaqla={(b, ok) => bajar(() => papi.patch(`/tariflar/${t.id}/`, b), ok)} />
+                      </td></tr>
+                    )}
+                  </Fragment>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+    </>
   )
 }
 
@@ -294,12 +445,12 @@ function TelegramSozlama({ s, bajar }) {
   }, "Kod tayyor. Telegram'da botga yuboring.")
 
   return (
-    <details className="blok amal">
-      <summary>
+    <section className="blok">
+      <h3 className="panel-nom">
         Telegram bot · {MANBA[s.telegram_manba]}
         {s.telegram_bot_nomi && ` (@${s.telegram_bot_nomi})`}
         {!s.telegram_ulangan && <span className="qizil"> · ishlamayapti</span>}
-      </summary>
+      </h3>
       <div className="stack">
         <p className="malumot">
           Butun platformaga <b>bitta</b> Libosa boti xizmat qiladi: har bir salon xodimi shu bot orqali ulanadi.
@@ -346,7 +497,7 @@ function TelegramSozlama({ s, bajar }) {
           )
         )}
       </div>
-    </details>
+    </section>
   )
 }
 
@@ -360,8 +511,7 @@ function SalonForma({ tariflar, onYuborish }) {
     if (await onYuborish(body)) setF({})
   }
   return (
-    <details className="blok amal">
-      <summary>Salon qo'shish</summary>
+    <>
       <div className="stack">
         <label>Salon nomi<input value={f.nomi || ''} onChange={set('nomi')} /></label>
         <label>Manzil<input value={f.manzil || ''} onChange={set('manzil')} /></label>
@@ -377,7 +527,7 @@ function SalonForma({ tariflar, onYuborish }) {
         <p className="malumot">Salon 14 kunlik sinov muddati va standart kategoriyalar bilan yaratiladi.</p>
         <button disabled={!tayyor} onClick={yubor}>Qo'shish</button>
       </div>
-    </details>
+    </>
   )
 }
 
@@ -385,8 +535,7 @@ function TarifForma({ onYuborish }) {
   const [f, setF] = useState({})
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value })
   return (
-    <details className="blok amal">
-      <summary>Tarif qo'shish</summary>
+    <>
       <div className="stack">
         <label>Nomi<input value={f.nomi || ''} onChange={set('nomi')} /></label>
         <label>Oylik narx<SummaInput value={f.oylik_narx || ''} onChange={set('oylik_narx')} /></label>
@@ -396,7 +545,7 @@ function TarifForma({ onYuborish }) {
           Qo'shish
         </button>
       </div>
-    </details>
+    </>
   )
 }
 
@@ -404,8 +553,8 @@ function TarifForma({ onYuborish }) {
 function Arizalar({ arizalar, bajar }) {
   const yangi = arizalar.filter((a) => !a.korilgan).length
   return (
-    <details className="blok amal" open={yangi > 0}>
-      <summary>So'rovlar ({arizalar.length}){yangi > 0 && <span className="qizil"> · {yangi} ta yangi</span>}</summary>
+    <section className="blok">
+      <h3 className="panel-nom">So'rovlar ({arizalar.length}){yangi > 0 && <span className="qizil"> · {yangi} ta yangi</span>}</h3>
       <div className="stack">
         {arizalar.length === 0 && <p className="malumot">Hali so'rov yo'q.</p>}
         {arizalar.map((a) => (
@@ -425,7 +574,7 @@ function Arizalar({ arizalar, bajar }) {
           </div>
         ))}
       </div>
-    </details>
+    </section>
   )
 }
 

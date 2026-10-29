@@ -74,6 +74,35 @@ def libosni_tasdiqlash(*, salon, rahbar, libos, ijara_narxi, tannarx, zalog=None
 
 # Qo'lda o'tkaziladigan holatlar (FT-3.9); «bosh/tozalashda» zakaz jarayonida o'zi o'zgaradi
 # «Ta'mirda» holati faqat ta'mir jurnali orqali (catalog/tamir.py), shunda sana, narx va kunlar yoziladi
+def tozalashni_yakunla(salon=None):
+    """Bufer kuni o'tgan «tozalashda» liboslarni avtomatik «bo'sh» qiladi (qo'lda «Tozalandi» bosish shart emas).
+
+    Bufer: libos > kategoriya > salon sozlamasi (bronlardagi bilan bir xil). «Tozalashda» holatiga libos faqat
+    qaytarish orqali tushadi, shuning uchun oxirgi qaytarish sanasi bufer hisobining boshi. Ro'yxatlar, yangi zakaz va
+    berish oldidan, shuningdek `tozalashni_yakunlash` buyrug'i (cron) chaqiradi. O'zgargan liboslar sonini qaytaradi.
+    """
+    from datetime import timedelta
+
+    from apps.orders.models import QaytarishAkti
+    bugun = timezone.localdate()
+    qs = Libos.objects.filter(holat=Libos.Holat.TOZALASHDA).select_related('kategoriya')
+    if salon is not None:
+        qs = qs.filter(salon=salon)
+    standart, soni = {}, 0
+    for libos in qs:
+        oxirgi = (QaytarishAkti.objects.filter(salon_id=libos.salon_id, zakaz__pozitsiyalar__libos=libos)
+                  .order_by('-sana').values_list('sana', flat=True).first())
+        if oxirgi is None:
+            continue
+        if libos.salon_id not in standart:
+            standart[libos.salon_id] = sozlama(libos.salon_id).bufer_kun
+        if oxirgi + timedelta(days=libos.samarali_bufer_kun(standart[libos.salon_id])) <= bugun:
+            libos.holat = Libos.Holat.BOSH
+            libos.save(update_fields=['holat'])
+            soni += 1
+    return soni
+
+
 QOLDA_HOLATLAR = (Libos.Holat.BOSH, Libos.Holat.SOTILDI,
                   Libos.Holat.HISOBDAN_CHIQARILDI, Libos.Holat.ARXIV)
 

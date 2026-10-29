@@ -313,7 +313,16 @@ function Pnl({ r, filial }) {
         </div>
       )}
       {r.sotuvchi_bonusi > 0 && <p className="malumot">Operatsion xarajat ichida sotuvchi bonusi: {som(r.sotuvchi_bonusi)}</p>}
-      {r.rentabellik !== null && <p className="malumot">Rentabellik: {r.rentabellik}%</p>}
+      {r.rentabellik !== null && (
+        <p className="malumot" title="Foyda libosni xarid qilishga ketgan pulni (tannarxni) xarajat sifatida hisoblamaydi — pastdagi qatorda investitsiya qanchasi qoplangani ko'rsatilgan.">
+          Rentabellik: {r.rentabellik}% <span className="malumot">(libos xarid tannarxisiz)</span>
+        </p>
+      )}
+      {r.investitsiya > 0 && (
+        <p className="malumot">
+          Libos investitsiyasi: {som(r.investitsiya)} · shundan qoplangan {som(r.investitsiya_qoplagan)} (<b>{r.qoplash_foiz}%</b>)
+        </p>
+      )}
       {r.taqqos && (
         <table className="jadval"><tbody>
           {[['otgan_oy', "O'tgan oy"], ['otgan_yil', "O'tgan yil, shu oy"]].map(([k, nom]) => (

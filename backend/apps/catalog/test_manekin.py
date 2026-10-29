@@ -90,7 +90,11 @@ class ManekinApiTests(TestCase):
         shutil.rmtree(MEDIA, ignore_errors=True)
 
     def setUp(self):
+        from apps.tenants.models import sozlama
         self.salon, self.malika, self.kat = salon_yarat()
+        soz = sozlama(self.salon)  # manekin standart bo'yicha o'chirilgan — bu testlar uni yoqib sinaydi
+        soz.manekin = True
+        soz.save()
         self.libos = libos_yarat(self.salon, self.kat, 'A', ijara_narxi=2_000_000)
         self.c = self.api(self.malika)
         r = self.c.post(f'/api/liboslar/{self.libos.id}/rasmlar/', {'rasm': fayl(libos_rasmi())}, format='multipart')
@@ -163,7 +167,11 @@ class AksessuarQatlamTests(TestCase):
     def setUp(self):
         from .models import Kategoriya
         from .services import aksessuar_qoshish
+        from apps.tenants.models import sozlama
         self.salon, self.malika, self.kat = salon_yarat()
+        soz = sozlama(self.salon)  # manekin standart bo'yicha o'chirilgan — bu testlar uni yoqib sinaydi
+        soz.manekin = True
+        soz.save()
         self.rahbar = Xodim.objects.create(salon=self.salon, ism='Rahbar', rol=Xodim.Rol.RAHBAR)
         akat = Kategoriya.objects.create(salon=self.salon, nomi='Fata', turi='aksessuar')
         self.fata = aksessuar_qoshish(salon=self.salon, xodim=self.rahbar, nomi='Fata', kod='ft', kategoriya=akat,

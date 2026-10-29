@@ -1,6 +1,7 @@
-from datetime import date
+from datetime import date, timedelta
 
 from django.test import TestCase
+from django.utils import timezone
 
 from apps.bookings.services import bosh_liboslar
 from apps.bookings.tests import libos_yarat, salon_yarat
@@ -8,8 +9,8 @@ from apps.cash.models import Tolov
 from apps.cash.services import kassa_hisobot, ochiq_smena, smena_ochish, tolov_qabul
 from apps.catalog.models import Libos
 
-from .models import Zalog, Zakaz
-from .rental import (BerishXatosi, libos_berish, libos_qaytarish, qarzni_tolash,
+from .models import QaytarishAkti, Zalog, Zakaz
+from .rental import (BerishXatosi, ErtaBerishXatosi, libos_berish, libos_qaytarish, qarzni_tolash,
                      tozalash_tugadi)
 from .services import zakaz_yaratish
 
@@ -155,7 +156,8 @@ class RentalAPITests(RentalBase):
         url = f'/api/zakazlar/{self.zakaz.id}/'
         self.assertEqual(c.post(url + 'berish/', {'zaloglar': [PUL]}, format='json').status_code, 409)
         self.tolash()
-        r = c.post(url + 'berish/', {'zaloglar': [{'turi': 'pul', 'summa': 1_000_000}]}, format='json')
+        # zakaz sanasi qattiq (kelajakda) — bu test berish/qaytarish oqimini tekshiradi, erta berish alohida testda
+        r = c.post(url + 'berish/', {'zaloglar': [{'turi': 'pul', 'summa': 1_000_000}], 'erta': True}, format='json')
         self.assertEqual((r.status_code, r.json()['holat']), (200, 'berildi'))
         r = c.post(url + 'qaytarish/', {'jarima': 100_000, 'baho': 5}, format='json')
         self.assertEqual(r.status_code, 200, r.content)
@@ -171,3 +173,139 @@ class RentalAPITests(RentalBase):
         c.credentials(HTTP_AUTHORIZATION='Bearer ' + make_staff_token(xodim_b))
         r = c.post(f'/api/zakazlar/{self.zakaz.id}/berish/', {'zaloglar': [PUL]}, format='json')
         self.assertEqual(r.status_code, 404)
+
+
+class ErtaBerishTests(RentalBase):
+    """Olib ketish sanasidan oldin berish — API tasdiq talab qiladi (tasodifiy bosishdan himoya)."""
+
+    def setUp(self):
+        super().setUp()
+        bugun = timezone.localdate()
+        self.libos2 = libos_yarat(self.salon, self.kat, 'E', ijara_narxi=3_000_000)
+        self.erta = zakaz_yaratish(salon=self.salon, xodim=self.xodim, telefon='+998902',
+                                   olib_ketish=bugun + timedelta(days=3), qaytarish=bugun + timedelta(days=4),
+                                   libos_idlari=[self.libos2.id])
+        self.tolov(Tolov.Tur.AVANS, 1_000_000, zakaz=self.erta)
+        self.tolov(Tolov.Tur.QOLDIQ, 2_000_000, zakaz=self.erta)
+
+    def api(self):
+        from rest_framework.test import APIClient
+        from apps.tenants.auth import make_staff_token
+        c = APIClient()
+        c.credentials(HTTP_AUTHORIZATION='Bearer ' + make_staff_token(self.xodim))
+        return c
+
+    def test_tasdiqsiz_rad_etiladi(self):
+        with self.assertRaises(ErtaBerishXatosi):
+            libos_berish(salon=self.salon, xodim=self.xodim, zakaz=self.erta, zaloglar=[PUL], erta=False)
+        self.erta.refresh_from_db()
+        self.assertEqual(self.erta.holat, Zakaz.Holat.BRON)
+
+    def test_xizmat_standart_holda_ruxsat_beradi(self):
+        z = libos_berish(salon=self.salon, xodim=self.xodim, zakaz=self.erta, zaloglar=[PUL])
+        self.assertEqual(z.holat, Zakaz.Holat.BERILDI)
+
+    def test_api_tasdiq_talab_qiladi(self):
+        c, url = self.api(), f'/api/zakazlar/{self.erta.id}/berish/'
+        r = c.post(url, {'zaloglar': [PUL]}, format='json')
+        self.assertEqual((r.status_code, r.json()['kod']), (409, 'erta_berish'))
+        self.assertEqual(self.zakaz_holati(), Zakaz.Holat.BRON)
+        r = c.post(url, {'zaloglar': [PUL], 'erta': True}, format='json')
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertEqual(r.json()['holat'], 'berildi')
+
+    def test_bugungi_zakaz_tasdiqsiz_beriladi(self):
+        bugun = timezone.localdate()
+        libos3 = libos_yarat(self.salon, self.kat, 'F', ijara_narxi=3_000_000)
+        z = zakaz_yaratish(salon=self.salon, xodim=self.xodim, telefon='+998903', olib_ketish=bugun,
+                           qaytarish=bugun + timedelta(days=1), libos_idlari=[libos3.id])
+        self.tolov(Tolov.Tur.AVANS, 1_000_000, zakaz=z)
+        self.tolov(Tolov.Tur.QOLDIQ, 2_000_000, zakaz=z)
+        r = self.api().post(f'/api/zakazlar/{z.id}/berish/', {'zaloglar': [PUL]}, format='json')
+        self.assertEqual(r.status_code, 200, r.content)
+
+    def zakaz_holati(self):
+        self.erta.refresh_from_db()
+        return self.erta.holat
+
+
+class TozalashAvtoTests(RentalBase):
+    """Bufer kuni o'tgan «tozalashda» libos o'zi «bo'sh» bo'ladi (rahbar har safar «Tozalandi» bosmasin)."""
+
+    def qaytarilgan(self):
+        self.tolash()
+        self.ber([PUL])
+        self.qaytar()
+        self.libos.refresh_from_db()
+        self.assertEqual(self.libos.holat, Libos.Holat.TOZALASHDA)
+
+    def holat(self):
+        self.libos.refresh_from_db()
+        return self.libos.holat
+
+    def test_bugun_qaytgan_libos_bufer_tugaguncha_tozalashda(self):
+        from apps.catalog.services import tozalashni_yakunla
+        self.qaytarilgan()  # standart bufer 1 kun — ertagacha tozalashda
+        self.assertEqual(tozalashni_yakunla(self.salon), 0)
+        self.assertEqual(self.holat(), Libos.Holat.TOZALASHDA)
+
+    def test_bufer_kuni_otgach_bosh_bolaadi(self):
+        from apps.catalog.services import tozalashni_yakunla
+        self.qaytarilgan()
+        QaytarishAkti.objects.filter(zakaz=self.zakaz).update(sana=timezone.localdate() - timedelta(days=1))
+        self.assertEqual(tozalashni_yakunla(self.salon), 1)
+        self.assertEqual(self.holat(), Libos.Holat.BOSH)
+
+    def test_libosning_oz_buferi_hisobga_olinadi(self):
+        from apps.catalog.services import tozalashni_yakunla
+        self.libos.bufer_kun = 3
+        self.libos.save(update_fields=['bufer_kun'])
+        self.qaytarilgan()
+        QaytarishAkti.objects.filter(zakaz=self.zakaz).update(sana=timezone.localdate() - timedelta(days=2))
+        self.assertEqual(tozalashni_yakunla(self.salon), 0)  # 3 kun hali o'tmagan
+        QaytarishAkti.objects.filter(zakaz=self.zakaz).update(sana=timezone.localdate() - timedelta(days=3))
+        self.assertEqual(tozalashni_yakunla(self.salon), 1)
+
+    def test_nol_buferli_libos_darhol_bosh(self):
+        from apps.catalog.services import tozalashni_yakunla
+        self.libos.bufer_kun = 0
+        self.libos.save(update_fields=['bufer_kun'])
+        self.qaytarilgan()
+        self.assertEqual(tozalashni_yakunla(self.salon), 1)
+
+    def test_qaytarishsiz_tozalashdagi_libosga_tegilmaydi_va_boshqa_salonga_ham(self):
+        from apps.catalog.services import tozalashni_yakunla
+        Libos.objects.filter(id=self.libos.id).update(holat=Libos.Holat.TOZALASHDA)  # qaytarish aktisiz
+        self.assertEqual(tozalashni_yakunla(self.salon), 0)
+        self.assertEqual(self.holat(), Libos.Holat.TOZALASHDA)
+        # boshqa salon so'ralsa — bu salon libosiga tegmaydi
+        salon_b, _, _ = salon_yarat('b')
+        self.assertEqual(tozalashni_yakunla(salon_b), 0)
+
+    def test_royxat_ochilganda_avtomatik_bosh(self):
+        from rest_framework.test import APIClient
+        from apps.tenants.auth import make_staff_token
+        self.qaytarilgan()
+        QaytarishAkti.objects.filter(zakaz=self.zakaz).update(sana=timezone.localdate() - timedelta(days=2))
+        c = APIClient()
+        c.credentials(HTTP_AUTHORIZATION='Bearer ' + make_staff_token(self.xodim))
+        self.assertEqual(c.get('/api/liboslar/').status_code, 200)
+        self.assertEqual(self.holat(), Libos.Holat.BOSH)
+
+    def test_yangi_zakaz_tozalashdan_otgan_libosni_bron_qiladi(self):
+        bugun = timezone.localdate()
+        libos2 = libos_yarat(self.salon, self.kat, 'T', ijara_narxi=3_000_000)
+        z1 = zakaz_yaratish(salon=self.salon, xodim=self.xodim, telefon='+998906', olib_ketish=bugun,
+                            qaytarish=bugun + timedelta(days=1), libos_idlari=[libos2.id])
+        self.tolov(Tolov.Tur.AVANS, 1_000_000, zakaz=z1)
+        self.tolov(Tolov.Tur.QOLDIQ, 2_000_000, zakaz=z1)
+        libos_berish(salon=self.salon, xodim=self.xodim, zakaz=z1, zaloglar=[PUL])
+        libos_qaytarish(salon=self.salon, xodim=self.xodim, zakaz=z1)
+        libos2.refresh_from_db()
+        self.assertEqual(libos2.holat, Libos.Holat.TOZALASHDA)
+        QaytarishAkti.objects.filter(zakaz=z1).update(sana=bugun - timedelta(days=2))
+        z2 = zakaz_yaratish(salon=self.salon, xodim=self.xodim, telefon='+998907', olib_ketish=bugun + timedelta(days=30),
+                            qaytarish=bugun + timedelta(days=31), libos_idlari=[libos2.id])
+        self.assertEqual(z2.holat, Zakaz.Holat.VAQTINCHALIK)
+        libos2.refresh_from_db()
+        self.assertEqual(libos2.holat, Libos.Holat.BOSH)

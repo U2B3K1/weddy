@@ -10,7 +10,7 @@ from django.utils import timezone
 
 from apps.cash.models import Tolov
 from apps.catalog.models import Libos
-from apps.orders.models import TushumFarqi, Zakaz
+from apps.orders.models import TushumFarqi, Zakaz, ZakazPozitsiya
 
 from .models import Xarajat
 
@@ -166,11 +166,29 @@ def foyda_zarar(salon, yil, oy, soliq_foizi=None, filial=None):
         'soliq': soliq, 'soliq_foizi': soliq_foizi,
         'sof_foyda': sof,
         'rentabellik': round(sof / tushum * 100, 1) if tushum else None,
+        **libos_investitsiyasi(salon, filial),
         'tannarxsiz_liboslar': Libos.objects.filter(
             salon=salon, tannarx__isnull=True, holat__in=FAOL_LIBOS_HOLATLARI).count(),
         'tasdiqlanmagan_xarajatlar': Xarajat.objects.filter(
             salon=salon, holat=Xarajat.Holat.KUTILMOQDA, sana__range=(boshi, oxiri)).count(),
     }
+
+
+def libos_investitsiyasi(salon, filial=None):
+    """Faol liboslarning xarid tannarxi (investitsiya) va ular butun vaqt davomida qoplagan tushum.
+
+    P&L foydasi libos xaridini xarajat sifatida hisoblamaydi, shuning uchun rentabellik yangi salonda juda yuqori
+    chiqadi — haqiqiy rasm uchun investitsiya qanchasi qoplangani ham ko'rsatiladi (libos hisobotidagi «Qoplash» kabi).
+    """
+    liboslar = Libos.objects.filter(salon=salon, holat__in=FAOL_LIBOS_HOLATLARI, tannarx__isnull=False)
+    if filial:
+        liboslar = liboslar.filter(filial_id=filial)
+    investitsiya = liboslar.aggregate(s=Sum('tannarx'))['s'] or 0
+    qoplagan = ZakazPozitsiya.objects.filter(
+        salon=salon, libos__in=liboslar, zakaz__tolangan_sana__isnull=False,
+    ).exclude(zakaz__holat=Zakaz.Holat.BEKOR).aggregate(s=Sum('narx'))['s'] or 0
+    return {'investitsiya': investitsiya, 'investitsiya_qoplagan': qoplagan,
+            'qoplash_foiz': round(qoplagan / investitsiya * 100, 1) if investitsiya else None}
 
 
 PNL_QATORLARI = {'tushum': 'Tushum', 'togridan': "To'g'ridan-to'g'ri xarajat",

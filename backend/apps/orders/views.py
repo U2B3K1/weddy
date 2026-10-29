@@ -7,13 +7,13 @@ from rest_framework.views import APIView
 
 from apps.bookings.models import Bron
 from apps.bookings.services import BandlikXatosi
-from apps.cash.services import KassaXatosi
+from apps.cash.services import KassaXatosi, xato_tanasi
 from apps.catalog.models import Libos
 from apps.tenants.permissions import SalonYozishRuxsati
 
 from apps.tenants.views_filial import joriy_filial
 from .models import Mijoz, Zakaz, telefon_normal
-from .rental import BerishXatosi, libos_berish, libos_qaytarish, qarzni_tolash, tozalash_tugadi
+from .rental import BerishXatosi, ErtaBerishXatosi, libos_berish, libos_qaytarish, qarzni_tolash, tozalash_tugadi
 from .services import zakaz_yaratish
 
 
@@ -105,7 +105,7 @@ def _bajar(fn, **kw):
     try:
         return fn(**kw), None
     except (BerishXatosi, KassaXatosi) as e:
-        return None, Response({'detail': str(e)}, status=409)
+        return None, Response(xato_tanasi(e), status=409)
 
 
 class ZalogSerializer(serializers.Serializer):
@@ -119,6 +119,7 @@ class ZalogSerializer(serializers.Serializer):
 
 class BerishSerializer(serializers.Serializer):
     zaloglar = ZalogSerializer(many=True)
+    erta = serializers.BooleanField(required=False, default=False)  # olib ketish sanasidan oldin berishni tasdiqlash
 
 
 class BerishView(APIView):
@@ -128,9 +129,14 @@ class BerishView(APIView):
     def post(self, request, pk):
         ser = BerishSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
-        zakaz, err = _bajar(libos_berish, salon=request.salon, xodim=request.user,
-                            zakaz=_zakaz(request, pk), zaloglar=ser.validated_data['zaloglar'])
-        return err or Response(zakaz_json(zakaz))
+        try:
+            zakaz = libos_berish(salon=request.salon, xodim=request.user, zakaz=_zakaz(request, pk),
+                                 zaloglar=ser.validated_data['zaloglar'], erta=ser.validated_data['erta'])
+        except ErtaBerishXatosi as e:
+            return Response({'detail': str(e), 'kod': 'erta_berish'}, status=409)
+        except (BerishXatosi, KassaXatosi) as e:
+            return Response(xato_tanasi(e), status=409)
+        return Response(zakaz_json(zakaz))
 
 
 class QaytarishSerializer(serializers.Serializer):

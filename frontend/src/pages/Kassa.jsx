@@ -3,6 +3,7 @@ import Hujjat from '../components/Hujjat'
 import LibosSiluet from '../components/LibosSiluet'
 import Oyna from '../components/Oyna'
 import Tasdiq from '../components/Tasdiq'
+import SmenaTugma from '../components/SmenaTugma'
 import {
   kassaZaloglar, smenaChiqish, smenaHolati, smenaOchish, smenaQoshilish, smenaTuzat, smenaYopish, smenalar, som, sozlamalar, tolovQabul,
   xarajatModdalari, xarajatYarat, xatoMatni, zakazlarRoyxat, zalogBelgila,
@@ -32,11 +33,11 @@ export default function Kassa({ rahbar, bolim, onBolim, onHolatOzgardi, yangiZak
     setXabar({ turi: '', matn: '' })
     try {
       const r = await fn()
-      setXabar({ turi: 'ok', matn: typeof ok === 'function' ? ok(r) : ok })
+      setXabar({ turi: 'ok', matn: typeof ok === 'function' ? ok(r) : ok, bolim })
       await yukla()
       return true
     } catch (e) {
-      setXabar({ turi: 'xato', matn: xatoMatni(e) })
+      setXabar({ turi: 'xato', matn: xatoMatni(e), kod: e.response?.data?.kod, bolim })
       return false
     }
   }
@@ -49,7 +50,15 @@ export default function Kassa({ rahbar, bolim, onBolim, onHolatOzgardi, yangiZak
     <div className="pos">
       <SmenaPaneli s={s} onOch={() => setOyna('ochish')} onQoshil={() => bajar(smenaQoshilish, "Smenaga qo'shildingiz.")}
         onChiq={() => setOyna('chiqish')} onYop={() => setOyna('yopish')} onHisobot={() => onBolim('hisobot')} />
-      {xabar.matn && <p className={xabar.turi === 'xato' ? 'xato' : 'malumot pos-xabar'}>{xabar.matn}</p>}
+      {xabar.matn && xabar.bolim === bolim && (  // eski xabar boshqa bo'limga o'tganda qolib ketmasin
+        <p className={xabar.turi === 'xato' ? 'xato' : 'malumot pos-xabar'}>
+          {xabar.matn}{' '}
+          {xabar.turi === 'xato' && (
+            <SmenaTugma kod={xabar.kod} onKassa={() => setOyna('ochish')}
+              onTayyor={() => { setXabar({ turi: 'ok', matn: "Smenaga qo'shildingiz. Amalni qayta bajaring.", bolim }); yukla() }} />
+          )}
+        </p>
+      )}
 
       {smenaYoq ? (
         <section className="blok pos-bosh">
@@ -60,7 +69,7 @@ export default function Kassa({ rahbar, bolim, onBolim, onHolatOzgardi, yangiZak
       ) : (
         <>
           {bolim === 'yangi' && yangiZakaz}
-          {bolim === 'tolov' && <TolovPOS key={tolovZakaz?.n} boshZakaz={tolovZakaz?.id} onTolandi={yukla} />}
+          {bolim === 'tolov' && <TolovPOS key={tolovZakaz?.n} boshZakaz={tolovZakaz?.id} onTolandi={yukla} onSmenaOchish={() => setOyna('ochish')} />}
           {bolim === 'xarajat' && (
             <XarajatPOS onYuborish={(b) => bajar(() => xarajatYarat({ ...b, kassadan: true }), rahbar ? 'Xarajat kassadan yozildi.' : "Xarajat kassadan yozildi (rahbar tasdig'ini kutadi).")} />
           )}
@@ -199,13 +208,15 @@ function SmenaYopish({ hisobda, tekshirilmagan, onYuborish }) {
 }
 
 // To'lov qabul qilish — POS ekrani: chapda to'lov kutayotgan zakazlar, o'ngda chek (summa, klaviatura, usul)
-function TolovPOS({ boshZakaz, onTolandi }) {
+function TolovPOS({ boshZakaz, onTolandi, onSmenaOchish }) {
   const [royxat, setRoyxat] = useState(null)
   const [q, setQ] = useState('')
   const [tanlangan, setTanlangan] = useState(boshZakaz || null)
   const [summa, setSumma] = useState('')
   const [usul, setUsul] = useState('naqd')
   const [xato, setXato] = useState('')
+  const [xatoKod, setXatoKod] = useState('')  // serverdan: smena_qoshilish | smena_yoq — xato yonida mos tugma
+  const [qoshildi, setQoshildi] = useState(false)
   const [band, setBand] = useState(false)
   const [tolandi, setTolandi] = useState(null) // { zakaz, summa }
   const [chek, setChek] = useState(null)
@@ -221,15 +232,15 @@ function TolovPOS({ boshZakaz, onTolandi }) {
   const z = royxat?.find((x) => x.id === tanlangan)
   const qoldiq = z ? z.jami - z.tolangan : 0
   const avans = z?.holat === 'vaqtinchalik'
-  const tanla = (id) => { setTanlangan(id); setSumma(''); setXato(''); setTolandi(null) }
+  const tanla = (id) => { setTanlangan(id); setSumma(''); setXato(''); setXatoKod(''); setQoshildi(false); setTolandi(null) }
   const qabul = async () => {
-    setXato(''); setBand(true)
+    setXato(''); setXatoKod(''); setQoshildi(false); setBand(true)
     try {
       await tolovQabul({ zakaz: z.id, tur: avans ? 'avans' : 'qoldiq', summa: Number(summa), usul })
       setTolandi({ zakaz: z, summa: Number(summa), usul })
       setTanlangan(null); setSumma('')
       await Promise.all([yukla(), onTolandi?.()])
-    } catch (e) { setXato(xatoMatni(e)) } finally { setBand(false) }
+    } catch (e) { setXato(xatoMatni(e)); setXatoKod(e.response?.data?.kod || '') } finally { setBand(false) }
   }
 
   if (chek) return <Hujjat zakazId={chek} tur="kvitansiya" onYop={() => setChek(null)} />
@@ -292,7 +303,14 @@ function TolovPOS({ boshZakaz, onTolandi }) {
                 <button key={k} type="button" role="radio" aria-checked={usul === k} className={usul === k ? 'tanlandi' : ''} onClick={() => setUsul(k)}>{nom}</button>
               ))}
             </div>
-            {xato && <p className="xato">{xato}</p>}
+            {xato && (
+              <p className="xato">
+                {xato}{' '}
+                <SmenaTugma kod={xatoKod} onKassa={onSmenaOchish}
+                  onTayyor={() => { setXato(''); setXatoKod(''); setQoshildi(true); onTolandi?.() }} />
+              </p>
+            )}
+            {qoshildi && <p className="malumot">Smenaga qo'shildingiz — «Qabul qilish» ni qayta bosing.</p>}
             <button className="pos-tugma" disabled={band || !(Number(summa) > 0) || Number(summa) > qoldiq} onClick={qabul}>
               {band ? 'Qabul qilinmoqda…' : `Qabul qilish${Number(summa) > 0 ? ` · ${som(Number(summa))}` : ''}`}
             </button>

@@ -231,3 +231,18 @@ class FilialFiltrTests(StatistikaTests):
         c.credentials(HTTP_AUTHORIZATION='Bearer ' + make_staff_token(self.rahbar))
         j = c.get('/api/hisobotlar/h/libos/', {'dan': str(self.dan), 'gacha': str(self.gacha), 'filial': 999999})
         self.assertEqual((j.status_code, j.data['filtrlar'], j.data['qatorlar']), (200, ['kategoriya', 'filial'], []))
+
+
+class LibosBoshKunTests(TestCase):
+    def test_kelajakdagi_olib_ketish_manfiy_kun_bermaydi(self):
+        """Libos olib ketish sanasidan oldin berilsa «Bo'sh turgan kun» manfiy bo'lmaydi."""
+        salon, xodim, kat = salon_yarat()
+        smena_ochish(salon=salon, xodim=xodim, boshlangich_qoldiq=0)
+        libos = libos_yarat(salon, kat, 'A', ijara_narxi=2_000_000, tannarx=4_000_000)
+        z = zakaz_yaratish(salon=salon, xodim=xodim, telefon='+998901', olib_ketish=kun(5), qaytarish=kun(6),
+                           libos_idlari=[libos.id])
+        tolov_qabul(salon=salon, xodim=xodim, tur=Tolov.Tur.AVANS, summa=1_000_000, zakaz=z)
+        tolov_qabul(salon=salon, xodim=xodim, tur=Tolov.Tur.QOLDIQ, summa=1_000_000, zakaz=z)
+        libos_berish(salon=salon, xodim=xodim, zakaz=z, zaloglar=[{'turi': 'pul', 'summa': 1_000_000}])
+        qator = statistika.libos_samaradorligi(salon, kun(-30), kun(30))['qatorlar'][0]
+        self.assertEqual((qator[5], qator[6]), (kun(0), 0))  # oxirgi marta — bugun, bo'sh kun — 0

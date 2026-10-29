@@ -75,15 +75,15 @@ def libos_samaradorligi(salon, dan, gacha, kategoriya=None, filial=None, **_):
                        ZakazPozitsiya.objects.filter(zakaz__in=_storno(salon, dan, gacha)), 'libos_id', 'narx')
     umumiy = dict(ZakazPozitsiya.objects.filter(salon=salon, zakaz__tolangan_sana__isnull=False)
                   .exclude(zakaz__holat=Zakaz.Holat.BEKOR).values_list('libos_id').annotate(s=Sum('narx')))
+    bugun = timezone.localdate()
     oxirgi = {}
     for lid, sana in (ZakazPozitsiya.objects.filter(salon=salon, zakaz__holat__in=BERILGAN)
                       .values_list('libos_id', 'zakaz__olib_ketish').order_by('zakaz__olib_ketish')):
-        oxirgi[lid] = sana
+        oxirgi[lid] = min(sana, bugun)  # olib ketish sanasidan oldin berilgan libos kelajak sanada «oxirgi marta» bo'lib qolmasin
     # FT-15.4: libos bo'yicha o'rtacha mijoz bahosi (davrdagi qaytarishlar)
     baho = dict(ZakazPozitsiya.objects.filter(salon=salon, zakaz__qaytarish_akti__sana__range=(dan, gacha),
                                               zakaz__qaytarish_akti__baho__isnull=False)
                 .values_list('libos_id').annotate(a=Avg('zakaz__qaytarish_akti__baho')))
-    bugun = timezone.localdate()
     qatorlar = []
     for l in _liboslar(salon, kategoriya, filial).select_related('kategoriya').order_by('artikul'):
         jami = umumiy.get(l.id, 0)
@@ -206,7 +206,7 @@ def bosh_liboslar(salon, dan, gacha, kun=None, kategoriya=None, filial=None, **_
     oxirgi = {}
     for lid, sana in (ZakazPozitsiya.objects.filter(salon=salon, zakaz__holat__in=BERILGAN)
                       .values_list('libos_id', 'zakaz__olib_ketish').order_by('zakaz__olib_ketish')):
-        oxirgi[lid] = sana
+        oxirgi[lid] = min(sana, bugun)
     umumiy = dict(ZakazPozitsiya.objects.filter(salon=salon, zakaz__tolangan_sana__isnull=False)
                   .exclude(zakaz__holat=Zakaz.Holat.BEKOR).values_list('libos_id').annotate(s=Sum('narx')))
     qatorlar = []

@@ -25,6 +25,23 @@ def instagram_havola(qiymat):
     return f'https://www.instagram.com/{nomi}/'
 
 
+def _takror_salonchi(salon, ism, telefon, istisno_id=None):
+    """Bazada shu salonchi bormi: telefon bor bo'lsa — telefon raqami bir xil, bo'lmasa — ism bir xil (harf registrisiz)."""
+    raqam = re.sub(r'\D', '', telefon or '')
+    ism = (ism or '').strip().casefold()
+    for x in Salonchi.objects.filter(salon=salon).exclude(id=istisno_id):
+        if raqam:
+            if re.sub(r'\D', '', x.telefon) == raqam:
+                return x
+        elif x.ism.strip().casefold() == ism and not x.telefon:
+            return x
+    return None
+
+
+def _takror_xabari(x):
+    return Response({'detail': f"«{x.ism}» salonchi bazada allaqachon bor{' (telefon bir xil)' if x.telefon else ''}."}, status=409)
+
+
 class SalonchiSerializer(serializers.Serializer):
     ism = serializers.CharField(max_length=200)
     telefon = serializers.CharField(max_length=20, required=False, allow_blank=True)
@@ -71,6 +88,9 @@ class SalonchilarView(APIView):
         ser.is_valid(raise_exception=True)
         d = ser.validated_data
         d.pop('faol', None)
+        bor = _takror_salonchi(request.salon, d['ism'], d.get('telefon', ''))
+        if bor:
+            return _takror_xabari(bor)
         s = Salonchi.objects.create(salon=request.salon, **d)
         return Response(salonchi_json(s, False), status=201)
 
@@ -84,6 +104,11 @@ class SalonchiView(APIView):
             raise NotFound('Salonchi topilmadi.')
         ser = SalonchiSerializer(data=request.data, partial=True)
         ser.is_valid(raise_exception=True)
+        d = ser.validated_data
+        if 'ism' in d or 'telefon' in d:
+            bor = _takror_salonchi(request.salon, d.get('ism', s.ism), d.get('telefon', s.telefon), istisno_id=s.id)
+            if bor:
+                return _takror_xabari(bor)
         for nom, qiymat in ser.validated_data.items():
             setattr(s, nom, qiymat)
         s.save()

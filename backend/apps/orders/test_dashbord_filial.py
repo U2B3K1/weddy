@@ -55,7 +55,9 @@ class DashbordFilialTests(TestCase):
 
     def test_davr_bugun_filial_bilan(self):
         self.assertEqual(self.d(davr='bugun', filial=self.f2.id)['shu_oy']['hozirgi_daromad'], 3_000_000)
-        self.assertEqual(self.d(filial='xato')['bugun']['tushum_jami'], 4_000_000)  # noto'g'ri qiymat — butun salon
+        for yomon in ('xato', '999999'):  # noto'g'ri yoki boshqa salonning filiali — jimgina butun salon emas
+            r = self.c.get('/api/dashbord/', {'filial': yomon})
+            self.assertEqual((r.status_code, list(r.json())), (400, ['filial']), yomon)
 
 
 class DevLanTests(TestCase):

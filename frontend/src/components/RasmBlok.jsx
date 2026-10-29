@@ -56,7 +56,7 @@ export default function RasmBlok({ libosId, rahbar, onOzgardi }) {
         {rasmlar.map((r) => (
           <figure key={r.id} className="rasm-katak">
             <img src={r.kichik} alt="Libos rasmi" onClick={() => setKattaRasm(r.katta)} />
-            {rahbar && !r.standart && <figcaption className="belgi">standart emas</figcaption>}
+            {rahbar && !r.standart && <figcaption className="belgi" title="Tik (2:3) rasm eng yaxshi ko'rinadi; bu rasm chetlaridan kesilishi mumkin">nisbati 2:3 emas</figcaption>}
             <button type="button" className="rasm-ochir" aria-label="Rasmni o'chirish" onClick={() => ochir(r.id)}>×</button>
             {manekinYoq && (
               <button type="button" className="ikkinchi kichik rasm-manekin" disabled={tayyorlanmoqda !== null} onClick={() => manekinga(r.id)}>
@@ -72,7 +72,7 @@ export default function RasmBlok({ libosId, rahbar, onOzgardi }) {
         {yuklanmoqda ? 'Yuklanmoqda…' : "Rasm qo'shish"}
       </button>
       <p className="malumot">
-        Bitta manekin, bitta fon va yorug'lik; har bir libos 3–5 rakursda (old, yon, orqa, tafsilot). Rasm tik (2:3) bo'lsin.
+        Har bir libos uchun 3–5 ta rasm yuklang (old, yon, orqa, tafsilot). Tik (2:3) rasm eng yaxshi ko'rinadi.
         Telefon rasmini to'g'ridan-to'g'ri yuklash mumkin — tizim o'zi kichraytiradi.
       </p>
       {manekinYoq && libos?.manekin && (

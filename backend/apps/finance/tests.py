@@ -280,7 +280,8 @@ class PnlTafsilotTests(FinanceBase):
                              jami=1_000_000, holat=Zakaz.Holat.BEKOR, bekor_vaqti=vaqt(2026, 10, 12), ushlab_qolingan_avans=300_000)
         for modda, summa in (('tozalash', 200_000), ('bino', 1_000_000), ('reklama', 500_000)):
             xarajat_kiritish(salon=s, xodim=self.rahbar, modda=modda, summa=summa, sana=date(2026, 10, 5), izoh='izoh')
-        xarajat_kiritish(salon=s, xodim=self.rahbar, modda='bino', summa=9_000_000, sana=date(2026, 11, 5))
+        # boshqa oydagi xarajat oktabr P&L ga kirmasligi kerak (kelajak sana endi rad etiladi — o'tgan oy olindi)
+        xarajat_kiritish(salon=s, xodim=self.rahbar, modda='bino', summa=9_000_000, sana=date(2026, 9, 5))
 
     def test_har_qator_jami_pnl_ga_teng(self):
         r = reports.foyda_zarar(self.salon, 2026, 10)

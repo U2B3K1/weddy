@@ -1,7 +1,7 @@
 """Ro'yxat va dashbord endpointlari: zakazlar, sotuvchi bosh ekrani (FT-1.2), rahbar dashbordi (6.5)."""
 from django.db.models import Q, Sum
 from django.utils import timezone
-from rest_framework.exceptions import NotFound
+from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -222,11 +222,15 @@ class RahbarDashbordView(APIView):
         from apps.cash.models import Smena
         salon, bugun = request.salon, timezone.localdate()
         davr = request.query_params.get('davr', 'oy')
-        if davr not in ('bugun', 'hafta', 'oy'):
-            davr = 'oy'
+        if davr not in ('bugun', 'hafta', 'oy', 'yil'):
+            raise ValidationError({'davr': "bugun, hafta, oy yoki yil bo'lishi kerak."})
         # ?filial= — «Bugun», davr va «Oldinda» bloklari shu filial bo'yicha (tasdiqlar va ogohlantirishlar butun salon bo'yicha qoladi)
         filial = request.query_params.get('filial', '')
-        filial = int(filial) if filial.isdigit() else None
+        if filial:
+            from apps.tenants.models import Filial
+            if not filial.isdigit() or not Filial.objects.filter(salon=salon, id=int(filial)).exists():
+                raise ValidationError({'filial': 'Filial topilmadi.'})
+        filial = int(filial) if filial else None
         zf = {'filial_id': filial} if filial else {}
         # Ochiq smenalar: filial bo'yicha yoki butun salon (filial kassalari yoqilgan bo'lsa bir nechta bo'ladi)
         ochiq_smenalar = list(Smena.objects.filter(salon=salon, yopilgan__isnull=True, **({'filial_id': filial} if filial else {})))
@@ -256,12 +260,16 @@ class RahbarDashbordView(APIView):
             # o'rtacha chek storno'siz (oldingi oydan bekor qilingan zakaz bu oy zakazlariga bo'linmaydi) — _davr_bloki kabi
             'ortacha_chek': (pnl['tushum'] + pnl['storno']) // pnl['zakazlar_soni'] if pnl['zakazlar_soni'] else 0,
         }
-        davr_dan = {'bugun': bugun, 'hafta': bugun - timedelta(days=bugun.weekday()), 'oy': bugun.replace(day=1)}[davr]
+        davr_dan = {'bugun': bugun, 'hafta': bugun - timedelta(days=bugun.weekday()), 'oy': bugun.replace(day=1),
+                   'yil': bugun.replace(month=1, day=1)}[davr]
         if davr != 'oy':  # FT-19.2: «Shu oy» bloki tanlangan davrga moslashadi
             shu_oy = _davr_bloki(salon, davr_dan, bugun, filial)
         # kutilayotgan daromad davrga bog'liq emas: bu bugungi holat (avans olingan, qoldiq to'lanmagan)
         shu_oy.update(kutilayotgan_daromad=kutilayotgan['jami'], olingan_avans=kutilayotgan['olingan_avans'],
                       qolgan_summa=kutilayotgan['qolgan_summa'])
+        # Tasdiq kutayotgan xarajat foydaga kirmaydi, lekin kassadan chiqqan bo'lishi mumkin — foyda yonida alohida ko'rsatiladi
+        shu_oy['tasdiqlanmagan_xarajat'] = Xarajat.objects.filter(
+            salon=salon, holat=Xarajat.Holat.KUTILMOQDA, sana__range=(davr_dan, bugun), **zf).aggregate(s=Sum('summa'))['s'] or 0
         oxirgi_smena = Smena.objects.filter(salon=salon, yopilgan__isnull=False).order_by('-yopilgan').first()
         # FT-19.5: o'chirilgan funksiya ko'rsatkichi chiqmaydi
         tugayotgan = (Promokod.objects.filter(salon=salon, holat=Promokod.Holat.FAOL, tugash__gte=bugun,
@@ -273,6 +281,9 @@ class RahbarDashbordView(APIView):
             'oldinda': {**_oldinda(salon, bugun, filial=filial), 'avanslar_portfeli': kutilayotgan['olingan_avans']},
             'bugun': {
                 'tushum': by_usul, 'tushum_jami': sum(by_usul.values()),
+                # bekor qilingan zakazlarga bugun qaytarilgan avanslar — «tushum_jami» ichida hisoblangan, shundan ayriladi
+                'qaytarilgan': Tolov.objects.filter(reports.tolov_filiali(filial), salon=salon, vaqt__date=bugun,
+                                                    tur=Tolov.Tur.VOZVRAT).aggregate(s=Sum('summa'))['s'] or 0,
                 'smena_ochiq': bool(smena),
                 'ochiq_smenalar': Smena.objects.filter(salon=salon, yopilgan__isnull=True).count(),
                 'hisobdagi_qoldiq': sum(kassa_hisobot(s)['hisobdagi_qoldiq'] for s in ochiq_smenalar) if ochiq_smenalar else None,
@@ -291,6 +302,7 @@ class RahbarDashbordView(APIView):
             'shu_oy': shu_oy,
             'ogohlantirishlar': {
                 'tannarxsiz_liboslar': pnl['tannarxsiz_liboslar'],
+                'kechikish_jarimasi_yoqilgan': soz.kechikish_jarimasi,
                 'tugayotgan_promokodlar': tugayotgan,
                 'kassa_farqi': oxirgi_smena.farq if oxirgi_smena and oxirgi_smena.farq else 0,
                 'kassa_farqi_sana': oxirgi_smena.sana if oxirgi_smena and oxirgi_smena.farq else None,

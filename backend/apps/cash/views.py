@@ -7,11 +7,11 @@ from apps.tenants.permissions import IsStaff, SalonYozishRuxsati
 
 from . import services, tekshiruv
 from .models import Tolov
-from .services import KassaXatosi
+from .services import KassaXatosi, xato_tanasi
 
 
 def xato(e):
-    return Response({'detail': str(e)}, status=409)
+    return Response(xato_tanasi(e), status=409)
 
 
 def _filial(request):

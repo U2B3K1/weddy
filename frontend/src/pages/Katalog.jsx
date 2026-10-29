@@ -157,7 +157,7 @@ function Liboslar({ rahbar }) {
                 <span className="libos-nom"><b>{l.artikul}</b> {l.nomi}</span>
                 <span className="libos-kat">{l.kategoriya}{l.olcham ? `, ${l.olcham}` : ''}</span>
                 <span className="libos-narx">{som(l.ijara_narxi)}</span>
-                {rahbar && l.standart_emas > 0 && <span className="belgi">{l.standart_emas} ta rasm standart emas</span>}
+                {rahbar && l.standart_emas > 0 && <span className="belgi">{l.standart_emas} ta rasm 2:3 nisbatda emas</span>}
               </span>
             </button>
             {tanlangan === l.id && (

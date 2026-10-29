@@ -8,14 +8,14 @@ from rest_framework.views import APIView
 from apps.tenants.models import Jurnal, Xodim, jurnalga_yoz
 from apps.tenants.permissions import IsRahbar, IsStaff, SalonYozishRuxsati
 
-from apps.cash.services import KassaXatosi
+from apps.cash.services import KassaXatosi, xato_tanasi
 from apps.finance.services import XarajatXatosi
 
 from .models import Kategoriya, Libos, Rasm, TamirYozuvi
 from .manekin import joylashuvni_saqlash, manekin_json, qatlam_yaratish
 from .rasm import rasm_yuklash, rasmni_ochirish
 from .tamir import tamirga_berish, tamirni_tugatish
-from .services import (KatalogXatosi, QOLDA_HOLATLAR, libos_qoshish, libosni_ozgartirish,
+from .services import (KatalogXatosi, QOLDA_HOLATLAR, tozalashni_yakunla, libos_qoshish, libosni_ozgartirish,
                        libosni_tasdiqlash)
 
 
@@ -61,7 +61,7 @@ def _bajar(fn, **kw):
     try:
         return fn(**kw), None
     except (KatalogXatosi, KassaXatosi, XarajatXatosi) as e:
-        return None, Response({'detail': str(e)}, status=409)
+        return None, Response(xato_tanasi(e), status=409)
 
 
 class LibosYaratSerializer(serializers.Serializer):
@@ -79,6 +79,7 @@ class LiboslarView(APIView):
     permission_classes = [IsStaff]
 
     def get(self, request):
+        tozalashni_yakunla(request.salon)  # bufer kuni o'tgan «tozalashda» liboslar bo'sh bo'ladi
         qs = (Libos.objects.filter(salon=request.salon).select_related('kategoriya', 'qoshgan')
               .prefetch_related('rasmlar'))
         p = request.query_params

@@ -14,7 +14,7 @@ from apps.tenants.models import Jurnal, PlatformaAdmini, Tarif, Xodim
 
 from . import reports
 from .models import Xarajat, XarajatModdasi
-from .services import oyni_yopish, xarajat_kiritish
+from .services import XarajatXatosi, oyni_yopish, xarajat_kiritish
 
 
 class Base(TestCase):
@@ -40,6 +40,18 @@ class XarajatTuzatishTests(Base):
         self.x.refresh_from_db()
         self.assertEqual((self.x.summa, self.x.modda, self.x.izoh), (300_000, 'transport', 'taksi'))
         self.assertTrue(Jurnal.objects.filter(salon=self.salon, harakat='xarajat_tuzatildi').exists())
+
+    def test_kelajak_sanali_xarajat_rad_etiladi(self):
+        ertaga = timezone.localdate() + timedelta(days=1)
+        with self.assertRaisesMessage(XarajatXatosi, 'kelajakda'):
+            xarajat_kiritish(salon=self.salon, xodim=self.rahbar, modda='reklama', summa=1000, sana=ertaga)
+        r = self.r.post('/api/xarajatlar/', {'modda': 'reklama', 'summa': 1000, 'sana': str(ertaga)}, format='json')
+        self.assertEqual(r.status_code, 409)
+        r = self.r.patch(f'/api/xarajatlar/{self.x.id}/', {'sana': str(ertaga)}, format='json')
+        self.assertEqual(r.status_code, 409)
+        bugun = timezone.localdate()
+        r = self.r.post('/api/xarajatlar/', {'modda': 'reklama', 'summa': 1000, 'sana': str(bugun)}, format='json')
+        self.assertEqual(r.status_code, 201, r.content)
 
     def test_sotuvchi_tuzata_olmaydi(self):
         self.assertEqual(self.m.patch(f'/api/xarajatlar/{self.x.id}/', {'summa': 1}, format='json').status_code, 403)
@@ -171,3 +183,26 @@ class TarifTests(TestCase):
         c = APIClient()
         c.credentials(HTTP_AUTHORIZATION='Bearer ' + make_staff_token(xodim))
         self.assertIn(c.patch(f'/api/platforma/tariflar/{self.t.id}/', {'nomi': 'X'}, format='json').status_code, (401, 403))
+
+
+class PnlInvestitsiyaTests(Base):
+    def test_investitsiya_va_qoplash(self):
+        from apps.cash.models import Tolov
+        from apps.cash.services import tolov_qabul
+        from apps.orders.services import zakaz_yaratish
+        a = libos_yarat(self.salon, self.kat, 'A', ijara_narxi=2_000_000, tannarx=8_000_000)
+        libos_yarat(self.salon, self.kat, 'B', ijara_narxi=1_000_000, tannarx=2_000_000)
+        libos_yarat(self.salon, self.kat, 'C', ijara_narxi=1_000_000)  # tannarxsiz — investitsiyaga kirmaydi
+        bugun = timezone.localdate()
+        smena_ochish(salon=self.salon, xodim=self.malika, boshlangich_qoldiq=0)
+        z = zakaz_yaratish(salon=self.salon, xodim=self.malika, telefon='+998901', olib_ketish=bugun + timedelta(days=2),
+                           qaytarish=bugun + timedelta(days=3), libos_idlari=[a.id])
+        tolov_qabul(salon=self.salon, xodim=self.malika, tur=Tolov.Tur.AVANS, summa=1_000_000, zakaz=z)
+        tolov_qabul(salon=self.salon, xodim=self.malika, tur=Tolov.Tur.QOLDIQ, summa=1_000_000, zakaz=z)  # to'liq to'langan
+        r = reports.foyda_zarar(self.salon, bugun.year, bugun.month)
+        self.assertEqual((r['investitsiya'], r['investitsiya_qoplagan'], r['qoplash_foiz']), (10_000_000, 2_000_000, 20.0))
+
+    def test_liboslarsiz_salonda_foiz_bosh(self):
+        bugun = timezone.localdate()
+        r = reports.foyda_zarar(self.salon, bugun.year, bugun.month)
+        self.assertEqual((r['investitsiya'], r['qoplash_foiz']), (0, None))

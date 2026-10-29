@@ -64,7 +64,8 @@ button.havola, .havola-tugma { min-height: 0; background: none; box-shadow: none
 /* Doira / ikonka tugmalar o'z o'lchamini saqlaydi (44px tegish maydoni keyinroq .karta-orqaga va shu kabilarda) */
 .shapka-menyu, .rasm-ochir, .xodim-menu { min-height: 0; box-shadow: none; }
 .xodim-menu { min-width: 44px; min-height: 44px; }
-.rasm-ochir { min-width: 24px; }
+.rasm-ochir { min-width: 24px; background: rgba(251, 246, 238, .92); color: #1b2234; font-size: 16px; font-weight: 700; box-shadow: 0 1px 4px rgba(0, 0, 0, .5); }  /* qora/tun foto ustida ham ko'rinsin */
+.rasm-ochir:hover { background: #fff; color: #b3261e; }
 .qator-btn { min-height: 48px; box-shadow: none; font-weight: 500; color: var(--oq); }
 .qator-btn.qizil { box-shadow: inset 3px 0 0 var(--h-qarz); }  /* qizil ramka emas — chap chiziq */
 
@@ -138,7 +139,10 @@ label > input, label > select { color: var(--oq); }
 .karta-asosiy .jadval tr:nth-last-child(2) td:last-child, .karta-asosiy .jadval tr:last-child td:last-child { font-size: 15px; }
 .boshqa-amallar { display: flex; flex-direction: column; gap: 10px; }
 .boshqa-amallar:not([open]) { display: block; }
-.boshqa-amallar > summary { list-style: none; }
+.boshqa-amallar > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+.boshqa-amallar > summary::after { content: ''; width: 7px; height: 7px; margin-top: -3px; border-right: 2px solid currentColor; border-bottom: 2px solid currentColor;
+  transform: rotate(45deg); transition: transform .2s; }
+.boshqa-amallar[open] > summary::after { margin-top: 3px; transform: rotate(-135deg); }
 .boshqa-amallar[open] > summary { margin-bottom: 6px; }
 .amal summary { min-height: 44px; display: flex; align-items: center; }
 
@@ -265,7 +269,7 @@ label > input, label > select { color: var(--oq); }
 .zakaz-qadamlar li.joriy { color: var(--tilla); border-color: var(--tilla); background: rgba(228, 193, 150, .16); font-weight: 600; }
 .zakaz-qadamlar li.otdi { color: var(--oq); }
 .zakaz-tugmalar { display: flex; gap: 10px; }
-.zakaz-tugmalar button { flex: 1; }
+.zakaz-tugmalar button { flex: 1; white-space: nowrap; padding-inline: 10px; }  /* tor panelda «Zakazni saqlash» ikki qatorga bo'linmasin */
 .libos-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
 .libos-grid li { position: relative; display: flex; flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 8px; padding: 8px; margin: 0; }
 .libos-grid .eskiz { width: 100%; height: auto; aspect-ratio: 2 / 3; border-radius: 12px; }
@@ -281,6 +285,9 @@ label > input, label > select { color: var(--oq); }
 @media (min-width: 768px) {
   .zakaz-joy { display: grid; grid-template-columns: minmax(0, 1fr) 300px; align-items: start; }
   .zakaz-jami { position: sticky; top: 16px; padding: 16px; background: var(--yuza-1); border: 1px solid var(--chegara); border-radius: var(--r-panel); }
+  /* tugmalar sarlavha ostida, tanlangan liboslar ro'yxatidan oldin: libos qo'shilganda tugma pastga siljib ketmasin */
+  .zakaz-jami > b { order: -2; }
+  .zakaz-jami .zakaz-tugmalar { order: -1; }
   .libos-grid { grid-template-columns: repeat(3, 1fr); }
 }
 @media (min-width: 1200px) {

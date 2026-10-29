@@ -289,7 +289,7 @@ class SalonSozlamalari(models.Model):
     kunlik_hisobot = models.BooleanField(default=True)            # FT-15.5
     kunlik_hisobot_vaqti = models.TimeField(default=datetime.time(21, 0))
     promokodlar_bolimi = models.BooleanField(default=True)        # 4.18
-    manekin = models.BooleanField(default=True)                   # 4.5 raqamli manekin
+    manekin = models.BooleanField(default=False)                  # 4.5 raqamli manekin (ixtiyoriy; standart — o'chirilgan: oddiy rasm yetadi)
     # Shartnoma shabloni (4.16): avtomatik bandlardan keyin chiqadigan salonning o'z bandlari [{sarlavha, matn}]
     shartnoma_bandlari = models.JSONField(default=list, blank=True)
     # Har filialda alohida kassa (smena). O'chirilgan bo'lsa salonda bitta umumiy smena (FT-12.7)

@@ -22,6 +22,8 @@ def zakaz_yaratish(*, salon, xodim, telefon, olib_ketish, qaytarish, libos_idlar
     Zakaz avans kiritilmaguncha «vaqtinchalik bron» holatida bo'ladi (FT-2.5).
     `toy_sanasi` — ijara oralig'i ichida; mijoz kartasiga yoziladi (sana ko'chirilsa u ham ko'chadi).
     """
+    from apps.catalog.services import tozalashni_yakunla
+    tozalashni_yakunla(salon)  # bufer kuni o'tgan «tozalashda» liboslar bron qilinadigan bo'ladi
     if not libos_idlari:
         raise BandlikXatosi("Zakazga kamida bitta libos qo'shing.")
     if qaytarish < olib_ketish:  # bron yaratilishidan oldin: aks holda mijoz va raqam bekorga yaratilardi

@@ -9,7 +9,17 @@ from .models import Smena, SmenaIshtirokchi, Tolov
 
 
 class KassaXatosi(Exception):
-    pass
+    """`kod` — frontend xato yonida mos tugma (masalan, «Smenaga qo'shilish») ko'rsatishi uchun."""
+
+    def __init__(self, xabar='', kod=None):
+        super().__init__(xabar)
+        self.kod = kod
+
+
+def xato_tanasi(e):
+    """409 javob tanasi: matn va (bo'lsa) xato kodi."""
+    kod = getattr(e, 'kod', None)
+    return {'detail': str(e), **({'kod': kod} if kod else {})}
 
 
 def ochiq_smena(salon, filial=False):
@@ -108,8 +118,8 @@ def tolov_qabul(*, salon, xodim, tur, summa, usul=Tolov.Usul.NAQD, zakaz=None, i
     smena = xodim_smenasi(salon, xodim)
     if not smena:
         if not ochiq_smena(salon):
-            raise KassaXatosi('Ochiq smena bo\'lmasa to\'lov qabul qilinmaydi.')
-        raise KassaXatosi('Avval smenaga qo\'shiling.')
+            raise KassaXatosi('Ochiq smena bo\'lmasa to\'lov qabul qilinmaydi.', kod='smena_yoq')
+        raise KassaXatosi('Avval smenaga qo\'shiling.', kod='smena_qoshilish')
     smena = _qulfla(smena)
 
     if tur in (Tolov.Tur.AVANS, Tolov.Tur.QOLDIQ):

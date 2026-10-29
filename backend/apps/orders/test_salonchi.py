@@ -99,3 +99,48 @@ class SalonchiTests(TestCase):
         r = c.post('/api/zakazlar/', {'telefon': '+998901', 'dan': '2026-11-10', 'gacha': '2026-11-12',
                                       'liboslar': [self.a.id], 'salonchi': sb.id}, format='json')
         self.assertEqual(r.status_code, 400)
+
+
+class SalonchiTakrorTests(TestCase):
+    """Bir xil salonchi ikki marta qo'shilmaydi: telefon bor bo'lsa — telefon, yo'q bo'lsa — ism bo'yicha."""
+
+    def setUp(self):
+        self.salon, self.malika, self.kat = salon_yarat()
+
+    def api(self, xodim):
+        c = APIClient()
+        c.credentials(HTTP_AUTHORIZATION='Bearer ' + make_staff_token(xodim))
+        return c
+
+    def qosh(self, c, **kw):
+        return c.post('/api/salonchilar/', {'ism': 'Madina', **kw}, format='json')
+
+    def test_bir_xil_telefon_rad_etiladi(self):
+        c = self.api(self.malika)
+        self.assertEqual(self.qosh(c, telefon='+998 90 123-45-67').status_code, 201)
+        r = self.qosh(c, ism='Boshqa nom', telefon='998901234567')  # yozilishi boshqa, raqami bir xil
+        self.assertEqual(r.status_code, 409)
+        self.assertIn('allaqachon bor', r.json()['detail'])
+        self.assertEqual(Salonchi.objects.filter(salon=self.salon).count(), 1)
+
+    def test_telefonsiz_bir_xil_ism_rad_etiladi_harf_registri_hisobga_olinmaydi(self):
+        c = self.api(self.malika)
+        self.assertEqual(self.qosh(c).status_code, 201)
+        self.assertEqual(self.qosh(c, ism='  MADINA ').status_code, 409)
+
+    def test_bir_xil_ismli_boshqa_telefonli_odam_mumkin(self):
+        c = self.api(self.malika)
+        self.assertEqual(self.qosh(c, telefon='+998901111111').status_code, 201)
+        self.assertEqual(self.qosh(c, telefon='+998902222222').status_code, 201)
+
+    def test_tahrirlashda_ham_takror_rad_etiladi_oz_yozuvi_emas(self):
+        c = self.api(self.malika)
+        a = self.qosh(c, telefon='+998901111111').json()['id']
+        b = self.qosh(c, ism='Nodira', telefon='+998902222222').json()['id']
+        self.assertEqual(c.patch(f'/api/salonchilar/{b}/', {'telefon': '+998901111111'}, format='json').status_code, 409)
+        self.assertEqual(c.patch(f'/api/salonchilar/{a}/', {'telefon': '+998901111111', 'izoh': 'x'}, format='json').status_code, 200)
+
+    def test_boshqa_salonda_bir_xil_salonchi_mumkin(self):
+        self.qosh(self.api(self.malika), telefon='+998901111111')
+        _, xodim_b, _ = salon_yarat('b')
+        self.assertEqual(self.qosh(self.api(xodim_b), telefon='+998901111111').status_code, 201)

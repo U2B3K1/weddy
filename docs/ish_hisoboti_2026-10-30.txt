@@ -1,0 +1,128 @@
+LIBOSA (weddy) - 2026-10-30 KUNI QILINGAN ISHLAR HISOBOTI
+=========================================================
+
+Holat: barcha o'zgarishlar COMMIT QILINMAGAN (git master). To'liq backend testlari: 719 ta, hammasi OK
+(undan keyin faqat manekin standarti o'zgargan, tegishli 16 test OK).
+Batafsil jurnal: PROGRESS.md (2026-10-30 yozuvlari).
+
+
+1. PLATFORMA (#platforma) - FORMA VA DIZAYN
+-------------------------------------------
+Muammo: salon qo'shilgandan keyin "Salon qo'shish" formasi ochiq qolardi (details ichida edi).
+Qilingan (frontend/src/pages/Platforma.jsx):
+  - Salon va tarif qo'shish formalari Oyna (modal) ichiga olindi; muvaffaqiyatda yopiladi,
+    xatoda ochiq qoladi.
+  - Dizayn rahbar ilovasiga moslandi: chap panel (LIBOSA brendi + ikonkali bandlar), yuqori panel
+    ("Chiqish" tugmasi), stat-qator ko'rsatkichlari, jadval-panel (holat tablari, qidiruv,
+    ustunli jadval, qator bosilsa tafsilot ochiladi).
+  - So'rovlar va Telegram bot bo'limlari details o'rniga oddiy blok bo'ldi.
+  - Backend va API o'zgarmadi.
+
+
+2. LOKAL MUHIT VA SINOVLAR
+--------------------------
+  - Docker Desktop va PostgreSQL (port 5433) yoqildi, backend (8000) va frontend (5173) ishga tushirildi.
+    Tizim xotirasi tugagani uchun dev serverlar bir marta avtomatik to'xtatilgan edi, keyin qayta yoqildi.
+  - Sinov ma'lumotlari yaratildi: salon (salon123), rahbar va sotuvchi xodimlar, kategoriyalar,
+    9 ta libos, aksessuar (F1, 3 dona), salonchilar, promokod, ~19 ta zakaz, xarajatlar;
+    qo'shimcha bo'sh salon (bosh123), brauzer sinovi salon (brauzer1) va platforma sinov akkaunti.
+  - Sinalgan oqimlar: salon logini, qurilma tasdig'i (rahbar PIN), PIN bilan kirish, smena, avans/qoldiq,
+    zalog bilan berish, qaytarish, bekor qilish, aksessuarli zakaz, chegirma (tayyor va tasdiqli),
+    xarajat (tasdiq/rad), ruxsatlar (sotuvchi uchun 403), salonlar orasida ajratish.
+  - Statistika: dashboard, P&L, 16 ta hisobot, bonus, bank, qarzdorlar, tafsilot, chekka sanalar,
+    bo'sh salon (28 endpoint 200). Hisobotlar bazadagi to'lov summalariga mos chiqdi.
+  - Tezlik: 70-200 ms (localhost orqali +2 s - IPv6 ga urinish, ilovaga aloqasi yo'q).
+
+
+3. STATISTIKA BO'YICHA TOPILGAN 11 KAMCHILIK VA ULARNING TUZATILISHI
+--------------------------------------------------------------------
+(1) Libos hisobotida "Bo'sh turgan kun" manfiy (-5) chiqardi.
+    -> finance/statistika.py: "oxirgi marta" = min(olib ketish sanasi, bugun); manfiy bo'lmaydi.
+(2) Libosni olib ketish sanasidan oldin berib yuborish mumkin edi.
+    -> orders/rental.py: ErtaBerishXatosi; BerishView 409 {kod: erta_berish}; frontend (Zakazlar.jsx)
+       "Libos oldinroq beriladimi?" tasdig'i. Xizmat funksiyasida erta=True standart (eski chaqiruvlar
+       buzilmasin), API da False.
+(3) Xarajatga kelajak sana kiritilardi.
+    -> finance/services.py: kiritish va tuzatishda kelajak sana rad etiladi.
+(4) Takroriy salonchi (bir xil ism/telefon) qo'shilardi.
+    -> orders/views_salonchi.py: telefon bor bo'lsa raqam bo'yicha, yo'q bo'lsa ism bo'yicha 409;
+       tahrirlashda ham; boshqa salonda mumkin.
+(5) Dashboard noma'lum davr/filialni jimgina "oy"/butun salonga aylantirardi.
+    -> noma'lum davr va filial uchun 400; yangi davr=yil ("Shu yil" tanlovi).
+(6) Dashboardda uch xil "tushum" izohsiz edi.
+    -> "Bugun tushum" -> "Bugun kassaga kirdi" (+ "shundan X qaytarildi"); kartalarga tushuntirish.
+(7) Tasdiqlanmagan xarajat "taxminiy sof foyda"da ko'rinmasdi.
+    -> backend shu_oy.tasdiqlanmagan_xarajat; dashboardda "X xarajat tasdiq kutmoqda (foydaga kirmagan)".
+(8) P&L rentabellik (97%) libos xarid tannarxini hisobga olmaydi.
+    -> reports.libos_investitsiyasi(); P&L javobiga investitsiya, investitsiya_qoplagan, qoplash_foiz;
+       Hisobotlar.jsx da "Rentabellik: X% (libos xarid tannarxisiz)" va "Libos investitsiyasi ... qoplangan Y%".
+(9) Kechikish jarimasi sozlamada o'chirilgan bo'lsa, kechikkan zakazga jim 0 jarima yozilardi.
+    -> qaytarish formasida kechikish va jarima holati izohi/ogohlantirishi; dashboard
+       ogohlantirishlar.kechikish_jarimasi_yoqilgan; qo'ng'iroqchada eslatma (Sozlama/Kechikish jarimasi).
+(10) "Avval smenaga qo'shiling" xatosida tugma yo'q edi.
+    -> KassaXatosi(kod=smena_qoshilish | smena_yoq); cash.services.xato_tanasi; yangi
+       components/SmenaTugma.jsx ("Smenaga qo'shilish" / "Smenani ochish"); Kassa va zakaz kartasida.
+(11) "Tozalashda" libosni rahbar har safar qo'lda "bo'sh" qilishi kerak edi.
+    -> catalog.services.tozalashni_yakunla(): oxirgi qaytarish + bufer kun (libos > kategoriya > salon)
+       o'tgach avtomatik bo'sh; libos ro'yxati, yangi zakaz, bo'sh liboslar ro'yxati va berish oldidan
+       chaqiriladi; buyruq tozalashni_yakunlash + deploy/crontab.txt ga soatlik qator.
+
+
+4. QO'SHILGAN / O'ZGARGAN TESTLAR
+---------------------------------
+Yangi: ErtaBerishTests (4), kelajak sanali xarajat, LibosBoshKunTests, SalonchiTakrorTests (5),
+       PnlInvestitsiyaTests (2), TozalashAvtoTests (7), cash/test_smena_kod.py (3), dashboard
+       ogohlantirishi (1).
+Yangilangan: test_api_berish_va_qaytarish (erta: True), dashboard davr/filial testlari (400 kutadi),
+       PnlTafsilotTests fixture (kelajak sanali xarajat o'tgan oyga ko'chirildi),
+       test_manekin.py (manekin sozlamasi aniq yoqiladi).
+Natija: 719 test, OK.
+
+
+5. O'ZGARGAN ASOSIY FAYLLAR
+---------------------------
+Backend: apps/finance/{statistika,services,reports,views}.py, apps/orders/{rental,views,views_royxat,
+  views_salonchi,services}.py, apps/cash/{services,views}.py, apps/catalog/{services,views}.py,
+  apps/bookings/services.py, apps/tenants/models.py + migratsiya 0027,
+  apps/orders/management/commands/tozalashni_yakunlash.py (yangi), deploy/crontab.txt.
+Frontend: src/pages/{Platforma,Dashbord,Zakazlar,Kassa,Hisobotlar,Katalog,YangiZakaz}.jsx, src/App.jsx,
+  src/api/index.js, src/ichki.css, src/components/{SmenaTugma (yangi),Tasdiq,RasmBlok}.jsx.
+Hujjat: PROGRESS.md, docs/ish_hisoboti_2026-10-30.txt (shu fayl).
+
+
+6. BRAUZERDA TEKSHIRUV (Chrome kengaytmasi ulandi) VA QO'SHIMCHA TUZATISHLAR
+----------------------------------------------------------------------------
+Foydalanuvchi qarorlari: manekin kerak emas (oddiy rasm yuklash yetadi); reklama keyingi rejalarda;
+asosiy maqsad - tizim xatosiz ishlashi, qulay va tushunarli bo'lishi.
+Brauzerda ko'rildi va ishladi: platforma yangi dizayni va salon qo'shish oynasi (qo'shilgach yopiladi),
+dashboard yozuvlari, P&L investitsiya qatori, kechikish ogohlantirishi, erta berish tasdig'i,
+libos rasmi yuklash, yangi zakaz oqimi, Katalog, Mijozlar.
+Topilib tuzatildi:
+  - Smena xatosi to'lov panelining o'z xato maydonida chiqardi, tugma yo'q edi -> "Smenaga qo'shilish"
+    tugmasi to'lov panelida ham (summa saqlanadi).
+  - Tasdiq oynasi kichik qalqib chiqardi -> body'ga portal (markazda, fon xiralashadi).
+  - Kassada eski xabar boshqa bo'limda qolardi -> xabar yaratilgan bo'limga bog'landi.
+  - "Boshqa amallar" matnga o'xshardi -> chevron.
+  - Yangi zakazda "Davom etish" tugmasi libos qo'shilganda pastga siljirdi -> sarlavha ostida turadi;
+    "Zakazni saqlash" ikki qatorga bo'linmaydi.
+  - Rasm o'chirish (x) tugmasi tun foto ustida ko'rinmasdi -> och fon.
+  - "standart emas" -> "nisbati 2:3 emas"; rasm yo'riqnomasidan "manekin" olib tashlandi.
+  - Manekin standarti o'chirildi (yangi salonlar uchun; migratsiya 0027); mavjud salonlar qiymati
+    o'zgarmadi (Sozlamada o'chirish mumkin). Kod o'chirilmadi.
+Eslatma: sinov uchun brauzerdagi foydalanuvchi qurilma tokeni vaqtincha almashtirildi va aynan tiklandi.
+
+
+7. OCHIQ QOLGAN MASALALAR
+-------------------------
+  - Brauzer sana/oy tanlagichi brauzer tilida (Октябрь 2026, дд.мм.гггг), ilova matnlari o'zbekcha.
+  - Platformada "Salon platformadan chiqdi" bloki bosiladigan ekani bilinmaydi.
+  - Katalogda tor ekranda "Libos qo'shish" tugmasi ikkinchi qatorga tushadi.
+  - Telefon (390 px) ko'rinishi bu sessiyada ko'rilmagan.
+  - Deploy: serverda crontab qayta o'rnatilishi kerak: crontab deploy/crontab.txt.
+  - Testlarda qattiq yozilgan sanalar (masalan RentalBase da 2026-11-20): shu sanadan keyin yiqiladi;
+    sanalarni bugundan nisbiy qilish kerak.
+  - Windows'da manage.py test --parallel ishlamaydi; to'liq to'plam ~15 daqiqa.
+  - Dev bazada sinov ma'lumotlari va takroriy salonchilar qoldi; platforma sinov akkaunti o'chirilmagan.
+  - Tekshirilmagan: filiallar, oyni yopish, bank ko'chirmasi, bonus yoqilgandagi hisob, grafiklar.
+  - Production tayyorgarligi (HTTPS, nginx, zaxira nusxa, media saqlash), Click/Payme webhook.
+  - Reklama sahifasi va manekin - foydalanuvchi qaroriga ko'ra keyingi rejalarda / kerak emas.

@@ -16,3 +16,6 @@
 
 # Har kuni 04:00: chiqqaniga 90 kun bo'lgan salonlarni butunlay o'chirish
 0 4 * * * cd /var/www/libosa/backend && /var/www/libosa/venv/bin/python manage.py chiqqan_salonlar --ochirish >> /var/log/libosa-cron.log 2>&1
+
+# Har soatda: bufer kuni o'tgan «tozalashda» liboslarni avtomatik «bo'sh» qilish
+15 * * * * cd /var/www/libosa/backend && /var/www/libosa/venv/bin/python manage.py tozalashni_yakunlash >> /var/log/libosa-cron.log 2>&1

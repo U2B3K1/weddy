@@ -71,6 +71,8 @@ def bosh_liboslar(salon, olib_ketish, qaytarish, bandlarni_korsat=False, xodim=N
     `q` — artikul yoki nom bo'yicha qidiruv: unda band libos har doim chiqadi (FT-2.2).
     Band libosga `eng_yaqin_bosh` (sana yoki None) qo'yiladi.
     """
+    from apps.catalog.services import tozalashni_yakunla
+    tozalashni_yakunla(salon)  # bufer kuni o'tgan «tozalashda» liboslar ro'yxatga qaytadi
     liboslar = (Libos.objects.filter(salon=salon, holat=Libos.Holat.BOSH)
                 .select_related('kategoriya').prefetch_related('rasmlar'))
     q = (q or '').strip()
