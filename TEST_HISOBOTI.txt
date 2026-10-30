@@ -1,0 +1,205 @@
+LIBOSA (weddy) — O'TKAZILGAN TESTLAR HISOBOTI
+Sana: 2026-10-30
+Tayyorladi: claude
+
+======================================================================
+1. QISQA XULOSA
+======================================================================
+
+  Backend testlari (Django) ........ 738 ta — hammasi o'tdi
+  Frontend E2E testlari (Playwright)   4 ta — hammasi o'tdi
+  Kod qamrovi (coverage) ........... 94%
+  Topilgan va tuzatilgan xato ...... 1 ta (doimiy xarajatlar oy hisobotidan
+                                     tushib qolishi)
+  Lint / build ..................... toza / ishlaydi
+
+  Barcha o'zgarishlar hali commit qilinmagan.
+
+
+======================================================================
+2. TO'LIQ BACKEND TEST TO'PLAMI
+======================================================================
+
+Avval mavjud 726 test ishga tushirildi — hammasi o'tdi.
+Kompyuter xotirasi kam bo'lgani uchun ilovalar bo'yicha qismlab o'tkazildi:
+
+  tenants ......................... 134
+  catalog ......................... 112
+  bookings ........................  17
+  orders .......................... 115 + 156
+  cash / finance / notify ......... 192
+  ----------------------------------------
+  Jami ............................ 726
+
+Testlar "virtual bugun" bilan ishlaydi (doim 2026-10-30). Shu sababli
+qattiq yozilgan sanalar vaqt o'tishi bilan testlarni buzmaydi.
+
+Keyin yangi testlar qo'shildi (3- va 4-bo'limlar):
+  726 + 8 (qamrov) + 4 (oy almashinuvi) = 738 test.
+
+
+======================================================================
+3. KOD QAMROVI (COVERAGE)
+======================================================================
+
+Natija: 94% — 6876 qatordan 443 tasi testlarda ishga tushmagan.
+(Migratsiyalar va test fayllari hisobga olinmadi.)
+
+Tegilmagan qatorlarning ko'pchiligi — kiritish xatolarini tekshiruvchi
+tarmoqlar. Pul va zakaz bilan bog'liq muhim bo'shliqlar uchun yangi
+fayl yozildi: backend/apps/orders/test_qamrov.py (8 test).
+
+Tekshirilgan holatlar:
+  [OK] Yopilgan oyda to'langan zakazning libosi ikki marta almashtirilsa,
+       narx farqi to'g'ri yangilanadi; narx qaytsa farq o'chadi.
+  [OK] Bepul-aksessuar promokodida aksessuar olib tashlansa, chegirma ham
+       olinadi va promokod ishlatilishi bekor qilinadi.
+  [OK] Bekor qilingan zakazga to'lov qabul qilinmaydi.
+  [OK] Smenani faqat oxirgi qolgan sotuvchi yopadi.
+  [OK] Smenadan chiqish API (POST /api/kassa/smena/chiqish/) — ilgari
+       umuman testlanmagan edi.
+  [OK] Libosni vaqtincha qulflash API (POST/DELETE /api/bronlar/qulf/):
+       boshqa sotuvchi 409 oladi, qulf ochilgach 201.
+  [OK] Cron buyruqlari: bronlarni_tozalash, tozalashni_yakunlash
+       (ilgari 0% qamrov).
+
+Har bir test maqsadli qatorlarni haqiqatan ishga tushirishi coverage
+bilan tekshirildi. Xato topilmadi.
+
+Qo'shimcha tekshiruvlar:
+  [OK] makemigrations --check — yangi migratsiya kerak emas.
+  [!]  check --deploy — faqat HSTS sarlavhasi yo'q (nginx'da
+       Strict-Transport-Security qo'shish tavsiya etiladi).
+
+
+======================================================================
+4. OY ALMASHINUVI TESTLARI (31-OKTYABR -> 1-NOYABR)
+======================================================================
+
+Fayl: backend/apps/finance/test_oy_chegarasi.py (4 test)
+Soat aniq Toshkent vaqtiga qo'yilib, ikki kunlik ish amalda o'tkazildi.
+
+31-oktyabr:
+  - Zakaz 1: 1 000 000 to'liq to'landi.
+  - Zakaz 2: faqat 500 000 avans.
+  - Zakaz 3: 23:50 da 3 000 000 karta orqali.
+  - 50 000 jarima; sotuvchi 100 000 xarajat (tasdiq kutadi),
+    rahbar 200 000 xarajat.
+  - Tugamagan oktyabrni yopishga urinish — rad etildi. [OK]
+
+1-noyabr, 00:05:
+  - Zakaz 4: 1 500 000 karta orqali -> noyabrga tushdi. [OK]
+  - Oktyabr hisoboti: tushum 4 000 000, jarima 50 000. [OK]
+  - Bank: oktyabr 3 000 000, noyabr 1 500 000. [OK]
+  - Dashboard "bugun" va "shu oy": 1 500 000. [OK]
+  - Tasdiq kutayotgan xarajat bor ekan, oyni yopish rad etildi. [OK]
+  - Xarajat tasdiqlangach oktyabr yopildi. [OK]
+
+2-noyabr (oktyabr yopilgan):
+  - Oktyabr sanasi bilan xarajat, tuzatish, bank solishtiruvi — rad. [OK]
+  - Zakaz 1 bekor qilindi, zakaz 2 qoldig'i to'landi, zakaz 3 libosi
+    almashtirildi (narx farqi 1 000 000), jarima va xarajat qo'shildi.
+  - OKTYABR HISOBOTI YOPILGAN PAYTDAGI NUSXA BILAN BIR SO'MGACHA BIR XIL
+    QOLDI. [OK]
+  - Noyabr tushumi: 1,5 + 2,0 + 1,0 - 1,0 (storno) = 3 500 000. [OK]
+
+Boshqa holatlar:
+  [OK] Oyni qayta ochib tuzatish kiritish mumkin, yangi nusxa to'g'ri.
+  [OK] Doimiy xarajat (ijara, oylik) qoralamasi har oyga bittadan, oyning
+       1-sanasi bilan yaratiladi; sahifa necha marta ochilsa ham takrorlanmaydi.
+
+Vaqt mintaqasi bo'yicha xato topilmadi.
+
+TOPILGAN VA TUZATILGAN XATO:
+  Muammo: doimiy xarajatlar (ijara, oylik) qoralamasi faqat rahbar
+          "Xarajatlar" sahifasini ochganda yaratilardi. Rahbar oy
+          davomida bu sahifani ochmasa, ijara oy hisobotiga tushmay,
+          foyda ortiqcha ko'rinardi.
+  Tuzatish: qoralama endi dashboard ochilganda ham yaratiladi
+          (backend/apps/orders/views_royxat.py, RahbarDashbordView).
+  Tekshiruv: dashboard'ga tegadigan barcha test fayllari qayta o'tdi.
+  Qolgan xavf: rahbar butun oy davomida na dashboard'ni, na
+          "Xarajatlar"ni ochmasa, o'sha oy uchun qoralama yaratilmaydi
+          (oyni yopish buni tekshirmaydi).
+
+
+======================================================================
+5. FRONTEND E2E TESTLARI (PLAYWRIGHT)
+======================================================================
+
+Haqiqiy brauzerda (Chromium) foydalanuvchi kabi bosib tekshiriladi.
+
+Xavfsizlik: testlar dev bazaga va EZAZ ma'lumotlariga TEGMAYDI.
+  - Alohida baza: weddy_e2e
+  - Alohida portlar: backend 8001, frontend 5174
+  - seed.py faqat "weddy_e2e" nomli bazada ishlaydi.
+  - Har safar yangi sinov saloni yaratiladi.
+
+Testlar (4 ta, ~1 daqiqa, hammasi o'tdi):
+
+  1) Kirish va qurilmaga ruxsat (qurilma.setup.js)
+     [OK] Noto'g'ri parol -> "Login yoki parol noto'g'ri."
+     [OK] Birinchi qurilma o'zi ishonchli bo'ladi.
+     [OK] Ikkinchi qurilma "ruxsat kutmoqda"; noto'g'ri PIN -> xato,
+          to'g'ri rahbar PIN -> kirish ochiladi.
+
+  2) Rahbar — barcha ekranlar (bolimlar.spec.js)
+     [OK] Dashboard, Katalog, Zakazlar, Mijozlar.
+     [OK] Kassa: 7 ichki bo'lim. Hisobot: 6 ichki bo'lim.
+     [OK] Sozlama: 22 bo'lim.
+     Jami 40 dan ortiq ekran — JS xatosi, console.error va server 5xx yo'q.
+
+  3) Sotuvchi — huquqlar (bolimlar.spec.js)
+     [OK] Hisobot, Sozlama va "Smenalar tarixi" ko'rinmaydi.
+     [OK] O'z bo'limlari xatosiz ochiladi.
+
+  4) To'liq ish kuni (zakaz-oqimi.spec.js)
+     [OK] Smena ochish (0 so'm)
+     [OK] Yangi zakaz: kalendardan sana, libos, yangi mijoz
+          -> "Jami: 1 000 000 so'm", zakaz saqlandi
+     [OK] To'liq to'lov qabul qilindi
+     [OK] Muddatidan oldin libos berish: tasdiq oynasi, 500 000 pul zalog
+     [OK] Qaytarish rasmiylashtirildi
+     [OK] Kassada aniq 1 000 000 so'm; smena yopildi, farq 0 so'm
+
+Xato topilmadi.
+
+Ishga tushirish:  frontend papkasida  ->  npm run e2e
+(Docker'dagi PostgreSQL ishlab turishi kerak; serverlarni Playwright o'zi
+yoqib-o'chiradi.)
+
+
+======================================================================
+6. YANGI VA O'ZGARTIRILGAN FAYLLAR
+======================================================================
+
+Yangi testlar:
+  backend/apps/orders/test_qamrov.py
+  backend/apps/finance/test_oy_chegarasi.py
+  frontend/e2e/  (global-setup.js, seed.py, yordam.js,
+                  qurilma.setup.js, bolimlar.spec.js, zakaz-oqimi.spec.js)
+  frontend/playwright.config.js
+
+Kod tuzatishi:
+  backend/apps/orders/views_royxat.py  (doimiy xarajat qoralamasi)
+
+Boshqa:
+  frontend/package.json  (@playwright/test, "e2e" skripti)
+  frontend/.gitignore    (Playwright natija fayllari)
+  PROGRESS.md            (yozuvlar qo'shildi)
+
+
+======================================================================
+7. TAVSIYALAR VA KEYINGI QADAMLAR
+======================================================================
+
+Deploy oldidan:
+  - Serverda: pip install -r requirements.txt  (Pillow 13)
+  - Serverda: crontab deploy/crontab.txt
+
+Ixtiyoriy (ruxsat kutiladi):
+  - nginx'ga HSTS sarlavhasi.
+  - Oyni yopishda doimiy xarajat qoralamasi borligini tekshirish.
+  - Yana E2E oqimlari: zakaz bekor qilish, chegirma, promokod,
+    xarajat tasdiqlash, oyni interfeysdan yopish.
+  - Avtomatik tekshiruv skripti / CI (har o'zgarishda testlar).
