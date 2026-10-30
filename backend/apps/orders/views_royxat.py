@@ -232,6 +232,11 @@ class RahbarDashbordView(APIView):
                 raise ValidationError({'filial': 'Filial topilmadi.'})
         filial = int(filial) if filial else None
         zf = {'filial_id': filial} if filial else {}
+        # FT-13.3: doimiy xarajat qoralamalari dashbord ochilganda ham yaratiladi — rahbar oy davomida «Xarajatlar»
+        # sahifasini ochmasa, ijara/oylik shu oy hisobotidan va «tasdiq kutmoqda» ro'yxatidan tushib qolardi
+        if salon_yoza_oladimi(salon):
+            from apps.finance.moddalar import doimiy_qoralamalarni_yarat
+            doimiy_qoralamalarni_yarat(salon)
         # Ochiq smenalar: filial bo'yicha yoki butun salon (filial kassalari yoqilgan bo'lsa bir nechta bo'ladi)
         ochiq_smenalar = list(Smena.objects.filter(salon=salon, yopilgan__isnull=True, **({'filial_id': filial} if filial else {})))
         smena = ochiq_smenalar[0] if ochiq_smenalar else None
