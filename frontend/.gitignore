@@ -22,3 +22,9 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Playwright E2E
+/test-results
+/playwright-report
+/e2e/.salon.json
+/e2e/.qurilma.json
