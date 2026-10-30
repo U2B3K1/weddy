@@ -10,7 +10,7 @@ from rest_framework.views import APIView
 from apps.tenants.models import Xodim
 from apps.tenants.permissions import IsStaff, SalonYozishRuxsati
 
-from .models import Salonchi, Zakaz
+from .models import Salonchi, Zakaz, telefon_normal
 
 
 def instagram_havola(qiymat):
@@ -26,16 +26,16 @@ def instagram_havola(qiymat):
 
 
 def _takror_salonchi(salon, ism, telefon, istisno_id=None):
-    """Bazada shu salonchi bormi: telefon bor bo'lsa — telefon raqami bir xil, bo'lmasa — ism bir xil (harf registrisiz)."""
-    raqam = re.sub(r'\D', '', telefon or '')
+    """Bazada shu salonchi bormi: telefon bor bo'lsa — telefon raqami bir xil, bo'lmasa — ism bir xil (harf registrisiz).
+
+    Raqam mijozlardagi kabi normallashtirib solishtiriladi: «90 123-45-67», «901234567» va «+998901234567» — bitta odam.
+    """
+    qs = Salonchi.objects.filter(salon=salon).exclude(id=istisno_id).only('id', 'ism', 'telefon')
+    raqam = telefon_normal(telefon)
+    if raqam:
+        return next((x for x in qs.exclude(telefon='') if telefon_normal(x.telefon) == raqam), None)
     ism = (ism or '').strip().casefold()
-    for x in Salonchi.objects.filter(salon=salon).exclude(id=istisno_id):
-        if raqam:
-            if re.sub(r'\D', '', x.telefon) == raqam:
-                return x
-        elif x.ism.strip().casefold() == ism and not x.telefon:
-            return x
-    return None
+    return next((x for x in qs.filter(telefon='') if x.ism.strip().casefold() == ism), None)
 
 
 def _takror_xabari(x):
@@ -105,8 +105,11 @@ class SalonchiView(APIView):
         ser = SalonchiSerializer(data=request.data, partial=True)
         ser.is_valid(raise_exception=True)
         d = ser.validated_data
-        if 'ism' in d or 'telefon' in d:
-            bor = _takror_salonchi(request.salon, d.get('ism', s.ism), d.get('telefon', s.telefon), istisno_id=s.id)
+        # Faqat ism yoki raqam haqiqatan o'zgarsa tekshiriladi: forma butun yozuvni qayta yuboradi, eski takroriy
+        # yozuvning (masalan, Instagram'ini) tahrirlash bloklanmasin
+        ism, telefon = d.get('ism', s.ism), d.get('telefon', s.telefon)
+        if ism.strip().casefold() != s.ism.strip().casefold() or telefon_normal(telefon) != telefon_normal(s.telefon):
+            bor = _takror_salonchi(request.salon, ism, telefon, istisno_id=s.id)
             if bor:
                 return _takror_xabari(bor)
         for nom, qiymat in ser.validated_data.items():

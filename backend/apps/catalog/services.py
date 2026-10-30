@@ -83,23 +83,26 @@ def tozalashni_yakunla(salon=None):
     """
     from datetime import timedelta
 
+    from django.db.models import OuterRef, Subquery
+
     from apps.orders.models import QaytarishAkti
     bugun = timezone.localdate()
-    qs = Libos.objects.filter(holat=Libos.Holat.TOZALASHDA).select_related('kategoriya')
+    # Oxirgi qaytarish sanasi shu so'rovning o'zida (har libos uchun alohida so'rov emas)
+    oxirgi = (QaytarishAkti.objects.filter(salon_id=OuterRef('salon_id'), zakaz__pozitsiyalar__libos=OuterRef('pk'))
+              .order_by('-sana').values('sana')[:1])
+    qs = (Libos.objects.filter(holat=Libos.Holat.TOZALASHDA).select_related('kategoriya')
+          .annotate(oxirgi_qaytarish=Subquery(oxirgi)))
     if salon is not None:
         qs = qs.filter(salon=salon)
     standart, soni = {}, 0
     for libos in qs:
-        oxirgi = (QaytarishAkti.objects.filter(salon_id=libos.salon_id, zakaz__pozitsiyalar__libos=libos)
-                  .order_by('-sana').values_list('sana', flat=True).first())
-        if oxirgi is None:
+        if libos.oxirgi_qaytarish is None:
             continue
         if libos.salon_id not in standart:
             standart[libos.salon_id] = sozlama(libos.salon_id).bufer_kun
-        if oxirgi + timedelta(days=libos.samarali_bufer_kun(standart[libos.salon_id])) <= bugun:
-            libos.holat = Libos.Holat.BOSH
-            libos.save(update_fields=['holat'])
-            soni += 1
+        if libos.oxirgi_qaytarish + timedelta(days=libos.samarali_bufer_kun(standart[libos.salon_id])) <= bugun:
+            # Shartli yangilash: shu orada boshqa so'rov libosni ta'mirga yuborgan bo'lsa, «bo'sh» uning ustidan yozilmaydi
+            soni += Libos.objects.filter(pk=libos.pk, holat=Libos.Holat.TOZALASHDA).update(holat=Libos.Holat.BOSH)
     return soni
 
 

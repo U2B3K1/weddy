@@ -29,7 +29,9 @@ environ.Env.read_env(BASE_DIR / '.env')
 SECRET_KEY = env('SECRET_KEY', default='dev-faqat-ishlab-chiqish-uchun')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = env('DEBUG', default=True)
+# Standart — o'chiq: .env unutilsa server dev rejimida (xato tafsilotlari ochiq) ishlab ketmasin.
+# Lokal ishlab chiqishda backend/.env ga DEBUG=True yoziladi (.env.example dagi kabi).
+DEBUG = env('DEBUG', default=False)
 
 ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['localhost', '127.0.0.1'])
 
@@ -38,7 +40,8 @@ ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['localhost', '127.0.0.1'])
 if SECRET_KEY == 'dev-faqat-ishlab-chiqish-uchun' and (
         not DEBUG or any(h not in ('localhost', '127.0.0.1', '[::1]') for h in ALLOWED_HOSTS)):
     from django.core.exceptions import ImproperlyConfigured
-    raise ImproperlyConfigured(".env da SECRET_KEY berilmagan — standart dev kaliti bilan productionda ishlab bo'lmaydi.")
+    raise ImproperlyConfigured(".env da SECRET_KEY berilmagan — standart dev kaliti bilan productionda ishlab bo'lmaydi. "
+                               "Lokal ishlab chiqish uchun backend/.env ga DEBUG=True yozing (.env.example ga qarang).")
 
 
 # Application definition
@@ -155,6 +158,30 @@ if DEBUG and env.bool('DEV_LAN', default=False):
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': ['apps.tenants.auth.StaffTokenAuthentication'],
     'DEFAULT_PERMISSION_CLASSES': ['apps.tenants.permissions.IsStaff'],
+    # Umumiy so'rov chegarasi (skript yoki xato sikl serverni bosib qolmasin). Kirish paroli/PIN uchun alohida,
+    # qattiqroq cheklov bor (tenants/cheklov.py). Hisob jarayon xotirasida: gunicorn har workeri o'zicha sanaydi.
+    'DEFAULT_THROTTLE_CLASSES': ['apps.tenants.sorov_chegarasi.AnonChegara', 'apps.tenants.sorov_chegarasi.FoydalanuvchiChegara'],
+    'DEFAULT_THROTTLE_RATES': {'anon': env('THROTTLE_ANON', default='120/min'), 'user': env('THROTTLE_USER', default='600/min')},
+}
+CACHES = {
+    'default': {'BACKEND': 'django.core.cache.backends.locmem.LocMemCache'},
+    'chegara': {'BACKEND': 'django.core.cache.backends.locmem.LocMemCache', 'LOCATION': 'chegara'},
+}
+
+# Testlar: «virtual bugun» (sanaga bog'liq testlar vaqt o'tishi bilan yiqilmasin) va umumiy so'rov chegarasi o'chiriladi
+TEST_RUNNER = 'config.test_runner.SobitBugunRunner'
+
+# Loglar stdout/stderr ga (systemd/journald yig'adi). 4xx — biznes javobi (masalan, 409), faqat 5xx yoziladi.
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {'oddiy': {'format': '{asctime} {levelname} {name}: {message}', 'style': '{'}},
+    'handlers': {'konsol': {'class': 'logging.StreamHandler', 'formatter': 'oddiy'}},
+    'root': {'handlers': ['konsol'], 'level': env('LOG_LEVEL', default='INFO')},
+    'loggers': {
+        'django.request': {'handlers': ['konsol'], 'level': 'ERROR', 'propagate': False},
+        'django.server': {'handlers': ['konsol'], 'level': 'INFO', 'propagate': False},
+    },
 }
 
 # Xodim sessiyasi (FT-1.6: 10 daqiqa harakatsizlik) va PIN bloklash (FT-1.7)

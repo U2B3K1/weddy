@@ -26,10 +26,13 @@ from django.urls import include, path
 from apps.tenants.cheklov import admin_kirish
 from apps.tenants.urls import admin_urlpatterns, platforma_urlpatterns
 
+from .sogliq import sogliq
+
 # Django admin standart /admin/ da emas — avtomatik skanerlar topmasin; login parol tanlashga qarshi cheklangan
 admin.site.login = admin_kirish(admin.site.login)
 
 urlpatterns = [
+    path('api/sogliq/', sogliq),  # monitoring uchun: server va baza holati
     path('adminaka/', admin.site.urls),
     path('api/auth/', include('apps.tenants.urls')),
     path('api/', include((admin_urlpatterns, 'tenants_admin'))),

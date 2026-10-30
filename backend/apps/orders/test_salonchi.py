@@ -140,6 +140,20 @@ class SalonchiTakrorTests(TestCase):
         self.assertEqual(c.patch(f'/api/salonchilar/{b}/', {'telefon': '+998901111111'}, format='json').status_code, 409)
         self.assertEqual(c.patch(f'/api/salonchilar/{a}/', {'telefon': '+998901111111', 'izoh': 'x'}, format='json').status_code, 200)
 
+    def test_raqam_har_xil_yozilsa_ham_takror(self):
+        c = self.api(self.malika)
+        self.assertEqual(self.qosh(c, telefon='+998901234567').status_code, 201)
+        for yozuv in ('90 123-45-67', '901234567', '998 90 123 45 67'):
+            self.assertEqual(self.qosh(c, ism='Boshqa', telefon=yozuv).status_code, 409, yozuv)
+
+    def test_eski_takroriy_yozuvni_tahrirlash_mumkin(self):
+        # Tekshiruv qo'shilishidan oldin yaratilgan ikki takroriy yozuv: forma butun yozuvni qayta yuboradi
+        a = Salonchi.objects.create(salon=self.salon, ism='Madina', telefon='+998901111111')
+        Salonchi.objects.create(salon=self.salon, ism='Madina', telefon='+998901111111')
+        r = self.api(self.malika).patch(f'/api/salonchilar/{a.id}/', {'ism': 'Madina', 'telefon': '+998901111111',
+                                                                       'instagram': 'madina_mua'}, format='json')
+        self.assertEqual(r.status_code, 200, r.content)
+
     def test_boshqa_salonda_bir_xil_salonchi_mumkin(self):
         self.qosh(self.api(self.malika), telefon='+998901111111')
         _, xodim_b, _ = salon_yarat('b')
