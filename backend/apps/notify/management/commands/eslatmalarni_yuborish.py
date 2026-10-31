@@ -28,8 +28,8 @@ def eslatmalarni_yoz(bugun=None):
 
 
 class Command(BaseCommand):
-    help = ("Sotuvchilarga bugungi eslatmalarni va rahbarga nazorat eslatmalarini (tasdiqlanmagan topshiriq, o'tkazma, "
-            "libos sanog'i) Telegram orqali yuboradi. Cron: har soatda.")
+    help = ("Sotuvchilarga bugungi eslatmalarni va nazorat eslatmalarini (tasdiqlanmagan topshiriq va o'tkazma, "
+            "qaytarilmagan libos) Telegram orqali yuboradi. Cron: har soatda.")
 
     def handle(self, *args, **opts):
         from apps.cash.nazorat import nazorat_eslatmalari

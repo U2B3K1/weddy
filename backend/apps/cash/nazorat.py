@@ -1,7 +1,8 @@
 """Nazorat eslatmalari: unutilgan tasdiqlar va libos sanog'i.
 
 Tezkor qismi (topshiriq, o'tkazma) — Telegram bot jarayonida daqiqada bir (`tezkor_eslatmalar`): ikkita kichik so'rov,
-faqat tasdiq kutayotgan yozuvlar (qisman indeks). Libos sanog'i va qaytarilmagan liboslar — soatlik cron (`eslatmalarni_yuborish`).
+faqat tasdiq kutayotgan yozuvlar (qisman indeks). Qaytarilmagan liboslar — soatlik cron (`eslatmalarni_yuborish`).
+Libos sanog'i eslatilmaydi: rahbar o'zi istalgan vaqtda o'tkazadi (foydalanuvchi qarori, 2026-11-01).
 Har eslatma bir marta yoziladi (`kalit`), shuning uchun qayta-qayta ishga tushsa ham takrorlanmaydi.
 """
 from datetime import timedelta
@@ -16,7 +17,6 @@ from .models import KassaTopshirish, Tolov
 TOPSHIRIQ_KUTISH = timedelta(minutes=2)    # qabul qiluvchiga qayta eslatma
 TOPSHIRIQ_RAHBARGA = timedelta(minutes=15)  # shundan keyin ham tasdiqlanmasa — rahbarga
 OTKAZMA_KUTISH = timedelta(minutes=2)  # mijoz hali salonda bo'lganida bilish kerak: pul kelmasa undan so'raladi
-SANOQ_ORALIGI = 7  # kun
 QAYTARISH_TEKSHIRUV_SOAT = 18  # shu soatdan keyin qaytarish kuni kelgan, lekin qabul qilinmagan libos — eslatma
 
 
@@ -46,28 +46,6 @@ def _otkazmalar(hozir):
         soni += len([x for x in rahbarlarga(t.salon, 'otkazma_tasdiq',
                                             f"⏰ Eslatma: {t.get_usul_display()} {som(t.summa)}{z}, qabul qildi {t.xodim.ism} — "
                                             f"hisobingizga keldimi? Hali tasdiqlanmagan.", tugmalar, kalit=f'ot_eslatma:{t.id}') if x])
-    return soni
-
-
-def _sanoq(hozir):
-    """Libos sanog'i haftada bir — zakazsiz ijarani faqat muntazam sanoq ushlaydi. Haftasiga bitta eslatma."""
-    from apps.catalog.models import Libos, Sanoq
-    from apps.catalog.sanoq import FAOL
-
-    bugun = timezone.localdate(hozir)
-    yil, hafta, _ = bugun.isocalendar()
-    soni = 0
-    for salon in Salon.objects.exclude(holat__in=[Salon.Holat.BLOKLANGAN, Salon.Holat.FAQAT_KORISH]):
-        if not Libos.objects.filter(salon=salon, holat__in=FAOL).exists():
-            continue
-        oxirgi = Sanoq.objects.filter(salon=salon, yakunlangan__isnull=False).order_by('-yakunlangan').first()
-        if oxirgi and (bugun - timezone.localdate(oxirgi.yakunlangan)).days < SANOQ_ORALIGI:
-            continue
-        qachon = (f"oxirgisi {(bugun - timezone.localdate(oxirgi.yakunlangan)).days} kun oldin" if oxirgi
-                  else "hali birorta ham o'tkazilmagan")
-        soni += len([x for x in rahbarlarga(salon, 'sanoq_eslatma',
-                                            f"📋 Libos sanog'i {qachon}. Katalog → «Sanoq»: javondagi liboslarni o'zingiz sanang — "
-                                            f"zakazsiz berilgan yoki yo'qolgan libos shunday topiladi.", kalit=f'sanoq:{yil}-{hafta}') if x])
     return soni
 
 
@@ -105,7 +83,7 @@ def tezkor_eslatmalar(hozir=None):
 def nazorat_eslatmalari(hozir=None):
     """Hammasi (soatlik cron; bot ishlamay qolsa ham tezkorlari shu yerda yoziladi). Yozilgan eslatmalar soni."""
     hozir = hozir or timezone.now()
-    return tezkor_eslatmalar(hozir) + _sanoq(hozir) + _qaytmagan_liboslar(hozir)
+    return tezkor_eslatmalar(hozir) + _qaytmagan_liboslar(hozir)
 
 
 def dashbord_nazorati(salon, bugun=None, kun=7):

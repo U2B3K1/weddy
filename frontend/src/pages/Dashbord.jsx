@@ -31,7 +31,7 @@ function Nazorat({ n }) {
     n.terminal_farq !== 0 && `terminal farqi ${som(n.terminal_farq)}`,
   ].filter(Boolean)
   const s = n.sanoq
-  const libosMuammo = !s || s.yoq > 0 || s.ortiqcha > 0 || s.kun_oldin > 7
+  const libosMuammo = !!s && (s.yoq > 0 || s.ortiqcha > 0)
   return (
     <div className="kpi-qator" role="region" aria-label={`Nazorat, oxirgi ${n.kun} kun`}>
       <div className="kpi" title={`Oxirgi ${n.kun} kunda xodimlar pulni topshirganda yoki smenani yopganda kam chiqqan naqd. Batafsil: Hisobot → «Kunlik kassa».`}>
@@ -46,13 +46,13 @@ function Nazorat({ n }) {
         <span className={`kpi-qiymat${diqqat.length ? ' qizil' : ''}`}>{diqqat.length ? `${diqqat.length} ta` : 'Hammasi joyida'}</span>
         <span className="kpi-izoh">{diqqat.length ? diqqat.join(' · ') : "tasdiqlanmagan pul va farq yo'q"}</span>
       </div>
-      <div className="kpi" title="Oxirgi libos sanog'i: javonda bo'lishi kerak bo'lgan, lekin topilmagan liboslar — zakazsiz ijara yoki yo'qolgan. Katalog → «Sanoq».">
+      <div className="kpi" title="Oxirgi libos sanog'i natijasi: javonda bo'lishi kerak bo'lgan, lekin topilmagan liboslar — zakazsiz ijara yoki yo'qolgan. Sanoqni istalgan vaqtda o'tkazasiz: Katalog → «Sanoq».">
         <div className="kpi-bosh"><Ikona nom="yorliq" /><span className="kpi-nom">Liboslar joyidami</span></div>
         <span className={`kpi-qiymat${libosMuammo ? ' qizil' : ''}`}>
           {!s ? 'Sanalmagan' : s.yoq > 0 ? `${s.yoq} ta yo'q` : 'Joyida'}
         </span>
         <span className="kpi-izoh">
-          {!s ? "Katalog → «Sanoq»: haftada bir sanang" : `oxirgi sanoq ${s.kun_oldin ? `${s.kun_oldin} kun oldin` : 'bugun'}${s.ortiqcha ? ` · ${s.ortiqcha} ta qaytgani kiritilmagan` : ''}${s.kun_oldin > 7 ? ' — yangi sanoq o\'tkazing' : ''}`}
+          {!s ? "Katalog → «Sanoq» — istalgan vaqtda tekshiring" : `oxirgi sanoq ${s.kun_oldin ? `${s.kun_oldin} kun oldin` : 'bugun'}${s.ortiqcha ? ` · ${s.ortiqcha} ta qaytgani kiritilmagan` : ''}`}
         </span>
       </div>
     </div>

@@ -24,7 +24,6 @@ class NazoratTests(TestCase):
         self.smena = smena_ochish(salon=self.salon, xodim=self.malika, boshlangich_qoldiq=0)
         smenaga_qoshilish(salon=self.salon, xodim=self.dilnoza)
         self.libos = libos_yarat(self.salon, self.kat, 'A', ijara_narxi=1_000_000)
-        Sanoq.objects.create(salon=self.salon, boshlagan=self.rahbar, yakunlagan=self.rahbar, yakunlangan=timezone.now())
 
     def keyin(self, soat):
         return timezone.now() + timedelta(hours=soat)
@@ -49,17 +48,6 @@ class NazoratTests(TestCase):
         self.assertEqual(tezkor_eslatmalar(self.keyin(1 / 60)), 0)  # 1 daqiqa: hali erta
         self.assertEqual(tezkor_eslatmalar(self.keyin(3 / 60)), 1)  # 3 daqiqa: rahbarga eslatma
         self.assertIn('Hali tasdiqlanmagan', Xabar.objects.get(kalit=f'ot_eslatma:{t.id}').matn)
-
-    def test_sanoq_haftada_bir(self):
-        self.assertEqual(nazorat_eslatmalari(), 0)  # oxirgi sanoq bugun
-        Sanoq.objects.update(yakunlangan=timezone.now() - timedelta(days=9))
-        self.assertEqual(nazorat_eslatmalari(), 1)
-        self.assertIn('9 kun oldin', Xabar.objects.get(xodim=self.rahbar, tur='sanoq_eslatma').matn)
-        self.assertEqual(nazorat_eslatmalari(), 0)  # shu hafta yana yozilmaydi
-        Sanoq.objects.all().delete()
-        salon2, _, kat2 = salon_yarat('ikkinchi')  # libosi yo'q salonga eslatma yo'q
-        Xodim.objects.create(salon=salon2, ism='R2', rol=Xodim.Rol.RAHBAR)
-        self.assertEqual(nazorat_eslatmalari(self.keyin(24 * 8)), 1)  # keyingi hafta: «hali o'tkazilmagan»
 
     def test_manfiy_hisob_rahbarga(self):
         tolov_qabul(salon=self.salon, xodim=self.malika, tur=T.ZALOG, summa=500_000)
@@ -117,8 +105,6 @@ class QaytmaganLibosTests(TestCase):
         tolov_qabul(salon=self.salon, xodim=self.malika, tur=T.AVANS, summa=self.z.jami, zakaz=self.z)
         libos_berish(salon=self.salon, xodim=self.malika, zakaz=self.z, zaloglar=[{'turi': 'pul', 'summa': 1}])
         type(self.z).objects.filter(id=self.z.id).update(qaytarish=self.bugun)
-        Sanoq.objects.create(salon=self.salon, boshlagan=self.rahbar, yakunlagan=self.rahbar,  # sanoq eslatmasi aralashmasin
-                             yakunlangan=timezone.now() + timedelta(days=1))
 
     def soat(self, h, kun=0):
         from datetime import datetime, time
@@ -138,3 +124,12 @@ class QaytmaganLibosTests(TestCase):
         from apps.orders.models import Zakaz
         Zakaz.objects.filter(id=self.z.id).update(holat=Zakaz.Holat.QAYTARILDI)
         self.assertEqual(nazorat_eslatmalari(self.soat(19)), 0)
+
+
+class SanoqEslatilmaydiTests(TestCase):
+    def test_sanoqsiz_salonga_eslatma_yoq(self):
+        salon, _, kat = salon_yarat()
+        Xodim.objects.create(salon=salon, ism='Rahbar', rol=Xodim.Rol.RAHBAR)
+        libos_yarat(salon, kat, 'A')
+        self.assertEqual(nazorat_eslatmalari(), 0)
+        self.assertFalse(Xabar.objects.filter(tur='sanoq_eslatma').exists())
