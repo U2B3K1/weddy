@@ -28,7 +28,10 @@ def eslatmalarni_yoz(bugun=None):
 
 
 class Command(BaseCommand):
-    help = "Sotuvchilarga bugungi eslatmalarni Telegram orqali yuboradi. Cron: har soatda."
+    help = ("Sotuvchilarga bugungi eslatmalarni va rahbarga nazorat eslatmalarini (tasdiqlanmagan topshiriq, o'tkazma, "
+            "libos sanog'i) Telegram orqali yuboradi. Cron: har soatda.")
 
     def handle(self, *args, **opts):
-        self.stdout.write(f'Yozilgan eslatmalar: {eslatmalarni_yoz()}; yuborilgan: {kutayotganlarni_yubor()}')
+        from apps.cash.nazorat import nazorat_eslatmalari
+        self.stdout.write(f'Yozilgan eslatmalar: {eslatmalarni_yoz()}; nazorat: {nazorat_eslatmalari()}; '
+                          f'yuborilgan: {kutayotganlarni_yubor()}')

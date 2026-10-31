@@ -176,6 +176,8 @@ def tolov_qabul(*, salon, xodim, tur, summa, usul=Tolov.Usul.NAQD, zakaz=None, i
     if zakaz is not None:
         from apps.notify.sms import kvitansiya_yoz
         kvitansiya_yoz(tolov)
+    if tur in Tolov.CHIQIM and usul == Tolov.Usul.NAQD:
+        _manfiy_hisob_xabari(smena, xodim)
 
     if tur == Tolov.Tur.AVANS and zakaz.holat == Zakaz.Holat.VAQTINCHALIK:
         zakaz.holat = Zakaz.Holat.BRON
@@ -189,6 +191,17 @@ def tolov_qabul(*, salon, xodim, tur, summa, usul=Tolov.Usul.NAQD, zakaz=None, i
     if tur in (Tolov.Tur.AVANS, Tolov.Tur.QOLDIQ):
         zakaz.save(update_fields=['holat', 'tolangan_sana'])
     return tolov
+
+
+def _manfiy_hisob_xabari(smena, xodim):
+    """Xodim o'zida yo'q naqdni bergan bo'lsa (hisobi minus), demak boshqaning pulidan olgan — rahbar biladi (smenada bir marta)."""
+    qoldiq = xodim_qoldigi(smena, xodim)
+    if qoldiq >= 0:
+        return
+    from apps.notify.services import rahbarlarga, som
+    rahbarlarga(smena.salon, 'manfiy_hisob',
+                f"{xodim.ism} hisobi minusga tushdi ({som(qoldiq)}): o'zida bo'lmagan naqdni bergan — boshqa xodim pulidan "
+                f"olgan bo'lishi mumkin. Kassa → smena hisoboti.", kalit=f'manfiy:{smena.id}:{xodim.id}')
 
 
 def _otkazma_xabari(tolov):

@@ -152,7 +152,7 @@ function SmenaPaneli({ s, onOch, onQoshil, onChiq, onYop, onHisobot }) {
         {s.yuborilgan?.map((t) => <small key={t.id} className="malumot"> · {t.kimga} {som(t.summa)} ni hali tasdiqlamadi</small>)}</span>
       {s.men_ishtirokchi ? (
         <button type="button" className="smena-naqd" onClick={onHisobot} title="Siz javob beradigan naqd. Bosing — smena hisoboti">
-          <small>Sizda naqd</small><b>{som(s.mening_hisobim)}</b>
+          <small>Sizda naqd</small><b className={s.mening_hisobim < 0 ? 'qizil' : undefined}>{som(s.mening_hisobim)}</b>
         </button>
       ) : (
         <button type="button" className="smena-naqd" onClick={onHisobot} title="Smena hisobotini ochish">
