@@ -262,6 +262,7 @@ class RahbarDashbordView(APIView):
         shu_oy['tasdiqlanmagan_xarajat'] = Xarajat.objects.filter(
             salon=salon, holat=Xarajat.Holat.KUTILMOQDA, sana__range=(davr_dan, bugun), **zf).aggregate(s=Sum('summa'))['s'] or 0
         oxirgi_smena = Smena.objects.filter(salon=salon, yopilgan__isnull=False).order_by('-yopilgan').first()
+        from apps.cash.nazorat import dashbord_nazorati
         # FT-19.5: o'chirilgan funksiya ko'rsatkichi chiqmaydi
         tugayotgan = (Promokod.objects.filter(salon=salon, holat=Promokod.Holat.FAOL, tugash__gte=bugun,
                                               tugash__lte=bugun + timedelta(days=7)).count()
@@ -292,6 +293,7 @@ class RahbarDashbordView(APIView):
                 'otkazmalar': Tolov.objects.filter(salon=salon, tasdiq=Tolov.Tasdiq.KUTILMOQDA).count(),
             },
             'shu_oy': shu_oy,
+            'nazorat': dashbord_nazorati(salon, bugun),  # egasining uch savoli: kamomad, diqqat, liboslar joyidami
             'ogohlantirishlar': {
                 'tannarxsiz_liboslar': Libos.objects.filter(salon=salon, tannarx__isnull=True,
                                                             holat__in=reports.FAOL_LIBOS_HOLATLARI).count(),

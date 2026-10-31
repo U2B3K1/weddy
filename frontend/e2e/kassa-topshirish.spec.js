@@ -131,6 +131,14 @@ test('pul topshirish: rahbar → sotuvchi → rahbar; kassir rejimi', async ({ p
     }
   })
 
+  await test.step('dashbord: «Nazorat» — kamomad kimda', async () => {
+    await page.reload()  // yangilanganda Dashboard ochiladi
+    const n = page.getByRole('region', { name: 'Nazorat, oxirgi 7 kun' })
+    await expect(n).toContainText("Rahbar -10 000 so'm")
+    await expect(n).toContainText('Sanalmagan')
+    await rasm(page, '7-dashbord-nazorat')
+  })
+
   await ctx.close()
   expect([...xatolar, ...xatolar2]).toEqual([])
 })

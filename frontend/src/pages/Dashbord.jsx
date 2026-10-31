@@ -8,6 +8,9 @@ const BELGILAR = {
   tushum: (<><path d="M2 8a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2Z" /><circle cx="12" cy="12" r="2" /><path d="M6 12h.01M18 12h.01" /></>),
   daromad: (<><path d="M22 7l-8.5 8.5-5-5L2 17" /><path d="M16 7h6v6" /></>),
   soat: (<><circle cx="12" cy="12" r="10" /><path d="M12 6v6l4 2" /></>),
+  qalqon: (<><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10Z" /></>),
+  diqqat: (<><path d="M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z" /><path d="M12 9v4M12 17h.01" /></>),
+  yorliq: (<><path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L2 12V2h10l8.6 8.6a2 2 0 0 1 0 2.8Z" /><path d="M7 7h.01" /></>),
 }
 const Ikona = ({ nom }) => (
   <svg className="kpi-ikon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -17,6 +20,44 @@ const Ikona = ({ nom }) => (
 const DAVR = { bugun: 'Bugun', hafta: 'Shu hafta', oy: 'Shu oy', yil: 'Shu yil' }
 // Qorong'i yuza uchun dataviz validatordan o'tgan bitta rang (bitta qator — legenda kerak emas, sarlavha nomlaydi)
 const GRAFIK_RANG = '#B9833A'
+
+// Egasining uch savoli (oxirgi 7 kun): kassada kamomad bormi, nima diqqat talab qiladi, liboslar joyidami.
+// Har karta «hammasi joyida» yoki aniq kim/qancha — batafsili Hisobot → «Kunlik kassa» / «Xodimlar nazorati» va Katalog → «Sanoq».
+function Nazorat({ n }) {
+  const diqqat = [
+    n.topshiriqlar > 0 && `${n.topshiriqlar} ta pul topshirig'i tasdiqlanmagan`,
+    n.otkazmalar > 0 && `${n.otkazmalar} ta o'tkazma «keldimi?» kutmoqda`,
+    n.kelmadi_soni > 0 && `${n.kelmadi_soni} ta o'tkazma kelmadi (${som(n.kelmadi_summa)})`,
+    n.terminal_farq !== 0 && `terminal farqi ${som(n.terminal_farq)}`,
+  ].filter(Boolean)
+  const s = n.sanoq
+  const libosMuammo = !s || s.yoq > 0 || s.ortiqcha > 0 || s.kun_oldin > 7
+  return (
+    <div className="kpi-qator" role="region" aria-label={`Nazorat, oxirgi ${n.kun} kun`}>
+      <div className="kpi" title={`Oxirgi ${n.kun} kunda xodimlar pulni topshirganda yoki smenani yopganda kam chiqqan naqd. Batafsil: Hisobot → «Kunlik kassa».`}>
+        <div className="kpi-bosh"><Ikona nom="qalqon" /><span className="kpi-nom">Kassada kamomad</span></div>
+        <span className={`kpi-qiymat${n.kamomad ? ' qizil' : ''}`}>{n.kamomad ? som(n.kamomad) : "Yo'q"}</span>
+        <span className="kpi-izoh">
+          {n.kamomad_xodimlar.length ? n.kamomad_xodimlar.map((x) => `${x.ism} ${som(x.summa)}`).join(' · ') : `oxirgi ${n.kun} kunda hammasi to'g'ri topshirilgan`}
+        </span>
+      </div>
+      <div className="kpi" title="Rahbar qarori yoki tekshiruvi kerak bo'lgan pul harakatlari. Tasdiqlar — Kassa bo'limida va Telegramda.">
+        <div className="kpi-bosh"><Ikona nom="diqqat" /><span className="kpi-nom">Diqqat</span></div>
+        <span className={`kpi-qiymat${diqqat.length ? ' qizil' : ''}`}>{diqqat.length ? `${diqqat.length} ta` : 'Hammasi joyida'}</span>
+        <span className="kpi-izoh">{diqqat.length ? diqqat.join(' · ') : "tasdiqlanmagan pul va farq yo'q"}</span>
+      </div>
+      <div className="kpi" title="Oxirgi libos sanog'i: javonda bo'lishi kerak bo'lgan, lekin topilmagan liboslar — zakazsiz ijara yoki yo'qolgan. Katalog → «Sanoq».">
+        <div className="kpi-bosh"><Ikona nom="yorliq" /><span className="kpi-nom">Liboslar joyidami</span></div>
+        <span className={`kpi-qiymat${libosMuammo ? ' qizil' : ''}`}>
+          {!s ? 'Sanalmagan' : s.yoq > 0 ? `${s.yoq} ta yo'q` : 'Joyida'}
+        </span>
+        <span className="kpi-izoh">
+          {!s ? "Katalog → «Sanoq»: haftada bir sanang" : `oxirgi sanoq ${s.kun_oldin ? `${s.kun_oldin} kun oldin` : 'bugun'}${s.ortiqcha ? ` · ${s.ortiqcha} ta qaytgani kiritilmagan` : ''}${s.kun_oldin > 7 ? ' — yangi sanoq o\'tkazing' : ''}`}
+        </span>
+      </div>
+    </div>
+  )
+}
 
 // 6.5: rahbar bosh sahifasining yuqori qismi — Point uslubidagi panel: 3 ta KPI karta (filtr o'z kartasida),
 // ostida ikkita grafik karta. Qaror kutayotganlar, qarzdorlar va bugungi ishlar — pastdagi jadval panelida;
@@ -90,6 +131,8 @@ export default function Dashbord() {
           <span className="kpi-izoh">Bronlar qoldig'i{oyb.kelgusi_avanslar > 0 && <> · olingan avanslar {som(oyb.kelgusi_avanslar)} (to'y hali o'tmagan)</>}</span>
         </div>
       </div>
+
+      {d.nazorat && <Nazorat n={d.nazorat} />}
 
       <div className="grafik-qator">
         <section className="blok grafik-karta">

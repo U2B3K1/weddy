@@ -70,3 +70,35 @@ def nazorat_eslatmalari(hozir=None):
     """Yozilgan eslatmalar soni."""
     hozir = hozir or timezone.now()
     return _topshiriqlar(hozir) + _otkazmalar(hozir) + _sanoq(hozir)
+
+
+def dashbord_nazorati(salon, bugun=None, kun=7):
+    """Rahbar dashbordi uchun egasining uch savoli, oxirgi `kun` kun bo'yicha: kassada kamomad bormi (kim, qancha),
+    nima diqqat talab qiladi (tasdiqlanmagan topshiriq va o'tkazma, kelmagan o'tkazma, terminal farqi), liboslar joyidami."""
+    from apps.catalog.models import Sanoq
+
+    from .models import Smena
+    bugun = bugun or timezone.localdate()
+    dan = bugun - timedelta(days=kun - 1)
+    kamomad = {}  # xodim -> jami (faqat manfiy farqlar)
+    terminal = 0
+    for s in (Smena.objects.filter(salon=salon, sana__range=(dan, bugun), yopilgan__isnull=False)
+              .prefetch_related('ishtirokchilar__xodim')):
+        for i in s.ishtirokchilar.all():
+            f = i.farq if i.farq is not None else (s.farq if i.chiqqan == s.yopilgan else None)
+            if f and f < 0:
+                kamomad[i.xodim.ism] = kamomad.get(i.xodim.ism, 0) + f
+        terminal += s.terminal_farq or 0
+    kelmadi = Tolov.objects.filter(salon=salon, tasdiq=Tolov.Tasdiq.KELMADI, tasdiq_vaqti__date__range=(dan, bugun))
+    oxirgi = Sanoq.objects.filter(salon=salon, yakunlangan__isnull=False).order_by('-yakunlangan').first()
+    return {
+        'kun': kun,
+        'kamomad': sum(kamomad.values()),
+        'kamomad_xodimlar': [{'ism': k, 'summa': v} for k, v in sorted(kamomad.items(), key=lambda x: x[1])],
+        'terminal_farq': terminal,
+        'topshiriqlar': KassaTopshirish.objects.filter(salon=salon, holat=KassaTopshirish.Holat.KUTILMOQDA).count(),
+        'otkazmalar': Tolov.objects.filter(salon=salon, tasdiq=Tolov.Tasdiq.KUTILMOQDA).count(),
+        'kelmadi_soni': kelmadi.count(), 'kelmadi_summa': sum(t.summa for t in kelmadi),
+        'sanoq': {'kun_oldin': (bugun - timezone.localdate(oxirgi.yakunlangan)).days, 'yoq': oxirgi.yoq,
+                  'ortiqcha': oxirgi.ortiqcha, 'kutilgan': oxirgi.kutilgan} if oxirgi else None,
+    }

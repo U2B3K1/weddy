@@ -68,3 +68,35 @@ class NazoratTests(TestCase):
         self.assertEqual(Xabar.objects.filter(tur='manfiy_hisob').count(), 1)  # smenada bir marta
         tolov_qabul(salon=self.salon, xodim=self.malika, tur=T.XARAJAT, summa=100_000)  # Malikada bor
         self.assertEqual(Xabar.objects.filter(tur='manfiy_hisob').count(), 1)
+
+
+class DashbordNazoratiTests(TestCase):
+    def setUp(self):
+        self.salon, self.malika, self.kat = salon_yarat()
+        self.dilnoza = Xodim.objects.create(salon=self.salon, ism='Dilnoza')
+        self.rahbar = Xodim.objects.create(salon=self.salon, ism='Rahbar', rol=Xodim.Rol.RAHBAR)
+
+    def test_uch_savol(self):
+        from rest_framework.test import APIClient
+
+        from apps.tenants.auth import make_staff_token
+
+        from .nazorat import dashbord_nazorati
+        from .services import smena_yopish, topshiriqni_qabul
+        n = dashbord_nazorati(self.salon)
+        self.assertEqual((n['kamomad'], n['topshiriqlar'], n['sanoq']), (0, 0, None))
+        smena_ochish(salon=self.salon, xodim=self.malika, boshlangich_qoldiq=100_000)
+        smenaga_qoshilish(salon=self.salon, xodim=self.dilnoza)
+        ish = smena_chiqish(salon=self.salon, xodim=self.malika, sanalgan_summa=90_000)
+        self.assertEqual(dashbord_nazorati(self.salon)['topshiriqlar'], 1)
+        topshiriqni_qabul(salon=self.salon, xodim=self.dilnoza, topshirish=ish.topshirish)
+        smena_yopish(salon=self.salon, xodim=self.dilnoza, fakt_qoldiq=85_000, izoh='5 ming yetmadi')
+        Sanoq.objects.create(salon=self.salon, boshlagan=self.rahbar, yakunlagan=self.rahbar, yakunlangan=timezone.now(),
+                             kutilgan=10, topilgan=9, yoq=1)
+        n = dashbord_nazorati(self.salon)
+        self.assertEqual(n['kamomad'], -15_000)
+        self.assertEqual(n['kamomad_xodimlar'], [{'ism': 'Malika', 'summa': -10_000}, {'ism': 'Dilnoza', 'summa': -5_000}])
+        self.assertEqual((n['topshiriqlar'], n['sanoq']['yoq'], n['sanoq']['kun_oldin']), (0, 1, 0))
+        c = APIClient()
+        c.credentials(HTTP_AUTHORIZATION='Bearer ' + make_staff_token(self.rahbar))
+        self.assertEqual(c.get('/api/dashbord/').data['nazorat']['kamomad'], -15_000)
