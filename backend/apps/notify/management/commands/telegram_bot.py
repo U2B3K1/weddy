@@ -52,12 +52,20 @@ class Command(BaseCommand):
             self.stdout.write("Hozircha bot sozlanmagan (platforma paneli yoki .env). Kutilmoqda…")
         self.stdout.write("Telegram bot ishga tushdi. To'xtatish: Ctrl+C")
         offset = 0
+        tekshirilgan = 0.0  # nazorat eslatmalari daqiqada ko'pi bilan bir marta
         while True:
             try:
                 token = (telegram.barcha_tokenlar() or [None])[0]
                 if not token:
                     time.sleep(15)
                     continue
+                if time.monotonic() - tekshirilgan >= 60:
+                    tekshirilgan = time.monotonic()
+                    try:
+                        from apps.cash.nazorat import tezkor_eslatmalar
+                        tezkor_eslatmalar()
+                    except Exception as e:  # noqa: BLE001 — eslatma xatosi botni to'xtatmasin
+                        self.stderr.write(f'Nazorat eslatmalarida xato: {type(e).__name__}')
                 try:
                     kutayotganlarni_yubor()
                 except Exception as e:  # noqa: BLE001 — navbatdagi xato tinglashni to'xtatmasin

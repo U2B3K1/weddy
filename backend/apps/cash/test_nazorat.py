@@ -10,7 +10,7 @@ from apps.orders.services import zakaz_yaratish
 from apps.tenants.models import Xodim
 
 from .models import KassaTopshirish, Tolov
-from .nazorat import nazorat_eslatmalari
+from .nazorat import nazorat_eslatmalari, tezkor_eslatmalar
 from .services import smena_chiqish, smena_ochish, smenaga_qoshilish, tolov_qabul
 
 T = Tolov.Tur
@@ -32,20 +32,22 @@ class NazoratTests(TestCase):
     def test_tasdiqlanmagan_topshiriq_eslatmasi_bir_marta(self):
         tolov_qabul(salon=self.salon, xodim=self.malika, tur=T.ZALOG, summa=500_000)
         ish = smena_chiqish(salon=self.salon, xodim=self.malika, sanalgan_summa=500_000)
-        self.assertEqual(nazorat_eslatmalari(self.keyin(0.5)), 0)  # hali 1 soat o'tmagan
-        self.assertEqual(nazorat_eslatmalari(self.keyin(2)), 2)    # Dilnozaga va rahbarga
-        self.assertEqual(nazorat_eslatmalari(self.keyin(3)), 0)    # takrorlanmaydi
+        self.assertEqual(tezkor_eslatmalar(self.keyin(1 / 60)), 0)  # 1 daqiqa: hali erta
+        self.assertEqual(tezkor_eslatmalar(self.keyin(3 / 60)), 1)  # 3 daqiqa: Dilnozaga
+        self.assertEqual(tezkor_eslatmalar(self.keyin(5 / 60)), 0)  # takrorlanmaydi, rahbarga hali erta
+        self.assertEqual(tezkor_eslatmalar(self.keyin(0.5)), 1)     # 30 daqiqa: rahbarga
+        self.assertEqual(nazorat_eslatmalari(self.keyin(3)), 0)     # takrorlanmaydi
         x = Xabar.objects.get(xodim=self.dilnoza, kalit=f'kt_eslatma:{ish.topshirish.id}')
         self.assertEqual(x.tugmalar[0][0]['callback_data'], f'kt:{ish.topshirish.id}:q')
-        self.assertIn('1 soatdan beri', Xabar.objects.get(xodim=self.rahbar, kalit=f'kt_rahbar:{ish.topshirish.id}').matn)
+        self.assertIn('15 daqiqadan beri', Xabar.objects.get(xodim=self.rahbar, kalit=f'kt_rahbar:{ish.topshirish.id}').matn)
         KassaTopshirish.objects.update(holat=KassaTopshirish.Holat.QABUL)
 
     def test_tasdiqlanmagan_otkazma_eslatmasi(self):
         z = zakaz_yaratish(salon=self.salon, xodim=self.malika, telefon='+998901', olib_ketish=date(2026, 12, 20),
                            qaytarish=date(2026, 12, 22), libos_idlari=[self.libos.id])
         t = tolov_qabul(salon=self.salon, xodim=self.malika, tur=T.AVANS, summa=300_000, usul=Tolov.Usul.OTKAZMA, zakaz=z)
-        self.assertEqual(nazorat_eslatmalari(self.keyin(1)), 0)
-        self.assertEqual(nazorat_eslatmalari(self.keyin(4)), 1)
+        self.assertEqual(tezkor_eslatmalar(self.keyin(1 / 60)), 0)  # 1 daqiqa: hali erta
+        self.assertEqual(tezkor_eslatmalar(self.keyin(3 / 60)), 1)  # 3 daqiqa: rahbarga eslatma
         self.assertIn('Hali tasdiqlanmagan', Xabar.objects.get(kalit=f'ot_eslatma:{t.id}').matn)
 
     def test_sanoq_haftada_bir(self):

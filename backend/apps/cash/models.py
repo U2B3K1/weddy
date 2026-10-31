@@ -86,6 +86,11 @@ class Tolov(SalonModel):
 
     KIRIM = ('avans', 'qoldiq', 'jarima', 'zalog')
     CHIQIM = ('zalog_qaytarish', 'vozvrat', 'xarajat', 'inkassatsiya')
+    class Meta:
+        indexes = [  # daqiqalik eslatma va dashbord faqat tasdiq kutayotganlarni oladi — katta jadvalni aylanmasin
+            models.Index(fields=['salon'], condition=Q(tasdiq='kutilmoqda'), name='tolov_tasdiq_kutilmoqda'),
+        ]
+
     OTKAZMA_USULLARI = ('otkazma',)  # Click/Payme hozircha ishlatilmaydi (foydalanuvchi qarori, 2026-11-01)
     HAQIQIY = ~Q(tasdiq='kelmadi')  # hisobga olinadigan to'lovlar (rahbar «kelmadi» demaganlari)
 
@@ -119,6 +124,9 @@ class KassaTopshirish(SalonModel):
 
     class Meta:
         ordering = ['-id']
+        indexes = [
+            models.Index(fields=['kimga'], condition=Q(holat='kutilmoqda'), name='topshiriq_kutilmoqda'),
+        ]
 
 
 class ZalogTekshiruvi(SalonModel):

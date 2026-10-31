@@ -1,6 +1,8 @@
-"""Rahbarga nazorat eslatmalari (soatlik cron — `eslatmalarni_yuborish`): unutilgan tasdiqlar va libos sanog'i.
+"""Nazorat eslatmalari: unutilgan tasdiqlar va libos sanog'i.
 
-Har eslatma bir marta yoziladi (`kalit`), shuning uchun buyruq har soatda ishlasa ham takrorlanmaydi.
+Tezkor qismi (topshiriq, o'tkazma) — Telegram bot jarayonida daqiqada bir (`tezkor_eslatmalar`): ikkita kichik so'rov,
+faqat tasdiq kutayotgan yozuvlar (qisman indeks). Libos sanog'i har salonni aylanadi — soatlik cron (`eslatmalarni_yuborish`).
+Har eslatma bir marta yoziladi (`kalit`), shuning uchun qayta-qayta ishga tushsa ham takrorlanmaydi.
 """
 from datetime import timedelta
 
@@ -11,8 +13,9 @@ from apps.tenants.models import Salon
 
 from .models import KassaTopshirish, Tolov
 
-TOPSHIRIQ_KUTISH = timedelta(hours=1)
-OTKAZMA_KUTISH = timedelta(hours=3)
+TOPSHIRIQ_KUTISH = timedelta(minutes=2)    # qabul qiluvchiga qayta eslatma
+TOPSHIRIQ_RAHBARGA = timedelta(minutes=15)  # shundan keyin ham tasdiqlanmasa — rahbarga
+OTKAZMA_KUTISH = timedelta(minutes=2)  # mijoz hali salonda bo'lganida bilish kerak: pul kelmasa undan so'raladi
 SANOQ_ORALIGI = 7  # kun
 
 
@@ -24,10 +27,11 @@ def _topshiriqlar(hozir):
                      {'text': '✏️ Boshqa summa', 'callback_data': f'kt:{t.id}:b'}]]
         soni += bool(xabar_yoz(t.kimga, 'kassa_topshirish', f"⏰ Eslatma: {t.kimdan.ism} sizga {som(t.summa)} topshirgan — "
                                f"hali tasdiqlamadingiz. Sanab, tasdiqlang.", tugmalar, kalit=f'kt_eslatma:{t.id}'))
-        if not t.rahbarga:  # rahbarning o'zi qabul qiluvchi bo'lsa, yuqoridagi eslatma yetadi
+        # rahbarning o'zi qabul qiluvchi bo'lsa, yuqoridagi eslatma yetadi
+        if not t.rahbarga and t.yaratilgan <= hozir - TOPSHIRIQ_RAHBARGA:
             soni += len([x for x in rahbarlarga(t.salon, 'kassa_topshirish_kutilmoqda',
                                                 f"{t.kimdan.ism} {som(t.summa)} ni {t.kimga.ism}ga topshirgan, lekin "
-                                                f"{t.kimga.ism} 1 soatdan beri tasdiqlamayapti.", kalit=f'kt_rahbar:{t.id}') if x])
+                                                f"{t.kimga.ism} 15 daqiqadan beri tasdiqlamayapti.", kalit=f'kt_rahbar:{t.id}') if x])
     return soni
 
 
@@ -66,10 +70,16 @@ def _sanoq(hozir):
     return soni
 
 
-def nazorat_eslatmalari(hozir=None):
-    """Yozilgan eslatmalar soni."""
+def tezkor_eslatmalar(hozir=None):
+    """Topshiriq va o'tkazma eslatmalari (bot jarayonida daqiqada bir). Yozilgan eslatmalar soni."""
     hozir = hozir or timezone.now()
-    return _topshiriqlar(hozir) + _otkazmalar(hozir) + _sanoq(hozir)
+    return _topshiriqlar(hozir) + _otkazmalar(hozir)
+
+
+def nazorat_eslatmalari(hozir=None):
+    """Hammasi (soatlik cron; bot ishlamay qolsa ham tezkorlari shu yerda yoziladi). Yozilgan eslatmalar soni."""
+    hozir = hozir or timezone.now()
+    return tezkor_eslatmalar(hozir) + _sanoq(hozir)
 
 
 def dashbord_nazorati(salon, bugun=None, kun=7):
