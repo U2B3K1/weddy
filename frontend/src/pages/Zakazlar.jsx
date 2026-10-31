@@ -7,7 +7,7 @@ import LibosSiluet from '../components/LibosSiluet'
 import NavIkona from '../components/NavIkona'
 import {
   bekorQilish, berish, chegirmaSora, mijozOzgartir, tolovHavola, primerkaBelgila, primerkaOzgartir, promokodOlibTashla, promokodQolla, qarzTolash, qaytarish, sanaKochirish, som, sozlamalar, tayyorChegirmalar,
-  tolovQabul, xatoMatni, zakazAksessuarOchir, zakazAksessuarQosh, zakazTafsilot, zakazTarixi, zakazlarRoyxat,
+  saqlangan, tolovQabul, xatoMatni, zakazAksessuarOchir, zakazAksessuarQosh, zakazTafsilot, zakazTarixi, zakazlarRoyxat,
   boshAksessuarlar, boshLiboslar, libosAlmashtirish, salonchilar, zakazSalonchi,
   sanaMatni,
 } from '../api'
@@ -121,6 +121,8 @@ function Karta({ id, onOrqaga, onKassa }) {
   const [soz, setSoz] = useState(null)
   const [chop, setChop] = useState(null)
   useEffect(() => { sozlamalar().then(setSoz).catch(() => {}) }, [])
+  // «Alohida kassir» rejimida sotuvchi pul qabul qilmaydi — to'lov tugmalari o'rniga eslatma
+  const kassirda = soz?.kassa_rejimi === 'kassir' && saqlangan.xodim()?.rol === 'sotuvchi'
 
   const yukla = useCallback(() => zakazTafsilot(id).then(setZ), [id])
   useEffect(() => { yukla() }, [yukla])
@@ -219,14 +221,17 @@ function Karta({ id, onOrqaga, onKassa }) {
         </p>
       )}
 
-      {(h === 'vaqtinchalik' || h === 'bron') && z.qoldiq > 0 && (
+      {kassirda && (((h === 'vaqtinchalik' || h === 'bron') && z.qoldiq > 0) || (h === 'qaytarildi' && z.qarz > 0)) && (
+        <p className="malumot">To'lovni kassir qabul qiladi — mijozni kassaga yuboring (zakaz #{z.raqam}).</p>
+      )}
+      {!kassirda && (h === 'vaqtinchalik' || h === 'bron') && z.qoldiq > 0 && (
         <TolovForma sarlavha={h === 'bron' ? "Qoldiq to'lov" : 'Avans qabul qilish'} maks={z.qoldiq}
           zakazId={soz?.tolov_havolasi ? z.id : null}
           onYuborish={(summa, usul) => bajar(
             () => tolovQabul({ zakaz: z.id, tur: h === 'bron' ? 'qoldiq' : 'avans', summa, usul }),
             `To'lov qabul qilindi.${soz?.fiskal_eslatma ? ` ${soz.fiskal_izoh || 'Fiskal chekni urishni unutmang.'}` : ''}`)} />
       )}
-      {h === 'vaqtinchalik' && z.jami === 0 && (
+      {!kassirda && h === 'vaqtinchalik' && z.jami === 0 && (
         <button onClick={() => bajar(() => tolovQabul({ zakaz: z.id, tur: 'avans', summa: 0, usul: 'naqd' }), 'Bron tasdiqlandi.')}>
           Bronni tasdiqlash (to'liq chegirma — to'lov yo'q)
         </button>
@@ -234,7 +239,7 @@ function Karta({ id, onOrqaga, onKassa }) {
       {h === 'bron' && z.qoldiq === 0 && <BerishForma soz={soz} libosZalogi={z.libos_zalogi} olibKetish={z.olib_ketish}
         onYuborish={(zaloglar, erta) => bajar(() => berish(z.id, zaloglar, erta), 'Libos berildi.')} />}
       {h === 'berildi' && <QaytarishForma qaytarish={z.qaytarish} kechikishJarimasi={soz ? (soz.kechikish_jarimasi ? soz.kechikish_kunlik_summa : 0) : null} baholash={soz ? soz.mijoz_bahosi : true} tillo={z.zaloglar.some((g) => g.turi === 'tillo')} onYuborish={(b) => bajar(() => qaytarish(z.id, b), 'Qaytarish rasmiylashtirildi.')} />}
-      {h === 'qaytarildi' && z.qarz > 0 && (
+      {!kassirda && h === 'qaytarildi' && z.qarz > 0 && (
         <TolovForma sarlavha="Jarima qarzini to'lash" maks={z.qarz} usulsiz
           onYuborish={(summa) => bajar(() => qarzTolash(z.id, summa), "Qarz to'landi.")} />
       )}

@@ -141,7 +141,7 @@ function SmenaPaneli({ s, onOch, onQoshil, onChiq, onYop, onHisobot }) {
       <span className="smena-holat ochiq"><i aria-hidden="true" />Smena ochiq{s.filial ? ` · ${s.filial}` : ''}</span>
       <span className="smena-kim">{s.ishtirokchilar.join(', ')}
         {s.yuborilgan?.map((t) => <small key={t.id} className="malumot"> · {t.kimga} {som(t.summa)} ni hali tasdiqlamadi</small>)}</span>
-      {s.men_ishtirokchi && s.ishtirokchilar.length > 1 ? (
+      {s.men_ishtirokchi ? (
         <button type="button" className="smena-naqd" onClick={onHisobot} title="Siz javob beradigan naqd. Bosing — smena hisoboti">
           <small>Sizda naqd</small><b>{som(s.mening_hisobim)}</b>
         </button>
@@ -159,6 +159,9 @@ function SmenaPaneli({ s, onOch, onQoshil, onChiq, onYop, onHisobot }) {
   )
 }
 
+// Server vaqti UTC da keladi — qurilmaning mahalliy vaqtida «01.11.2026 01:15»
+const mahalliyVaqt = (v) => { const d = new Date(v); return `${sanaMatni(d.toLocaleDateString('sv-SE'))} ${d.toTimeString().slice(0, 5)}` }
+
 // Menga topshirilgan, hali qabul qilinmagan pul: sanab «Qabul qildim» yoki boshqa summani kiritish.
 // Telegramdagi tugmalar bilan bir xil — qaysi biri birinchi bosilsa, o'sha hisoblanadi.
 function Kutayotgan({ royxat, onQabul }) {
@@ -172,7 +175,7 @@ function Kutayotgan({ royxat, onQabul }) {
         <div key={t.id} className="tasdiq-qator">
           <div className="tasdiq-matn">
             <b>{t.kimdan} · {som(t.summa)}{t.rahbarga && ' · inkassatsiya'}</b>
-            <small>{sanaMatni(t.vaqt)} {String(t.vaqt).slice(11, 16)}{t.izoh && ` · ${t.izoh}`}</small>
+            <small>{mahalliyVaqt(t.vaqt)}{t.izoh && ` · ${t.izoh}`}</small>
           </div>
           <div className="tasdiq-tugmalar">
             {boshqa[t.id] !== undefined ? (

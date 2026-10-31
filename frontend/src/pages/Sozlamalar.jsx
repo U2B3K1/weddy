@@ -310,7 +310,7 @@ export default function Sozlamalar({ menId, bolim, onBolim }) {
             olib, hisobni kassir yopgandek. Kassada sotuvchining zakazi «To'lov kutayotganlar» ro'yxatida chiqadi.
             Har sotuvchining zakazlaridan qancha pul kirgani Hisobot → «Xodimlar nazorati» da ko'rinadi.
             Xodimlar bo'limida kamida bitta xodimga «Kassir» rolini bering.</p>
-          <p className="malumot">Rejimni o'zgartirishdan oldin ochiq smenani yoping. «Sozlamalarni saqlash» bosilgach kuchga kiradi.</p>
+          <p className="malumot">Rejimni o'zgartirishdan oldin ochiq smenani yoping. Pastdagi «Saqlash» bosilgach kuchga kiradi.</p>
         </section>
       ),
     },
