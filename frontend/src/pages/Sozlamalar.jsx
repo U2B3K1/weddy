@@ -189,6 +189,13 @@ export default function Sozlamalar({ menId, bolim, onBolim }) {
             <input type="checkbox" checked={s.sms_eslatma} onChange={(e) => set('sms_eslatma', e.target.checked)} />
             Ertaga olib ketish va qaytarish haqida mijozga SMS
           </label>
+          <label className="qator">
+            <input type="checkbox" checked={s.sms_kvitansiya} onChange={(e) => set('sms_kvitansiya', e.target.checked)} />
+            Har to'lovdan keyin mijozga SMS kvitansiya
+          </label>
+          <p className="malumot">Avans, qoldiq, jarima yoki zalog qabul qilinishi bilan mijozga boradi: «zakaz #123 uchun 2 000 000 so'm qabul
+            qilindi (naqd). To'langan: 2 000 000 / 10 000 000». Xodim kamroq yoki boshqa usul bilan yozsa, mijoz buni darhol ko'radi.
+            Har SMS pullik (Eskiz tarifi); matnni Eskiz kabinetida shablon sifatida tasdiqlatish kerak.</p>
           {sms && !sms.sozlangan && (
             <p className="ogohlantirish">Eskiz.uz hisobi kiritilmagan (Integratsiyalar → SMS): SMS lar hozircha yuborilmaydi, faqat jurnalga yoziladi.</p>
           )}
@@ -311,6 +318,20 @@ export default function Sozlamalar({ menId, bolim, onBolim }) {
             Har sotuvchining zakazlaridan qancha pul kirgani Hisobot → «Xodimlar nazorati» da ko'rinadi.
             Xodimlar bo'limida kamida bitta xodimga «Kassir» rolini bering.</p>
           <p className="malumot">Rejimni o'zgartirishdan oldin ochiq smenani yoping. Pastdagi «Saqlash» bosilgach kuchga kiradi.</p>
+          <h3>Naqdsiz pul nazorati</h3>
+          <label className="qator">
+            <input type="checkbox" checked={s.otkazma_tasdigi} onChange={(e) => set('otkazma_tasdigi', e.target.checked)} />
+            O'tkazmani rahbar tasdiqlaydi
+          </label>
+          <p className="malumot">O'tkazma bilan to'lov olinganda rahbarga Telegramda «Hisobingizga tushdimi?» — «Keldi / Kelmadi».
+            «Kelmadi» bosilsa to'lov hisobdan chiqadi va zakaz qoldig'i qayta chiqadi. O'chirilsa o'tkazma tasdiqsiz hisobga olinadi.</p>
+          <label className="qator">
+            <input type="checkbox" checked={s.terminal_sverkasi} onChange={(e) => set('terminal_sverkasi', e.target.checked)} />
+            Smena yopishda terminal sverkasi
+          </label>
+          <p className="malumot">Smenada terminal orqali to'lov bo'lsa, yopishda terminaldan chiqarilgan sverka summasi kiritiladi va
+            tizim bilan solishtiriladi; farq bo'lsa rahbarga xabar. O'chirilsa smena sverkasiz yopiladi.</p>
+          <p className="malumot">To'lovdan keyin mijozga SMS kvitansiya — «SMS eslatma» bo'limida.</p>
         </section>
       ),
     },

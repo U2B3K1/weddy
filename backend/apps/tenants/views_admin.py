@@ -20,7 +20,7 @@ SOZLAMA_MAYDONLARI = ('bufer_kun', 'vaqtinchalik_bron_soat', 'zalog_pul', 'zalog
                       'promokod_tasdiqsiz', 'promokod_chegirma_birga', 'salonchi_kodlari',
                       'mavsumiy_narx', 'sotuvchi_bonusi', 'bonus_foiz', 'primerka', 'mijoz_bahosi',
                       'qulf_daqiqa', 'sotuvchi_libos_qoshadi', 'qoplamagan_royxat',
-                      'qoplamagan_kun', 'kunlik_hisobot', 'kunlik_hisobot_vaqti', 'promokodlar_bolimi', 'manekin', 'shartnoma_bandlari', 'filial_kassasi', 'sms_eslatma', 'kassa_rejimi')
+                      'qoplamagan_kun', 'kunlik_hisobot', 'kunlik_hisobot_vaqti', 'promokodlar_bolimi', 'manekin', 'shartnoma_bandlari', 'filial_kassasi', 'sms_eslatma', 'kassa_rejimi', 'sms_kvitansiya', 'otkazma_tasdigi', 'terminal_sverkasi')
 
 
 def sozlama_json(s):
@@ -63,6 +63,9 @@ class SozlamaSerializer(serializers.Serializer):
     filial_kassasi = serializers.BooleanField(required=False)
     kassa_rejimi = serializers.ChoiceField(choices=['sotuvchi', 'kassir'], required=False)
     sms_eslatma = serializers.BooleanField(required=False)
+    sms_kvitansiya = serializers.BooleanField(required=False)
+    otkazma_tasdigi = serializers.BooleanField(required=False)
+    terminal_sverkasi = serializers.BooleanField(required=False)
     sotuvchi_bonusi = serializers.BooleanField(required=False)
     bonus_foiz = serializers.DecimalField(max_digits=5, decimal_places=2, min_value=0, max_value=100, required=False)
 

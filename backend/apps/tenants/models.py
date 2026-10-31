@@ -300,6 +300,12 @@ class SalonSozlamalari(models.Model):
     kassa_rejimi = models.CharField(max_length=10, choices=[('sotuvchi', "Sotuvchi o'zi kassir"), ('kassir', 'Alohida kassir')],
                                     default='sotuvchi')
     sms_eslatma = models.BooleanField(default=False)  # mijozga SMS: ertaga olib ketish / qaytarish
+    # Har to'lovdan keyin mijozga SMS kvitansiya: xodim kamroq yozsa yoki boshqa usul bilan yozsa mijoz darhol biladi
+    sms_kvitansiya = models.BooleanField(default=False)
+    # Naqdsiz pul nazorati (kerak bo'lmasa o'chiriladi): o'tkazmani rahbar «keldi» deb tasdiqlaydi; terminal to'lovi
+    # bo'lgan smena terminal sverkasi summasisiz yopilmaydi
+    otkazma_tasdigi = models.BooleanField(default=True)
+    terminal_sverkasi = models.BooleanField(default=True)
 
     def zalog_turlari(self):
         return [t for t, yoq in (('pul', self.zalog_pul), ('hujjat', self.zalog_hujjat),

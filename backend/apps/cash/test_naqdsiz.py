@@ -110,3 +110,29 @@ class TerminalTests(Base):
         self.assertEqual(h['terminal_tizimda'], 300_000)
         r = api(self.malika).post('/api/kassa/smena/yopish/', {'summa': 0, 'terminal': 300_000}, format='json')
         self.assertEqual((r.status_code, r.data['farq']), (200, 0))
+
+
+class OchirilganNazoratTests(Base):
+    """Sozlamada o'chirilsa: o'tkazma tasdiqsiz hisobga olinadi, smena terminal sverkasisiz yopiladi."""
+
+    def setUp(self):
+        super().setUp()
+        from apps.tenants.models import SalonSozlamalari, sozlama
+        sozlama(self.salon)
+        SalonSozlamalari.objects.filter(salon=self.salon).update(otkazma_tasdigi=False, terminal_sverkasi=False)
+
+    def test_otkazma_tasdiqsiz(self):
+        t = self.tolov(2_000_000, U.OTKAZMA)
+        self.assertEqual(t.tasdiq, '')
+        self.assertFalse(Xabar.objects.filter(tur='otkazma_tasdiq').exists())
+        self.assertEqual(tolangan_summa(self.z), 2_000_000)
+
+    def test_terminal_sverkasiz_yopiladi(self):
+        self.tolov(500_000, U.KARTA)
+        self.assertEqual(api(self.malika).get('/api/kassa/smena/').data['terminal_tizimda'], 0)
+        s = smena_yopish(salon=self.salon, xodim=self.malika, fakt_qoldiq=0)
+        self.assertIsNone(s.terminal_sverka)
+
+    def test_sozlama_api(self):
+        r = api(self.rahbar).patch('/api/sozlamalar/', {'otkazma_tasdigi': True, 'terminal_sverkasi': True}, format='json')
+        self.assertEqual((r.status_code, r.data['otkazma_tasdigi'], r.data['terminal_sverkasi']), (200, True, True))

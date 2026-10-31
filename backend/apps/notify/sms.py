@@ -6,6 +6,7 @@ Hisob ma'lumoti (`ESKIZ_EMAIL`, `ESKIZ_PASSWORD`) kiritilmaguncha hech narsa yub
 """
 import json
 import re
+import threading
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -28,7 +29,9 @@ TOKEN_KESH = 'eskiz_token'
 SHABLONLAR = {
     'olib_ketish_ertaga': "{salon}: ertaga ({sana}) libosingizni olib ketish kuni. Qoldiq to'lov: {qoldiq} so'm. Tel: {tel}",
     'qaytarish_ertaga': "{salon}: ertaga ({sana}) libosni qaytarish kuni. Tel: {tel}",
+    'tolov_kvitansiya': "{salon}: zakaz #{raqam} uchun {summa} so'm qabul qilindi ({usul}). To'langan: {tolangan} / {jami} so'm. Tel: {tel}",
 }
+KVITANSIYA_TURLARI = ('avans', 'qoldiq', 'jarima', 'zalog')  # mijoz pul bergan to'lovlar
 
 
 class SmsXatosi(Exception):
@@ -120,6 +123,56 @@ def _yoz(salon, zakaz, tur, matn):
                                            kalit=f'{tur}:{zakaz.id}:{zakaz.olib_ketish}:{zakaz.qaytarish}')
     except IntegrityError:
         return None
+
+
+def _pul(n):
+    return f'{n:,}'.replace(',', ' ')
+
+
+def kvitansiya_yoz(tolov):
+    """Sozlamada yoqilgan bo'lsa, mijozga to'lov haqida SMS (navbatga yoziladi, shlyuz sozlangan bo'lsa darhol yuboriladi).
+    Mijoz bergan summani o'zi tekshiradi — xodim kamroq yozsa yoki naqdni boshqa usul deb yozsa, mijoz biladi."""
+    from apps.cash.services import tolangan_summa
+
+    z = tolov.zakaz
+    if not z or not tolov.summa or tolov.tur not in KVITANSIYA_TURLARI or not sozlama(tolov.salon_id).sms_kvitansiya:
+        return None
+    salon = tolov.salon
+    matn = SHABLONLAR['tolov_kvitansiya'].format(
+        salon=salon.nomi, raqam=z.raqam, summa=_pul(tolov.summa), usul=tolov.get_usul_display().lower(),
+        tolangan=_pul(tolangan_summa(z)), jami=_pul(z.jami), tel=salon.telefon or salon.rahbar_telefon)
+    if tolov.tur == 'zalog':
+        matn = matn.replace("so'm qabul qilindi", "so'm zalog qabul qilindi")
+    try:
+        with transaction.atomic():
+            x = SmsXabar.objects.create(salon=salon, zakaz=z, telefon=z.mijoz.telefon, tur='tolov_kvitansiya',
+                                        matn=matn[:400], kalit=f'tolov:{tolov.id}')
+    except IntegrityError:
+        return None
+    if sozlangan(salon):  # to'lov so'rovi SMS shlyuzini kutmasin — fonda yuboriladi
+        transaction.on_commit(lambda: threading.Thread(target=_fonda, args=(x.id,), daemon=True).start())
+    return x
+
+
+def _bittasini_yubor(xabar_id):
+    x = SmsXabar.objects.filter(id=xabar_id, holat=SmsXabar.Holat.KUTILMOQDA).first()
+    if not x:
+        return
+    try:
+        yubor(x.telefon, x.matn, x.salon_id)
+        x.holat, x.yuborilgan = SmsXabar.Holat.YUBORILDI, timezone.now()
+    except SmsXatosi as e:  # navbatda qoladi: kutayotganlarni_yubor keyin yana urinadi
+        x.xato_matni = str(e)[:300]
+    x.save(update_fields=['holat', 'xato_matni', 'yuborilgan'])
+
+
+def _fonda(xabar_id):
+    """Alohida oqimda: o'z baza ulanishini ishlatadi va oxirida yopadi."""
+    from django.db import connection
+    try:
+        _bittasini_yubor(xabar_id)
+    finally:
+        connection.close()
 
 
 def eslatmalarni_yoz(bugun=None):

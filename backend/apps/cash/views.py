@@ -67,7 +67,8 @@ class SmenaHolatiView(APIView):
             'yuborilgan': [services.topshiriq_json(t) for t in smena.topshiriqlar.filter(
                 kimdan=men, holat=KassaTopshirish.Holat.KUTILMOQDA).select_related('kimdan', 'kimga')],
             'hisobot': services.kassa_hisobot(smena),
-            'terminal_tizimda': services.terminal_tizimda(smena),
+            # sverka o'chirilgan bo'lsa 0 — yopish oynasida terminal maydoni chiqmaydi
+            'terminal_tizimda': services.terminal_tizimda(smena) if sozlama(request.salon).terminal_sverkasi else 0,
             'zalog_tekshirilmagan': tekshiruv.tekshirilmaganlar_soni(smena),
             **umumiy,
         })

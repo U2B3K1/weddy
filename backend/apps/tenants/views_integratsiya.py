@@ -34,6 +34,7 @@ def integratsiya_json(i):
         'payme': bool(i.payme_merchant_id),
     }
     d['standart'] = {'sms_shablon_olib_ketish': sms.SHABLONLAR['olib_ketish_ertaga'], 'sms_shablon_qaytarish': sms.SHABLONLAR['qaytarish_ertaga'],
+                     'sms_shablon_kvitansiya': sms.SHABLONLAR['tolov_kvitansiya'],
                      'manekin_fon_farqi': Integratsiya._meta.get_field('manekin_fon_farqi').default}
     del telegram
     return d

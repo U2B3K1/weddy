@@ -166,12 +166,16 @@ def tolov_qabul(*, salon, xodim, tur, summa, usul=Tolov.Usul.NAQD, zakaz=None, i
             raise KassaXatosi("Vaqtinchalik bron muddati o'tib, libos yoki aksessuar boshqa zakazga berilgan. "
                               "Bu zakazni bekor qilib, qaytadan rasmiylashtiring.")
 
-    otkazma = tur in Tolov.KIRIM and usul in Tolov.OTKAZMA_USULLARI and summa > 0
+    otkazma = (tur in Tolov.KIRIM and usul in Tolov.OTKAZMA_USULLARI and summa > 0
+               and sozlama(salon).otkazma_tasdigi)
     tolov = Tolov.objects.create(salon=salon, smena=smena, zakaz=zakaz, tur=tur, usul=usul,
                                  summa=summa, xodim=xodim, izoh=izoh,
                                  tasdiq=Tolov.Tasdiq.KUTILMOQDA if otkazma else Tolov.Tasdiq.KERAK_EMAS)
     if otkazma:
         _otkazma_xabari(tolov)
+    if zakaz is not None:
+        from apps.notify.sms import kvitansiya_yoz
+        kvitansiya_yoz(tolov)
 
     if tur == Tolov.Tur.AVANS and zakaz.holat == Zakaz.Holat.VAQTINCHALIK:
         zakaz.holat = Zakaz.Holat.BRON
@@ -366,7 +370,7 @@ def smena_yopish(*, salon, xodim, fakt_qoldiq, izoh='', filial=None, rahbar=None
     if farq != 0 and not izoh.strip():
         raise KassaXatosi('Kassa farqi bor: izoh majburiy.')
     t_tizim = terminal_tizimda(smena)
-    if t_tizim and terminal is None:
+    if t_tizim and terminal is None and sozlama(salon).terminal_sverkasi:
         raise KassaXatosi("Terminal sverkasini oling va undagi summani kiriting.", kod='terminal')
     t_farq = None if terminal is None else terminal - t_tizim
     if t_farq and not izoh.strip():

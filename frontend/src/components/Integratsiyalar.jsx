@@ -72,6 +72,7 @@ export default function Integratsiyalar() {
             <textarea rows={3} maxLength={300} placeholder={d.standart.sms_shablon_qaytarish} value={q('sms_shablon_qaytarish')} onChange={set('sms_shablon_qaytarish')} />
           </label>
           <p className="malumot">O'zgaruvchilar: {'{salon}'}, {'{sana}'}, {'{tel}'}, {'{qoldiq}'}. Bo'sh qoldirilsa standart matn ishlatiladi.</p>
+          <p className="malumot">To'lov kvitansiyasi (Sozlama → SMS eslatma da yoqiladi) — Eskiz kabinetida shu shablonni tasdiqlating: «{d.standart.sms_shablon_kvitansiya}»</p>
           <div className="qator">
             {saqlashTugma(['eskiz_email', 'eskiz_parol', 'eskiz_from', 'sms_shablon_olib_ketish', 'sms_shablon_qaytarish'])}
             {d.eskiz_parol_kiritilgan && <button type="button" className="ikkinchi" onClick={() => tozala('eskiz_parol', 'Eskiz paroli')}>Parolni olib tashlash</button>}
