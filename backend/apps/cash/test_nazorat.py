@@ -102,3 +102,39 @@ class DashbordNazoratiTests(TestCase):
         c = APIClient()
         c.credentials(HTTP_AUTHORIZATION='Bearer ' + make_staff_token(self.rahbar))
         self.assertEqual(c.get('/api/dashbord/').data['nazorat']['kamomad'], -15_000)
+
+
+class QaytmaganLibosTests(TestCase):
+    def setUp(self):
+        from apps.orders.rental import libos_berish
+        self.salon, self.malika, self.kat = salon_yarat()
+        self.rahbar = Xodim.objects.create(salon=self.salon, ism='Rahbar', rol=Xodim.Rol.RAHBAR)
+        smena_ochish(salon=self.salon, xodim=self.malika, boshlangich_qoldiq=0)
+        self.bugun = timezone.localdate()
+        a = libos_yarat(self.salon, self.kat, 'Q-1', ijara_narxi=1_000_000)
+        self.z = zakaz_yaratish(salon=self.salon, xodim=self.malika, telefon='+998901', olib_ketish=self.bugun,
+                                qaytarish=self.bugun + timedelta(days=1), libos_idlari=[a.id])
+        tolov_qabul(salon=self.salon, xodim=self.malika, tur=T.AVANS, summa=self.z.jami, zakaz=self.z)
+        libos_berish(salon=self.salon, xodim=self.malika, zakaz=self.z, zaloglar=[{'turi': 'pul', 'summa': 1}])
+        type(self.z).objects.filter(id=self.z.id).update(qaytarish=self.bugun)
+        Sanoq.objects.create(salon=self.salon, boshlagan=self.rahbar, yakunlagan=self.rahbar,  # sanoq eslatmasi aralashmasin
+                             yakunlangan=timezone.now() + timedelta(days=1))
+
+    def soat(self, h, kun=0):
+        from datetime import datetime, time
+        return timezone.make_aware(datetime.combine(self.bugun + timedelta(days=kun), time(h)))
+
+    def test_kechqurun_sotuvchi_va_rahbarga(self):
+        self.assertEqual(nazorat_eslatmalari(self.soat(17)), 0)  # hali kun tugamagan
+        self.assertEqual(nazorat_eslatmalari(self.soat(19)), 2)  # Malika va rahbar
+        self.assertEqual(nazorat_eslatmalari(self.soat(20)), 0)  # kuniga bir marta
+        x = Xabar.objects.get(xodim=self.malika, tur='libos_qaytmadi')
+        self.assertIn('Q-1', x.matn)
+        self.assertIn('bugun qaytarilishi kerak edi', x.matn)
+        self.assertEqual(nazorat_eslatmalari(self.soat(19, kun=1)), 2)  # ertasi kuni — kechikmoqda
+        self.assertIn('1 kun kechikmoqda', Xabar.objects.filter(xodim=self.rahbar, tur='libos_qaytmadi').first().matn)
+
+    def test_qaytarilgan_libosga_eslatma_yoq(self):
+        from apps.orders.models import Zakaz
+        Zakaz.objects.filter(id=self.z.id).update(holat=Zakaz.Holat.QAYTARILDI)
+        self.assertEqual(nazorat_eslatmalari(self.soat(19)), 0)

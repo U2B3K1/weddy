@@ -1,7 +1,7 @@
 """Nazorat eslatmalari: unutilgan tasdiqlar va libos sanog'i.
 
 Tezkor qismi (topshiriq, o'tkazma) — Telegram bot jarayonida daqiqada bir (`tezkor_eslatmalar`): ikkita kichik so'rov,
-faqat tasdiq kutayotgan yozuvlar (qisman indeks). Libos sanog'i har salonni aylanadi — soatlik cron (`eslatmalarni_yuborish`).
+faqat tasdiq kutayotgan yozuvlar (qisman indeks). Libos sanog'i va qaytarilmagan liboslar — soatlik cron (`eslatmalarni_yuborish`).
 Har eslatma bir marta yoziladi (`kalit`), shuning uchun qayta-qayta ishga tushsa ham takrorlanmaydi.
 """
 from datetime import timedelta
@@ -9,7 +9,7 @@ from datetime import timedelta
 from django.utils import timezone
 
 from apps.notify.services import rahbarlarga, som, xabar_yoz
-from apps.tenants.models import Salon
+from apps.tenants.models import Salon, Xodim
 
 from .models import KassaTopshirish, Tolov
 
@@ -17,6 +17,7 @@ TOPSHIRIQ_KUTISH = timedelta(minutes=2)    # qabul qiluvchiga qayta eslatma
 TOPSHIRIQ_RAHBARGA = timedelta(minutes=15)  # shundan keyin ham tasdiqlanmasa — rahbarga
 OTKAZMA_KUTISH = timedelta(minutes=2)  # mijoz hali salonda bo'lganida bilish kerak: pul kelmasa undan so'raladi
 SANOQ_ORALIGI = 7  # kun
+QAYTARISH_TEKSHIRUV_SOAT = 18  # shu soatdan keyin qaytarish kuni kelgan, lekin qabul qilinmagan libos — eslatma
 
 
 def _topshiriqlar(hozir):
@@ -70,6 +71,31 @@ def _sanoq(hozir):
     return soni
 
 
+def _qaytmagan_liboslar(hozir):
+    """Qaytarish kuni kelgan (yoki o'tgan), lekin «Qaytarildi» deb qabul qilinmagan libos: kechqurun libosni bergan
+    sotuvchiga va rahbarga. Libos qaytgan bo'lsa — tizimda qabul qilinmagan; qaytmagan bo'lsa — mijoz bilan bog'lanish kerak."""
+    from apps.orders.models import Zakaz
+
+    mahalliy = timezone.localtime(hozir)
+    if mahalliy.hour < QAYTARISH_TEKSHIRUV_SOAT:
+        return 0
+    bugun = mahalliy.date()
+    soni = 0
+    for z in (Zakaz.objects.filter(holat=Zakaz.Holat.BERILDI, qaytarish__lte=bugun)
+              .exclude(salon__holat=Salon.Holat.BLOKLANGAN).select_related('salon', 'mijoz', 'sotuvchi')
+              .prefetch_related('pozitsiyalar__libos')):
+        kun = (bugun - z.qaytarish).days
+        liboslar = ', '.join(f'{p.libos.artikul} {p.libos.nomi}' for p in z.pozitsiyalar.all())
+        matn = (f"⏰ Zakaz #{z.raqam} · {z.mijoz.fio or 'mijoz'} ({z.mijoz.telefon}): {liboslar} "
+                f"{'bugun qaytarilishi kerak edi' if not kun else f'{kun} kun kechikmoqda'}, lekin «Qaytarildi» deb qabul qilinmagan.\n"
+                f"Libos qaytgan bo'lsa — tizimda qabul qiling; qaytmagan bo'lsa — mijoz bilan bog'laning.")
+        kalit = f'qaytmadi:{z.id}:{bugun}'
+        if z.sotuvchi and z.sotuvchi.faol and z.sotuvchi.rol != Xodim.Rol.RAHBAR:
+            soni += bool(xabar_yoz(z.sotuvchi, 'libos_qaytmadi', matn, kalit=kalit))
+        soni += len([x for x in rahbarlarga(z.salon, 'libos_qaytmadi', matn, kalit=kalit) if x])
+    return soni
+
+
 def tezkor_eslatmalar(hozir=None):
     """Topshiriq va o'tkazma eslatmalari (bot jarayonida daqiqada bir). Yozilgan eslatmalar soni."""
     hozir = hozir or timezone.now()
@@ -79,7 +105,7 @@ def tezkor_eslatmalar(hozir=None):
 def nazorat_eslatmalari(hozir=None):
     """Hammasi (soatlik cron; bot ishlamay qolsa ham tezkorlari shu yerda yoziladi). Yozilgan eslatmalar soni."""
     hozir = hozir or timezone.now()
-    return tezkor_eslatmalar(hozir) + _sanoq(hozir)
+    return tezkor_eslatmalar(hozir) + _sanoq(hozir) + _qaytmagan_liboslar(hozir)
 
 
 def dashbord_nazorati(salon, bugun=None, kun=7):

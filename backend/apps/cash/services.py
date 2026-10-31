@@ -227,6 +227,10 @@ def otkazma_tasdiqlash(*, salon, rahbar, tolov, keldi):
     t.tasdiq = Tolov.Tasdiq.KELDI if keldi else Tolov.Tasdiq.KELMADI
     t.tasdiqlagan, t.tasdiq_vaqti = rahbar, timezone.now()
     t.save(update_fields=['tasdiq', 'tasdiqlagan', 'tasdiq_vaqti'])
+    if keldi:  # sotuvchi mijozni kuzatib qo'yishi mumkin
+        from apps.notify.services import som, xabar_yoz
+        xabar_yoz(t.xodim, 'otkazma_keldi', f"✅ {t.get_usul_display()} {som(t.summa)}"
+                  f"{f' (zakaz #{t.zakaz.raqam})' if t.zakaz_id else ''} rahbar hisobiga keldi.")
     if not keldi:
         z = t.zakaz
         if z and z.tolangan_sana and tolangan_summa(z) < z.jami:  # to'liq to'lanmagan bo'lib qoldi

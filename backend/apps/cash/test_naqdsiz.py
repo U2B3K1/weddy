@@ -50,6 +50,7 @@ class OtkazmaTests(Base):
         self.assertIn('allaqachon', tugma_ishla(111, f'ot:{t.id}:y'))
         t.refresh_from_db()
         self.assertEqual((t.tasdiq, t.tasdiqlagan), (Tolov.Tasdiq.KELDI, self.rahbar))
+        self.assertIn('keldi', Xabar.objects.get(xodim=self.malika, tur='otkazma_keldi').matn)  # sotuvchi mijozni kuzatadi
 
     def test_naqd_va_terminal_tasdiqsiz(self):
         self.assertEqual(self.tolov(500_000, U.NAQD).tasdiq, '')
