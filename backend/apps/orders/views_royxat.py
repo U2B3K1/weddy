@@ -100,7 +100,7 @@ class ZakazlarRoyxatiView(APIView):
             qs = qs.filter(f)
         # Jadval uchun: to'lov progressi (to'langan / jami) va birinchi libos rasmi — bitta so'rovda, zakaz boshiga emas
         qs = (qs.prefetch_related('pozitsiyalar__libos__rasmlar')
-              .annotate(tolangan_s=Sum('tolovlar__summa', filter=Q(tolovlar__tur__in=[Tolov.Tur.AVANS, Tolov.Tur.QOLDIQ]))))
+              .annotate(tolangan_s=Sum('tolovlar__summa', filter=~Q(tolovlar__tasdiq='kelmadi') & Q(tolovlar__tur__in=[Tolov.Tur.AVANS, Tolov.Tur.QOLDIQ]))))
         natija = []
         for z in qs.order_by('-raqam')[:100]:
             poz = next(iter(z.pozitsiyalar.all()), None)
@@ -128,7 +128,7 @@ class ZakazTafsilotView(APIView):
             **_qisqa(z), 'asosiy_narx': z.asosiy_narx, 'ustama': z.ustama, 'ustama_foiz': z.ustama_foiz, 'chegirma': z.chegirma,
             'tolangan': tolangan, 'qoldiq': z.jami - tolangan,
             'tolovlar': [{'tur': t.tur, 'tur_nomi': t.get_tur_display(), 'summa': t.summa, 'usul': t.usul,
-                          'usul_nomi': t.get_usul_display(), 'xodim': t.xodim.ism,
+                          'usul_nomi': t.get_usul_display(), 'xodim': t.xodim.ism, 'tasdiq': t.tasdiq,
                           'vaqt': t.vaqt} for t in z.tolovlar.select_related('xodim')],
             'zaloglar': [{'id': g.id, 'turi': g.turi, 'turi_nomi': g.get_turi_display(), 'holat': g.holat,
                           'holat_nomi': g.get_holat_display(), 'summa': g.summa,
@@ -235,7 +235,7 @@ class RahbarDashbordView(APIView):
         # Ochiq smenalar: filial bo'yicha yoki butun salon (filial kassalari yoqilgan bo'lsa bir nechta bo'ladi)
         ochiq_smenalar = list(Smena.objects.filter(salon=salon, yopilgan__isnull=True, **({'filial_id': filial} if filial else {})))
         smena = ochiq_smenalar[0] if ochiq_smenalar else None
-        bugungi = Tolov.objects.filter(reports.tolov_filiali(filial), salon=salon, vaqt__date=bugun,
+        bugungi = Tolov.objects.filter(reports.tolov_filiali(filial), Tolov.HAQIQIY, salon=salon, vaqt__date=bugun,
                                        tur__in=[Tolov.Tur.AVANS, Tolov.Tur.QOLDIQ, Tolov.Tur.JARIMA])
         by_usul = {r['usul']: r['s'] for r in bugungi.values('usul').annotate(s=Sum('summa'))}
         kutilayotgan = reports.kutilayotgan_daromad(salon, bugun, filial)
@@ -289,6 +289,7 @@ class RahbarDashbordView(APIView):
                     salon=salon, holat=ChegirmaSorovi.Holat.KUTILMOQDA).count(),
                 'liboslar': Libos.objects.filter(salon=salon, holat=Libos.Holat.TASDIQ_KUTILMOQDA).count(),
                 'xarajatlar': Xarajat.objects.filter(salon=salon, holat=Xarajat.Holat.KUTILMOQDA).count(),
+                'otkazmalar': Tolov.objects.filter(salon=salon, tasdiq=Tolov.Tasdiq.KUTILMOQDA).count(),
             },
             'shu_oy': shu_oy,
             'ogohlantirishlar': {

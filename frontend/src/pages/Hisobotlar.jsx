@@ -342,7 +342,7 @@ function Pnl({ r, filial }) {
   )
 }
 
-const USUL = { karta: 'Karta', click: 'Click', payme: 'Payme' }
+const USUL = { karta: 'Terminal', otkazma: "O'tkazma", click: 'Click', payme: 'Payme' }
 
 // FT-12.12: rahbar oyiga bir marta bank ko'chirmasidagi summani kiritadi; tizim farqni ko'rsatadi, komissiya xarajatga yoziladi.
 function Bank() {

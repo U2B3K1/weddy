@@ -265,7 +265,7 @@ def xarajatlar(salon, dan, gacha, **_):
 
 def pul_oqimi(salon, dan, gacha, **_):
     """Haqiqatda kirgan va chiqqan pul, to'lov usullari bo'yicha (6.1). Zalog daromad emas, lekin pul harakati."""
-    q = Tolov.objects.filter(salon=salon, vaqt__date__range=(dan, gacha))
+    q = Tolov.objects.filter(Tolov.HAQIQIY, salon=salon, vaqt__date__range=(dan, gacha))
     qatorlar = []
     for usul, nom in Tolov.Usul.choices:
         u = q.filter(usul=usul)
@@ -291,7 +291,7 @@ def kassa(salon, dan, gacha, filial=None, **_):
     smenalar = list(Smena.objects.filter(salon=salon, sana__range=(dan, gacha), **({'filial_id': filial} if filial else {}))
                     .select_related('ochgan').prefetch_related('ishtirokchilar__xodim').order_by('sana', 'id'))
     kirim = Q(tur__in=[T.AVANS, T.QOLDIQ, T.JARIMA])
-    pul = {r['smena']: r for r in Tolov.objects.filter(smena__in=smenalar).values('smena').annotate(
+    pul = {r['smena']: r for r in Tolov.objects.filter(Tolov.HAQIQIY, smena__in=smenalar).values('smena').annotate(
         naqd=Sum('summa', filter=kirim & Q(usul=Tolov.Usul.NAQD)), naqdsiz=Sum('summa', filter=kirim & ~Q(usul=Tolov.Usul.NAQD)),
         qaytarilgan=Sum('summa', filter=Q(tur=T.VOZVRAT)), xarajat=Sum('summa', filter=Q(tur=T.XARAJAT)))}
     qatorlar = []
@@ -305,16 +305,19 @@ def kassa(salon, dan, gacha, filial=None, **_):
         qatorlar.append([s.sana, ', '.join(dict.fromkeys(ishchilar)), p.get('naqd') or 0, p.get('naqdsiz') or 0,
                          p.get('qaytarilgan') or 0, p.get('xarajat') or 0, kutilgan, s.fakt_qoldiq,
                          (s.farq or 0) + chiqqanlar_farqi if s.yopilgan or chiqqanlar_farqi else None,
-                         ' · '.join(x for x in izoh if x)])
-    jami = ['Jami', ''] + [sum(q[i] for q in qatorlar) for i in range(2, 6)] + [None, None, sum(q[8] or 0 for q in qatorlar), '']
+                         s.terminal_farq, ' · '.join(x for x in izoh if x)])
+    jami = (['Jami', ''] + [sum(q[i] for q in qatorlar) for i in range(2, 6)]
+            + [None, None, sum(q[8] or 0 for q in qatorlar), sum(q[9] or 0 for q in qatorlar), ''])
     return {'sarlavha': 'Kunlik kassa',
             'izoh': "Har smena alohida. «Kassada bo'lishi kerak» — smenani yopgan xodim qo'lida bo'lishi kerak bo'lgan naqd "
                     "(o'zi olgani va unga topshirilgani). «Farq» — kun bo'yicha jami: yopgan xodim va kun o'rtasida pulini "
                     "topshirib chiqqanlar (kim qancha — izohda). Manfiy — kamomad, musbat — ortiqcha. "
+                    "«Terminal farqi» — terminal sverkasi minus tizimdagi terminal to'lovlari (manfiy — naqd «karta» deb "
+                    "yozilgan bo'lishi mumkin). Rahbar «kelmadi» degan o'tkazmalar kirmaydi. "
                     "Ijara, oylik kabi kassadan tashqari xarajatlar bu yerga kirmaydi.",
-            'ustunlar': _u(('Sana', 'sana'), ('Xodim', 'matn'), ('Naqd kirdi', 'pul'), ('Karta, Click, Payme', 'pul'),
+            'ustunlar': _u(('Sana', 'sana'), ('Xodim', 'matn'), ('Naqd kirdi', 'pul'), ("Terminal va o'tkazma", 'pul'),
                            ('Mijozga qaytarildi', 'pul'), ('Kassadan xarajat', 'pul'), ("Kassada bo'lishi kerak", 'pul'),
-                           ('Sanaldi', 'pul'), ('Farq', 'pul'), ('Izoh', 'matn')),
+                           ('Sanaldi', 'pul'), ('Farq', 'pul'), ('Terminal farqi', 'pul'), ('Izoh', 'matn')),
             'qatorlar': qatorlar, 'jami': jami}
 
 
@@ -390,9 +393,11 @@ def xodimlar_nazorati(salon, dan, gacha, **_):
                 .values_list('sotuvchi_id').annotate(n=Count('id')))
     # Sotuvchi zakazlaridan kirgan pul (kim qabul qilganidan qat'i nazar — «alohida kassir» rejimida ham sotuvchiga)
     T = Tolov.Tur
-    tushum = dict(Tolov.objects.filter(salon=salon, vaqt__date__range=(dan, gacha), tur__in=[T.AVANS, T.QOLDIQ, T.VOZVRAT],
+    tushum = dict(Tolov.objects.filter(Tolov.HAQIQIY, salon=salon, vaqt__date__range=(dan, gacha), tur__in=[T.AVANS, T.QOLDIQ, T.VOZVRAT],
                                        zakaz__sotuvchi__isnull=False).values_list('zakaz__sotuvchi_id').annotate(
         s=Sum('summa', filter=~Q(tur=T.VOZVRAT), default=0) - Sum('summa', filter=Q(tur=T.VOZVRAT), default=0)))
+    kelmadi = dict(Tolov.objects.filter(salon=salon, tasdiq=Tolov.Tasdiq.KELMADI, vaqt__date__range=(dan, gacha))
+                   .values_list('xodim_id').annotate(n=Count('id')))
     kelishmovchilik = dict(KassaTopshirish.objects.filter(salon=salon, yaratilgan__date__range=(dan, gacha),
                                                           qabul_summa__isnull=False).exclude(qabul_summa=F('summa'))
                            .values_list('kimdan_id').annotate(n=Count('id')))
@@ -403,6 +408,8 @@ def xodimlar_nazorati(salon, dan, gacha, **_):
         diqqat = []
         if kamomad[x.id]:
             diqqat.append(f'kamomad {kamomad[x.id]} marta')
+        if kelmadi.get(x.id):
+            diqqat.append(f"o'tkazma kelmadi {kelmadi[x.id]} marta")
         if kelishmovchilik.get(x.id):
             diqqat.append(f"pul topshirishda kelishmovchilik {kelishmovchilik[x.id]} marta")
         b, y = bekor.get(x.id, 0), yangi.get(x.id, 0)

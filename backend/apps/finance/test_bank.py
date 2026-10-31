@@ -48,7 +48,7 @@ class BankTests(Base):
     def test_kiritilmaguncha_faqat_tizim_summasi(self):
         d = self.c.get(f'/api/hisobotlar/bank/?oy={self.oy}').json()
         self.assertEqual([(u['usul'], u['tizimda'], u['farq']) for u in d['usullar']],
-                         [('karta', 1_000_000, None), ('click', 500_000, None), ('payme', 0, None)])
+                         [('karta', 1_000_000, None), ('otkazma', 0, None), ('click', 500_000, None)])  # payme bo'sh — ko'rsatilmaydi
 
     def test_farq_va_komissiya_xarajatga(self):
         r = self.c.post('/api/hisobotlar/bank/', {'oy': self.oy, 'usul': 'karta', 'kochirma_summa': 985_000,

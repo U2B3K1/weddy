@@ -48,6 +48,10 @@ class SmenaHolatiView(APIView):
                 salon=request.salon, kimga=men, holat=KassaTopshirish.Holat.KUTILMOQDA).select_related('kimdan', 'kimga')],
             'rahbarlar': [{'id': x.id, 'ism': x.ism} for x in Xodim.objects.filter(
                 salon=request.salon, rol=Xodim.Rol.RAHBAR, faol=True).exclude(id=men.id).order_by('ism')],
+            # rahbarga: hisobiga kelganini tasdiqlashi kerak bo'lgan o'tkazma, Click, Payme to'lovlari
+            'otkazmalar': [otkazma_json(t) for t in Tolov.objects.filter(
+                salon=request.salon, tasdiq=Tolov.Tasdiq.KUTILMOQDA).select_related('xodim', 'zakaz__mijoz').order_by('vaqt')]
+            if men.rol == Xodim.Rol.RAHBAR else [],
         }
         if not smena:
             return Response({'ochiq': False, 'filial': filial.nomi if filial else None,
@@ -63,6 +67,7 @@ class SmenaHolatiView(APIView):
             'yuborilgan': [services.topshiriq_json(t) for t in smena.topshiriqlar.filter(
                 kimdan=men, holat=KassaTopshirish.Holat.KUTILMOQDA).select_related('kimdan', 'kimga')],
             'hisobot': services.kassa_hisobot(smena),
+            'terminal_tizimda': services.terminal_tizimda(smena),
             'zalog_tekshirilmagan': tekshiruv.tekshirilmaganlar_soni(smena),
             **umumiy,
         })
@@ -101,6 +106,7 @@ class SanashSerializer(serializers.Serializer):
     izoh = serializers.CharField(required=False, allow_blank=True, default='', max_length=300)
     kimga = serializers.IntegerField(required=False)   # chiqish: kimga topshiriladi
     rahbar = serializers.IntegerField(required=False)  # yopish (seyf o'rniga) va inkassatsiya: qaysi rahbarga
+    terminal = serializers.IntegerField(min_value=0, required=False)  # yopish: terminal sverkasidagi summa
 
 
 class SmenaChiqishView(APIView):
@@ -128,10 +134,36 @@ class SmenaYopishView(APIView):
         try:
             s = services.smena_yopish(salon=request.salon, xodim=request.user,
                                       fakt_qoldiq=ser.validated_data['summa'], izoh=ser.validated_data['izoh'],
-                                      filial=_filial(request), rahbar=_xodim(request, ser.validated_data.get('rahbar'), 'rahbar'))
+                                      filial=_filial(request), rahbar=_xodim(request, ser.validated_data.get('rahbar'), 'rahbar'),
+                                      terminal=ser.validated_data.get('terminal'))
         except KassaXatosi as e:
             return xato(e)
         return Response({'farq': s.farq})
+
+
+def otkazma_json(t):
+    return {'id': t.id, 'summa': t.summa, 'usul': t.usul, 'usul_nomi': t.get_usul_display(), 'tur_nomi': t.get_tur_display(),
+            'xodim': t.xodim.ism, 'vaqt': t.vaqt, 'zakaz': t.zakaz.raqam if t.zakaz_id else None,
+            'mijoz': (t.zakaz.mijoz.fio or t.zakaz.mijoz.telefon) if t.zakaz_id else None}
+
+
+class OtkazmaTasdiqView(APIView):
+    """POST {keldi: true|false} — rahbar o'tkazma (Click, Payme) hisobiga kelganini tasdiqlaydi."""
+
+    def get_permissions(self):
+        from apps.tenants.permissions import IsRahbar
+        return [IsRahbar(), SalonYozishRuxsati()]
+
+    def post(self, request, pk):
+        t = Tolov.objects.filter(salon=request.salon, id=pk).first()
+        if not t:
+            return Response({'detail': "To'lov topilmadi."}, status=404)
+        keldi = serializers.BooleanField().run_validation(request.data.get('keldi'))
+        try:
+            t = services.otkazma_tasdiqlash(salon=request.salon, rahbar=request.user, tolov=t, keldi=keldi)
+        except KassaXatosi as e:
+            return xato(e)
+        return Response({'id': t.id, 'tasdiq': t.tasdiq})
 
 
 class InkassatsiyaView(APIView):

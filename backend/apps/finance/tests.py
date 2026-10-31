@@ -320,7 +320,7 @@ class PnlTafsilotTests(FinanceBase):
     def test_kirim_tolovlari(self):
         t = reports.pnl_tafsilot(self.salon, 2026, 10, 'kirim')
         self.assertEqual([(q['matn'], q['summa']) for q in t['qatorlar']],
-                         [('Avans · zakaz #1 · Nodira · Naqd', 2_000_000), ("Qoldiq to'lov · zakaz #2 · Nodira · Karta", 3_000_000),
+                         [('Avans · zakaz #1 · Nodira · Naqd', 2_000_000), ("Qoldiq to'lov · zakaz #2 · Nodira · Terminal", 3_000_000),
                           ('Avans · zakaz #3 · Nodira · Naqd', 1_000_000)])
         self.assertTrue(all(q['zakaz_id'] for q in t['qatorlar']))
 

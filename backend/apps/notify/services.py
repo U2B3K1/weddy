@@ -215,6 +215,8 @@ def tugma_ishla(chat_id, data):
         return qurilma_tugma_ishla(chat_id, int(qismlar[1]), qismlar[2])
     if len(qismlar) == 3 and qismlar[0] == 'kt' and qismlar[1].isdigit() and qismlar[2] in ('q', 'b'):
         return kassa_tugma_ishla(chat_id, int(qismlar[1]), qismlar[2])
+    if len(qismlar) == 3 and qismlar[0] == 'ot' and qismlar[1].isdigit() and qismlar[2] in ('k', 'y'):
+        return otkazma_tugma_ishla(chat_id, int(qismlar[1]), qismlar[2] == 'k')
     if len(qismlar) != 3 or qismlar[0] != 'ch' or not qismlar[1].isdigit() or qismlar[2] not in ('t', 'r'):
         return "Noma'lum buyruq."
     sorov = ChegirmaSorovi.objects.filter(id=int(qismlar[1])).first()
@@ -252,6 +254,24 @@ def kassa_tugma_ishla(chat_id, tid, amal):
     except KassaXatosi as e:
         return str(e)
     return f'Qabul qilindi: {som(t.qabul_summa)}.'
+
+
+def otkazma_tugma_ishla(chat_id, tid, keldi):
+    """«✅ Keldi / ❌ Kelmadi»: o'tkazma, Click yoki Payme to'lovi rahbar hisobiga tushdimi."""
+    from apps.cash.models import Tolov
+    from apps.cash.services import KassaXatosi, otkazma_tasdiqlash
+
+    t = Tolov.objects.filter(id=tid).first()
+    if not t:
+        return "To'lov topilmadi."
+    xodim = _salon_rahbari(t.salon_id, chat_id)
+    if not xodim:
+        return 'Bu amal faqat shu salon rahbariga ruxsat etilgan.'
+    try:
+        t = otkazma_tasdiqlash(salon=xodim.salon, rahbar=xodim, tolov=t, keldi=keldi)
+    except KassaXatosi as e:
+        return str(e)
+    return 'Keldi — tasdiqlandi.' if keldi else "Kelmadi — to'lov hisobdan chiqarildi, xodimga xabar berildi."
 
 
 # ---------- yangi qurilmani Telegram orqali tasdiqlash (FT-22.2) ----------

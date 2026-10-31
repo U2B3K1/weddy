@@ -205,6 +205,7 @@ export default function App() {
     t.chegirmalar > 0 && { matn: `${t.chegirmalar} ta chegirma so'rovi qaror kutmoqda`, soni: t.chegirmalar, bolim: 'bosh', tur: 'vaqt' },
     t.liboslar > 0 && { matn: `${t.liboslar} ta yangi libos tasdiq kutmoqda`, soni: t.liboslar, bolim: 'katalog:liboslar', tur: 'vaqt' },
     t.xarajatlar > 0 && { matn: `${t.xarajatlar} ta xarajat tasdiq kutmoqda`, soni: t.xarajatlar, bolim: 'hisobotlar:xarajat', tur: 'vaqt' },
+    t.otkazmalar > 0 && { matn: `${t.otkazmalar} ta o'tkazma: hisobingizga kelganini tasdiqlang`, soni: t.otkazmalar, bolim: 'kassa:tolov', tur: 'vaqt' },
     xabarD.bugun.kechikkan > 0 && { matn: `${xabarD.bugun.kechikkan} ta kechikkan qaytarish`, soni: xabarD.bugun.kechikkan, bolim: 'bosh', tur: 'qarz' },
     xabarD.bugun.kechikkan > 0 && og.kechikish_jarimasi_yoqilgan === false && { matn: "Kechikkan qaytarishlar bor, lekin kechikish jarimasi o'chirilgan", soni: 1, bolim: 'sozlamalar:kechikish', tur: 'vaqt' },
     og.kassa_farqi !== 0 && { matn: `Kassa farqi (${og.kassa_farqi_sana}): ${som(og.kassa_farqi)}`, soni: 1, bolim: 'kassa:tarix', tur: 'qarz' },

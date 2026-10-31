@@ -20,6 +20,10 @@ class Smena(SalonModel):
     zalog_yoq = models.PositiveSmallIntegerField(default=0)
     # Yopilganda seyfda qolgan naqd (rahbarga topshirilsa 0): ertaga ochuvchining boshlang'ich qoldig'i shunga solishtiriladi
     seyfda = models.BigIntegerField(null=True, blank=True)
+    # Terminal sverkasi: smena yopishda terminaldan olingan summa tizimdagi terminal to'lovlari bilan solishtiriladi
+    terminal_tizimda = models.BigIntegerField(null=True, blank=True)
+    terminal_sverka = models.BigIntegerField(null=True, blank=True)
+    terminal_farq = models.BigIntegerField(null=True, blank=True)
     # Filial kassasi yoqilgan bo'lsa smena filialga tegishli; bo'sh — salonning umumiy kassasi
     filial = models.ForeignKey('tenants.Filial', null=True, blank=True, on_delete=models.PROTECT, related_name='+')
 
@@ -55,9 +59,16 @@ class Tolov(SalonModel):
 
     class Usul(models.TextChoices):
         NAQD = 'naqd', 'Naqd'
-        KARTA = 'karta', 'Karta'
+        KARTA = 'karta', 'Terminal'                 # kartadan terminal orqali — smena yopishda sverka bilan solishtiriladi
+        OTKAZMA = 'otkazma', "O'tkazma"           # karta raqamiga o'tkazma — rahbar Telegramda «keldi» deb tasdiqlaydi
         CLICK = 'click', 'Click'
         PAYME = 'payme', 'Payme'
+
+    class Tasdiq(models.TextChoices):
+        KERAK_EMAS = '', 'Kerak emas'
+        KUTILMOQDA = 'kutilmoqda', "Rahbar tasdig'i kutilmoqda"
+        KELDI = 'keldi', 'Keldi'
+        KELMADI = 'kelmadi', 'Kelmadi'
 
     zakaz = models.ForeignKey('orders.Zakaz', null=True, blank=True, on_delete=models.PROTECT,
                               related_name='tolovlar')
@@ -68,9 +79,15 @@ class Tolov(SalonModel):
     izoh = models.CharField(max_length=300, blank=True)
     xodim = models.ForeignKey('tenants.Xodim', on_delete=models.PROTECT, related_name='+')
     vaqt = models.DateTimeField(auto_now_add=True)
+    # O'tkazma: pul rahbar hisobiga tushganini rahbar tasdiqlaydi; «kelmadi» — to'lov hisobga olinmaydi
+    tasdiq = models.CharField(max_length=10, choices=Tasdiq.choices, blank=True, default='')
+    tasdiqlagan = models.ForeignKey('tenants.Xodim', null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    tasdiq_vaqti = models.DateTimeField(null=True, blank=True)
 
     KIRIM = ('avans', 'qoldiq', 'jarima', 'zalog')
     CHIQIM = ('zalog_qaytarish', 'vozvrat', 'xarajat', 'inkassatsiya')
+    OTKAZMA_USULLARI = ('otkazma',)  # Click/Payme hozircha ishlatilmaydi (foydalanuvchi qarori, 2026-11-01)
+    HAQIQIY = ~Q(tasdiq='kelmadi')  # hisobga olinadigan to'lovlar (rahbar «kelmadi» demaganlari)
 
 
 class KassaTopshirish(SalonModel):

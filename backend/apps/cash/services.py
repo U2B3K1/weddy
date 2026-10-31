@@ -123,7 +123,7 @@ def _bronlar_joyida(zakaz):
 
 
 def tolangan_summa(zakaz):
-    r = zakaz.tolovlar.filter(tur__in=[Tolov.Tur.AVANS, Tolov.Tur.QOLDIQ]).aggregate(s=Sum('summa'))
+    r = zakaz.tolovlar.filter(Tolov.HAQIQIY, tur__in=[Tolov.Tur.AVANS, Tolov.Tur.QOLDIQ]).aggregate(s=Sum('summa'))
     return r['s'] or 0
 
 
@@ -157,7 +157,8 @@ def tolov_qabul(*, salon, xodim, tur, summa, usul=Tolov.Usul.NAQD, zakaz=None, i
             raise KassaXatosi('Bu zakazga to\'lov qabul qilib bo\'lmaydi.')
         if zakaz.holat == Zakaz.Holat.CHEGIRMA_KUTILMOQDA:
             raise KassaXatosi('Chegirma tasdig\'i kutilmoqda.')
-        if tur == Tolov.Tur.QOLDIQ and tolangan_summa(zakaz) == 0:
+        # bron avans bilan tasdiqlanadi; tasdiqlangan bronda (o'tkazma «kelmadi» bo'lsa ham) qoldiq qabul qilinadi
+        if tur == Tolov.Tur.QOLDIQ and tolangan_summa(zakaz) == 0 and zakaz.holat == Zakaz.Holat.VAQTINCHALIK:
             raise KassaXatosi('Avval avans kiritiladi.')
         if tolangan_summa(zakaz) + summa > zakaz.jami:
             raise KassaXatosi('To\'lov zakaz summasidan oshib ketadi.')
@@ -165,8 +166,12 @@ def tolov_qabul(*, salon, xodim, tur, summa, usul=Tolov.Usul.NAQD, zakaz=None, i
             raise KassaXatosi("Vaqtinchalik bron muddati o'tib, libos yoki aksessuar boshqa zakazga berilgan. "
                               "Bu zakazni bekor qilib, qaytadan rasmiylashtiring.")
 
+    otkazma = tur in Tolov.KIRIM and usul in Tolov.OTKAZMA_USULLARI and summa > 0
     tolov = Tolov.objects.create(salon=salon, smena=smena, zakaz=zakaz, tur=tur, usul=usul,
-                                 summa=summa, xodim=xodim, izoh=izoh)
+                                 summa=summa, xodim=xodim, izoh=izoh,
+                                 tasdiq=Tolov.Tasdiq.KUTILMOQDA if otkazma else Tolov.Tasdiq.KERAK_EMAS)
+    if otkazma:
+        _otkazma_xabari(tolov)
 
     if tur == Tolov.Tur.AVANS and zakaz.holat == Zakaz.Holat.VAQTINCHALIK:
         zakaz.holat = Zakaz.Holat.BRON
@@ -180,6 +185,47 @@ def tolov_qabul(*, salon, xodim, tur, summa, usul=Tolov.Usul.NAQD, zakaz=None, i
     if tur in (Tolov.Tur.AVANS, Tolov.Tur.QOLDIQ):
         zakaz.save(update_fields=['holat', 'tolangan_sana'])
     return tolov
+
+
+def _otkazma_xabari(tolov):
+    """Rahbarlarga: pul hisobingizga keldimi? (bank SMS i bilan solishtirib «Keldi» / «Kelmadi» bosiladi)."""
+    from apps.notify.services import rahbarlarga, som
+    z = f' · zakaz #{tolov.zakaz.raqam} ({tolov.zakaz.mijoz.fio or tolov.zakaz.mijoz.telefon})' if tolov.zakaz_id else ''
+    matn = (f"💳 {tolov.get_usul_display()}: {som(tolov.summa)}{z}\n{tolov.get_tur_display()}, qabul qildi: {tolov.xodim.ism}.\n"
+            f"Hisobingizga tushdimi? Bank SMS ini tekshirib tasdiqlang.")
+    tugmalar = [[{'text': '✅ Keldi', 'callback_data': f'ot:{tolov.id}:k'},
+                 {'text': '❌ Kelmadi', 'callback_data': f'ot:{tolov.id}:y'}]]
+    rahbarlarga(tolov.salon, 'otkazma_tasdiq', matn, tugmalar)
+
+
+@transaction.atomic
+def otkazma_tasdiqlash(*, salon, rahbar, tolov, keldi):
+    """Rahbar o'tkazma kelganini tasdiqlaydi. «Kelmadi» — to'lov hisobga olinmaydi: zakaz qoldig'i qaytadan
+    chiqadi (mijozdan olinishi kerak), tushumga kirmaydi; qabul qilgan xodimga xabar boradi."""
+    if rahbar.rol != Xodim.Rol.RAHBAR or rahbar.salon_id != salon.id:
+        raise KassaXatosi("O'tkazmani faqat rahbar tasdiqlaydi.")
+    t = Tolov.objects.select_for_update(of=('self',)).select_related('xodim', 'zakaz').get(id=tolov.id, salon=salon)
+    if t.tasdiq != Tolov.Tasdiq.KUTILMOQDA:
+        raise KassaXatosi("Bu to'lov allaqachon tasdiqlangan." if t.tasdiq else "Bu to'lov tasdiq talab qilmaydi.")
+    t.tasdiq = Tolov.Tasdiq.KELDI if keldi else Tolov.Tasdiq.KELMADI
+    t.tasdiqlagan, t.tasdiq_vaqti = rahbar, timezone.now()
+    t.save(update_fields=['tasdiq', 'tasdiqlagan', 'tasdiq_vaqti'])
+    if not keldi:
+        z = t.zakaz
+        if z and z.tolangan_sana and tolangan_summa(z) < z.jami:  # to'liq to'lanmagan bo'lib qoldi
+            Zakaz.objects.filter(id=z.id).update(tolangan_sana=None)
+        from apps.notify.services import som, xabar_yoz
+        xabar_yoz(t.xodim, 'otkazma_kelmadi',
+                  f"❗ {t.get_usul_display()} {som(t.summa)}{f' (zakaz #{z.raqam})' if z else ''} rahbar hisobiga kelmadi. "
+                  f"To'lov hisobdan chiqarildi — mijoz bilan bog'laning.")
+    return t
+
+
+def terminal_tizimda(smena):
+    """Smenada terminal (karta) orqali kirgan pul — terminal sverkasi bilan solishtiriladi."""
+    r = smena.tolovlar.filter(usul=Tolov.Usul.KARTA).aggregate(
+        kirim=Sum('summa', filter=Q(tur__in=Tolov.KIRIM)), chiqim=Sum('summa', filter=Q(tur__in=Tolov.CHIQIM)))
+    return (r['kirim'] or 0) - (r['chiqim'] or 0)
 
 
 def kassa_hisobot(smena):
@@ -299,9 +345,10 @@ def smena_chiqish(*, salon, xodim, sanalgan_summa, kimga=None, filial=None):
 
 
 @transaction.atomic
-def smena_yopish(*, salon, xodim, fakt_qoldiq, izoh='', filial=None, rahbar=None):
+def smena_yopish(*, salon, xodim, fakt_qoldiq, izoh='', filial=None, rahbar=None, terminal=None):
     """Oxirgi qolgan xodim o'z qo'lidagi naqdni sanab yopadi; farq bo'lsa izoh majburiy (FT-12.10).
-    Pul seyfda qoladi (ertaga ochuvchi sanab qabul qiladi) yoki `rahbar` ga topshiriladi."""
+    Pul seyfda qoladi (ertaga ochuvchi sanab qabul qiladi) yoki `rahbar` ga topshiriladi.
+    Terminal orqali to'lov bo'lgan bo'lsa — terminal sverkasidagi summa (`terminal`) majburiy."""
     smena = _kassa(salon, xodim, filial)
     if not smena:
         raise KassaXatosi('Ochiq smena yo\'q.')
@@ -318,6 +365,13 @@ def smena_yopish(*, salon, xodim, fakt_qoldiq, izoh='', filial=None, rahbar=None
     farq = fakt_qoldiq - hisobdagi
     if farq != 0 and not izoh.strip():
         raise KassaXatosi('Kassa farqi bor: izoh majburiy.')
+    t_tizim = terminal_tizimda(smena)
+    if t_tizim and terminal is None:
+        raise KassaXatosi("Terminal sverkasini oling va undagi summani kiriting.", kod='terminal')
+    t_farq = None if terminal is None else terminal - t_tizim
+    if t_farq and not izoh.strip():
+        raise KassaXatosi('Terminal sverkasi tizimdagidan farq qiladi: izoh majburiy.')
+    smena.terminal_tizimda, smena.terminal_sverka, smena.terminal_farq = (t_tizim, terminal, t_farq) if terminal is not None else (None, None, None)
     if rahbar is not None:
         _topshirish(salon=salon, smena=smena, kimdan=xodim, kimga=rahbar, rahbarga=True, summa=fakt_qoldiq,
                     hisobdagi=hisobdagi, ishtirokchi=faol.first(), smena_yopishda=True)
@@ -337,6 +391,12 @@ def smena_yopish(*, salon, xodim, fakt_qoldiq, izoh='', filial=None, rahbar=None
                     f"Kassa farqi: {som(farq)}{' · ' + smena.filial.nomi if smena.filial_id else ''}\n"
                     f"Smena {smena.sana:%d.%m.%Y}, yopdi: {xodim.ism}.\n"
                     f"Hisobda {som(hisobdagi)}, sanaldi {som(fakt_qoldiq)}.\nIzoh: {izoh}")
+    if t_farq:
+        from apps.notify.services import rahbarlarga, som
+        rahbarlarga(salon, 'terminal_farqi',
+                    f"Terminal sverkasi farqi: {som(t_farq)}{' · ' + smena.filial.nomi if smena.filial_id else ''}\n"
+                    f"Smena {smena.sana:%d.%m.%Y}, yopdi: {xodim.ism}.\n"
+                    f"Tizimda terminal orqali {som(t_tizim)}, sverkada {som(terminal)}.\nIzoh: {izoh}")
     return smena
 
 

@@ -75,12 +75,30 @@ test('pul topshirish: rahbar → sotuvchi → rahbar; kassir rejimi', async ({ p
     await expect(sotuvchi.locator('.smena-naqd')).toContainText("1 990 000 so'm")
   })
 
+  await test.step('naqdsiz: o\'tkazmani rahbar tasdiqlaydi, terminal pulga sverka kerak', async () => {
+    const libos = (await apiSorov(sotuvchi, 'GET', '/liboslar/')).find((l) => l.artikul === 'E2E-1')
+    const z = await apiSorov(sotuvchi, 'POST', '/zakazlar/', { telefon: `+99891${String(Date.now()).slice(-7)}`, fio: 'Naqdsiz Sinov',
+      dan: iso(50), gacha: iso(52), liboslar: [libos.id] })
+    await apiSorov(sotuvchi, 'POST', '/kassa/tolovlar/', { zakaz: z.id, tur: 'avans', summa: 700_000, usul: 'otkazma' })
+    await apiSorov(sotuvchi, 'POST', '/kassa/tolovlar/', { zakaz: z.id, tur: 'qoldiq', summa: 300_000, usul: 'karta' })
+    await kassaga(page)
+    const otk = page.locator('.blok', { hasText: "O'tkazmalar — hisobingizga keldimi?" })
+    await expect(otk).toContainText("O'tkazma · 700 000 so'm")
+    await rasm(page, '4a-otkazma-keldimi')
+    await otk.getByRole('button', { name: 'Keldi' }).click()
+    await expect(page.getByText('Tasdiqlandi: pul keldi.')).toBeVisible()
+    await kassaga(sotuvchi)
+  })
+
   await test.step('sotuvchi yopadi va pulni rahbarga beradi', async () => {
     await sotuvchi.locator('.smena-panel').getByRole('button', { name: 'Smenani yopish' }).click()
     const oyna = sotuvchi.getByRole('dialog', { name: 'Smenani yopish' })
     await oyna.getByLabel('Pul qayerda qoladi').selectOption({ label: 'Rahbarga topshiraman: Rahbar' })
     await summaTer(oyna, ['1', '9', '9', '0', '000'])
     await expect(oyna).toContainText("Farq yo'q")
+    await expect(oyna.getByRole('button', { name: 'Smenani yopish' })).toBeDisabled()  // terminal sverkasi kiritilmagan
+    await oyna.getByLabel('Terminal sverkasi').fill('300000')
+    await expect(oyna).toContainText("Terminal bo'yicha farq yo'q")
     await rasm(sotuvchi, '4-yopish-rahbarga')
     await oyna.getByRole('button', { name: 'Smenani yopish' }).click()
     await sotuvchi.getByRole('alertdialog', { name: 'Smenani yopasizmi?' }).getByRole('button', { name: 'Smenani yopish' }).click()

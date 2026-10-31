@@ -266,7 +266,9 @@ function Karta({ id, onOrqaga, onKassa }) {
         <h3>To'lovlar</h3>
         {z.tolovlar.length === 0 && <p className="malumot">Hali yo'q</p>}
         {z.tolovlar.map((t, i) => (
-          <p key={i} className="qator-matn">{t.tur_nomi} · {som(t.summa)} · {t.usul_nomi} · {t.xodim}</p>
+          <p key={i} className="qator-matn">{t.tur_nomi} · {som(t.summa)} · {t.usul_nomi} · {t.xodim}
+            {t.tasdiq === 'kutilmoqda' && <span className="malumot"> · rahbar tasdig'i kutilmoqda</span>}
+            {t.tasdiq === 'kelmadi' && <b className="qizil"> · KELMADI — hisobga olinmagan</b>}</p>
         ))}
         {z.zaloglar.map((g) => (
           <p key={g.id} className="qator-matn">Zalog {g.yorliq}: {g.turi_nomi} · {g.holat_nomi}</p>
@@ -409,8 +411,8 @@ function TolovForma({ sarlavha, maks, onYuborish, usulsiz, zakazId }) {
       </label>
       {!usulsiz && (
         <select value={usul} onChange={(e) => setUsul(e.target.value)}>
-          <option value="naqd">Naqd</option><option value="karta">Karta</option>
-          <option value="click">Click</option><option value="payme">Payme</option>
+          <option value="naqd">Naqd</option><option value="karta">Terminal (karta)</option>
+          <option value="otkazma">O'tkazma (karta raqamiga)</option>
         </select>
       )}
       {zakazId && ['click', 'payme'].includes(usul) && (

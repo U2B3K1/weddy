@@ -81,7 +81,8 @@ def smena_json(s):
     return {'id': s.id, 'sana': s.sana, 'ochgan': s.ochgan.ism, 'filial': s.filial.nomi if s.filial_id else None,
             'boshlangich_qoldiq': s.boshlangich_qoldiq, 'hisobdagi_qoldiq': s.hisobdagi_qoldiq, 'fakt_qoldiq': s.fakt_qoldiq,
             'farq': s.farq, 'izoh': s.izoh, 'yopilgan': s.yopilgan,
-            'zalog_tekshirilmagan': s.zalog_tekshirilmagan, 'zalog_yoq': s.zalog_yoq}
+            'zalog_tekshirilmagan': s.zalog_tekshirilmagan, 'zalog_yoq': s.zalog_yoq,
+            'terminal_tizimda': s.terminal_tizimda, 'terminal_sverka': s.terminal_sverka, 'terminal_farq': s.terminal_farq}
 
 
 def yopishda_zalog_hisobi(smena):

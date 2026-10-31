@@ -163,7 +163,8 @@ def oyni_ochish(*, salon, rahbar, yil, oy):
     jurnalga_yoz(salon, rahbar, 'oy_qayta_ochildi', f'{yil}-{oy:02d}')
 
 
-BANK_USULLARI = ('karta', 'click', 'payme')
+BANK_USULLARI = ('karta', 'otkazma', 'click', 'payme')
+QOSHIMCHA_USULLAR = ('click', 'payme')  # hozircha ishlatilmaydi: faqat ma'lumot bo'lsa ko'rsatiladi
 
 
 def bank_holati(salon, yil, oy):
@@ -175,11 +176,13 @@ def bank_holati(salon, yil, oy):
     kiritilgan = {b.usul: b for b in BankSolishtirish.objects.filter(salon=salon, yil=yil, oy=oy)}
     natija = []
     for usul in BANK_USULLARI:
-        q = Tolov.objects.filter(salon=salon, usul=usul, vaqt__date__range=(boshi, oxiri))
+        q = Tolov.objects.filter(Tolov.HAQIQIY, salon=salon, usul=usul, vaqt__date__range=(boshi, oxiri))
         kirim = q.filter(tur__in=Tolov.KIRIM).aggregate(s=Sum('summa'))['s'] or 0
         chiqim = q.filter(tur__in=Tolov.CHIQIM).aggregate(s=Sum('summa'))['s'] or 0
         tizim = kirim - chiqim
         b = kiritilgan.get(usul)
+        if usul in QOSHIMCHA_USULLAR and not (kirim or chiqim or b):
+            continue
         natija.append({
             'usul': usul, 'tizimda': tizim,
             'kochirma': b.kochirma_summa if b else None, 'komissiya': b.komissiya if b else None,

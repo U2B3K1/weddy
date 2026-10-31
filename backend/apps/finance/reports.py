@@ -116,7 +116,7 @@ def pul_harakati(salon, boshi, oxiri, filial=None):
     """Davrda kassaga kirgan va mijozga qaytarilgan pul (barcha to'lov usullari): `kirim` — avans va qoldiq,
     `qaytarilgan` — bekor qilingan zakazlarga qaytarilgan pul, `jarimalar`."""
     T = Tolov.Tur
-    r = Tolov.objects.filter(tolov_filiali(filial), salon=salon, vaqt__date__range=(boshi, oxiri)).aggregate(
+    r = Tolov.objects.filter(tolov_filiali(filial), Tolov.HAQIQIY, salon=salon, vaqt__date__range=(boshi, oxiri)).aggregate(
         kirim=Sum('summa', filter=Q(tur__in=[T.AVANS, T.QOLDIQ])), qaytarilgan=Sum('summa', filter=Q(tur=T.VOZVRAT)),
         jarimalar=Sum('summa', filter=Q(tur=T.JARIMA)))
     return {k: v or 0 for k, v in r.items()}
@@ -176,7 +176,7 @@ def kelgusi_avanslar(salon, filial=None):
     """Libosi hali berilmagan zakazlar uchun olingan pul: tushumga kirgan, lekin zakaz bekor bo'lsa
     qoidaga ko'ra qaytarilishi mumkin."""
     return Tolov.objects.filter(
-        salon=salon, tur__in=[Tolov.Tur.AVANS, Tolov.Tur.QOLDIQ],
+        Tolov.HAQIQIY, salon=salon, tur__in=[Tolov.Tur.AVANS, Tolov.Tur.QOLDIQ],
         zakaz__holat__in=[Zakaz.Holat.BRON, Zakaz.Holat.CHEGIRMA_KUTILMOQDA, Zakaz.Holat.VAQTINCHALIK],
         **({'zakaz__filial_id': filial} if filial else {})).aggregate(s=Sum('summa'))['s'] or 0
 
@@ -231,7 +231,7 @@ def pnl_tafsilot(salon, yil, oy, qator, filial=None):
     turlar = {'kirim': [Tolov.Tur.AVANS, Tolov.Tur.QOLDIQ], 'qaytarilgan': [Tolov.Tur.VOZVRAT],
               'jarima': [Tolov.Tur.JARIMA]}.get(qator)
     if turlar:
-        for t in (Tolov.objects.filter(tolov_filiali(filial), salon=salon, tur__in=turlar, vaqt__date__range=(boshi, oxiri))
+        for t in (Tolov.objects.filter(tolov_filiali(filial), Tolov.HAQIQIY, salon=salon, tur__in=turlar, vaqt__date__range=(boshi, oxiri))
                   .select_related('zakaz__mijoz').order_by('vaqt')):
             z = t.zakaz
             matn = t.get_tur_display() + (f' · zakaz #{z.raqam} · {z.mijoz.fio or z.mijoz.telefon}' if z else '')
@@ -261,7 +261,7 @@ def kutilayotgan_daromad(salon, sana, filial=None):
                 # to'liq to'langanlar chiqadi; daromadi yopilgan oyda tan olinib, narx farqi hali to'lanmagani qoladi
                 .exclude(Q(tolangan_sana__lte=sana) & ~Exists(TushumFarqi.objects.filter(
                     Q(sana__isnull=True) | Q(sana__gt=sana), zakaz=OuterRef('pk'), yaratilgan__date__lte=sana)))
-                .annotate(avans=Sum('tolovlar__summa', filter=Q(tolovlar__tur__in=[Tolov.Tur.AVANS, Tolov.Tur.QOLDIQ],
+                .annotate(avans=Sum('tolovlar__summa', filter=~Q(tolovlar__tasdiq='kelmadi') & Q(tolovlar__tur__in=[Tolov.Tur.AVANS, Tolov.Tur.QOLDIQ],
                                                                 tolovlar__vaqt__date__lte=sana)))
                 .filter(avans__gt=0).select_related('mijoz').order_by('olib_ketish', 'raqam'))
     natija = [{'zakaz': z.raqam, 'mijoz': z.mijoz.telefon, 'olib_ketish': z.olib_ketish,

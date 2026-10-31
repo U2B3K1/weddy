@@ -6,14 +6,16 @@ import Tasdiq from '../components/Tasdiq'
 import SmenaTugma from '../components/SmenaTugma'
 import {
   inkassatsiyaQil, kassaZaloglar, smenaChiqish, smenaHolati, smenaOchish, smenaQoshilish, smenaTuzat, smenaYopish, smenalar, som, sozlamalar,
-  tolovQabul, topshiriqQabul, xarajatModdalari, xarajatYarat, xatoMatni, zakazlarRoyxat, zalogBelgila,
+  otkazmaTasdiq, tolovQabul, topshiriqQabul, xarajatModdalari, xarajatYarat, xatoMatni, zakazlarRoyxat, zalogBelgila,
   guruhla, sanaMatni,
 } from '../api'
 import SummaInput from '../components/SummaInput'
 
 // Sotuvchi kassadan to'laydigan kundalik xarajatlar; salonning o'z moddalari ham chiqadi (FT-13.1)
 const KASSA_MODDALARI = ['tozalash', 'tamir', 'transport', 'kommunal', 'reklama', 'boshqa']
-const USULLAR = [['naqd', 'Naqd'], ['karta', 'Karta'], ['click', 'Click'], ['payme', 'Payme']]
+// Click/Payme hozircha ishlatilmaydi (2026-11-01) — kerak bo'lsa ro'yxatga qaytariladi, server ularni qabul qiladi
+const USULLAR = [['naqd', 'Naqd'], ['karta', 'Terminal'], ['otkazma', "O'tkazma"]]
+const USUL_NOMI = { ...Object.fromEntries(USULLAR), click: 'Click', payme: 'Payme' }
 // Smena ochiq bo'lishini talab qiladigan bo'limlar (yangi zakaz va tarix — talab qilmaydi)
 const SMENA_KERAK = ['tolov', 'xarajat', 'inkassatsiya', 'zalog', 'hisobot']
 
@@ -45,7 +47,13 @@ export default function Kassa({ rahbar, bolim, onBolim, onHolatOzgardi, yangiZak
 
   if (!s) return <p className="malumot">Yuklanmoqda…</p>
   const smenaYoq = !s.ochiq && SMENA_KERAK.includes(bolim)
-  const kutayotgan = <Kutayotgan royxat={s.kutayotgan} onQabul={(t, summa) => bajar(() => topshiriqQabul(t.id, summa), (r) => `Qabul qilindi: ${som(r.qabul_summa)}.`)} />
+  const kutayotgan = (
+    <>
+      <Kutayotgan royxat={s.kutayotgan} onQabul={(t, summa) => bajar(() => topshiriqQabul(t.id, summa), (r) => `Qabul qilindi: ${som(r.qabul_summa)}.`)} />
+      <Otkazmalar royxat={s.otkazmalar} onTasdiq={(t, keldi) => bajar(() => otkazmaTasdiq(t.id, keldi),
+        keldi ? 'Tasdiqlandi: pul keldi.' : "Kelmadi deb belgilandi: to'lov hisobdan chiqarildi, xodimga xabar ketdi.")} />
+    </>
+  )
 
   // «Alohida kassir» rejimida sotuvchi pul olmaydi: faqat zakaz rasmiylashtiradi, mijozni kassaga yuboradi
   if (!s.pul_oladi) {
@@ -118,7 +126,8 @@ export default function Kassa({ rahbar, bolim, onBolim, onHolatOzgardi, yangiZak
       {oyna === 'yopish' && (
         <Oyna sarlavha="Smenani yopish" onYop={() => setOyna(null)}>
           <SmenaYopish hisobda={s.mening_hisobim ?? s.hisobot.hisobdagi_qoldiq} tekshirilmagan={s.zalog_tekshirilmagan} rahbarlar={s.rahbarlar}
-            onYuborish={oynada((summa, izoh, rahbar) => smenaYopish(summa, izoh, rahbar), (r) => `Smena yopildi. Farq: ${som(r.farq)}`)} />
+            terminalda={s.terminal_tizimda}
+            onYuborish={oynada((summa, izoh, rahbar, terminal) => smenaYopish(summa, izoh, rahbar, terminal), (r) => `Smena yopildi. Farq: ${som(r.farq)}`)} />
         </Oyna>
       )}
     </div>
@@ -156,6 +165,30 @@ function SmenaPaneli({ s, onOch, onQoshil, onChiq, onYop, onHisobot }) {
         <button className="ikkinchi kichik" onClick={onYop}>Smenani yopish</button>
       </div>
     </div>
+  )
+}
+
+// Rahbarga: o'tkazma bilan olingan pul hisobiga tushdimi — bank SMS i bilan solishtirib belgilanadi.
+// Telegramdagi «Keldi / Kelmadi» tugmalari bilan bir xil.
+function Otkazmalar({ royxat, onTasdiq }) {
+  if (!royxat?.length) return null
+  return (
+    <section className="blok jadval-panel">
+      <div className="jadval-asboblar"><h3 className="panel-nom">O'tkazmalar — hisobingizga keldimi?</h3>
+        <span className="malumot">Bank SMS i bilan solishtiring</span></div>
+      {royxat.map((t) => (
+        <div key={t.id} className="tasdiq-qator">
+          <div className="tasdiq-matn">
+            <b>{t.usul_nomi} · {som(t.summa)}{t.zakaz && ` · zakaz #${t.zakaz}`}</b>
+            <small>{t.tur_nomi}{t.mijoz && ` · ${t.mijoz}`} · qabul qildi: {t.xodim} · {mahalliyVaqt(t.vaqt)}</small>
+          </div>
+          <div className="tasdiq-tugmalar">
+            <button className="ikkinchi kichik" onClick={() => onTasdiq(t, false)}>Kelmadi</button>
+            <button className="kichik" onClick={() => onTasdiq(t, true)}>Keldi</button>
+          </div>
+        </div>
+      ))}
+    </section>
   )
 }
 
@@ -273,12 +306,15 @@ function SummaForma({ yorliq, tugma, onYuborish, nolRuxsat, izohYorliq }) {
   )
 }
 
-function SmenaYopish({ hisobda, tekshirilmagan, rahbarlar, onYuborish }) {
+function SmenaYopish({ hisobda, tekshirilmagan, rahbarlar, terminalda, onYuborish }) {
   const [summa, setSumma] = useState('')
   const [izoh, setIzoh] = useState('')
   const [surov, setSurov] = useState(false)
   const [rahbar, setRahbar] = useState('')  // bo'sh — pul seyfda qoladi
+  const [terminal, setTerminal] = useState('')  // terminal sverkasidagi summa (terminal orqali to'lov bo'lsa majburiy)
   const farq = summa === '' ? null : Number(summa) - hisobda
+  const tFarq = terminal === '' ? null : Number(terminal) - terminalda
+  const izohKerak = (farq !== null && farq !== 0) || (tFarq !== null && tFarq !== 0)
   return (
     <div className="stack">
       <p className="malumot">Sizda (tizim bo'yicha): <b>{som(hisobda)}</b>. Qo'lingizdagi naqd pulni sanab kiriting.</p>
@@ -291,12 +327,18 @@ function SmenaYopish({ hisobda, tekshirilmagan, rahbarlar, onYuborish }) {
       {tekshirilmagan > 0 && <p className="ogohlantirish">{tekshirilmagan} ta zalog tekshirilmagan — yopishdan oldin «Zaloglar» bo'limida belgilang.</p>}
       <Summa qiymat={summa} izoh={farq === null ? null : farq === 0 ? 'Farq yo\'q' : `Farq: ${som(farq)}`} />
       <Klaviatura qiymat={summa} onOzgar={setSumma} />
-      {farq !== null && farq !== 0 && <label>Izoh (farq sababi — majburiy)<input value={izoh} maxLength={300} onChange={(e) => setIzoh(e.target.value)} /></label>}
-      <button className="pos-tugma" disabled={summa === '' || (farq !== 0 && !izoh.trim())} onClick={() => setSurov(true)}>Smenani yopish</button>
+      {terminalda > 0 && (
+        <label>Terminal sverkasi — terminaldan chiqarilgan summa (tizimda {som(terminalda)})
+          <SummaInput aria-label="Terminal sverkasi" value={terminal} onChange={(e) => setTerminal(e.target.value)} />
+          {tFarq !== null && <small className={tFarq ? 'qizil' : 'malumot'}>{tFarq ? `Terminal farqi: ${som(tFarq)}` : "Terminal bo'yicha farq yo'q"}</small>}
+        </label>
+      )}
+      {izohKerak && <label>Izoh (farq sababi — majburiy)<input value={izoh} maxLength={300} onChange={(e) => setIzoh(e.target.value)} /></label>}
+      <button className="pos-tugma" disabled={summa === '' || (terminalda > 0 && terminal === '') || (izohKerak && !izoh.trim())} onClick={() => setSurov(true)}>Smenani yopish</button>
       {surov && (
         <Tasdiq sarlavha="Smenani yopasizmi?" tugma="Smenani yopish"
           matn={`Smena yopiladi, keyin to'lov qabul qilib bo'lmaydi. Sanalgan naqd: ${som(Number(summa))}${rahbar ? ` — ${rahbarlar.find((r) => String(r.id) === rahbar)?.ism}ga topshiriladi, u Telegramda tasdiqlaydi` : ' — seyfda qoladi'}.`}
-          onYop={() => setSurov(false)} onTasdiq={() => { setSurov(false); onYuborish(Number(summa), izoh, rahbar ? Number(rahbar) : undefined) }} />
+          onYop={() => setSurov(false)} onTasdiq={() => { setSurov(false); onYuborish(Number(summa), izoh, rahbar ? Number(rahbar) : undefined, terminal === '' ? undefined : Number(terminal)) }} />
       )}
     </div>
   )
@@ -365,7 +407,7 @@ function TolovPOS({ boshZakaz, onTolandi, onSmenaOchish }) {
           <div className="pos-tayyor">
             <span className="pos-tayyor-belgi" aria-hidden="true">✓</span>
             <h3>To'lov qabul qilindi</h3>
-            <p>#{tolandi.zakaz.raqam} {tolandi.zakaz.mijoz} · <b>{som(tolandi.summa)}</b> · {USULLAR.find(([k]) => k === tolandi.usul)?.[1]}</p>
+            <p>#{tolandi.zakaz.raqam} {tolandi.zakaz.mijoz} · <b>{som(tolandi.summa)}</b> · {USUL_NOMI[tolandi.usul]}</p>
             {soz?.fiskal_eslatma && <p className="ogohlantirish">{soz.fiskal_izoh || 'Fiskal chekni urishni unutmang.'}</p>}
             <div className="qator">
               <button className="ikkinchi" onClick={() => setChek(tolandi.zakaz.id)}>Kvitansiya</button>
@@ -550,6 +592,7 @@ function YopilganSmenalar() {
               : 'ochiq'}
               {s.zalog_tekshirilmagan > 0 && <span className="qizil"> · {s.zalog_tekshirilmagan} ta zalog tekshirilmagan</span>}
               {s.zalog_yoq > 0 && <b className="qizil"> · {s.zalog_yoq} ta zalog joyida emas</b>}
+              {!!s.terminal_farq && <b className="qizil"> · terminal farqi {som(s.terminal_farq)}</b>}
               {s.izoh && ` · ${s.izoh}`}</small>
           </div>
           {s.yopilgan && (

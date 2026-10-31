@@ -306,7 +306,7 @@ class BankView(APIView):
 
         class S(serializers.Serializer):
             oy = serializers.CharField()
-            usul = serializers.ChoiceField(choices=['karta', 'click', 'payme'])
+            usul = serializers.ChoiceField(choices=['karta', 'otkazma', 'click', 'payme'])
             kochirma_summa = serializers.IntegerField(min_value=0)
             komissiya = serializers.IntegerField(min_value=0, default=0)
 
