@@ -186,7 +186,7 @@ export default function App() {
     ...(rahbar ? [['tarix', 'Smenalar tarixi', 'tarix']] : [])]
   const ichki = {
     zakazlar: { joriy: zakazlarBolim, tanla: (b) => { setZakazlarBolim(b); setZakazId(null) }, royxat: [['royxat', "Ro'yxat"], ['bandlik', 'Bandlik kalendari']] },
-    katalog: { joriy: katalogBolim, tanla: setKatalogBolim, royxat: [['liboslar', 'Liboslar'], ['aksessuarlar', 'Aksessuarlar']] },
+    katalog: { joriy: katalogBolim, tanla: setKatalogBolim, royxat: [['liboslar', 'Liboslar'], ['aksessuarlar', 'Aksessuarlar'], ['sanoq', 'Sanoq']] },
     mijozlar: { joriy: mijozlarBolim, tanla: setMijozlarBolim, royxat: [['mijozlar', 'Mijozlar'], ['salonchilar', 'Salonchilar']] },
     kassa: { joriy: kassaBolim, tanla: setKassaBolim, royxat: kassaRoyxat },
     hisobotlar: { joriy: hisobotlarBolim, tanla: setHisobotlarBolim, royxat: HISOBOT_ROYXAT },

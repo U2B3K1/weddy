@@ -23,4 +23,7 @@ urlpatterns = [
     path('kategoriyalar/', views.KategoriyalarView.as_view()),
     path('kategoriyalar/<int:pk>/', views.KategoriyaView.as_view()),
     path('jurnal/', views.JurnalView.as_view()),
+    path('sanoq/', views.SanoqView.as_view()),
+    path('sanoq/belgilash/', views.SanoqBelgilashView.as_view()),
+    path('sanoq/yakunlash/', views.SanoqYakunlashView.as_view()),
 ]

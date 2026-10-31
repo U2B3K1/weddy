@@ -11,9 +11,10 @@ from apps.tenants.permissions import IsRahbar, IsStaff, SalonYozishRuxsati
 from apps.cash.services import KassaXatosi, xato_tanasi
 from apps.finance.services import XarajatXatosi
 
-from .models import Kategoriya, Libos, Rasm, TamirYozuvi
+from .models import Kategoriya, Libos, Rasm, Sanoq, TamirYozuvi
 from .manekin import joylashuvni_saqlash, manekin_json, qatlam_yaratish
 from .rasm import rasm_yuklash, rasmni_ochirish
+from .sanoq import belgilash, ochiq_sanoq, sanoq_boshlash, sanoq_json, sanoq_yakunlash
 from .tamir import tamirga_berish, tamirni_tugatish
 from .services import (KatalogXatosi, QOLDA_HOLATLAR, tozalashni_yakunla, libos_qoshish, libosni_ozgartirish,
                        libosni_tasdiqlash)
@@ -239,6 +240,68 @@ class JurnalView(APIView):
         qs = Jurnal.objects.filter(salon=request.salon).select_related('xodim')[:200]
         return Response([{'harakat': j.harakat, 'obyekt': j.obyekt, 'eski': j.eski, 'yangi': j.yangi,
                           'xodim': j.xodim.ism if j.xodim else None, 'vaqt': j.vaqt} for j in qs])
+
+
+class SanoqView(APIView):
+    """GET — ochiq sanoq (qatorlari bilan) va oxirgi yakunlanganlar; POST {filial?} — yangi sanoq boshlash."""
+
+    def get_permissions(self):
+        return [IsStaff()] if self.request.method == 'GET' else [SalonYozishRuxsati()]
+
+    def get(self, request):
+        ochiq = ochiq_sanoq(request.salon)
+        tarix = (Sanoq.objects.filter(salon=request.salon, yakunlangan__isnull=False)
+                 .select_related('filial', 'boshlagan', 'yakunlagan')[:20])
+        return Response({'ochiq': sanoq_json(ochiq, qatorlar=True) if ochiq else None,
+                         'tarix': [sanoq_json(s) for s in tarix]})
+
+    def post(self, request):
+        from apps.tenants.views_filial import sorovdagi_filial
+        filial = sorovdagi_filial(request) if request.data.get('filial') else None
+        s, err = _bajar(sanoq_boshlash, salon=request.salon, xodim=request.user, filial=filial)
+        return err or Response(sanoq_json(s, qatorlar=True), status=201)
+
+
+class SanoqBelgilashSerializer(serializers.Serializer):
+    artikul = serializers.CharField(max_length=50, required=False, allow_blank=True, default='')
+    libos = serializers.IntegerField(required=False)
+    topildi = serializers.BooleanField(default=True)
+
+
+class SanoqBelgilashView(APIView):
+    """POST {artikul} (skaner yoki qo'lda) yoki {libos, topildi} (ro'yxatdan) — ochiq sanoqda belgilash."""
+    permission_classes = [SalonYozishRuxsati]
+
+    def post(self, request):
+        ser = SanoqBelgilashSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        d = ser.validated_data
+        if not d['artikul'].strip() and 'libos' not in d:
+            raise ValidationError({'artikul': ['Artikulni kiriting.']})
+        sanoq = ochiq_sanoq(request.salon)
+        if not sanoq:
+            raise NotFound("Ochiq sanoq yo'q.")
+        libos = None
+        if 'libos' in d:
+            libos = Libos.objects.filter(salon=request.salon, id=d['libos']).first()
+            if not libos:
+                raise NotFound('Libos topilmadi.')
+        q, err = _bajar(belgilash, salon=request.salon, xodim=request.user, sanoq=sanoq, topildi=d['topildi'],
+                        libos=libos, artikul=d['artikul'])
+        return err or Response({'libos': q.libos_id, 'artikul': q.libos.artikul, 'nomi': q.libos.nomi,
+                                'joy': q.joy, 'topildi': q.topildi})
+
+
+class SanoqYakunlashView(APIView):
+    permission_classes = [SalonYozishRuxsati]
+
+    def post(self, request):
+        sanoq = ochiq_sanoq(request.salon)
+        if not sanoq:
+            raise NotFound("Ochiq sanoq yo'q.")
+        izoh = str(request.data.get('izoh') or '')[:300]
+        s, err = _bajar(sanoq_yakunlash, salon=request.salon, xodim=request.user, sanoq=sanoq, izoh=izoh)
+        return err or Response(sanoq_json(s, qatorlar=True))
 
 
 class RasmlarView(APIView):

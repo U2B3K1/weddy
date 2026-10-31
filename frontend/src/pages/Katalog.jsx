@@ -4,6 +4,7 @@ import Oyna from '../components/Oyna'
 import RasmBlok from '../components/RasmBlok'
 import TamirBlok from '../components/TamirBlok'
 import AksessuarBolimi from './AksessuarBolimi'
+import LibosSanogi from './LibosSanogi'
 import {
   filiallar, kategoriyalar, kategoriyaOchir, kategoriyaOzgartir, kategoriyaYarat, libosOzgartir, libosTasdiq, libosYarat, liboslar, som, xatoMatni,
 } from '../api'
@@ -24,7 +25,7 @@ const HOLAT = {
 export default function Katalog({ rahbar, bolim }) {
   return (
     <div className="stack">
-      {bolim === 'liboslar' ? <Liboslar rahbar={rahbar} /> : <AksessuarBolimi rahbar={rahbar} />}
+      {bolim === 'liboslar' ? <Liboslar rahbar={rahbar} /> : bolim === 'sanoq' ? <LibosSanogi /> : <AksessuarBolimi rahbar={rahbar} />}
     </div>
   )
 }

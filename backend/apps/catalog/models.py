@@ -197,3 +197,47 @@ class DonaTamiri(SalonModel):
         constraints = [
             models.UniqueConstraint(fields=['dona'], condition=models.Q(tugagan__isnull=True), name='donada_bitta_ochiq_tamir'),
         ]
+
+
+class Sanoq(SalonModel):
+    """Libos sanog'i: javondagi liboslar sanaladi va tizimdagi holat bilan solishtiriladi.
+    «Salonda bo'lishi kerak edi, lekin yo'q» — zakazsiz berilgan yoki yo'qolgan libos."""
+    filial = models.ForeignKey('tenants.Filial', null=True, blank=True, on_delete=models.PROTECT, related_name='+')
+    boshlagan = models.ForeignKey('tenants.Xodim', on_delete=models.PROTECT, related_name='+')
+    boshlangan = models.DateTimeField(auto_now_add=True)
+    yakunlagan = models.ForeignKey('tenants.Xodim', null=True, blank=True, on_delete=models.PROTECT, related_name='+')
+    yakunlangan = models.DateTimeField(null=True, blank=True)
+    izoh = models.CharField(max_length=300, blank=True)
+    # Yakunda yoziladi: salonda bo'lishi kerak edi / topildi / yo'q; mijozda bo'lishi kerak edi, lekin javonda
+    kutilgan = models.PositiveIntegerField(default=0)
+    topilgan = models.PositiveIntegerField(default=0)
+    yoq = models.PositiveIntegerField(default=0)
+    ortiqcha = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ['-id']
+        constraints = [
+            models.UniqueConstraint(fields=['salon'], condition=models.Q(yakunlangan__isnull=True),
+                                    name='salonda_bitta_ochiq_sanoq'),
+        ]
+
+
+class SanoqQatori(SalonModel):
+    class Joy(models.TextChoices):
+        SALONDA = 'salonda', 'Salonda'
+        MIJOZDA = 'mijozda', 'Mijozda'
+        TAMIRDA = 'tamirda', "Ta'mirda"
+        TOZALASHDA = 'tozalashda', 'Tozalashda'
+
+    sanoq = models.ForeignKey(Sanoq, on_delete=models.CASCADE, related_name='qatorlar')
+    libos = models.ForeignKey(Libos, on_delete=models.CASCADE, related_name='+')
+    joy = models.CharField(max_length=12, choices=Joy.choices)  # tizim bo'yicha qayerda bo'lishi kerak
+    topildi = models.BooleanField(default=False)
+    xodim = models.ForeignKey('tenants.Xodim', null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    vaqt = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['libos__artikul']
+        constraints = [
+            models.UniqueConstraint(fields=['sanoq', 'libos'], name='sanoqda_libos_bir_marta'),
+        ]
