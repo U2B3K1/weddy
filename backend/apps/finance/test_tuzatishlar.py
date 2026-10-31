@@ -111,24 +111,25 @@ class OchiqSavollarTests(Base):
                               qaytarish=dan + timedelta(days=1),
                               libos_idlari=[libos_yarat(self.salon, kat, 'S', ijara_narxi=1_000_000).id])
 
-    def test_otgan_oyda_tolangan_zakaz_bekor_qilinsa_storno_shu_oyda(self):
+    def test_otgan_oyda_tolangan_zakaz_bekor_qilinsa_qaytarilgan_pul_shu_oyda(self):
+        # Kassa usuli: avans olingan oyda tushum; bekor qilinganda qaytarilgan pul qaytarilgan oyda ayiriladi
         from apps.orders.changes import zakazni_bekor_qilish
-        from apps.orders.models import Zakaz
 
         from . import reports
         z = self.zakaz()
-        tolov_qabul(salon=self.salon, xodim=self.xodim, tur=Tolov.Tur.AVANS, summa=z.jami, zakaz=z)
+        t = tolov_qabul(salon=self.salon, xodim=self.xodim, tur=Tolov.Tur.AVANS, summa=z.jami, zakaz=z)
         yil, oy = self.otgan_oy()
-        Zakaz.objects.filter(id=z.id).update(tolangan_sana=timezone.localdate().replace(day=1) - timedelta(days=1))
+        Tolov.objects.filter(id=t.id).update(vaqt=t.vaqt.replace(day=1) - timedelta(days=1))
         oldin = reports.foyda_zarar(self.salon, yil, oy)['tushum']
         z = zakazni_bekor_qilish(salon=self.salon, xodim=self.xodim, zakaz=z, sabab='mijoz voz kechdi',
-                                 qoida=[(0, 0)])
+                                 qoida=[(0, 70)])  # 70% qaytariladi, 30% ushlab qolinadi
         self.assertEqual(oldin, z.jami)
         self.assertEqual(reports.foyda_zarar(self.salon, yil, oy)['tushum'], z.jami)  # o'tgan oy o'zgarmadi
         b = timezone.localdate()
         bu = reports.foyda_zarar(self.salon, b.year, b.month)
-        self.assertEqual((bu['tushum'], bu['storno'], bu['qaytarilmagan_avans']), (-z.jami, z.jami, z.ushlab_qolingan_avans))
-        self.assertEqual(reports.pnl_tafsilot(self.salon, b.year, b.month, 'tushum')['jami'], bu['tushum'])
+        self.assertEqual((bu['tushum'], bu['qaytarilgan']), (-700_000, 700_000))
+        self.assertEqual(z.ushlab_qolingan_avans, 300_000)  # ikki oy yig'indisi: 1 000 000 − 700 000
+        self.assertEqual(reports.pnl_tafsilot(self.salon, b.year, b.month, 'qaytarilgan')['jami'], 700_000)
 
     def test_statistika_ham_storno_qiladi_bonusga_kirmaydi(self):
         # P&L bilan bir xil: keyingi oyda bekor qilingan zakaz o'tgan oyni o'zgartirmaydi, bekor qilingan oyda ayiriladi
@@ -169,10 +170,10 @@ class OchiqSavollarTests(Base):
         from . import reports
         z = self.zakaz()
         tolov_qabul(salon=self.salon, xodim=self.xodim, tur=Tolov.Tur.AVANS, summa=z.jami, zakaz=z)
-        zakazni_bekor_qilish(salon=self.salon, xodim=self.xodim, zakaz=z, sabab='x', qoida=[(0, 0)])
+        zakazni_bekor_qilish(salon=self.salon, xodim=self.xodim, zakaz=z, sabab='x', qoida=[(0, 100)])
         b = timezone.localdate()
         r = reports.foyda_zarar(self.salon, b.year, b.month)
-        self.assertEqual((r['tushum'], r['storno']), (0, 0))
+        self.assertEqual((r['kirim'], r['qaytarilgan'], r['tushum']), (z.jami, z.jami, 0))  # to'liq qaytarildi
 
     def test_kassadan_tolangan_xarajat_rad_etilmaydi(self):
         from .services import xarajat_qarori

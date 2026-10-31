@@ -258,17 +258,16 @@ const ozgarish = (hozir, oldin) => {
 }
 
 function Pnl({ r, filial }) {
-  // FT-18.2: hisoblanmaydigan qatorni bosganda uni tashkil qilgan zakaz va xarajatlar ochiladi
+  // Kassa usuli: pul kirgan kun tushum. FT-18.2: hisoblanmaydigan qatorni bosganda uni tashkil qilgan yozuvlar ochiladi
   const qatorlar = [
-    { raqam: 1, nom: 'Tushum', izoh: r.storno ? `storno: −${som(r.storno)}` : '', v: r.tushum, kalit: 'tushum' },
-    { raqam: 2, nom: "To'g'ridan-to'g'ri xarajat", v: -r.togridan_togri_xarajat, kalit: 'togridan' },
-    { raqam: 3, nom: 'Yalpi foyda', v: r.yalpi_foyda, oralik: true },
-    { raqam: 4, nom: 'Operatsion xarajatlar', v: -r.operatsion_xarajat, kalit: 'operatsion' },
-    { raqam: 5, nom: 'Operatsion foyda', v: r.operatsion_foyda, oralik: true },
-    { raqam: 6, nom: 'Boshqa daromad', v: r.boshqa_daromad, kalit: 'boshqa' },
-    { raqam: 7, nom: `Soliq (${r.soliq_foizi}%)`, v: -r.soliq },
-    { raqam: 8, nom: 'Sof foyda (zarar)', v: r.sof_foyda, yakuniy: true },
-  ]
+    { nom: 'Kirgan pul (avans va qoldiq)', v: r.kirim, kalit: 'kirim' },
+    { nom: 'Mijozlarga qaytarilgan', izoh: 'bekor qilingan zakazlar', v: -r.qaytarilgan, kalit: 'qaytarilgan' },
+    { nom: 'Tushum', v: r.tushum, oralik: true },
+    { nom: 'Jarimalar', v: r.jarimalar, kalit: 'jarima' },
+    { nom: 'Xarajatlar', v: -r.xarajatlar, kalit: 'xarajat' },
+    { nom: 'Sotuvchi bonusi', v: -r.sotuvchi_bonusi, kalit: 'bonus', yashir: !r.sotuvchi_bonusi },
+    { nom: 'Sof foyda (zarar)', v: r.sof_foyda, yakuniy: true },
+  ].filter((q) => !q.yashir).map((q, i) => ({ ...q, raqam: i + 1 }))
   const [taf, setTaf] = useState(null)
   const [tafOy, setTafOy] = useState(`${r.oy}/${filial}`)
   if (tafOy !== `${r.oy}/${filial}`) { setTafOy(`${r.oy}/${filial}`); setTaf(null) } // oy almashsa tafsilot yopiladi
@@ -312,7 +311,13 @@ function Pnl({ r, filial }) {
           )}
         </div>
       )}
-      {r.sotuvchi_bonusi > 0 && <p className="malumot">Operatsion xarajat ichida sotuvchi bonusi: {som(r.sotuvchi_bonusi)}</p>}
+      <p className="malumot">Hisob pul kirgan kun bo'yicha: avans olingan kuni, qoldiq to'langan kuni tushumga kiradi. Zalog kirmaydi.</p>
+      {r.kelgusi_avanslar > 0 && (
+        <p className="malumot">
+          Libosi hali berilmagan zakazlardan olingan pul: <b>{som(r.kelgusi_avanslar)}</b> (bugungi holat) — tushumga kirgan,
+          lekin zakaz bekor bo'lsa qoidaga ko'ra qaytarilishi mumkin.
+        </p>
+      )}
       {r.rentabellik !== null && (
         <p className="malumot" title="Foyda libosni xarid qilishga ketgan pulni (tannarxni) xarajat sifatida hisoblamaydi — pastdagi qatorda investitsiya qanchasi qoplangani ko'rsatilgan.">
           Rentabellik: {r.rentabellik}% <span className="malumot">(libos xarid tannarxisiz)</span>

@@ -127,7 +127,7 @@ class XarajatModdalariTests(Base):
         self.assertEqual((x.status_code, x.data['modda_nomi']), (201, 'Gullar'))
         r = reports.foyda_zarar(self.salon, 2026, 10)
         self.assertEqual((r['togridan_togri_xarajat'], r['operatsion_xarajat']), (250_000, 0))  # togridan=True
-        self.assertEqual(reports.pnl_tafsilot(self.salon, 2026, 10, 'togridan')['qatorlar'][0]['matn'], 'Gullar')
+        self.assertEqual(reports.pnl_tafsilot(self.salon, 2026, 10, 'xarajat')['qatorlar'][0]['matn'], 'Gullar')
         # nofaol modda yangi xarajatga tanlanmaydi, eski xarajat nomi saqlanadi
         self.r.patch(f'/api/xarajat-moddalari/{j.data["id"]}/', {'faol': False}, format='json')
         self.assertEqual(self.r.post('/api/xarajatlar/', {'modda': kod, 'summa': 1}, format='json').status_code, 409)

@@ -29,8 +29,8 @@ TOSHKENT = ZoneInfo('Asia/Tashkent')
 T = Tolov.Tur
 # Yopilgan oyning hisoboti keyin o'zgarmasligi kerak bo'lgan qatorlar (investitsiya va tannarxsiz liboslar — oyga
 # bog'liq emas, bugungi holat)
-OY_QATORLARI = ('tushum', 'zakazlar_soni', 'storno', 'togridan_togri_xarajat', 'operatsion_xarajat', 'yalpi_foyda',
-                'operatsion_foyda', 'jarimalar', 'qaytarilmagan_avans', 'boshqa_daromad', 'soliq', 'sof_foyda')
+OY_QATORLARI = ('kirim', 'qaytarilgan', 'tushum', 'zakazlar_soni', 'togridan_togri_xarajat', 'operatsion_xarajat',
+                'yalpi_foyda', 'operatsion_foyda', 'jarimalar', 'boshqa_daromad', 'sof_foyda')
 
 
 class OyChegarasiBase(TestCase):
@@ -69,9 +69,9 @@ class OyAlmashinuviTests(OyChegarasiBase):
         # --- 31-oktyabr ---
         self.vaqt(10, 31, 10)
         z1 = self.zakaz(a, '+998901')
-        self.tola(z1, 1_000_000)  # to'liq — oktyabr daromadi
+        self.tola(z1, 1_000_000)  # to'liq — oktyabr tushumi
         z2 = self.zakaz(b, '+998902')
-        self.tola(z2, 500_000)  # faqat avans — daromad emas
+        self.tola(z2, 500_000)  # avans ham pul kirgan kunning tushumi (kassa usuli)
         z3 = self.zakaz(c, '+998903')
         self.vaqt(10, 31, 23, 50)
         self.tola(z3, 3_000_000, usul=Tolov.Usul.KARTA)  # 23:50 — hali oktyabr
@@ -89,7 +89,7 @@ class OyAlmashinuviTests(OyChegarasiBase):
         self.assertEqual(x_tun.sana, date(2026, 11, 1))  # smena 31-da ochilgan, lekin xarajat sanasi bugungi
 
         okt = self.pnl(10)
-        self.assertEqual((okt['tushum'], okt['zakazlar_soni'], okt['jarimalar']), (4_000_000, 2, 50_000))
+        self.assertEqual((okt['tushum'], okt['zakazlar_soni'], okt['jarimalar']), (4_500_000, 3, 50_000))
         self.assertEqual(okt['togridan_togri_xarajat'] + okt['operatsion_xarajat'], 200_000)  # kutayotgani kirmaydi
         self.assertEqual(okt['tasdiqlanmagan_xarajatlar'], 1)
         self.assertEqual(self.pnl(11)['tushum'], 1_500_000)
@@ -134,13 +134,13 @@ class OyAlmashinuviTests(OyChegarasiBase):
         self.assertEqual({k: okt[k] for k in OY_QATORLARI}, {k: nusxa[k] for k in OY_QATORLARI})
 
         noy = self.pnl(11)
-        # 1.5 (z4) + 2.0 (z2 to'liq to'landi) + 1.0 (z3 narx farqi) − 1.0 (z1 storno)
-        self.assertEqual((noy['tushum'], noy['storno'], noy['qaytarilmagan_avans'], noy['jarimalar']),
-                         (3_500_000, 1_000_000, 1_000_000, 20_000))
+        # 1.5 (z4 avansi) + 1.5 (z2 qoldig'i) + 1.0 (z3 narx farqi); z1 bekor, qoida bo'yicha pul qaytarilmadi
+        self.assertEqual((noy['kirim'], noy['qaytarilgan'], noy['tushum'], noy['zakazlar_soni'], noy['jarimalar']),
+                         (4_000_000, 0, 4_000_000, 1, 20_000))
         self.assertEqual(noy['togridan_togri_xarajat'] + noy['operatsion_xarajat'], 70_000)
         # Oylik taqqoslash ham shu ta'rifdan: oktyabr nusxadagi bilan bir xil
         qator = {q['oy']: q for q in reports.oylik_qator(self.salon, 2026, 11, soni=2)}
-        self.assertEqual((qator['2026-10']['tushum'], qator['2026-11']['tushum']), (4_000_000, 3_500_000))
+        self.assertEqual((qator['2026-10']['tushum'], qator['2026-11']['tushum']), (4_500_000, 4_000_000))
 
     def test_oyni_qayta_ochish_va_tuzatish(self):
         self.vaqt(10, 31, 12)

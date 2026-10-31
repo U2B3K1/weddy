@@ -4,7 +4,7 @@ import { integratsiyaSaqla, integratsiyalar, xatoMatni } from '../api'
 const MANBA = { salon: 'ulangan (salon hisobi)', platforma: 'ulangan (platforma hisobi)', yoq: 'ulanmagan' }
 
 // Tashqi xizmatlar: hammasi ixtiyoriy. Hech biri kiritilmasa ham tizim to'liq ishlaydi —
-// faqat Telegram/SMS yuborilmaydi, to'lov havolasi chiqmaydi, soliq standart foizda hisoblanadi.
+// faqat Telegram/SMS yuborilmaydi, to'lov havolasi chiqmaydi.
 export default function Integratsiyalar() {
   const [d, setD] = useState(null)
   const [f, setF] = useState({})
@@ -18,7 +18,7 @@ export default function Integratsiyalar() {
   const saqla = async (maydonlar) => {
     setXabar({ turi: '', matn: '' })
     const tana = {}
-    for (const k of maydonlar) if (k in f) tana[k] = f[k] === '' && k === 'soliq_foizi' ? null : f[k]
+    for (const k of maydonlar) if (k in f) tana[k] = f[k]
     if (Object.keys(tana).length === 0) return setXabar({ turi: 'ok', matn: "O'zgarish yo'q." })
     try {
       setD(await integratsiyaSaqla(tana))
@@ -92,20 +92,6 @@ export default function Integratsiyalar() {
           </div>
           <label>Payme merchant ID<input value={q('payme_merchant_id')} maxLength={32} onChange={set('payme_merchant_id')} /></label>
           {saqlashTugma(['click_service_id', 'click_merchant_id', 'payme_merchant_id'])}
-        </div>
-      </details>
-
-      <details className="amal">
-        <summary>Soliq · {Number(d.holat.soliq_foizi)}%</summary>
-        <div className="stack">
-          <label>Aylanmadan soliq, % (bo'sh — standart {d.standart.soliq_foizi}%)
-            <input type="number" min="0" max="100" step="0.1" value={q('soliq_foizi')} onChange={set('soliq_foizi')} />
-          </label>
-          <label>Izoh (buxgalter xulosasi: sana, asos)
-            <textarea rows={2} maxLength={500} value={q('soliq_izohi')} onChange={set('soliq_izohi')} />
-          </label>
-          <p className="malumot">Foyda va zarar hisobotidagi «Soliq» qatori shu foiz bilan hisoblanadi (o'tgan oylar ham qayta hisoblanadi).</p>
-          {saqlashTugma(['soliq_foizi', 'soliq_izohi'])}
         </div>
       </details>
 

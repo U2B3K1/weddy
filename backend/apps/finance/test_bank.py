@@ -95,9 +95,15 @@ class TaqqoslashTests(Base):
     """FT-18.1: o'tgan oy va o'tgan yilning shu oyi bilan taqqoslash; 12 oylik qator."""
 
     def zakaz(self, raqam, jami, sana):
+        # Kassa usuli: tushum — to'lov kuni
+        from apps.cash.models import Smena
         m, _ = Mijoz.objects.get_or_create(salon=self.salon, telefon='+998901')
-        Zakaz.objects.create(salon=self.salon, raqam=raqam, mijoz=m, olib_ketish=sana, qaytarish=sana, jami=jami,
-                             holat=Zakaz.Holat.YOPILDI, tolangan_sana=sana)
+        z = Zakaz.objects.create(salon=self.salon, raqam=raqam, mijoz=m, olib_ketish=sana, qaytarish=sana, jami=jami,
+                                 holat=Zakaz.Holat.YOPILDI, tolangan_sana=sana)
+        smena = (Smena.objects.filter(salon=self.salon).first()
+                 or smena_ochish(salon=self.salon, xodim=self.malika, boshlangich_qoldiq=0))
+        t = Tolov.objects.create(salon=self.salon, smena=smena, xodim=self.malika, tur=Tolov.Tur.QOLDIQ, summa=jami, zakaz=z)
+        Tolov.objects.filter(id=t.id).update(vaqt=timezone.make_aware(datetime(sana.year, sana.month, sana.day, 12)))
 
     def test_taqqoslash(self):
         self.zakaz(1, 5_000_000, date(2026, 10, 5))

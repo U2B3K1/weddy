@@ -69,9 +69,9 @@ export default function Dashbord() {
             {bugun.qaytarilgan > 0 && <> · shundan <b className="qizil">{som(bugun.qaytarilgan)}</b> qaytarildi</>}
           </span>
         </div>
-        <div className="kpi" title="Faqat to'liq to'langan zakazlar (libos ijarasi, aksessuar va ustama; chegirma ayirilgan). Avans va bronlar kirmaydi.">
+        <div className="kpi" title="Davrda kirgan pul (avans va qoldiq), bekor qilingan zakazlarga qaytarilgani ayirilgan. Sof foyda — shundan tasdiqlangan xarajatlar (ijara, oylik va boshqalar) ayirilib, jarimalar qo'shilgan.">
           <div className="kpi-bosh">
-            <Ikona nom="daromad" /><span className="kpi-nom">Daromad</span>
+            <Ikona nom="daromad" /><span className="kpi-nom">Tushum</span>
             {/* Filtr o'zi ta'sir qiladigan kartada (Point uslubi) */}
             <select className="kichik-tanlov karta-tanlov" value={davr} aria-label="Daromad davri" onChange={(e) => setDavr(e.target.value)}>
               {Object.entries(DAVR).map(([k, nom]) => <option key={k} value={k}>{nom}</option>)}
@@ -79,15 +79,15 @@ export default function Dashbord() {
           </div>
           <span className="kpi-qiymat">{som(oyb.hozirgi_daromad)}</span>
           <span className="kpi-izoh">
-            {oyb.zakazlar_soni} ta to'langan zakaz
-            {oyb.taxminiy_sof_foyda !== null && <> · sof foyda <b className={oyb.taxminiy_sof_foyda < 0 ? 'qizil' : ''}>{som(oyb.taxminiy_sof_foyda)}</b></>}
+            xarajat {som(oyb.xarajatlar)} · sof foyda <b className={oyb.taxminiy_sof_foyda < 0 ? 'qizil' : ''}>{som(oyb.taxminiy_sof_foyda)}</b>
+            {oyb.zakazlar_soni > 0 && <> · {oyb.zakazlar_soni} ta yangi zakaz</>}
             {oyb.tasdiqlanmagan_xarajat > 0 && <> · <span className="qizil">{som(oyb.tasdiqlanmagan_xarajat)} xarajat tasdiq kutmoqda (foydaga kirmagan)</span></>}
           </span>
         </div>
-        <div className="kpi">
-          <div className="kpi-bosh"><Ikona nom="soat" /><span className="kpi-nom">Kutilayotgan daromad</span></div>
-          <span className="kpi-qiymat">{som(oyb.kutilayotgan_daromad)}</span>
-          <span className="kpi-izoh">Bron qilingan, hali tushmagan</span>
+        <div className="kpi" title="Bron qilingan zakazlarning hali to'lanmagan qoldig'i. Pastda — libosi hali berilmagan zakazlardan olingan pul: tushumga kirgan, lekin zakaz bekor bo'lsa qaytarilishi mumkin.">
+          <div className="kpi-bosh"><Ikona nom="soat" /><span className="kpi-nom">Hali olinadigan pul</span></div>
+          <span className="kpi-qiymat">{som(oyb.qolgan_summa)}</span>
+          <span className="kpi-izoh">Bronlar qoldig'i{oyb.kelgusi_avanslar > 0 && <> · olingan avanslar {som(oyb.kelgusi_avanslar)} (to'y hali o'tmagan)</>}</span>
         </div>
       </div>
 

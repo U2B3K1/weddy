@@ -181,16 +181,10 @@ class BoshEkranView(APIView):
 
 
 def _davr_bloki(salon, dan, gacha, filial=None):
-    """Bugun/hafta uchun «davr» ko'rsatkichlari (FT-19.2): to'liq to'langan zakazlar va tasdiqlangan xarajatlar.
-
-    Sof foyda bu yerda hisoblanmaydi — soliq oylik hisoblanadi.
-    """
-    f = {'filial_id': filial} if filial else {}
-    daromad, storno, soni = reports.sof_tushum(salon, dan, gacha, f)  # P&L bilan bir xil: avvalgi davr zakazi bekor bo'lsa storno
-    xarajat = Xarajat.objects.filter(salon=salon, holat=Xarajat.Holat.TASDIQLANDI,
-                                     sana__range=(dan, gacha), **f).aggregate(s=Sum('summa'))['s'] or 0
-    return {'hozirgi_daromad': daromad, 'xarajatlar': xarajat, 'taxminiy_sof_foyda': None, 'zakazlar_soni': soni,
-            'ortacha_chek': (daromad + storno) // soni if soni else 0}  # davr zakazlari bo'yicha, storno'siz
+    """Davr ko'rsatkichlari (FT-19.2), P&L bilan bir xil ta'rif — kassa usuli: tushum pul kirgan kun bo'yicha."""
+    r = reports.foyda(salon, dan, gacha, filial)
+    return {'hozirgi_daromad': r['tushum'], 'qaytarilgan': r['qaytarilgan'], 'xarajatlar': r['xarajatlar'] + r['sotuvchi_bonusi'],
+            'taxminiy_sof_foyda': r['sof_foyda'], 'zakazlar_soni': r['zakazlar_soni'], 'ortacha_chek': r['ortacha_chek']}
 
 
 def _oldinda(salon, bugun, kunlar=30, filial=None):
@@ -243,7 +237,6 @@ class RahbarDashbordView(APIView):
         bugungi = Tolov.objects.filter(reports.tolov_filiali(filial), salon=salon, vaqt__date=bugun,
                                        tur__in=[Tolov.Tur.AVANS, Tolov.Tur.QOLDIQ, Tolov.Tur.JARIMA])
         by_usul = {r['usul']: r['s'] for r in bugungi.values('usul').annotate(s=Sum('summa'))}
-        pnl = reports.foyda_zarar(salon, bugun.year, bugun.month, filial=filial)
         kutilayotgan = reports.kutilayotgan_daromad(salon, bugun, filial)
         berilgan = Zakaz.objects.filter(salon=salon, holat=Zakaz.Holat.BERILDI, **zf)
         # FT-15.3: qoplamagan va uzoq bo'sh turgan liboslar dashbordda (sozlamada yoq-o'ch + kun)
@@ -258,20 +251,12 @@ class RahbarDashbordView(APIView):
         from datetime import timedelta
         from apps.cash.models import Smena
         from apps.orders.models import Promokod
-        shu_oy = {
-            'hozirgi_daromad': pnl['tushum'],
-            'xarajatlar': pnl['togridan_togri_xarajat'] + pnl['operatsion_xarajat'],
-            'taxminiy_sof_foyda': pnl['sof_foyda'], 'zakazlar_soni': pnl['zakazlar_soni'],
-            # o'rtacha chek storno'siz (oldingi oydan bekor qilingan zakaz bu oy zakazlariga bo'linmaydi) — _davr_bloki kabi
-            'ortacha_chek': (pnl['tushum'] + pnl['storno']) // pnl['zakazlar_soni'] if pnl['zakazlar_soni'] else 0,
-        }
         davr_dan = {'bugun': bugun, 'hafta': bugun - timedelta(days=bugun.weekday()), 'oy': bugun.replace(day=1),
                    'yil': bugun.replace(month=1, day=1)}[davr]
-        if davr != 'oy':  # FT-19.2: «Shu oy» bloki tanlangan davrga moslashadi
-            shu_oy = _davr_bloki(salon, davr_dan, bugun, filial)
+        shu_oy = _davr_bloki(salon, davr_dan, bugun, filial)  # FT-19.2: tanlangan davr
         # kutilayotgan daromad davrga bog'liq emas: bu bugungi holat (avans olingan, qoldiq to'lanmagan)
         shu_oy.update(kutilayotgan_daromad=kutilayotgan['jami'], olingan_avans=kutilayotgan['olingan_avans'],
-                      qolgan_summa=kutilayotgan['qolgan_summa'])
+                      qolgan_summa=kutilayotgan['qolgan_summa'], kelgusi_avanslar=reports.kelgusi_avanslar(salon, filial))
         # Tasdiq kutayotgan xarajat foydaga kirmaydi, lekin kassadan chiqqan bo'lishi mumkin — foyda yonida alohida ko'rsatiladi
         shu_oy['tasdiqlanmagan_xarajat'] = Xarajat.objects.filter(
             salon=salon, holat=Xarajat.Holat.KUTILMOQDA, sana__range=(davr_dan, bugun), **zf).aggregate(s=Sum('summa'))['s'] or 0
@@ -306,7 +291,8 @@ class RahbarDashbordView(APIView):
             },
             'shu_oy': shu_oy,
             'ogohlantirishlar': {
-                'tannarxsiz_liboslar': pnl['tannarxsiz_liboslar'],
+                'tannarxsiz_liboslar': Libos.objects.filter(salon=salon, tannarx__isnull=True,
+                                                            holat__in=reports.FAOL_LIBOS_HOLATLARI).count(),
                 'kechikish_jarimasi_yoqilgan': soz.kechikish_jarimasi,
                 'tugayotgan_promokodlar': tugayotgan,
                 'kassa_farqi': oxirgi_smena.farq if oxirgi_smena and oxirgi_smena.farq else 0,

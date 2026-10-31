@@ -38,16 +38,23 @@ class PnlTests(FinanceBase):
             for i in range(60)])
         Libos.objects.filter(salon=s).update(yaratilgan=vaqt(2026, 1, 1))
 
+        smena = smena_ochish(salon=s, xodim=self.malika, boshlangich_qoldiq=0)
         mijoz = Mijoz.objects.create(salon=s, telefon='+998901')
+
+        def tolov(tur, summa, sana, zakaz=None, usul=Tolov.Usul.NAQD):
+            t = Tolov.objects.create(salon=s, smena=smena, xodim=self.malika, tur=tur, summa=summa, zakaz=zakaz, usul=usul)
+            Tolov.objects.filter(id=t.id).update(vaqt=vaqt(*sana))
+
+        # Kassa usuli: oktabrda kirgan avans va qoldiqlar — 105 000 000 (to'y sanasi va zakaz holatidan qat'i nazar)
         jamilar = [2_333_333] * 44 + [2_333_348]
         self.assertEqual(sum(jamilar), 105_000_000)
         for i, j in enumerate(jamilar, 1):
-            Zakaz.objects.create(salon=s, raqam=i, mijoz=mijoz, olib_ketish=date(2026, 10, 20),
-                                 qaytarish=date(2026, 10, 22), jami=j, holat=Zakaz.Holat.YOPILDI,
-                                 tolangan_sana=date(2026, 10, 1 + i % 28))
-        # shu oy emas — hisobga kirmaydi
-        Zakaz.objects.create(salon=s, raqam=100, mijoz=mijoz, olib_ketish=date(2026, 11, 20),
-                             qaytarish=date(2026, 11, 22), jami=9_999_999, tolangan_sana=date(2026, 11, 2))
+            z = Zakaz.objects.create(salon=s, raqam=i, mijoz=mijoz, olib_ketish=date(2026, 12, 20),
+                                     qaytarish=date(2026, 12, 22), jami=j, holat=Zakaz.Holat.BRON)
+            tolov(Tolov.Tur.AVANS, 1_000_000, (2026, 10, 1 + i % 28), z, Tolov.Usul.KARTA if i % 2 else Tolov.Usul.NAQD)
+            tolov(Tolov.Tur.QOLDIQ, j - 1_000_000, (2026, 10, 2 + i % 28), z)
+        tolov(Tolov.Tur.AVANS, 9_999_999, (2026, 11, 2))  # noyabr — oktabrga kirmaydi
+        tolov(Tolov.Tur.AVANS, 7_000_000, (2026, 9, 30))  # sentabr — kirmaydi
 
         for modda, summa in [('tozalash', 6_750_000), ('tamir', 1_250_000), ('bino', 15_000_000),
                              ('oylik', 15_000_000), ('kommunal', 2_000_000), ('reklama', 6_000_000),
@@ -55,27 +62,31 @@ class PnlTests(FinanceBase):
             xarajat_kiritish(salon=s, xodim=self.rahbar, modda=modda, summa=summa,
                              sana=date(2026, 10, 5))
         # tasdiqlanmagan xarajat hisobga kirmaydi
-        smena_ochish(salon=s, xodim=self.malika, boshlangich_qoldiq=0)
         xarajat_kiritish(salon=s, xodim=self.malika, modda='transport', summa=500_000,
                          sana=date(2026, 10, 6))
 
-        # boshqa daromad: jarimalar 1 200 000 + qaytarilmagan avans 800 000
-        t = tolov_qabul(salon=s, xodim=self.malika, tur=Tolov.Tur.JARIMA, summa=1_200_000)
-        Tolov.objects.filter(id=t.id).update(vaqt=vaqt(2026, 10, 10))
-        Zakaz.objects.create(salon=s, raqam=101, mijoz=mijoz, olib_ketish=date(2026, 10, 30),
-                             qaytarish=date(2026, 11, 1), jami=3_000_000, holat=Zakaz.Holat.BEKOR,
-                             bekor_vaqti=vaqt(2026, 10, 12), ushlab_qolingan_avans=800_000)
+        tolov(Tolov.Tur.JARIMA, 1_200_000, (2026, 10, 10))
+        # bekor qilingan zakaz: 3 000 000 avans olingan, 2 200 000 qaytarilgan — ushlab qolingan 800 000 tushumda qoladi
+        b = Zakaz.objects.create(salon=s, raqam=101, mijoz=mijoz, olib_ketish=date(2026, 10, 30),
+                                 qaytarish=date(2026, 11, 1), jami=3_000_000, holat=Zakaz.Holat.BEKOR,
+                                 bekor_vaqti=vaqt(2026, 10, 12), ushlab_qolingan_avans=800_000)
+        tolov(Tolov.Tur.AVANS, 3_000_000, (2026, 10, 3), b)
+        tolov(Tolov.Tur.VOZVRAT, 2_200_000, (2026, 10, 12), b)
+        # zalog daromad emas
+        tolov(Tolov.Tur.ZALOG, 5_000_000, (2026, 10, 14))
 
         r = reports.foyda_zarar(s, 2026, 10)
-        self.assertEqual(r['tushum'], 105_000_000)
+        self.assertEqual((r['kirim'], r['qaytarilgan'], r['tushum']), (108_000_000, 2_200_000, 105_800_000))
         self.assertEqual(r['togridan_togri_xarajat'], 8_000_000)
-        self.assertEqual(r['yalpi_foyda'], 97_000_000)
+        self.assertEqual(r['yalpi_foyda'], 97_800_000)
         self.assertEqual(r['operatsion_xarajat'], 40_000_000)
-        self.assertEqual(r['operatsion_foyda'], 57_000_000)
-        self.assertEqual(r['boshqa_daromad'], 2_000_000)
-        self.assertEqual(r['soliq'], 4_280_000)
-        self.assertEqual(r['sof_foyda'], 54_720_000)
-        self.assertEqual(r['rentabellik'], 52.1)
+        self.assertEqual(r['xarajatlar'], 48_000_000)
+        self.assertEqual(r['operatsion_foyda'], 57_800_000)
+        self.assertEqual(r['jarimalar'], 1_200_000)
+        self.assertNotIn('soliq', r)  # soliq hisoblanmaydi
+        self.assertEqual(r['sof_foyda'], 59_000_000)
+        self.assertEqual(r['rentabellik'], 55.8)
+        self.assertEqual(r['kelgusi_avanslar'], 105_000_000)  # 45 ta zakaz hali «bron» — libos berilmagan
         self.assertEqual(r['tasdiqlanmagan_xarajatlar'], 1)
 
     def test_s13_tannarxsiz_libos_ogohlantirishi(self):
@@ -116,11 +127,12 @@ class KutilayotganTests(FinanceBase):
         okt = reports.kutilayotgan_daromad(s, date(2026, 10, 31))
         self.assertEqual((okt['jami'], okt['olingan_avans'], okt['qolgan_summa']),
                          (3_000_000, 1_000_000, 2_000_000))
-        self.assertEqual(reports.foyda_zarar(s, 2026, 10)['tushum'], 0)  # oktabrda hozirgi daromad 0
+        # kassa usuli: avans olingan oyda tushum, qoldiq to'langan oyda tushum
+        self.assertEqual(reports.foyda_zarar(s, 2026, 10)['tushum'], 1_000_000)
 
         noy = reports.kutilayotgan_daromad(s, date(2026, 11, 30))
         self.assertEqual(noy['jami'], 0)
-        self.assertEqual(reports.foyda_zarar(s, 2026, 11)['tushum'], 3_000_000)
+        self.assertEqual(reports.foyda_zarar(s, 2026, 11)['tushum'], 2_000_000)
 
     def test_bekor_qilingan_kutilayotganga_kirmaydi(self):
         s = self.salon
@@ -264,7 +276,7 @@ class OyniYopishTests(FinanceBase):
 
 
 class PnlTafsilotTests(FinanceBase):
-    """FT-18.2: P&L qatorini bosganda uni tashkil qilgan zakaz va xarajatlar."""
+    """FT-18.2: P&L qatorini bosganda uni tashkil qilgan to'lov va xarajatlar."""
 
     def setUp(self):
         super().setUp()
@@ -272,12 +284,25 @@ class PnlTafsilotTests(FinanceBase):
         Libos.objects.create(salon=s, kategoriya=self.kat, artikul='L1', nomi='L1', tannarx=2_400_000)
         Libos.objects.filter(salon=s).update(yaratilgan=vaqt(2026, 1, 1))
         mijoz = Mijoz.objects.create(salon=s, telefon='+998901', fio='Nodira')
+        smena = smena_ochish(salon=s, xodim=self.malika, boshlangich_qoldiq=0)
+
+        def tolov(tur, summa, kun, zakaz=None, usul=Tolov.Usul.NAQD):
+            t = Tolov.objects.create(salon=s, smena=smena, xodim=self.malika, tur=tur, summa=summa, zakaz=zakaz, usul=usul)
+            Tolov.objects.filter(id=t.id).update(vaqt=vaqt(2026, 10, kun))
+
+        zz = []
         for i, jami in enumerate((2_000_000, 3_000_000), 1):
             z = Zakaz.objects.create(salon=s, raqam=i, mijoz=mijoz, olib_ketish=date(2026, 10, 20), qaytarish=date(2026, 10, 22),
                                      jami=jami, holat=Zakaz.Holat.YOPILDI, tolangan_sana=date(2026, 10, i))
             QaytarishAkti.objects.create(salon=s, zakaz=z, sana=date(2026, 10, 22))
-        Zakaz.objects.create(salon=s, raqam=3, mijoz=mijoz, olib_ketish=date(2026, 10, 30), qaytarish=date(2026, 11, 1),
-                             jami=1_000_000, holat=Zakaz.Holat.BEKOR, bekor_vaqti=vaqt(2026, 10, 12), ushlab_qolingan_avans=300_000)
+            zz.append(z)
+        tolov(Tolov.Tur.AVANS, 2_000_000, 1, zz[0])
+        tolov(Tolov.Tur.QOLDIQ, 3_000_000, 2, zz[1], Tolov.Usul.KARTA)
+        b = Zakaz.objects.create(salon=s, raqam=3, mijoz=mijoz, olib_ketish=date(2026, 10, 30), qaytarish=date(2026, 11, 1),
+                                 jami=1_000_000, holat=Zakaz.Holat.BEKOR, bekor_vaqti=vaqt(2026, 10, 12), ushlab_qolingan_avans=300_000)
+        tolov(Tolov.Tur.AVANS, 1_000_000, 3, b)
+        tolov(Tolov.Tur.VOZVRAT, 700_000, 12, b)
+        tolov(Tolov.Tur.JARIMA, 50_000, 15)
         for modda, summa in (('tozalash', 200_000), ('bino', 1_000_000), ('reklama', 500_000)):
             xarajat_kiritish(salon=s, xodim=self.rahbar, modda=modda, summa=summa, sana=date(2026, 10, 5), izoh='izoh')
         # boshqa oydagi xarajat oktabr P&L ga kirmasligi kerak (kelajak sana endi rad etiladi — o'tgan oy olindi)
@@ -285,33 +310,37 @@ class PnlTafsilotTests(FinanceBase):
 
     def test_har_qator_jami_pnl_ga_teng(self):
         r = reports.foyda_zarar(self.salon, 2026, 10)
-        for qator, kalit in (('tushum', 'tushum'), ('togridan', 'togridan_togri_xarajat'),
-                             ('operatsion', 'operatsion_xarajat'), ('boshqa', 'boshqa_daromad')):
+        self.assertEqual((r['tushum'], r['sof_foyda']), (5_300_000, 5_300_000 + 50_000 - 1_700_000))
+        for qator, kalit in (('kirim', 'kirim'), ('qaytarilgan', 'qaytarilgan'), ('jarima', 'jarimalar'),
+                             ('xarajat', 'xarajatlar'), ('bonus', 'sotuvchi_bonusi')):
             t = reports.pnl_tafsilot(self.salon, 2026, 10, qator)
             self.assertEqual(t['jami'], r[kalit], qator)
             self.assertEqual(sum(q['summa'] for q in t['qatorlar']), r[kalit], qator)
 
-    def test_tushum_zakazlari(self):
-        t = reports.pnl_tafsilot(self.salon, 2026, 10, 'tushum')
+    def test_kirim_tolovlari(self):
+        t = reports.pnl_tafsilot(self.salon, 2026, 10, 'kirim')
         self.assertEqual([(q['matn'], q['summa']) for q in t['qatorlar']],
-                         [('Zakaz #1 · Nodira', 2_000_000), ('Zakaz #2 · Nodira', 3_000_000)])
+                         [('Avans · zakaz #1 · Nodira · Naqd', 2_000_000), ("Qoldiq to'lov · zakaz #2 · Nodira · Karta", 3_000_000),
+                          ('Avans · zakaz #3 · Nodira · Naqd', 1_000_000)])
         self.assertTrue(all(q['zakaz_id'] for q in t['qatorlar']))
 
-    def test_bonus_operatsion_qatorda(self):
+    def test_bonus_qatori(self):
         from apps.tenants.models import sozlama
         soz = sozlama(self.salon)
         soz.sotuvchi_bonusi, soz.bonus_foiz = True, 5
         soz.save()
         Zakaz.objects.filter(salon=self.salon, raqam=1).update(sotuvchi=self.malika)
-        t = reports.pnl_tafsilot(self.salon, 2026, 10, 'operatsion')
-        self.assertIn(('Sotuvchi bonusi · Malika', 100_000), [(q['matn'], q['summa']) for q in t['qatorlar']])
-        self.assertEqual(t['jami'], reports.foyda_zarar(self.salon, 2026, 10)['operatsion_xarajat'])
+        t = reports.pnl_tafsilot(self.salon, 2026, 10, 'bonus')
+        self.assertEqual([(q['matn'], q['summa']) for q in t['qatorlar']], [('Sotuvchi bonusi · Malika', 100_000)])
+        r = reports.foyda_zarar(self.salon, 2026, 10)
+        self.assertEqual((r['sotuvchi_bonusi'], r['sof_foyda']), (100_000, 5_300_000 + 50_000 - 1_700_000 - 100_000))
 
     def test_api(self):
         c = APIClient()
         c.credentials(HTTP_AUTHORIZATION='Bearer ' + make_staff_token(self.rahbar))
-        j = c.get('/api/hisobotlar/pnl/tafsilot/', {'oy': '2026-10', 'qator': 'boshqa'})
-        self.assertEqual((j.status_code, j.data['jami'], j.data['qatorlar'][0]['matn']), (200, 300_000, 'Qaytarilmagan avans · zakaz #3'))
+        j = c.get('/api/hisobotlar/pnl/tafsilot/', {'oy': '2026-10', 'qator': 'qaytarilgan'})
+        self.assertEqual((j.status_code, j.data['jami'], j.data['qatorlar'][0]['matn']),
+                         (200, 700_000, 'Pulni qaytarish · zakaz #3 · Nodira · Naqd'))
         self.assertEqual(c.get('/api/hisobotlar/pnl/tafsilot/', {'oy': '2026-10', 'qator': 'yoq'}).status_code, 400)
         c.credentials(HTTP_AUTHORIZATION='Bearer ' + make_staff_token(self.malika))
-        self.assertEqual(c.get('/api/hisobotlar/pnl/tafsilot/', {'oy': '2026-10', 'qator': 'tushum'}).status_code, 403)
+        self.assertEqual(c.get('/api/hisobotlar/pnl/tafsilot/', {'oy': '2026-10', 'qator': 'kirim'}).status_code, 403)

@@ -1,9 +1,16 @@
-"""Foyda/zarar (6.2) va hozirgi/kutilayotgan daromad (6.1)."""
+"""Foyda/zarar (6.2) va hozirgi/kutilayotgan daromad (6.1).
+
+Foyda **kassa usulida** (foydalanuvchi qarori 2026-10-31): daromad — pul kirgan kun. Avans ham, qoldiq ham o'sha kunning
+tushumi; zakaz bekor qilinsa, mijozga qaytarilgan pul qaytarilgan kuni ayiriladi (ushlab qolingan qismi tushumda qoladi).
+Zalog daromad emas. Soliq hisoblanmaydi. Shu sabab o'tgan davr raqamlari keyin o'zgarmaydi — storno kerak emas.
+
+`tushum_zakazlari`/`storno_zakazlari`/`farq_zakazlari` — zakaz to'liq to'langan kun bo'yicha; endi faqat zakazlar
+tahlili (statistika hisobotlari: kategoriya, sotuvchi, salonchi...) uchun ishlatiladi.
+"""
 import calendar
 from datetime import date
 from decimal import ROUND_HALF_UP, Decimal
 
-from django.conf import settings
 from django.db.models import Count, Exists, F, Max, OuterRef, Q, Subquery, Sum
 from django.db.models.functions import Coalesce
 from django.utils import timezone
@@ -27,6 +34,11 @@ def oy_chegaralari(yil, oy):
 
 
 def sotuvchi_bonuslari(salon, yil, oy, filial=None):
+    boshi, oxiri = oy_chegaralari(yil, oy)
+    return {'oy': f'{yil}-{oy:02d}', **_bonuslar(salon, boshi, oxiri, filial)}
+
+
+def _bonuslar(salon, boshi, oxiri, filial=None):
     """Sotuvchi bonusi (FT-15.1, foydalanuvchi qarori 2026-10-22): xizmat to'liq ko'rsatilgan — libos to'ydan keyin
     qaytarib olingan (qaytarish akti sanasi shu oyda) zakazlar summasidan rahbar belgilagan foiz.
 
@@ -38,7 +50,6 @@ def sotuvchi_bonuslari(salon, yil, oy, filial=None):
 
     soz = sozlama(salon)
     foiz = soz.bonus_foiz if soz.sotuvchi_bonusi else Decimal(0)
-    boshi, oxiri = oy_chegaralari(yil, oy)
     zakazlar = {}
     for z in (Zakaz.objects.filter(salon=salon, qaytarish_akti__sana__range=(boshi, oxiri),
                                    holat__in=(Zakaz.Holat.QAYTARILDI, Zakaz.Holat.YOPILDI), sotuvchi__rol=Xodim.Rol.SOTUVCHI,
@@ -54,7 +65,7 @@ def sotuvchi_bonuslari(salon, yil, oy, filial=None):
             continue
         qatorlar.append({'id': x.id, 'ism': x.ism, 'zakazlar': len(zz), 'tushum': sum(q['summa'] for q in zz),
                          'bonus': sum(q['bonus'] for q in zz), 'zakaz_royxati': zz})
-    return {'oy': f'{yil}-{oy:02d}', 'yoqilgan': soz.sotuvchi_bonusi, 'foiz': foiz, 'sotuvchilar': qatorlar,
+    return {'yoqilgan': soz.sotuvchi_bonusi, 'foiz': foiz, 'sotuvchilar': qatorlar,
             'jami': sum(q['bonus'] for q in qatorlar)}
 
 
@@ -101,28 +112,25 @@ def storno_zakazlari(salon, boshi, oxiri, f):
             .annotate(tushum=F('jami') - _farqlar(Q(sana__isnull=True) | Q(sana__gte=boshi))))
 
 
-def sof_tushum(salon, boshi, oxiri, f):
-    """Davr tushumi — P&L va bosh ekran uchun yagona ta'rif: `(tushum, storno, zakazlar_soni)`.
-    `tushum` narx farqlari qo'shilgan va storno ayirilgan holda."""
-    r = tushum_zakazlari(salon, boshi, oxiri, f).aggregate(s=Sum('tushum'), n=Count('id'))
-    farq = farq_zakazlari(salon, boshi, oxiri, f).aggregate(s=Sum('tushum'))['s'] or 0
-    storno = storno_zakazlari(salon, boshi, oxiri, f).aggregate(s=Sum('tushum'))['s'] or 0
-    return (r['s'] or 0) + farq - storno, storno, r['n']
+def pul_harakati(salon, boshi, oxiri, filial=None):
+    """Davrda kassaga kirgan va mijozga qaytarilgan pul (barcha to'lov usullari): `kirim` — avans va qoldiq,
+    `qaytarilgan` — bekor qilingan zakazlarga qaytarilgan pul, `jarimalar`."""
+    T = Tolov.Tur
+    r = Tolov.objects.filter(tolov_filiali(filial), salon=salon, vaqt__date__range=(boshi, oxiri)).aggregate(
+        kirim=Sum('summa', filter=Q(tur__in=[T.AVANS, T.QOLDIQ])), qaytarilgan=Sum('summa', filter=Q(tur=T.VOZVRAT)),
+        jarimalar=Sum('summa', filter=Q(tur=T.JARIMA)))
+    return {k: v or 0 for k, v in r.items()}
 
 
-def foyda_zarar(salon, yil, oy, soliq_foizi=None, filial=None):
-    """Foyda va zarar (Ilova B). `filial` berilsa — shu filial natijasi: uning zakazlari, liboslari va unga yozilgan
-    xarajatlar. Filialga biriktirilmagan (umumiy) xarajat va liboslar filial ko'rinishiga kirmaydi."""
-    boshi, oxiri = oy_chegaralari(yil, oy)
+def foyda(salon, boshi, oxiri, filial=None):
+    """Davr foydasi (kassa usuli) — P&L, dashbord va grafiklar uchun yagona ta'rif.
+
+    `filial` berilsa — shu filial natijasi: uning zakazlari to'lovlari va unga yozilgan xarajatlar. Filialga
+    biriktirilmagan (umumiy) xarajatlar filial ko'rinishiga kirmaydi.
+    """
     f = {'filial_id': filial} if filial else {}
-    if soliq_foizi is None:  # salon buxgalteri belgilagan foiz («Integratsiyalar»), bo'lmasa standart
-        from apps.tenants.models import integratsiya
-        oz = integratsiya(salon).soliq_foizi
-        soliq_foizi = settings.SOLIQ_FOIZI if oz is None else float(oz) if oz % 1 else int(oz)
-
-    # 1. Tushum: faqat shu oyda to'liq to'langan zakazlar (6.1). Shu oy ichida bekor qilingani chiqariladi;
-    # keyingi oyda bekor qilingani o'tgan oy daromadini o'zgartirmaydi — bekor qilingan oyda storno bo'ladi.
-    tushum, storno, zakazlar_soni = sof_tushum(salon, boshi, oxiri, f)
+    pul = pul_harakati(salon, boshi, oxiri, filial)
+    tushum = pul['kirim'] - pul['qaytarilgan']
 
     xarajatlar = Xarajat.objects.filter(salon=salon, holat=Xarajat.Holat.TASDIQLANDI,
                                         sana__range=(boshi, oxiri), **f)
@@ -136,37 +144,51 @@ def foyda_zarar(salon, yil, oy, soliq_foizi=None, filial=None):
     operatsion = xarajatlar.exclude(modda__in=tk)
     togridan_jami = togridan.aggregate(s=Sum('summa'))['s'] or 0
     operatsion_jami = operatsion.aggregate(s=Sum('summa'))['s'] or 0
+    # Bonus yoqilgan bo'lsa xarajatga avtomatik qo'shiladi (Ilova B, 5-qator); qo'lda kiritilmaydi
+    bonus = _bonuslar(salon, boshi, oxiri, filial)['jami']
 
     yalpi = tushum - togridan_jami
-    # Bonus yoqilgan bo'lsa operatsion xarajatga avtomatik qo'shiladi (Ilova B, 5-qator); qo'lda kiritilmaydi
-    bonus = sotuvchi_bonuslari(salon, yil, oy, filial)['jami']
-    operatsion_jami += bonus
-    operatsion_foyda = yalpi - operatsion_jami
+    operatsion_foyda = yalpi - operatsion_jami - bonus
+    sof = operatsion_foyda + pul['jarimalar']  # soliq hisoblanmaydi: salon to'lagan soliq oddiy xarajat sifatida kiritiladi
 
-    # 7. Boshqa daromad: jarimalar va qaytarilmagan avanslar (6.1)
-    jarimalar = Tolov.objects.filter(tolov_filiali(filial), salon=salon, tur=Tolov.Tur.JARIMA,
-                                     vaqt__date__range=(boshi, oxiri)).aggregate(s=Sum('summa'))['s'] or 0
-    qaytarilmagan = Zakaz.objects.filter(
-        salon=salon, holat=Zakaz.Holat.BEKOR, bekor_vaqti__date__range=(boshi, oxiri), **f
-    ).aggregate(s=Sum('ushlab_qolingan_avans'))['s'] or 0
-    boshqa = jarimalar + qaytarilmagan
-
-    soliq = _int(Decimal(tushum + boshqa) * Decimal(str(soliq_foizi)) / 100)
-    sof = operatsion_foyda + boshqa - soliq
-
+    # Yangi zakazlar — birinchi to'lovi shu davrda olingan zakazlar. To'lovlar o'zgarmaydi, shuning uchun soni keyin
+    # (bekor qilish yoki vaqtinchalik bronning keyingi oyda to'lanishi bilan) o'zgarmaydi
+    birinchi = (Tolov.objects.filter(zakaz=OuterRef('pk'), tur__in=[Tolov.Tur.AVANS, Tolov.Tur.QOLDIQ])
+                .order_by('vaqt').values('vaqt')[:1])
+    yangi = (Zakaz.objects.filter(salon=salon, **f).annotate(birinchi=Subquery(birinchi))
+             .filter(birinchi__date__range=(boshi, oxiri)).aggregate(n=Count('id'), s=Sum('jami')))
     return {
-        'oy': f'{yil}-{oy:02d}', 'filial': filial,
-        'tushum': tushum, 'zakazlar_soni': zakazlar_soni, 'storno': storno,
+        'tushum': tushum, 'kirim': pul['kirim'], 'qaytarilgan': pul['qaytarilgan'],
         'togridan_togri_xarajat': togridan_jami, 'togridan_togri_moddalar': modda_boyicha(togridan),
         'yalpi_foyda': yalpi,
-        'operatsion_xarajat': operatsion_jami, 'operatsion_moddalar': modda_boyicha(operatsion),
+        'operatsion_xarajat': operatsion_jami + bonus, 'operatsion_moddalar': modda_boyicha(operatsion),
         'sotuvchi_bonusi': bonus,
+        'xarajatlar': togridan_jami + operatsion_jami,  # kiritilgan xarajatlar jami (bonussiz)
         'operatsion_foyda': operatsion_foyda,
-        'boshqa_daromad': boshqa, 'jarimalar': jarimalar, 'qaytarilmagan_avans': qaytarilmagan,
-        'soliq': soliq, 'soliq_foizi': soliq_foizi,
+        'jarimalar': pul['jarimalar'], 'boshqa_daromad': pul['jarimalar'],
         'sof_foyda': sof,
-        'rentabellik': round(sof / tushum * 100, 1) if tushum else None,
+        'rentabellik': round(sof / tushum * 100, 1) if tushum > 0 else None,
+        'zakazlar_soni': yangi['n'], 'ortacha_chek': (yangi['s'] or 0) // yangi['n'] if yangi['n'] else 0,
+    }
+
+
+def kelgusi_avanslar(salon, filial=None):
+    """Libosi hali berilmagan zakazlar uchun olingan pul: tushumga kirgan, lekin zakaz bekor bo'lsa
+    qoidaga ko'ra qaytarilishi mumkin."""
+    return Tolov.objects.filter(
+        salon=salon, tur__in=[Tolov.Tur.AVANS, Tolov.Tur.QOLDIQ],
+        zakaz__holat__in=[Zakaz.Holat.BRON, Zakaz.Holat.CHEGIRMA_KUTILMOQDA, Zakaz.Holat.VAQTINCHALIK],
+        **({'zakaz__filial_id': filial} if filial else {})).aggregate(s=Sum('summa'))['s'] or 0
+
+
+def foyda_zarar(salon, yil, oy, filial=None):
+    """Oylik foyda va zarar (Ilova B), kassa usulida — `foyda()` + oy holati."""
+    boshi, oxiri = oy_chegaralari(yil, oy)
+    return {
+        'oy': f'{yil}-{oy:02d}', 'filial': filial,
+        **foyda(salon, boshi, oxiri, filial),
         **libos_investitsiyasi(salon, filial),
+        'kelgusi_avanslar': kelgusi_avanslar(salon, filial),
         'tannarxsiz_liboslar': Libos.objects.filter(
             salon=salon, tannarx__isnull=True, holat__in=FAOL_LIBOS_HOLATLARI).count(),
         'tasdiqlanmagan_xarajatlar': Xarajat.objects.filter(
@@ -191,12 +213,14 @@ def libos_investitsiyasi(salon, filial=None):
             'qoplash_foiz': round(qoplagan / investitsiya * 100, 1) if investitsiya else None}
 
 
-PNL_QATORLARI = {'tushum': 'Tushum', 'togridan': "To'g'ridan-to'g'ri xarajat",
-                 'operatsion': 'Operatsion xarajatlar', 'boshqa': 'Boshqa daromad'}
+PNL_QATORLARI = {'kirim': 'Kirgan pul (avans va qoldiq)', 'qaytarilgan': 'Mijozlarga qaytarilgan', 'jarima': 'Jarimalar',
+                 'xarajat': 'Xarajatlar', 'bonus': 'Sotuvchi bonusi'}
 
 
 def pnl_tafsilot(salon, yil, oy, qator, filial=None):
-    """P&L qatorini tashkil qilgan zakaz va xarajatlar ro'yxati (FT-18.2). Jami foyda_zarar() dagi qatorga teng."""
+    """P&L qatorini tashkil qilgan to'lov va xarajatlar ro'yxati (FT-18.2). Jami foyda_zarar() dagi qatorga teng."""
+    if qator not in PNL_QATORLARI:
+        return None
     boshi, oxiri = oy_chegaralari(yil, oy)
     f = {'filial_id': filial} if filial else {}
     q = []
@@ -204,36 +228,24 @@ def pnl_tafsilot(salon, yil, oy, qator, filial=None):
     def qosh(matn, summa, sana=None, zakaz=None):
         q.append({'matn': matn, 'summa': summa, 'sana': sana, 'zakaz_id': zakaz.id if zakaz else None})
 
-    if qator == 'tushum':
-        for z in tushum_zakazlari(salon, boshi, oxiri, f).select_related('mijoz').order_by('tolangan_sana', 'raqam'):
-            qosh(f'Zakaz #{z.raqam} · {z.mijoz.fio or z.mijoz.telefon}', z.tushum, z.tolangan_sana, z)
-        for z in farq_zakazlari(salon, boshi, oxiri, f).select_related('mijoz').order_by('farq_sana', 'raqam'):
-            qosh(f"Narx oshgani (zakaz {z.tolangan_sana:%Y-%m} da to'langan, u oy yopilgan) · zakaz #{z.raqam} · "
-                 f'{z.mijoz.fio or z.mijoz.telefon}', z.tushum, z.farq_sana, z)
-        for z in storno_zakazlari(salon, boshi, oxiri, f).select_related('mijoz').order_by('bekor_vaqti'):
-            qosh(f'Bekor qilindi (storno, {z.tolangan_sana:%Y-%m} daromadi) · zakaz #{z.raqam} · '
-                 f'{z.mijoz.fio or z.mijoz.telefon}', -z.tushum, timezone.localtime(z.bekor_vaqti).date(), z)
-    elif qator in ('togridan', 'operatsion'):
-        xs = Xarajat.objects.filter(salon=salon, holat=Xarajat.Holat.TASDIQLANDI, sana__range=(boshi, oxiri), **f)
-        from .moddalar import modda_nomlari, togridan_kodlar
-        tk, nomlar = togridan_kodlar(salon), modda_nomlari(salon)
-        xs = xs.filter(modda__in=tk) if qator == 'togridan' else xs.exclude(modda__in=tk)
-        for x in xs.order_by('sana', 'id'):
+    turlar = {'kirim': [Tolov.Tur.AVANS, Tolov.Tur.QOLDIQ], 'qaytarilgan': [Tolov.Tur.VOZVRAT],
+              'jarima': [Tolov.Tur.JARIMA]}.get(qator)
+    if turlar:
+        for t in (Tolov.objects.filter(tolov_filiali(filial), salon=salon, tur__in=turlar, vaqt__date__range=(boshi, oxiri))
+                  .select_related('zakaz__mijoz').order_by('vaqt')):
+            z = t.zakaz
+            matn = t.get_tur_display() + (f' · zakaz #{z.raqam} · {z.mijoz.fio or z.mijoz.telefon}' if z else '')
+            qosh(f'{matn} · {t.get_usul_display()}', t.summa, timezone.localtime(t.vaqt).date(), z)
+    elif qator == 'xarajat':
+        from .moddalar import modda_nomlari
+        nomlar = modda_nomlari(salon)
+        for x in (Xarajat.objects.filter(salon=salon, holat=Xarajat.Holat.TASDIQLANDI, sana__range=(boshi, oxiri), **f)
+                  .order_by('sana', 'id')):
             qosh(f'{nomlar.get(x.modda, x.modda)}{" · " + x.izoh if x.izoh else ""}', x.summa, x.sana)
-        if qator == 'operatsion':
-            for b in sotuvchi_bonuslari(salon, yil, oy, filial)['sotuvchilar']:
-                if b['bonus']:
-                    qosh(f"Sotuvchi bonusi · {b['ism']}", b['bonus'], oxiri)
-    elif qator == 'boshqa':
-        for t in (Tolov.objects.filter(tolov_filiali(filial), salon=salon, tur=Tolov.Tur.JARIMA,
-                                       vaqt__date__range=(boshi, oxiri))
-                  .select_related('zakaz').order_by('vaqt')):
-            qosh(f"Jarima{' · zakaz #' + str(t.zakaz.raqam) if t.zakaz else ''}", t.summa, timezone.localtime(t.vaqt).date(), t.zakaz)
-        for z in (Zakaz.objects.filter(salon=salon, holat=Zakaz.Holat.BEKOR, bekor_vaqti__date__range=(boshi, oxiri),
-                                       ushlab_qolingan_avans__gt=0, **f).order_by('bekor_vaqti')):
-            qosh(f'Qaytarilmagan avans · zakaz #{z.raqam}', z.ushlab_qolingan_avans, timezone.localtime(z.bekor_vaqti).date(), z)
-    else:
-        return None
+    else:  # bonus
+        for b in sotuvchi_bonuslari(salon, yil, oy, filial)['sotuvchilar']:
+            if b['bonus']:
+                qosh(f"Sotuvchi bonusi · {b['ism']}", b['bonus'], oxiri)
     jami = sum(r['summa'] for r in q)
     return {'oy': f'{yil}-{oy:02d}', 'qator': qator, 'sarlavha': PNL_QATORLARI[qator], 'qatorlar': q, 'jami': jami}
 
@@ -270,8 +282,8 @@ def _oy_siljit(yil, oy, n):
 def taqqoslash(salon, yil, oy, filial=None):
     """O'tgan oy va o'tgan yilning shu oyi bilan taqqoslash (FT-18.1)."""
     def qisqa(y, m):
-        r = foyda_zarar(salon, y, m, filial=filial)
-        return {'oy': r['oy'], 'tushum': r['tushum'], 'sof_foyda': r['sof_foyda'], 'zakazlar_soni': r['zakazlar_soni']}
+        r = foyda(salon, *oy_chegaralari(y, m), filial)  # oy holati (investitsiya, tasdiqlar) kerak emas
+        return {'oy': f'{y}-{m:02d}', 'tushum': r['tushum'], 'sof_foyda': r['sof_foyda'], 'zakazlar_soni': r['zakazlar_soni']}
     return {'otgan_oy': qisqa(*_oy_siljit(yil, oy, -1)), 'otgan_yil': qisqa(yil - 1, oy)}
 
 
@@ -280,6 +292,6 @@ def oylik_qator(salon, yil, oy, soni=12, filial=None):
     natija = []
     for n in range(-(soni - 1), 1):
         y, m = _oy_siljit(yil, oy, n)
-        r = foyda_zarar(salon, y, m, filial=filial)
-        natija.append({'oy': r['oy'], 'tushum': r['tushum'], 'sof_foyda': r['sof_foyda']})
+        r = foyda(salon, *oy_chegaralari(y, m), filial)
+        natija.append({'oy': f'{y}-{m:02d}', 'tushum': r['tushum'], 'sof_foyda': r['sof_foyda']})
     return natija

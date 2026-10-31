@@ -19,6 +19,15 @@ from .rental import BerishXatosi, libos_berish, qarzni_tolash
 from .test_tuzatishlar import Base
 
 
+def zakaz_tushumi(salon, boshi, oxiri, f):
+    """Zakazlar tahlilidagi (statistika) tushum ta'rifi: to'liq to'langan kun + narx farqi − storno → (tushum, storno)."""
+    def jami(qs):
+        return sum(z.tushum for z in qs)
+    storno = jami(reports.storno_zakazlari(salon, boshi, oxiri, f))
+    return (jami(reports.tushum_zakazlari(salon, boshi, oxiri, f)) + jami(reports.farq_zakazlari(salon, boshi, oxiri, f))
+            - storno, storno)
+
+
 class MantiqTests(Base):
     def test_muddati_otgan_bronni_boshqa_zakaz_olsa_eskisi_bekor_qilinadi(self):
         z = self.zakaz()
@@ -62,19 +71,20 @@ class MantiqTests(Base):
         self.assertEqual((z.tolangan_sana, list(z.tushum_farqlari.values_list('summa', 'sana'))), (otgan, [(farq, None)]))
         bugun = timezone.localdate()
         oy = reports.oy_chegaralari(bugun.year, bugun.month)
-        self.assertEqual(reports.sof_tushum(self.salon, *reports.oy_chegaralari(otgan.year, otgan.month), {})[0], eski)
-        self.assertEqual(reports.sof_tushum(self.salon, *oy, {})[0], 0)  # farq hali to'lanmagan
+        self.assertEqual(zakaz_tushumi(self.salon, *reports.oy_chegaralari(otgan.year, otgan.month), {})[0], eski)
+        self.assertEqual(zakaz_tushumi(self.salon, *oy, {})[0], 0)  # farq hali to'lanmagan
         self.assertEqual([q['zakaz'] for q in reports.kutilayotgan_daromad(self.salon, bugun)['zakazlar']], [z.raqam])
 
         self.tola(z, farq, Tolov.Tur.QOLDIQ)
-        self.assertEqual(reports.sof_tushum(self.salon, *oy, {})[0], farq)  # farq yangi oyga
-        self.assertEqual(reports.sof_tushum(self.salon, *reports.oy_chegaralari(otgan.year, otgan.month), {})[0], eski)
-        self.assertEqual(reports.pnl_tafsilot(self.salon, bugun.year, bugun.month, 'tushum')['jami'], farq)
+        self.assertEqual(zakaz_tushumi(self.salon, *oy, {})[0], farq)  # farq yangi oyga
+        self.assertEqual(zakaz_tushumi(self.salon, *reports.oy_chegaralari(otgan.year, otgan.month), {})[0], eski)
+        # P&L esa kassa usulida: ikkala to'lov ham shu oyda olingan
+        self.assertEqual(reports.foyda_zarar(self.salon, bugun.year, bugun.month)['tushum'], eski + farq)
         self.assertEqual(reports.kutilayotgan_daromad(self.salon, bugun)['zakazlar'], [])
         self.assertEqual(statistika.tafsilot(self.salon, 'sotuvchi', z.sotuvchi_id, *oy)['jami'], farq)
 
         zakazni_bekor_qilish(salon=self.salon, xodim=self.xodim, zakaz=z, sabab='x', qoida=[(0, 0)])
-        self.assertEqual(reports.sof_tushum(self.salon, *oy, {})[:2], (-eski, eski))  # yangi oyda tan olingani storno emas
+        self.assertEqual(zakaz_tushumi(self.salon, *oy, {})[:2], (-eski, eski))  # yangi oyda tan olingani storno emas
 
     def test_libos_qaytmagan_yoki_tamirda_bolsa_berilmaydi(self):
         z = self.zakaz()

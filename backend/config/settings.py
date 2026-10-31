@@ -190,7 +190,6 @@ PIN_MAX_ATTEMPTS = 5
 PIN_LOCK_MINUTES = 15
 VAQTINCHALIK_BRON_SOAT = 24  # FT-2.5
 LIBOS_QULF_DAQIQA = 15  # FT-2.7
-SOLIQ_FOIZI = 4  # aylanmadan soliq, standart (6.2); buxgalter bilan tasdiqlanadi
 
 # Rasmlar (7.3). Hozir lokal papka; ishlab chiqarishda O'zbekistondagi S3-mos saqlash (7.1)
 MEDIA_URL = '/media/'

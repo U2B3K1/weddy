@@ -1,7 +1,7 @@
 """Tashqi xizmatlar sozlamalari (admin panel → «Integratsiyalar»). Faqat rahbar.
 
 Hamma maydon ixtiyoriy: hech biri kiritilmagan bo'lsa ham tizim to'liq ishlaydi (Telegram va SMS yuborilmaydi,
-to'lov havolasi chiqmaydi, soliq standart foizda hisoblanadi).
+to'lov havolasi chiqmaydi).
 Maxfiy qiymatlar (Eskiz paroli) API orqali hech qachon qaytarilmaydi — faqat «kiritilgan/kiritilmagan».
 
 Telegram bu yerda **sozlanmaydi**: butun platformaga bitta Libosa boti xizmat qiladi (FT-4.14), tokenini
@@ -16,7 +16,7 @@ from .permissions import IsRahbar, SalonYozishRuxsati
 
 MAXFIY = ('eskiz_parol',)
 OCHIQ = ('eskiz_email', 'eskiz_from', 'sms_shablon_olib_ketish', 'sms_shablon_qaytarish',
-         'click_service_id', 'click_merchant_id', 'payme_merchant_id', 'soliq_foizi', 'soliq_izohi',
+         'click_service_id', 'click_merchant_id', 'payme_merchant_id',
          'manekin_fon_farqi', 'instagram', 'fiskal_eslatma', 'fiskal_izoh')
 
 
@@ -32,10 +32,9 @@ def integratsiya_json(i):
         'sms': 'salon' if (i.eskiz_email and i.eskiz_parol) else 'platforma' if (settings.ESKIZ_EMAIL and settings.ESKIZ_PASSWORD) else 'yoq',
         'click': bool(i.click_service_id and i.click_merchant_id),
         'payme': bool(i.payme_merchant_id),
-        'soliq_foizi': i.soliq_foizi if i.soliq_foizi is not None else settings.SOLIQ_FOIZI,
     }
     d['standart'] = {'sms_shablon_olib_ketish': sms.SHABLONLAR['olib_ketish_ertaga'], 'sms_shablon_qaytarish': sms.SHABLONLAR['qaytarish_ertaga'],
-                     'soliq_foizi': settings.SOLIQ_FOIZI, 'manekin_fon_farqi': Integratsiya._meta.get_field('manekin_fon_farqi').default}
+                     'manekin_fon_farqi': Integratsiya._meta.get_field('manekin_fon_farqi').default}
     del telegram
     return d
 
@@ -49,8 +48,6 @@ class IntegratsiyaSerializer(serializers.Serializer):
     click_service_id = serializers.RegexField(r'^\d{0,12}$', required=False, allow_blank=True)
     click_merchant_id = serializers.RegexField(r'^\d{0,12}$', required=False, allow_blank=True)
     payme_merchant_id = serializers.RegexField(r'^[0-9a-fA-F]{0,32}$', required=False, allow_blank=True)
-    soliq_foizi = serializers.DecimalField(max_digits=5, decimal_places=2, min_value=0, max_value=100, required=False, allow_null=True)
-    soliq_izohi = serializers.CharField(max_length=500, required=False, allow_blank=True)
     manekin_fon_farqi = serializers.IntegerField(min_value=8, max_value=120, required=False)
     instagram = serializers.CharField(max_length=200, required=False, allow_blank=True)
     fiskal_eslatma = serializers.BooleanField(required=False)

@@ -59,7 +59,7 @@ class RoyxatTests(TestCase):
         self.assertEqual(d['bugun']['olib_ketiladi'], 1)
         self.assertEqual(d['shu_oy']['kutilayotgan_daromad'], 2_000_000)
         self.assertEqual(d['shu_oy']['olingan_avans'], 500_000)
-        self.assertEqual(d['shu_oy']['hozirgi_daromad'], 0)
+        self.assertEqual(d['shu_oy']['hozirgi_daromad'], 500_000)  # kassa usuli: avans olingan kuni tushum
 
 
 class OflaynToplamTests(RoyxatTests):
@@ -126,16 +126,16 @@ class DashbordDavrTests(RoyxatTests):
 
     def test_bugun_va_hafta(self):
         from apps.finance.services import xarajat_kiritish
-        from .models import Zakaz
         self.toliq_tola()
         bugun = timezone.localdate()
         xarajat_kiritish(salon=self.salon, xodim=self.rahbar, modda='reklama', summa=300_000, sana=bugun)
         for davr in ('bugun', 'hafta'):
             b = self.d(davr=davr)['shu_oy']
             self.assertEqual((b['hozirgi_daromad'], b['xarajatlar'], b['zakazlar_soni'], b['ortacha_chek'], b['taxminiy_sof_foyda']),
-                             (2_000_000, 300_000, 1, 2_000_000, None), davr)
-        # kechagi daromad «bugun»ga kirmaydi
-        Zakaz.objects.filter(id=self.z.id).update(tolangan_sana=bugun - timedelta(days=1))
+                             (2_000_000, 300_000, 1, 2_000_000, 1_700_000), davr)
+        # kechagi to'lov «bugun»ga kirmaydi
+        from apps.cash.models import Tolov as T
+        T.objects.filter(zakaz=self.z).update(vaqt=timezone.now() - timedelta(days=1))
         self.assertEqual(self.d(davr='bugun')['shu_oy']['hozirgi_daromad'], 0)
         hafta = self.d(davr='hafta')
         self.assertEqual(hafta['davr']['dan'], str(bugun - timedelta(days=bugun.weekday())))

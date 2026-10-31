@@ -3,8 +3,9 @@
     {'sarlavha', 'izoh', 'ustunlar': [{'nom', 'tur'}], 'qatorlar': [[...]], 'jami': [...] | None}
 
 `tur`: 'matn' | 'son' | 'pul' | 'foiz' | 'sana'. Hisobotlar faqat sahifada ko'rsatiladi, fayl sifatida yuklab olinmaydi (FT-18.3).
-Daromad qoidasi hamma joyda bir xil (P&L bilan): tushum — davrda TO'LIQ TO'LANGAN va davr oxirigacha bekor qilinmagan
-zakazlar (6.1); davrdan keyin bekor qilingani o'tgan davrni o'zgartirmaydi — bekor qilingan davrda storno (ayiriladi).
+Zakazlar tahlili (kategoriya, sotuvchi, salonchi...) da tushum — davrda TO'LIQ TO'LANGAN va davr oxirigacha bekor
+qilinmagan zakazlar (6.1); davrdan keyin bekor qilingani o'tgan davrni o'zgartirmaydi — bekor qilingan davrda storno.
+P&L va dashbord esa kassa usulida (pul kirgan kun, `reports.foyda`) — «Pul oqimi» va «Kunlik kassa» shunga mos.
 """
 from collections import defaultdict
 from datetime import timedelta
@@ -283,14 +284,34 @@ def pul_oqimi(salon, dan, gacha, **_):
 
 
 def kassa(salon, dan, gacha, filial=None, **_):
-    qatorlar = [[s.sana, s.ochgan.ism, s.boshlangich_qoldiq, s.hisobdagi_qoldiq, s.fakt_qoldiq, s.farq,
-                 s.izoh if s.yopilgan else 'smena ochiq']
-                for s in Smena.objects.filter(salon=salon, sana__range=(dan, gacha), **({'filial_id': filial} if filial else {}))
-                .select_related('ochgan').order_by('sana', 'id')]
-    return {'sarlavha': 'Kunlik kassa', 'izoh': 'Naqd pul bo\'yicha smenalar (4.12).',
-            'ustunlar': _u(('Sana', 'sana'), ('Ochgan', 'matn'), ("Boshlang'ich qoldiq", 'pul'), ('Hisobdagi qoldiq', 'pul'),
-                           ('Fakt qoldiq', 'pul'), ('Farq', 'pul'), ('Izoh', 'matn')),
-            'qatorlar': qatorlar, 'jami': ['Farqlar jami', '', None, None, None, sum(q[5] or 0 for q in qatorlar), '']}
+    """Kunlik kassa (4.12): har smena bitta qator — kim ishladi, qancha pul kirdi, qaytarildi va kassadan chiqdi,
+    kassada qancha naqd bo'lishi kerak edi va qancha sanaldi. Farq manfiy — kamomad."""
+    from apps.cash.services import kassa_hisobot
+    T = Tolov.Tur
+    smenalar = list(Smena.objects.filter(salon=salon, sana__range=(dan, gacha), **({'filial_id': filial} if filial else {}))
+                    .select_related('ochgan').prefetch_related('ishtirokchilar__xodim').order_by('sana', 'id'))
+    kirim = Q(tur__in=[T.AVANS, T.QOLDIQ, T.JARIMA])
+    pul = {r['smena']: r for r in Tolov.objects.filter(smena__in=smenalar).values('smena').annotate(
+        naqd=Sum('summa', filter=kirim & Q(usul=Tolov.Usul.NAQD)), naqdsiz=Sum('summa', filter=kirim & ~Q(usul=Tolov.Usul.NAQD)),
+        qaytarilgan=Sum('summa', filter=Q(tur=T.VOZVRAT)), xarajat=Sum('summa', filter=Q(tur=T.XARAJAT)))}
+    qatorlar = []
+    for s in smenalar:
+        p = pul.get(s.id, {})
+        ishchilar = [i.xodim.ism for i in s.ishtirokchilar.all()] or [s.ochgan.ism]
+        izoh = [f'{i.xodim.ism} chiqishda {i.farq:+,}'.replace(',', ' ') for i in s.ishtirokchilar.all() if i.farq]
+        izoh.append(s.izoh if s.yopilgan else 'smena ochiq')
+        kutilgan = s.hisobdagi_qoldiq if s.yopilgan else kassa_hisobot(s)['hisobdagi_qoldiq']
+        qatorlar.append([s.sana, ', '.join(dict.fromkeys(ishchilar)), p.get('naqd') or 0, p.get('naqdsiz') or 0,
+                         p.get('qaytarilgan') or 0, p.get('xarajat') or 0, kutilgan, s.fakt_qoldiq, s.farq,
+                         ' · '.join(x for x in izoh if x)])
+    jami = ['Jami', ''] + [sum(q[i] for q in qatorlar) for i in range(2, 6)] + [None, None, sum(q[8] or 0 for q in qatorlar), '']
+    return {'sarlavha': 'Kunlik kassa',
+            'izoh': "Har smena alohida. «Kassada bo'lishi kerak» — boshlang'ich naqd + naqd kirim va zalog − naqd chiqimlar. "
+                    "Farq manfiy bo'lsa — kamomad, musbat — ortiqcha. Ijara, oylik kabi kassadan tashqari xarajatlar bu yerga kirmaydi.",
+            'ustunlar': _u(('Sana', 'sana'), ('Xodim', 'matn'), ('Naqd kirdi', 'pul'), ('Karta, Click, Payme', 'pul'),
+                           ('Mijozga qaytarildi', 'pul'), ('Kassadan xarajat', 'pul'), ("Kassada bo'lishi kerak", 'pul'),
+                           ('Sanaldi', 'pul'), ('Farq', 'pul'), ('Izoh', 'matn')),
+            'qatorlar': qatorlar, 'jami': jami}
 
 
 def bandlik(salon, dan, gacha, kategoriya=None, filial=None, **_):
@@ -340,11 +361,56 @@ def chegirmalar(salon, dan, gacha, sotuvchi=None, **_):
             'qatorlar': qatorlar, 'jami': ['Jami', '', '', '', '', sum(q[5] or 0 for q in qatorlar), '']}
 
 
+def xodimlar_nazorati(salon, dan, gacha, **_):
+    """Rahbar uchun: har bir xodim kassani to'g'ri topshiryaptimi va pulga ta'sir qiladigan amallari odatdan
+    tashqari ko'pmi. Kassa farqi smenani yopgan (yoki kun o'rtasida chiqqan) xodimga yoziladi."""
+    from apps.cash.models import SmenaIshtirokchi
+    from apps.orders.models import ZakazTarixi
+    smena = defaultdict(int)
+    farq = defaultdict(int)
+    kamomad = defaultdict(int)
+    for i in (SmenaIshtirokchi.objects.filter(salon=salon, smena__sana__range=(dan, gacha))
+              .select_related('smena')):
+        smena[i.xodim_id] += 1
+        f = i.farq if i.farq is not None else (i.smena.farq if i.smena.yopilgan and i.chiqqan == i.smena.yopilgan else None)
+        if f:
+            farq[i.xodim_id] += f
+            kamomad[i.xodim_id] += f < 0
+    yangi = dict(Zakaz.objects.filter(salon=salon, yaratilgan__date__range=(dan, gacha))
+                 .values_list('sotuvchi_id').annotate(n=Count('id')))
+    bekor = dict(ZakazTarixi.objects.filter(salon=salon, harakat__in=('bekor_qilindi', 'avtomatik_bekor'), xodim__isnull=False,
+                                            vaqt__date__range=(dan, gacha)).values_list('xodim_id').annotate(n=Count('id')))
+    qaytargan = dict(Tolov.objects.filter(salon=salon, tur=Tolov.Tur.VOZVRAT, vaqt__date__range=(dan, gacha))
+                     .values_list('xodim_id').annotate(s=Sum('summa')))
+    cheg = dict(ChegirmaSorovi.objects.filter(salon=salon, yaratilgan__date__range=(dan, gacha))
+                .values_list('sotuvchi_id').annotate(n=Count('id')))
+    qatorlar = []
+    for x in Xodim.objects.filter(salon=salon).order_by('ism'):
+        if not (smena[x.id] or yangi.get(x.id) or bekor.get(x.id) or qaytargan.get(x.id) or cheg.get(x.id)):
+            continue
+        diqqat = []
+        if kamomad[x.id]:
+            diqqat.append(f'kamomad {kamomad[x.id]} marta')
+        b, y = bekor.get(x.id, 0), yangi.get(x.id, 0)
+        if b >= 2 and b * 5 >= max(y, 1):  # bekor qilganlari yangi zakazlarining 20% idan ko'p
+            diqqat.append("bekor qilish ko'p")
+        qatorlar.append([x.ism, smena[x.id], farq[x.id], y, b, qaytargan.get(x.id, 0), cheg.get(x.id, 0), ', '.join(diqqat)])
+    return {'sarlavha': 'Xodimlar nazorati',
+            'izoh': "Kassa farqi manfiy — kamomad: xodim smenani yopganda (yoki kun o'rtasida chiqqanda) sanagan naqd "
+                    "kerakligidan kam bo'lgan. «Diqqat» ustuni kamomad va odatdan ko'p bekor qilishni belgilaydi.",
+            'ustunlar': _u(('Xodim', 'matn'), ('Smenalar', 'son'), ('Kassa farqi', 'pul'), ('Yangi zakazlar', 'son'),
+                           ('Bekor qilgan', 'son'), ('Mijozga qaytargan pul', 'pul'), ("Chegirma so'ragan", 'son'),
+                           ('Diqqat', 'matn')),
+            'qatorlar': qatorlar,
+            'jami': ['Jami', sum(q[1] for q in qatorlar), sum(q[2] for q in qatorlar), sum(q[3] for q in qatorlar),
+                     sum(q[4] for q in qatorlar), sum(q[5] for q in qatorlar), sum(q[6] for q in qatorlar), '']}
+
+
 HISOBOTLAR = {
     'libos': libos_samaradorligi, 'kategoriya': kategoriyalar, 'sotuvchi': sotuvchilar, 'salonchi': salonchilar,
     'manba': mijoz_manbalari, 'zalog': zaloglar, 'zalog-statistika': zalog_statistikasi, 'bosh-liboslar': bosh_liboslar,
     'bekor': bekor_qilinganlar, 'kechikish': kechikish_va_jarimalar, 'xarajat': xarajatlar, 'pul-oqimi': pul_oqimi,
-    'kassa': kassa, 'bandlik': bandlik, 'kelgusi': kelgusi_bronlar, 'chegirma': chegirmalar,
+    'kassa': kassa, 'nazorat': xodimlar_nazorati, 'bandlik': bandlik, 'kelgusi': kelgusi_bronlar, 'chegirma': chegirmalar,
 }
 
 # Ro'yxat uchun sarlavhalar — hisobotni hisoblamasdan (har bir funksiya javobidagi 'sarlavha' bilan bir xil)
@@ -352,7 +418,8 @@ SARLAVHALAR = {
     'libos': 'Libos samaradorligi', 'kategoriya': 'Kategoriyalar', 'sotuvchi': 'Sotuvchilar', 'salonchi': 'Salonchilar',
     'manba': 'Mijoz manbalari', 'zalog': 'Zaloglar reestri', 'zalog-statistika': 'Zalog statistikasi',
     'bosh-liboslar': "Qoplamagan va bo'sh liboslar", 'bekor': 'Bekor qilingan zakazlar', 'kechikish': 'Kechikish va jarimalar',
-    'xarajat': 'Xarajatlar', 'pul-oqimi': 'Pul oqimi', 'kassa': 'Kunlik kassa', 'bandlik': 'Bandlik',
+    'xarajat': 'Xarajatlar', 'pul-oqimi': 'Pul oqimi', 'kassa': 'Kunlik kassa', 'nazorat': 'Xodimlar nazorati',
+    'bandlik': 'Bandlik',
     'kelgusi': 'Kelgusi bronlar', 'chegirma': 'Chegirmalar',
 }
 

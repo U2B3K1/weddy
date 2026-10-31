@@ -11,10 +11,8 @@ from rest_framework.test import APIClient
 from apps.bookings.tests import libos_yarat, salon_yarat
 from apps.cash.models import Tolov
 from apps.cash.services import smena_ochish, tolov_qabul
-from apps.finance import reports
 from apps.notify import services as notify, sms, telegram
 from apps.notify.models import SmsXabar, Xabar
-from apps.orders.models import Mijoz, Zakaz
 from apps.orders.services import zakaz_yaratish
 
 from . import arxiv
@@ -54,7 +52,7 @@ class IntegratsiyaBase(TestCase):
 class SozlamaApiTests(IntegratsiyaBase):
     def test_bosh_holat_hammasi_ochiq_emas(self):
         d = self.r.get('/api/integratsiyalar/').data
-        self.assertEqual(d['holat'], {'telegram': 'yoq', 'sms': 'yoq', 'click': False, 'payme': False, 'soliq_foizi': 4})
+        self.assertEqual(d['holat'], {'telegram': 'yoq', 'sms': 'yoq', 'click': False, 'payme': False})
         self.assertEqual(d['eskiz_parol_kiritilgan'], False)
         self.assertNotIn('telegram_token', d)  # Telegram endi salon sozlamasi emas
 
@@ -81,7 +79,7 @@ class SozlamaApiTests(IntegratsiyaBase):
 
     def test_tekshiruvlar(self):
         for body in ({'eskiz_email': 'pochta-emas'}, {'click_service_id': 'abc'},
-                     {'payme_merchant_id': 'zzz'}, {'soliq_foizi': 101}, {'manekin_fon_farqi': 3},
+                     {'payme_merchant_id': 'zzz'}, {'manekin_fon_farqi': 3},
                      {'sms_shablon_qaytarish': 'Salom {ism}'}, {'instagram': 'https://evil.example/x'}):
             self.assertEqual(self.r.patch('/api/integratsiyalar/', body, format='json').status_code, 400, body)
         # salon panelidan bot tokeni kiritib bo'lmaydi — noma'lum maydon jimgina tashlanadi
@@ -90,12 +88,12 @@ class SozlamaApiTests(IntegratsiyaBase):
     def test_faqat_rahbar_va_faqat_oz_saloni(self):
         m = self.api(self.malika)
         self.assertEqual(m.get('/api/integratsiyalar/').status_code, 403)
-        self.assertEqual(m.patch('/api/integratsiyalar/', {'soliq_foizi': 1}, format='json').status_code, 403)
-        self.sozla(soliq_foizi='7.5', payme_merchant_id='5e730e8e0b852a417aa49ceb')
+        self.assertEqual(m.patch('/api/integratsiyalar/', {'instagram': 'ezaz'}, format='json').status_code, 403)
+        self.sozla(instagram='ezaz', payme_merchant_id='5e730e8e0b852a417aa49ceb')
         salon2, _, _ = salon_yarat('boshqa')
         r2 = Xodim.objects.create(salon=salon2, ism='R2', rol=Xodim.Rol.RAHBAR)
         d = self.api(r2).get('/api/integratsiyalar/').data
-        self.assertEqual((d['soliq_foizi'], d['payme_merchant_id']), (None, ''))
+        self.assertEqual((d['instagram'], d['payme_merchant_id']), ('', ''))
 
     def test_xodimga_faqat_belgilar(self):
         self.sozla(fiskal_eslatma=True, fiskal_izoh='Chekni onlayn kassada uring', click_service_id='111', click_merchant_id='222')
@@ -192,21 +190,7 @@ class SmsTests(IntegratsiyaBase):
         self.assertEqual(chaqiruvlar[1][1]['from'], 'EZAZ')
 
 
-class SoliqVaTolovTests(IntegratsiyaBase):
-    def test_soliq_foizi_salon_sozlamasidan(self):
-        mijoz = Mijoz.objects.create(salon=self.salon, telefon='+998901')
-        Zakaz.objects.create(salon=self.salon, raqam=1, mijoz=mijoz, olib_ketish=date(2026, 10, 20), qaytarish=date(2026, 10, 22),
-                             jami=10_000_000, holat=Zakaz.Holat.YOPILDI, tolangan_sana=date(2026, 10, 1))
-        r = reports.foyda_zarar(self.salon, 2026, 10)
-        self.assertEqual((r['soliq_foizi'], r['soliq']), (4, 400_000))  # standart
-        self.sozla(soliq_foizi='7.5', soliq_izohi='Buxgalter xulosasi, 01.11.2026')
-        r = reports.foyda_zarar(self.salon, 2026, 10)
-        self.assertEqual((r['soliq_foizi'], r['soliq']), (7.5, 750_000))
-        self.sozla(soliq_foizi=None)
-        self.assertEqual(reports.foyda_zarar(self.salon, 2026, 10)['soliq'], 400_000)
-        self.sozla(soliq_foizi=0)
-        self.assertEqual(reports.foyda_zarar(self.salon, 2026, 10)['soliq'], 0)
-
+class TolovHavolaTests(IntegratsiyaBase):
     def test_tolov_havolalari(self):
         l = libos_yarat(self.salon, self.kat, 'A', ijara_narxi=1_000_000)
         z = zakaz_yaratish(salon=self.salon, xodim=self.malika, telefon='+998901', olib_ketish=date(2027, 5, 1), qaytarish=date(2027, 5, 2),

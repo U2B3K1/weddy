@@ -5,7 +5,7 @@ from rest_framework.test import APIClient
 
 from apps.bookings.tests import salon_yarat
 from apps.catalog.models import Libos
-from apps.cash.models import Tolov
+from apps.cash.models import Smena, Tolov
 from apps.cash.services import smena_ochish, tolov_qabul
 from apps.orders.models import Mijoz, QaytarishAkti, Zakaz
 from apps.tenants.auth import make_staff_token
@@ -30,10 +30,14 @@ class FilialPnlTests(TestCase):
             Libos.objects.create(salon=s, kategoriya=self.kat, artikul=artikul, nomi=artikul, tannarx=2_400_000, filial=filial)
         Libos.objects.filter(salon=s).update(yaratilgan=vaqt(2026, 1, 1))
         mijoz = Mijoz.objects.create(salon=s, telefon='+998901')
+        smena = Smena.objects.create(salon=s, sana=date(2026, 10, 1), ochgan=self.malika, yopilgan=vaqt(2026, 10, 31))
         for i, (jami, filial) in enumerate(((2_000_000, self.f1), (3_000_000, self.f2), (1_000_000, None)), 1):
             z = Zakaz.objects.create(salon=s, raqam=i, mijoz=mijoz, olib_ketish=date(2026, 10, 20), qaytarish=date(2026, 10, 22),
                                      jami=jami, holat=Zakaz.Holat.YOPILDI, tolangan_sana=date(2026, 10, i), filial=filial, sotuvchi=self.malika)
             QaytarishAkti.objects.create(salon=s, zakaz=z, sana=date(2026, 10, 22))
+            # kassa usuli: tushum — to'lov kuni (yopilgan eski smena)
+            t = Tolov.objects.create(salon=s, smena=smena, xodim=self.malika, tur=Tolov.Tur.QOLDIQ, summa=jami, zakaz=z)
+            Tolov.objects.filter(id=t.id).update(vaqt=vaqt(2026, 10, i))
         kw = dict(salon=s, xodim=self.rahbar, sana=date(2026, 10, 5))
         xarajat_kiritish(modda='tozalash', summa=200_000, filial=self.f1, **kw)
         xarajat_kiritish(modda='reklama', summa=300_000, filial=self.f2, **kw)

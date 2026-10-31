@@ -52,18 +52,22 @@ class FilialDonaVaTafsilotTests(TestCase):
             Libos.objects.create(salon=s, kategoriya=self.kat, artikul=artikul, nomi=artikul, tannarx=2_400_000, filial=filial)
         Libos.objects.filter(salon=s).update(yaratilgan=vaqt(2026, 1, 1))
         mijoz = Mijoz.objects.create(salon=s, telefon='+998901')
+        from apps.cash.models import Smena, Tolov
+        smena = Smena.objects.create(salon=s, sana=date(2026, 10, 1), ochgan=self.malika, yopilgan=vaqt(2026, 10, 31))
         for i, (jami, filial) in enumerate(((2_000_000, self.f1), (3_000_000, self.f2)), 1):
-            Zakaz.objects.create(salon=s, raqam=i, mijoz=mijoz, olib_ketish=date(2026, 10, 20), qaytarish=date(2026, 10, 22),
-                                 jami=jami, holat=Zakaz.Holat.YOPILDI, tolangan_sana=date(2026, 10, i), filial=filial)
+            z = Zakaz.objects.create(salon=s, raqam=i, mijoz=mijoz, olib_ketish=date(2026, 10, 20), qaytarish=date(2026, 10, 22),
+                                     jami=jami, holat=Zakaz.Holat.YOPILDI, tolangan_sana=date(2026, 10, i), filial=filial)
+            t = Tolov.objects.create(salon=s, smena=smena, xodim=self.malika, tur=Tolov.Tur.QOLDIQ, summa=jami, zakaz=z)
+            Tolov.objects.filter(id=t.id).update(vaqt=vaqt(2026, 10, i))
         xarajat_kiritish(salon=s, xodim=self.rahbar, modda='tozalash', summa=200_000, sana=date(2026, 10, 5), filial=self.f1)
         xarajat_kiritish(salon=s, xodim=self.rahbar, modda='bino', summa=5_000_000, sana=date(2026, 10, 5))
         r = reports.foyda_zarar(s, 2026, 10, filial=self.f1.id)
-        for qator, kalit in (('tushum', 'tushum'), ('togridan', 'togridan_togri_xarajat'),
-                             ('operatsion', 'operatsion_xarajat'), ('boshqa', 'boshqa_daromad')):
+        self.assertEqual((r['tushum'], r['xarajatlar']), (2_000_000, 200_000))  # umumiy xarajat filialga kirmaydi
+        for qator, kalit in (('kirim', 'kirim'), ('xarajat', 'xarajatlar'), ('jarima', 'jarimalar')):
             t = reports.pnl_tafsilot(s, 2026, 10, qator, self.f1.id)
             self.assertEqual((t['jami'], sum(q['summa'] for q in t['qatorlar'])), (r[kalit], r[kalit]), qator)
-        j = self.c.get('/api/hisobotlar/pnl/tafsilot/', {'oy': '2026-10', 'qator': 'tushum', 'filial': self.f1.id})
-        self.assertEqual([q['matn'] for q in j.data['qatorlar']], ['Zakaz #1 · +998901'])
+        j = self.c.get('/api/hisobotlar/pnl/tafsilot/', {'oy': '2026-10', 'qator': 'kirim', 'filial': self.f1.id})
+        self.assertEqual([q['matn'] for q in j.data['qatorlar']], ["Qoldiq to'lov · zakaz #1 · +998901 · Naqd"])
         okt = [q for q in reports.oylik_qator(s, 2026, 10, filial=self.f2.id) if q['oy'] == '2026-10'][0]
         self.assertEqual(okt['tushum'], 3_000_000)
         self.assertEqual(self.c.get('/api/hisobotlar/oylik/', {'filial': self.f1.id}).status_code, 200)
