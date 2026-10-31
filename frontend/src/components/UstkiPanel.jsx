@@ -17,7 +17,7 @@ export default function UstkiPanel({ sarlavha, izoh, xodim, rahbar, xabarlar, on
   }, [ochiq])
 
   const harf = (xodim.ism || '?').trim().charAt(0).toUpperCase()
-  const rol = rahbar ? 'Rahbar' : 'Sotuvchi'
+  const rol = rahbar ? 'Rahbar' : xodim.rol === 'kassir' ? 'Kassir' : 'Sotuvchi'
   const soni = xabarlar.reduce((s, x) => s + x.soni, 0)
   const bor = (k) => () => { setOchiq(null); onBolim(k) }
 

@@ -87,7 +87,7 @@ class KassaChegaralariTests(Base):
         smenaga_qoshilish(salon=self.salon, xodim=dilnoza)
         self.assertEqual(api(dilnoza).post('/api/kassa/smena/chiqish/', {'summa': -1}, format='json').status_code, 400)
         r = api(dilnoza).post('/api/kassa/smena/chiqish/', {'summa': 0}, format='json')
-        self.assertEqual((r.status_code, r.json()), (200, {'farq': 0}))
+        self.assertEqual((r.status_code, r.json()), (200, {'farq': 0, 'kimga': self.xodim.ism}))
         # endi oxirgi sotuvchi — chiqa olmaydi, smenani yopishi kerak
         r = api(self.xodim).post('/api/kassa/smena/chiqish/', {'summa': 0}, format='json')
         self.assertEqual(r.status_code, 409)

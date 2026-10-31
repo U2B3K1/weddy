@@ -119,7 +119,8 @@ class OchiqSavollarTests(Base):
         z = self.zakaz()
         t = tolov_qabul(salon=self.salon, xodim=self.xodim, tur=Tolov.Tur.AVANS, summa=z.jami, zakaz=z)
         yil, oy = self.otgan_oy()
-        Tolov.objects.filter(id=t.id).update(vaqt=t.vaqt.replace(day=1) - timedelta(days=1))
+        # mahalliy vaqtdan: oy boshida UTC hali o'tgan oyda bo'lishi mumkin
+        Tolov.objects.filter(id=t.id).update(vaqt=timezone.localtime(t.vaqt).replace(day=1) - timedelta(days=1))
         oldin = reports.foyda_zarar(self.salon, yil, oy)['tushum']
         z = zakazni_bekor_qilish(salon=self.salon, xodim=self.xodim, zakaz=z, sabab='mijoz voz kechdi',
                                  qoida=[(0, 70)])  # 70% qaytariladi, 30% ushlab qolinadi

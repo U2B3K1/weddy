@@ -213,6 +213,8 @@ def tugma_ishla(chat_id, data):
     qismlar = (data or '').split(':')
     if len(qismlar) == 3 and qismlar[0] == 'qr' and qismlar[1].isdigit() and qismlar[2] in ('t', 'h', 'r'):
         return qurilma_tugma_ishla(chat_id, int(qismlar[1]), qismlar[2])
+    if len(qismlar) == 3 and qismlar[0] == 'kt' and qismlar[1].isdigit() and qismlar[2] in ('q', 'b'):
+        return kassa_tugma_ishla(chat_id, int(qismlar[1]), qismlar[2])
     if len(qismlar) != 3 or qismlar[0] != 'ch' or not qismlar[1].isdigit() or qismlar[2] not in ('t', 'r'):
         return "Noma'lum buyruq."
     sorov = ChegirmaSorovi.objects.filter(id=int(qismlar[1])).first()
@@ -228,6 +230,28 @@ def tugma_ishla(chat_id, data):
     if s.holat == ChegirmaSorovi.Holat.TASDIQLANDI:
         return f"Tasdiqlandi: chegirma {som(s.tasdiqlangan_summa)}. Zakaz #{s.zakaz.raqam}, yangi jami {som(s.zakaz.jami)}."
     return f"Rad etildi. Zakaz #{s.zakaz.raqam} chegirmasiz narxda davom etadi."
+
+
+# ---------- kassa: topshirilgan naqdni qabul qilish ----------
+
+def kassa_tugma_ishla(chat_id, tid, amal):
+    """«✅ Qabul qildim» — topshiruvchi aytgan summa qabul qilinadi; «✏️ Boshqa summa» — summa ilovada kiritiladi.
+    Tugmani faqat pul topshirilgan xodimning o'zi bosa oladi."""
+    from apps.cash.models import KassaTopshirish
+    from apps.cash.services import KassaXatosi, topshiriqni_qabul
+
+    t = KassaTopshirish.objects.select_related('kimga', 'salon').filter(id=tid).first()
+    if not t or t.kimga.telegram_id != chat_id or not t.kimga.faol:
+        return 'Bu pul sizga topshirilmagan.'
+    if t.holat == KassaTopshirish.Holat.QABUL:
+        return 'Allaqachon qabul qilingan.'
+    if amal == 'b':
+        return "Sanagan summangizni ilovada kiriting: Kassa → «Sizga topshirilgan pul» → «Boshqa summa»."
+    try:
+        t = topshiriqni_qabul(salon=t.salon, xodim=t.kimga, topshirish=t)
+    except KassaXatosi as e:
+        return str(e)
+    return f'Qabul qilindi: {som(t.qabul_summa)}.'
 
 
 # ---------- yangi qurilmani Telegram orqali tasdiqlash (FT-22.2) ----------

@@ -1,12 +1,14 @@
 from rest_framework import serializers
+from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.orders.models import Zakaz
+from apps.tenants.models import Xodim, sozlama
 from apps.tenants.permissions import IsStaff, SalonYozishRuxsati
 
 from . import services, tekshiruv
-from .models import Tolov
+from .models import KassaTopshirish, Tolov
 from .services import KassaXatosi, xato_tanasi
 
 
@@ -14,9 +16,18 @@ def xato(e):
     return Response(xato_tanasi(e), status=409)
 
 
+def _xodim(request, pk, nom):
+    """So'rovdagi xodim (pul topshiriladigan kishi): shu salonning faol xodimi bo'lishi shart."""
+    if pk is None:
+        return None
+    x = Xodim.objects.filter(salon=request.salon, id=pk, faol=True).first()
+    if not x:
+        raise ValidationError({nom: ['Xodim topilmadi.']})
+    return x
+
+
 def _filial(request):
     """Shu qurilma kassasi: filial kassasi yoqilgan bo'lsa qurilma filiali, aks holda umumiy kassa (None)."""
-    from apps.tenants.models import sozlama
     from apps.tenants.views_filial import joriy_filial
     return joriy_filial(request) if sozlama(request.salon).filial_kassasi else None
 
@@ -28,15 +39,32 @@ class SmenaHolatiView(APIView):
     def get(self, request):
         filial = _filial(request)
         smena = services.xodim_smenasi(request.salon, request.user) or services.ochiq_smena(request.salon, filial)
+        men = request.user
+        umumiy = {
+            'kassa_rejimi': sozlama(request.salon).kassa_rejimi,
+            'pul_oladi': services.pul_oladimi(request.salon, men),
+            # menga topshirilgan, hali qabul qilinmagan pul (rahbarga — yopilgan smenadan ham)
+            'kutayotgan': [services.topshiriq_json(t) for t in KassaTopshirish.objects.filter(
+                salon=request.salon, kimga=men, holat=KassaTopshirish.Holat.KUTILMOQDA).select_related('kimdan', 'kimga')],
+            'rahbarlar': [{'id': x.id, 'ism': x.ism} for x in Xodim.objects.filter(
+                salon=request.salon, rol=Xodim.Rol.RAHBAR, faol=True).exclude(id=men.id).order_by('ism')],
+        }
         if not smena:
-            return Response({'ochiq': False, 'filial': filial.nomi if filial else None})
+            return Response({'ochiq': False, 'filial': filial.nomi if filial else None,
+                             'seyfda': services.seyf_qoldigi(request.salon, filial), **umumiy})
         faol = list(smena.ishtirokchilar.filter(chiqqan=None).select_related('xodim'))
+        men_ishtirokchi = any(i.xodim_id == men.id for i in faol)
         return Response({
             'ochiq': True, 'id': smena.id, 'filial': smena.filial.nomi if smena.filial_id else None,
             'ishtirokchilar': [i.xodim.ism for i in faol],
-            'men_ishtirokchi': any(i.xodim_id == request.user.id for i in faol),
+            'xodimlar': [{'id': i.xodim_id, 'ism': i.xodim.ism} for i in faol if i.xodim_id != men.id],  # pul topshirish uchun
+            'men_ishtirokchi': men_ishtirokchi,
+            'mening_hisobim': services.xodim_qoldigi(smena, men) if men_ishtirokchi else None,
+            'yuborilgan': [services.topshiriq_json(t) for t in smena.topshiriqlar.filter(
+                kimdan=men, holat=KassaTopshirish.Holat.KUTILMOQDA).select_related('kimdan', 'kimga')],
             'hisobot': services.kassa_hisobot(smena),
             'zalog_tekshirilmagan': tekshiruv.tekshirilmaganlar_soni(smena),
+            **umumiy,
         })
 
 
@@ -71,20 +99,24 @@ class SmenaQoshilishView(APIView):
 class SanashSerializer(serializers.Serializer):
     summa = serializers.IntegerField(min_value=0)
     izoh = serializers.CharField(required=False, allow_blank=True, default='', max_length=300)
+    kimga = serializers.IntegerField(required=False)   # chiqish: kimga topshiriladi
+    rahbar = serializers.IntegerField(required=False)  # yopish (seyf o'rniga) va inkassatsiya: qaysi rahbarga
 
 
 class SmenaChiqishView(APIView):
+    """POST {summa, kimga?} — qo'ldagi naqdni smenada qolayotgan xodimga yoki rahbarga topshirib chiqish."""
     permission_classes = [SalonYozishRuxsati]
 
     def post(self, request):
         ser = SanashSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
+        kimga = _xodim(request, ser.validated_data.get('kimga'), 'kimga')
         try:
-            ish = services.smena_chiqish(salon=request.salon, xodim=request.user,
+            ish = services.smena_chiqish(salon=request.salon, xodim=request.user, kimga=kimga,
                                          sanalgan_summa=ser.validated_data['summa'], filial=_filial(request))
         except KassaXatosi as e:
             return xato(e)
-        return Response({'farq': ish.farq})
+        return Response({'farq': ish.farq, 'kimga': ish.topshirish.kimga.ism})
 
 
 class SmenaYopishView(APIView):
@@ -95,11 +127,47 @@ class SmenaYopishView(APIView):
         ser.is_valid(raise_exception=True)
         try:
             s = services.smena_yopish(salon=request.salon, xodim=request.user,
-                                      fakt_qoldiq=ser.validated_data['summa'],
-                                      izoh=ser.validated_data['izoh'], filial=_filial(request))
+                                      fakt_qoldiq=ser.validated_data['summa'], izoh=ser.validated_data['izoh'],
+                                      filial=_filial(request), rahbar=_xodim(request, ser.validated_data.get('rahbar'), 'rahbar'))
         except KassaXatosi as e:
             return xato(e)
         return Response({'farq': s.farq})
+
+
+class InkassatsiyaView(APIView):
+    """POST {summa, rahbar, izoh?} — naqdning bir qismini rahbarga berish; rahbar Telegramda tasdiqlaydi."""
+    permission_classes = [SalonYozishRuxsati]
+
+    def post(self, request):
+        ser = SanashSerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        d = ser.validated_data
+        if 'rahbar' not in d:
+            raise ValidationError({'rahbar': ['Kimga topshirilishini tanlang.']})
+        try:
+            t = services.inkassatsiya(salon=request.salon, xodim=request.user, rahbar=_xodim(request, d['rahbar'], 'rahbar'),
+                                      summa=d['summa'], izoh=d['izoh'])
+        except KassaXatosi as e:
+            return xato(e)
+        return Response(services.topshiriq_json(t), status=201)
+
+
+class TopshiriqQabulView(APIView):
+    """POST {summa?} — menga topshirilgan pulni sanab qabul qilish (summasiz — topshiruvchi aytgan summa)."""
+    permission_classes = [SalonYozishRuxsati]
+
+    def post(self, request, pk):
+        t = KassaTopshirish.objects.filter(salon=request.salon, id=pk).first()
+        if not t:
+            return Response({'detail': 'Topshiriq topilmadi.'}, status=404)
+        summa = request.data.get('summa')
+        if summa is not None:
+            summa = serializers.IntegerField(min_value=0).run_validation(summa)
+        try:
+            t = services.topshiriqni_qabul(salon=request.salon, xodim=request.user, topshirish=t, summa=summa)
+        except KassaXatosi as e:
+            return xato(e)
+        return Response(services.topshiriq_json(t))
 
 
 class TolovSerializer(serializers.Serializer):

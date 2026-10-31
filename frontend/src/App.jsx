@@ -181,8 +181,10 @@ export default function App() {
 
   // Ichki bo'limlar — sahifa tepasidagi segment (barcha ekranlarda bir xil joyda). Sozlama o'z menyusiga ega.
   // Kassa (POS): smena amallari (ochish, chiqish, yopish) — smena panelida; bu yerda ish ekranlari
-  const kassaRoyxat = [['yangi', 'Yangi zakaz', 'yangi'], ['tolov', "To'lov qabul", 'kassa'], ['xarajat', 'Xarajat', 'hamyon'],
-    ['inkassatsiya', 'Inkassatsiya', 'seyf'], ['zalog', 'Zaloglar', 'qalqon'], ['hisobot', 'Smena hisoboti', 'hujjat'],
+  // «Alohida kassir» rejimida sotuvchi pul bilan ishlamaydi — faqat zakaz oladi
+  const pulOladi = !(xodim.rol === 'sotuvchi' && xodim.kassa_rejimi === 'kassir')
+  const kassaRoyxat = [['yangi', 'Yangi zakaz', 'yangi'], ...(pulOladi ? [['tolov', "To'lov qabul", 'kassa'], ['xarajat', 'Xarajat', 'hamyon'],
+    ['inkassatsiya', 'Inkassatsiya', 'seyf'], ['zalog', 'Zaloglar', 'qalqon'], ['hisobot', 'Smena hisoboti', 'hujjat']] : []),
     ...(rahbar ? [['tarix', 'Smenalar tarixi', 'tarix']] : [])]
   const ichki = {
     zakazlar: { joriy: zakazlarBolim, tanla: (b) => { setZakazlarBolim(b); setZakazId(null) }, royxat: [['royxat', "Ro'yxat"], ['bandlik', 'Bandlik kalendari']] },

@@ -1,11 +1,12 @@
 from django.db import IntegrityError, transaction
-from django.db.models import Sum
+from django.db.models import Q, Sum
 from django.utils import timezone
 
 from apps.bookings.models import AksessuarBron, Bron
 from apps.orders.models import Zakaz
+from apps.tenants.models import Xodim, sozlama
 
-from .models import Smena, SmenaIshtirokchi, Tolov
+from .models import KassaTopshirish, Smena, SmenaIshtirokchi, Tolov
 
 
 class KassaXatosi(Exception):
@@ -43,9 +44,30 @@ def _kassa(salon, xodim, filial):
     return xodim_smenasi(salon, xodim) or ochiq_smena(salon, filial)
 
 
+def pul_oladimi(salon, xodim):
+    """«Alohida kassir» rejimida pulni faqat kassir va rahbar qabul qiladi; sotuvchi faqat zakaz oladi."""
+    return xodim.rol != Xodim.Rol.SOTUVCHI or sozlama(salon).kassa_rejimi != 'kassir'
+
+
+def _pul_olishi_shart(salon, xodim):
+    if not pul_oladimi(salon, xodim):
+        raise KassaXatosi('Salonda pulni kassir qabul qiladi: mijozni kassaga yuboring.', kod='kassir')
+
+
+def seyf_qoldigi(salon, filial, hozirgi=None):
+    """Shu kassaning oxirgi yopilgan smenasidan seyfda qolgan naqd (ma'lum bo'lmasa None)."""
+    qs = Smena.objects.filter(salon=salon, filial=filial, yopilgan__isnull=False)
+    if hozirgi:
+        qs = qs.exclude(id=hozirgi.id)
+    s = qs.order_by('-yopilgan').first()
+    return s.seyfda if s else None
+
+
 @transaction.atomic
 def smena_ochish(*, salon, xodim, boshlangich_qoldiq, filial=None):
-    """Birinchi kelgan sotuvchi smenani ochadi va boshlang'ich qoldiqni tasdiqlaydi (FT-12.7)."""
+    """Birinchi kelgan xodim smenani ochadi va seyfdagi naqdni sanab tasdiqlaydi (FT-12.7).
+    Oldingi smena yopilganda seyfda qolgan summadan farq qilsa — rahbarga xabar."""
+    _pul_olishi_shart(salon, xodim)
     boshqa = xodim_smenasi(salon, xodim)
     if boshqa and boshqa.filial_id != (filial.id if filial else None):
         raise KassaXatosi('Siz boshqa kassaning ochiq smenasidasiz: avval undan chiqing.')
@@ -56,11 +78,18 @@ def smena_ochish(*, salon, xodim, boshlangich_qoldiq, filial=None):
     except IntegrityError:
         raise KassaXatosi('Smena allaqachon ochiq. Unga qo\'shiling.')
     SmenaIshtirokchi.objects.create(salon=salon, smena=smena, xodim=xodim)
+    oldingi = seyf_qoldigi(salon, filial, smena)
+    if oldingi is not None and oldingi != boshlangich_qoldiq:
+        from apps.notify.services import rahbarlarga, som
+        rahbarlarga(salon, 'seyf_farqi',
+                    f"Seyf farqi{' · ' + filial.nomi if filial else ''}: oldingi smena yopilganda seyfda {som(oldingi)} "
+                    f"qolgan, {xodim.ism} ochishda {som(boshlangich_qoldiq)} sanadi (farq {som(boshlangich_qoldiq - oldingi)}).")
     return smena
 
 
 @transaction.atomic
 def smenaga_qoshilish(*, salon, xodim, filial=None):
+    _pul_olishi_shart(salon, xodim)
     smena = ochiq_smena(salon, filial)
     if not smena:
         raise KassaXatosi('Ochiq smena yo\'q.')
@@ -115,6 +144,7 @@ def tolov_qabul(*, salon, xodim, tur, summa, usul=Tolov.Usul.NAQD, zakaz=None, i
     bepul_bron = tur == Tolov.Tur.AVANS and summa == 0 and zakaz is not None and zakaz.jami == 0
     if summa <= 0 and not bepul_bron:
         raise KassaXatosi('Summa musbat bo\'lishi kerak.')
+    _pul_olishi_shart(salon, xodim)
     smena = xodim_smenasi(salon, xodim)
     if not smena:
         if not ochiq_smena(salon):
@@ -177,9 +207,66 @@ def kassa_hisobot(smena):
     }
 
 
+def xodim_qoldigi(smena, xodim):
+    """Xodim qo'lidagi naqd, tizim bo'yicha: smenani ochgan bo'lsa seyfdan olgani + o'zi olgan naqd − o'zi bergan naqd
+    + qabul qilgan topshiriqlari − topshirib bo'lgani. Har kim faqat shu summaga javob beradi."""
+    r = smena.tolovlar.filter(usul=Tolov.Usul.NAQD, xodim=xodim).aggregate(
+        kirim=Sum('summa', filter=Q(tur__in=Tolov.KIRIM)), chiqim=Sum('summa', filter=Q(tur__in=Tolov.CHIQIM)))
+    olgan = (smena.topshiriqlar.filter(kimga=xodim, rahbarga=False, holat=KassaTopshirish.Holat.QABUL)
+             .aggregate(s=Sum('qabul_summa'))['s'] or 0)
+    # To'liq topshirgan xodimning hisobi nolga tushadi; rahbarga berilgan qismi to'lov (inkassatsiya) sifatida ayirilgan
+    b = smena.topshiriqlar.filter(kimdan=xodim, toliq=True).aggregate(
+        h=Sum('hisobdagi'), s=Sum('summa', filter=Q(rahbarga=True)))
+    boshlangich = smena.boshlangich_qoldiq if smena.ochgan_id == xodim.id else 0
+    return boshlangich + (r['kirim'] or 0) - (r['chiqim'] or 0) + olgan - ((b['h'] or 0) - (b['s'] or 0))
+
+
+def _kutayotgani_yoq(smena, xodim):
+    """Xodimga topshirilgan pul hali qabul qilinmagan bo'lsa, u o'z hisobini topshira yoki smenani yopa olmaydi."""
+    t = (smena.topshiriqlar.filter(kimga=xodim, rahbarga=False, holat=KassaTopshirish.Holat.KUTILMOQDA)
+         .select_related('kimdan').first())
+    if t:
+        raise KassaXatosi(f'Avval {t.kimdan.ism} topshirgan pulni ({t.summa:,} so\'m) qabul qiling.'.replace(',', ' '),
+                          kod='topshiriq_kutilmoqda')
+
+
+def _rahbar(salon, kimga):
+    if kimga.salon_id != salon.id or kimga.rol != Xodim.Rol.RAHBAR or not kimga.faol:
+        raise KassaXatosi("Pulni smenadagi xodimga yoki rahbarga topshirish mumkin.")
+
+
+def _topshirish_xabari(t):
+    """Qabul qiluvchiga Telegramda tugmali xabar (ulanmagan bo'lsa ilovada «Qabul qilish» tugmasi bor)."""
+    from apps.notify.services import som, xabar_yoz
+    joy = f' · {t.smena.filial.nomi}' if t.smena.filial_id else ''
+    matn = (f"💵 {t.kimdan.ism} sizga {som(t.summa)} naqd topshirdi{' (inkassatsiya)' if t.rahbarga else ''}{joy}.\n"
+            f"Sanab, tasdiqlang." + (f'\nIzoh: {t.izoh}' if t.izoh else ''))
+    tugmalar = [[{'text': f'✅ {som(t.summa)} qabul qildim', 'callback_data': f'kt:{t.id}:q'},
+                 {'text': '✏️ Boshqa summa', 'callback_data': f'kt:{t.id}:b'}]]
+    xabar_yoz(t.kimga, 'kassa_topshirish', matn, tugmalar)
+
+
+def _topshirish(*, salon, smena, kimdan, kimga, rahbarga, summa, hisobdagi, toliq=True, ishtirokchi=None,
+                smena_yopishda=False, izoh=''):
+    tolov = None
+    if rahbarga and summa > 0:  # rahbarga berilgan pul kassadan chiqadi
+        tolov = Tolov.objects.create(salon=salon, smena=smena, tur=Tolov.Tur.INKASSATSIYA, summa=summa, xodim=kimdan,
+                                     izoh=izoh or f'{kimga.ism}ga topshirildi')
+    t = KassaTopshirish.objects.create(salon=salon, smena=smena, kimdan=kimdan, kimga=kimga, rahbarga=rahbarga,
+                                       toliq=toliq, smena_yopishda=smena_yopishda, ishtirokchi=ishtirokchi, tolov=tolov,
+                                       hisobdagi=hisobdagi, summa=summa, izoh=izoh)
+    if summa == 0:  # topshiriladigan pul yo'q — tasdiq kerak emas
+        t.holat, t.qabul_summa, t.qabul_vaqti = KassaTopshirish.Holat.QABUL, 0, timezone.now()
+        t.save(update_fields=['holat', 'qabul_summa', 'qabul_vaqti'])
+    else:
+        _topshirish_xabari(t)
+    return t
+
+
 @transaction.atomic
-def smena_chiqish(*, salon, xodim, sanalgan_summa, filial=None):
-    """Sotuvchi kun o'rtasida ketadi: naqd sanaladi, farq ketayotganga yoziladi (FT-12.9)."""
+def smena_chiqish(*, salon, xodim, sanalgan_summa, kimga=None, filial=None):
+    """Xodim kun o'rtasida ketadi: qo'lidagi naqdni sanab, smenada qolayotgan xodimga yoki rahbarga topshiradi (FT-12.9).
+    Farq (topshirilgan − hisobdagi) faqat ketayotganga yoziladi; qabul qiluvchi boshqa summa sanasa — uning summasi bo'yicha."""
     smena = _kassa(salon, xodim, filial)
     if not smena:
         raise KassaXatosi('Ochiq smena yo\'q.')
@@ -190,17 +277,31 @@ def smena_chiqish(*, salon, xodim, sanalgan_summa, filial=None):
     ish = faol.filter(xodim=xodim).first()
     if not ish:
         raise KassaXatosi('Siz smenada emassiz.')
-    hisobdagi = kassa_hisobot(smena)['hisobdagi_qoldiq']
+    _kutayotgani_yoq(smena, xodim)
+    qolganlar = faol.exclude(xodim=xodim)
+    if kimga is None:
+        if qolganlar.count() != 1:
+            raise KassaXatosi('Pulni kimga topshirishingizni tanlang.')
+        kimga = qolganlar.first().xodim
+    if kimga.id == xodim.id:
+        raise KassaXatosi("Pulni o'zingizga topshirib bo'lmaydi.")
+    rahbarga = not qolganlar.filter(xodim=kimga).exists()
+    if rahbarga:
+        _rahbar(salon, kimga)
+    hisobdagi = xodim_qoldigi(smena, xodim)
     ish.chiqqan = timezone.now()
     ish.sanalgan_summa = sanalgan_summa
     ish.farq = sanalgan_summa - hisobdagi
     ish.save()
+    ish.topshirish = _topshirish(salon=salon, smena=smena, kimdan=xodim, kimga=kimga, rahbarga=rahbarga,
+                                 summa=sanalgan_summa, hisobdagi=hisobdagi, ishtirokchi=ish)
     return ish
 
 
 @transaction.atomic
-def smena_yopish(*, salon, xodim, fakt_qoldiq, izoh='', filial=None):
-    """Oxirgi qolgan sotuvchi naqd pulni sanab yopadi; farq bo'lsa izoh majburiy (FT-12.10)."""
+def smena_yopish(*, salon, xodim, fakt_qoldiq, izoh='', filial=None, rahbar=None):
+    """Oxirgi qolgan xodim o'z qo'lidagi naqdni sanab yopadi; farq bo'lsa izoh majburiy (FT-12.10).
+    Pul seyfda qoladi (ertaga ochuvchi sanab qabul qiladi) yoki `rahbar` ga topshiriladi."""
     smena = _kassa(salon, xodim, filial)
     if not smena:
         raise KassaXatosi('Ochiq smena yo\'q.')
@@ -208,11 +309,20 @@ def smena_yopish(*, salon, xodim, fakt_qoldiq, izoh='', filial=None):
     faol = SmenaIshtirokchi.objects.filter(smena=smena, chiqqan=None)
     if faol.count() != 1 or not faol.filter(xodim=xodim).exists():
         raise KassaXatosi('Smenani faqat oxirgi qolgan sotuvchi yopadi.')
-    hisobdagi = kassa_hisobot(smena)['hisobdagi_qoldiq']
+    _kutayotgani_yoq(smena, xodim)
+    if rahbar is not None:
+        if rahbar.id == xodim.id:
+            raise KassaXatosi("Pulni o'zingizga topshirib bo'lmaydi: seyfda qoldiring.")
+        _rahbar(salon, rahbar)
+    hisobdagi = xodim_qoldigi(smena, xodim)
     farq = fakt_qoldiq - hisobdagi
     if farq != 0 and not izoh.strip():
         raise KassaXatosi('Kassa farqi bor: izoh majburiy.')
+    if rahbar is not None:
+        _topshirish(salon=salon, smena=smena, kimdan=xodim, kimga=rahbar, rahbarga=True, summa=fakt_qoldiq,
+                    hisobdagi=hisobdagi, ishtirokchi=faol.first(), smena_yopishda=True)
     smena.hisobdagi_qoldiq, smena.fakt_qoldiq, smena.farq = hisobdagi, fakt_qoldiq, farq
+    smena.seyfda = 0 if rahbar is not None else fakt_qoldiq
     smena.izoh, smena.yopilgan = izoh, timezone.now()
     from .tekshiruv import yopishda_zalog_hisobi
     zalog_xabari = yopishda_zalog_hisobi(smena)  # FT-12.5: tekshirilmagan zalog bo'lsa rahbar biladi
@@ -228,3 +338,61 @@ def smena_yopish(*, salon, xodim, fakt_qoldiq, izoh='', filial=None):
                     f"Smena {smena.sana:%d.%m.%Y}, yopdi: {xodim.ism}.\n"
                     f"Hisobda {som(hisobdagi)}, sanaldi {som(fakt_qoldiq)}.\nIzoh: {izoh}")
     return smena
+
+
+@transaction.atomic
+def inkassatsiya(*, salon, xodim, rahbar, summa, izoh=''):
+    """Kun o'rtasida naqdning bir qismini rahbarga berish (FT-12.6): kassadan chiqim, rahbar Telegramda tasdiqlaydi."""
+    if rahbar.id == xodim.id:
+        raise KassaXatosi("Pulni o'zingizga topshirib bo'lmaydi.")
+    _rahbar(salon, rahbar)
+    if summa <= 0:
+        raise KassaXatosi('Summa musbat bo\'lishi kerak.')
+    smena = xodim_smenasi(salon, xodim)
+    if not smena:
+        raise KassaXatosi('Avval smenaga qo\'shiling.', kod='smena_qoshilish')
+    smena = _qulfla(smena)
+    if summa > xodim_qoldigi(smena, xodim):
+        raise KassaXatosi("Hisobingizda buncha naqd yo'q.")
+    return _topshirish(salon=salon, smena=smena, kimdan=xodim, kimga=rahbar, rahbarga=True, summa=summa,
+                       hisobdagi=summa, toliq=False, izoh=izoh)
+
+
+@transaction.atomic
+def topshiriqni_qabul(*, salon, xodim, topshirish, summa=None):
+    """Qabul qiluvchi pulni sanab tasdiqlaydi (`summa` berilmasa — topshiruvchi aytgan summa).
+    Boshqa summa sanalsa: to'liq topshirishda topshiruvchining farqi shu summa bo'yicha qayta hisoblanadi
+    va rahbarga xabar boradi."""
+    t = KassaTopshirish.objects.select_for_update(of=('self',)).select_related('kimdan', 'kimga', 'smena').get(
+        id=topshirish.id, salon=salon)
+    if t.kimga_id != xodim.id:
+        raise KassaXatosi('Bu pul sizga topshirilmagan.')
+    if t.holat == KassaTopshirish.Holat.QABUL:
+        raise KassaXatosi('Allaqachon qabul qilingan.')
+    if not t.rahbarga:
+        _qulfla(t.smena)
+    qabul = t.summa if summa is None else summa
+    if qabul < 0:
+        raise KassaXatosi('Summa manfiy bo\'lishi mumkin emas.')
+    t.qabul_summa, t.holat, t.qabul_vaqti = qabul, KassaTopshirish.Holat.QABUL, timezone.now()
+    t.save(update_fields=['qabul_summa', 'holat', 'qabul_vaqti'])
+    if qabul != t.summa and t.toliq:
+        farq = qabul - t.hisobdagi
+        if t.smena_yopishda:
+            Smena.objects.filter(id=t.smena_id).update(farq=farq)
+        elif t.ishtirokchi_id:
+            SmenaIshtirokchi.objects.filter(id=t.ishtirokchi_id).update(farq=farq)
+
+    from apps.notify.services import rahbarlarga, som, xabar_yoz
+    xabar_yoz(t.kimdan, 'kassa_topshirish_qabul',
+              f"✅ {xodim.ism} siz topshirgan {som(qabul)} ni qabul qildi ({timezone.localtime(t.qabul_vaqti):%d.%m %H:%M}).")
+    if qabul != t.summa:
+        rahbarlarga(salon, 'kassa_topshirish_farqi',
+                    f"Topshirishda kelishmovchilik: {t.kimdan.ism} {som(t.summa)} topshirdim dedi, "
+                    f"{xodim.ism} {som(qabul)} sanab qabul qildi (farq {som(qabul - t.summa)}).")
+    return t
+
+
+def topshiriq_json(t):
+    return {'id': t.id, 'kimdan': t.kimdan.ism, 'kimga': t.kimga.ism, 'summa': t.summa, 'qabul_summa': t.qabul_summa,
+            'rahbarga': t.rahbarga, 'holat': t.holat, 'izoh': t.izoh, 'vaqt': t.yaratilgan}

@@ -133,8 +133,8 @@ class StatistikaTests(TestCase):
     def test_xodimlar_nazorati(self):
         smena_yopish(salon=self.salon, xodim=self.malika, fakt_qoldiq=4_940_000, izoh='10 ming yetmadi')
         n = self.h('nazorat')
-        # 1 smena, kamomad 10 000, 4 yangi zakaz, 1 bekor qilgan (50% — 500 000 qaytargan), 1 chegirma so'ragan
-        self.assertEqual(self.qator(n, 'Malika')[1:], [1, -10_000, 4, 1, 500_000, 1, 'kamomad 1 marta'])
+        # 1 smena, kamomad 10 000, 4 yangi zakaz (tushum 3,9 mln), 1 bekor qilgan (50% — 500 000 qaytargan), 1 chegirma so'ragan
+        self.assertEqual(self.qator(n, 'Malika')[1:], [1, -10_000, 4, 3_900_000, 1, 500_000, 1, 'kamomad 1 marta'])
         self.assertEqual([q[0] for q in n['qatorlar']], ['Malika'])  # amali yo'q rahbar ro'yxatda yo'q
         k = self.h('kassa')
         self.assertEqual(k['qatorlar'][0][1:6], ['Malika', 4_500_000, 0, 500_000, 50_000])  # naqd kirdi, naqdsiz, qaytarildi, kassadan xarajat

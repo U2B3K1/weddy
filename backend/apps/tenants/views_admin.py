@@ -20,7 +20,7 @@ SOZLAMA_MAYDONLARI = ('bufer_kun', 'vaqtinchalik_bron_soat', 'zalog_pul', 'zalog
                       'promokod_tasdiqsiz', 'promokod_chegirma_birga', 'salonchi_kodlari',
                       'mavsumiy_narx', 'sotuvchi_bonusi', 'bonus_foiz', 'primerka', 'mijoz_bahosi',
                       'qulf_daqiqa', 'sotuvchi_libos_qoshadi', 'qoplamagan_royxat',
-                      'qoplamagan_kun', 'kunlik_hisobot', 'kunlik_hisobot_vaqti', 'promokodlar_bolimi', 'manekin', 'shartnoma_bandlari', 'filial_kassasi', 'sms_eslatma')
+                      'qoplamagan_kun', 'kunlik_hisobot', 'kunlik_hisobot_vaqti', 'promokodlar_bolimi', 'manekin', 'shartnoma_bandlari', 'filial_kassasi', 'sms_eslatma', 'kassa_rejimi')
 
 
 def sozlama_json(s):
@@ -61,6 +61,7 @@ class SozlamaSerializer(serializers.Serializer):
     promokodlar_bolimi = serializers.BooleanField(required=False)
     manekin = serializers.BooleanField(required=False)
     filial_kassasi = serializers.BooleanField(required=False)
+    kassa_rejimi = serializers.ChoiceField(choices=['sotuvchi', 'kassir'], required=False)
     sms_eslatma = serializers.BooleanField(required=False)
     sotuvchi_bonusi = serializers.BooleanField(required=False)
     bonus_foiz = serializers.DecimalField(max_digits=5, decimal_places=2, min_value=0, max_value=100, required=False)
@@ -102,6 +103,10 @@ class SozlamalarView(APIView):
             return Response({'detail': 'Kamida bitta zalog turi yoqilgan bo\'lishi kerak.'}, status=400)
         if yangi['kechikish_jarimasi'] and yangi['kechikish_kunlik_summa'] <= 0:
             return Response({'detail': 'Kechikish jarimasi yoqilsa, kunlik summa kiritilishi kerak.'}, status=400)
+        if yangi['kassa_rejimi'] != s.kassa_rejimi:
+            from apps.cash.models import Smena
+            if Smena.objects.filter(salon=request.salon, yopilgan__isnull=True).exists():
+                return Response({'detail': "Kassa rejimini o'zgartirishdan oldin ochiq smenani yoping."}, status=409)
         for nom, qiymat in ser.validated_data.items():
             eski = getattr(s, nom)
             if eski != qiymat:  # har bir o'zgarish jurnalga yoziladi (4.16)

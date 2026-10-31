@@ -11,7 +11,7 @@ from apps.tenants.models import Xodim
 
 from .models import Tolov
 from .services import (KassaXatosi, kassa_hisobot, smena_chiqish, smena_ochish, smena_yopish,
-                       smenaga_qoshilish, tolov_qabul)
+                       smenaga_qoshilish, tolov_qabul, topshiriqni_qabul, xodim_qoldigi)
 
 T = Tolov.Tur
 
@@ -60,7 +60,14 @@ class SmenaTests(KassaBase):
         self.assertEqual(h['tushum'], 6_500_000)
         self.assertEqual(h['hisobdagi_qoldiq'], 10_050_000)
 
-        smena_chiqish(salon=self.salon, xodim=self.malika, sanalgan_summa=10_050_000)
+        # Har kim o'z qo'lidagi naqdga javob beradi: Malika 3 mln seyfdan + 7,2 mln oldi; Dilnoza 3,45 mln berdi, 3,3 mln oldi
+        self.assertEqual((xodim_qoldigi(smena, self.malika), xodim_qoldigi(smena, self.dilnoza)), (10_200_000, -150_000))
+        ish = smena_chiqish(salon=self.salon, xodim=self.malika, sanalgan_summa=10_200_000)
+        self.assertEqual((ish.farq, ish.topshirish.kimga), (0, self.dilnoza))
+        with self.assertRaisesMessage(KassaXatosi, 'qabul qiling'):  # Dilnoza pulni qabul qilmaguncha yopa olmaydi
+            smena_yopish(salon=self.salon, xodim=self.dilnoza, fakt_qoldiq=10_000_000)
+        topshiriqni_qabul(salon=self.salon, xodim=self.dilnoza, topshirish=ish.topshirish)
+        self.assertEqual(xodim_qoldigi(smena, self.dilnoza), 10_050_000)
         with self.assertRaisesMessage(KassaXatosi, 'izoh majburiy'):
             smena_yopish(salon=self.salon, xodim=self.dilnoza, fakt_qoldiq=10_000_000)
         s = smena_yopish(salon=self.salon, xodim=self.dilnoza, fakt_qoldiq=10_000_000, izoh='sanoqda xato')

@@ -18,6 +18,8 @@ class Smena(SalonModel):
     # Kunlik zalog tekshiruvi natijasi (FT-12.5), smena yopilganda yoziladi
     zalog_tekshirilmagan = models.PositiveSmallIntegerField(default=0)
     zalog_yoq = models.PositiveSmallIntegerField(default=0)
+    # Yopilganda seyfda qolgan naqd (rahbarga topshirilsa 0): ertaga ochuvchining boshlang'ich qoldig'i shunga solishtiriladi
+    seyfda = models.BigIntegerField(null=True, blank=True)
     # Filial kassasi yoqilgan bo'lsa smena filialga tegishli; bo'sh — salonning umumiy kassasi
     filial = models.ForeignKey('tenants.Filial', null=True, blank=True, on_delete=models.PROTECT, related_name='+')
 
@@ -69,6 +71,37 @@ class Tolov(SalonModel):
 
     KIRIM = ('avans', 'qoldiq', 'jarima', 'zalog')
     CHIQIM = ('zalog_qaytarish', 'vozvrat', 'xarajat', 'inkassatsiya')
+
+
+class KassaTopshirish(SalonModel):
+    """Naqd pulni topshirish: har xodim o'z qo'lidagi pulga javob beradi va uni boshqa xodimga (smenadan
+    ketayotganda) yoki rahbarga beradi. Qabul qiluvchi Telegramda yoki ilovada tasdiqlaydi — keyin tortishuv bo'lmaydi.
+
+    `hisobdagi` — topshiruvchining tizim bo'yicha qoldig'i (to'liq topshirishda); `summa` — topshiruvchi aytgani;
+    `qabul_summa` — qabul qiluvchi sanagani. To'liq topshirishda farq = qabul qilingan − hisobdagi, topshiruvchiga yoziladi.
+    """
+    class Holat(models.TextChoices):
+        KUTILMOQDA = 'kutilmoqda', 'Tasdiq kutilmoqda'
+        QABUL = 'qabul', 'Qabul qilindi'
+
+    smena = models.ForeignKey(Smena, on_delete=models.PROTECT, related_name='topshiriqlar')
+    kimdan = models.ForeignKey('tenants.Xodim', on_delete=models.PROTECT, related_name='+')
+    kimga = models.ForeignKey('tenants.Xodim', on_delete=models.PROTECT, related_name='+')
+    rahbarga = models.BooleanField(default=False)  # pul kassadan chiqadi (inkassatsiya); aks holda smenadagi xodimga
+    toliq = models.BooleanField(default=True)      # topshiruvchi bor pulini beradi (smenadan chiqish yoki yopish)
+    smena_yopishda = models.BooleanField(default=False)
+    ishtirokchi = models.ForeignKey(SmenaIshtirokchi, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    tolov = models.OneToOneField(Tolov, null=True, blank=True, on_delete=models.PROTECT, related_name='topshirish')
+    hisobdagi = models.BigIntegerField()
+    summa = models.BigIntegerField()
+    qabul_summa = models.BigIntegerField(null=True, blank=True)
+    holat = models.CharField(max_length=12, choices=Holat.choices, default=Holat.KUTILMOQDA)
+    izoh = models.CharField(max_length=300, blank=True)
+    yaratilgan = models.DateTimeField(auto_now_add=True)
+    qabul_vaqti = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-id']
 
 
 class ZalogTekshiruvi(SalonModel):

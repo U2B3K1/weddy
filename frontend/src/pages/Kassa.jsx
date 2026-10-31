@@ -5,8 +5,8 @@ import Oyna from '../components/Oyna'
 import Tasdiq from '../components/Tasdiq'
 import SmenaTugma from '../components/SmenaTugma'
 import {
-  kassaZaloglar, smenaChiqish, smenaHolati, smenaOchish, smenaQoshilish, smenaTuzat, smenaYopish, smenalar, som, sozlamalar, tolovQabul,
-  xarajatModdalari, xarajatYarat, xatoMatni, zakazlarRoyxat, zalogBelgila,
+  inkassatsiyaQil, kassaZaloglar, smenaChiqish, smenaHolati, smenaOchish, smenaQoshilish, smenaTuzat, smenaYopish, smenalar, som, sozlamalar,
+  tolovQabul, topshiriqQabul, xarajatModdalari, xarajatYarat, xatoMatni, zakazlarRoyxat, zalogBelgila,
   guruhla, sanaMatni,
 } from '../api'
 import SummaInput from '../components/SummaInput'
@@ -45,11 +45,30 @@ export default function Kassa({ rahbar, bolim, onBolim, onHolatOzgardi, yangiZak
 
   if (!s) return <p className="malumot">Yuklanmoqda…</p>
   const smenaYoq = !s.ochiq && SMENA_KERAK.includes(bolim)
+  const kutayotgan = <Kutayotgan royxat={s.kutayotgan} onQabul={(t, summa) => bajar(() => topshiriqQabul(t.id, summa), (r) => `Qabul qilindi: ${som(r.qabul_summa)}.`)} />
+
+  // «Alohida kassir» rejimida sotuvchi pul olmaydi: faqat zakaz rasmiylashtiradi, mijozni kassaga yuboradi
+  if (!s.pul_oladi) {
+    return (
+      <div className="pos">
+        {xabar.matn && <p className={xabar.turi === 'xato' ? 'xato' : 'malumot pos-xabar'}>{xabar.matn}</p>}
+        {kutayotgan}
+        {bolim === 'yangi' ? yangiZakaz : (
+          <section className="blok pos-bosh">
+            <h3>Pulni kassir qabul qiladi</h3>
+            <p className="malumot">Bu salonda siz zakaz olasiz, to'lovni esa kassir qabul qiladi — mijozni kassaga yuboring.
+              Zakazingizga kirgan pul statistikada sizning nomingizga yoziladi.</p>
+          </section>
+        )}
+      </div>
+    )
+  }
 
   return (
     <div className="pos">
       <SmenaPaneli s={s} onOch={() => setOyna('ochish')} onQoshil={() => bajar(smenaQoshilish, "Smenaga qo'shildingiz.")}
         onChiq={() => setOyna('chiqish')} onYop={() => setOyna('yopish')} onHisobot={() => onBolim('hisobot')} />
+      {kutayotgan}
       {xabar.matn && xabar.bolim === bolim && (  // eski xabar boshqa bo'limga o'tganda qolib ketmasin
         <p className={xabar.turi === 'xato' ? 'xato' : 'malumot pos-xabar'}>
           {xabar.matn}{' '}
@@ -74,7 +93,8 @@ export default function Kassa({ rahbar, bolim, onBolim, onHolatOzgardi, yangiZak
             <XarajatPOS onYuborish={(b) => bajar(() => xarajatYarat({ ...b, kassadan: true }), rahbar ? 'Xarajat kassadan yozildi.' : "Xarajat kassadan yozildi (rahbar tasdig'ini kutadi).")} />
           )}
           {bolim === 'inkassatsiya' && (
-            <InkassatsiyaPOS onYuborish={(summa, izoh) => bajar(() => tolovQabul({ tur: 'inkassatsiya', summa, izoh }), 'Inkassatsiya yozildi.')} />
+            <InkassatsiyaPOS rahbarlar={s.rahbarlar}
+              onYuborish={(summa, izoh, rahbar) => bajar(() => inkassatsiyaQil({ summa, izoh, rahbar }), "Inkassatsiya yozildi — rahbar Telegramda tasdiqlaydi.")} />
           )}
           {bolim === 'zalog' && <ZalogTekshiruvi onOzgardi={yukla} />}
           {bolim === 'hisobot' && <Hisobot h={s.hisobot} />}
@@ -84,21 +104,21 @@ export default function Kassa({ rahbar, bolim, onBolim, onHolatOzgardi, yangiZak
 
       {oyna === 'ochish' && (
         <Oyna sarlavha="Smenani ochish" onYop={() => setOyna(null)}>
-          <SummaForma yorliq="Boshlang'ich qoldiq — kassadagi naqd pul" tugma="Smenani ochish" nolRuxsat
+          {s.seyfda != null && <p className="malumot">Oldingi smena yopilganda seyfda <b>{som(s.seyfda)}</b> qolgan. Sanab, haqiqiy summani kiriting — farq bo'lsa rahbarga xabar boradi.</p>}
+          <SummaForma yorliq="Boshlang'ich qoldiq — seyfdagi naqd pul" tugma="Smenani ochish" nolRuxsat
             onYuborish={oynada((q) => smenaOchish(q), 'Smena ochildi.')} />
         </Oyna>
       )}
       {oyna === 'chiqish' && (
-        <Oyna sarlavha="Smenadan chiqish" onYop={() => setOyna(null)}>
-          <p className="malumot">Boshqa sotuvchi smenada qoladi. Qo'lingizdagi naqd pulni sanang.</p>
-          <SummaForma yorliq="Sanalgan naqd pul" tugma="Naqdni sanab chiqish" nolRuxsat
-            onYuborish={oynada((summa) => smenaChiqish(summa), (r) => `Chiqdingiz. Farq: ${som(r.farq)}`)} />
+        <Oyna sarlavha="Pulni topshirib chiqish" onYop={() => setOyna(null)}>
+          <PulTopshirish s={s} onYuborish={oynada((summa, kimga) => smenaChiqish(summa, kimga),
+            (r) => `Chiqdingiz. Pul ${r.kimga}ga topshirildi — u tasdiqlaydi.${r.farq ? ` Farq: ${som(r.farq)}` : ''}`)} />
         </Oyna>
       )}
       {oyna === 'yopish' && (
         <Oyna sarlavha="Smenani yopish" onYop={() => setOyna(null)}>
-          <SmenaYopish hisobda={s.hisobot.hisobdagi_qoldiq} tekshirilmagan={s.zalog_tekshirilmagan}
-            onYuborish={oynada((summa, izoh) => smenaYopish(summa, izoh), (r) => `Smena yopildi. Farq: ${som(r.farq)}`)} />
+          <SmenaYopish hisobda={s.mening_hisobim ?? s.hisobot.hisobdagi_qoldiq} tekshirilmagan={s.zalog_tekshirilmagan} rahbarlar={s.rahbarlar}
+            onYuborish={oynada((summa, izoh, rahbar) => smenaYopish(summa, izoh, rahbar), (r) => `Smena yopildi. Farq: ${som(r.farq)}`)} />
         </Oyna>
       )}
     </div>
@@ -119,15 +139,80 @@ function SmenaPaneli({ s, onOch, onQoshil, onChiq, onYop, onHisobot }) {
   return (
     <div className="smena-panel">
       <span className="smena-holat ochiq"><i aria-hidden="true" />Smena ochiq{s.filial ? ` · ${s.filial}` : ''}</span>
-      <span className="smena-kim">{s.ishtirokchilar.join(', ')}</span>
-      <button type="button" className="smena-naqd" onClick={onHisobot} title="Smena hisobotini ochish">
-        <small>Kassada naqd</small><b>{som(s.hisobot.hisobdagi_qoldiq)}</b>
-      </button>
+      <span className="smena-kim">{s.ishtirokchilar.join(', ')}
+        {s.yuborilgan?.map((t) => <small key={t.id} className="malumot"> · {t.kimga} {som(t.summa)} ni hali tasdiqlamadi</small>)}</span>
+      {s.men_ishtirokchi && s.ishtirokchilar.length > 1 ? (
+        <button type="button" className="smena-naqd" onClick={onHisobot} title="Siz javob beradigan naqd. Bosing — smena hisoboti">
+          <small>Sizda naqd</small><b>{som(s.mening_hisobim)}</b>
+        </button>
+      ) : (
+        <button type="button" className="smena-naqd" onClick={onHisobot} title="Smena hisobotini ochish">
+          <small>Kassada naqd</small><b>{som(s.hisobot.hisobdagi_qoldiq)}</b>
+        </button>
+      )}
       <div className="smena-amallar">
         {!s.men_ishtirokchi && <button className="kichik" onClick={onQoshil}>Smenaga qo'shilish</button>}
-        {s.men_ishtirokchi && s.ishtirokchilar.length > 1 && <button className="ikkinchi kichik" onClick={onChiq}>Smenadan chiqish</button>}
+        {s.men_ishtirokchi && s.ishtirokchilar.length > 1 && <button className="ikkinchi kichik" onClick={onChiq}>Pulni topshirib chiqish</button>}
         <button className="ikkinchi kichik" onClick={onYop}>Smenani yopish</button>
       </div>
+    </div>
+  )
+}
+
+// Menga topshirilgan, hali qabul qilinmagan pul: sanab «Qabul qildim» yoki boshqa summani kiritish.
+// Telegramdagi tugmalar bilan bir xil — qaysi biri birinchi bosilsa, o'sha hisoblanadi.
+function Kutayotgan({ royxat, onQabul }) {
+  const [boshqa, setBoshqa] = useState({})
+  if (!royxat?.length) return null
+  return (
+    <section className="blok jadval-panel">
+      <div className="jadval-asboblar"><h3 className="panel-nom">Sizga topshirilgan pul</h3>
+        <span className="malumot">Sanab tasdiqlang: shundan keyin bu pulga siz javob berasiz</span></div>
+      {royxat.map((t) => (
+        <div key={t.id} className="tasdiq-qator">
+          <div className="tasdiq-matn">
+            <b>{t.kimdan} · {som(t.summa)}{t.rahbarga && ' · inkassatsiya'}</b>
+            <small>{sanaMatni(t.vaqt)} {String(t.vaqt).slice(11, 16)}{t.izoh && ` · ${t.izoh}`}</small>
+          </div>
+          <div className="tasdiq-tugmalar">
+            {boshqa[t.id] !== undefined ? (
+              <>
+                <SummaInput aria-label="Sanalgan summa" value={boshqa[t.id]} onChange={(e) => setBoshqa({ ...boshqa, [t.id]: e.target.value })} />
+                <button className="kichik" disabled={boshqa[t.id] === ''} onClick={() => onQabul(t, Number(boshqa[t.id]))}>Shu summani qabul qilish</button>
+              </>
+            ) : (
+              <>
+                <button className="ikkinchi kichik" onClick={() => setBoshqa({ ...boshqa, [t.id]: '' })}>Boshqa summa</button>
+                <button className="kichik" onClick={() => onQabul(t)}>{som(t.summa)} qabul qildim</button>
+              </>
+            )}
+          </div>
+        </div>
+      ))}
+    </section>
+  )
+}
+
+// Smenadan chiqish: qo'ldagi naqd sanaladi va smenada qolayotgan xodimga yoki rahbarga beriladi; u tasdiqlaydi.
+function PulTopshirish({ s, onYuborish }) {
+  const qolganlar = s.xodimlar || []  // smenadagi boshqa xodimlar (o'zim kirmayman)
+  const variantlar = [...qolganlar.map((x) => ({ ...x, izoh: 'smenada qoladi' })), ...s.rahbarlar.filter((r) => !qolganlar.some((x) => x.id === r.id)).map((r) => ({ ...r, izoh: 'rahbar' }))]
+  const [kimga, setKimga] = useState('')
+  const [summa, setSumma] = useState('')
+  const farq = summa === '' ? null : Number(summa) - s.mening_hisobim
+  return (
+    <div className="stack">
+      <p className="malumot">Tizim bo'yicha sizda: <b>{som(s.mening_hisobim)}</b>. Pulni sanang va kimga berayotganingizni tanlang —
+        u Telegramda (yoki ilovada) tasdiqlaydi. Farq bo'lsa faqat sizga yoziladi.</p>
+      <label>Kimga
+        <select value={kimga} onChange={(e) => setKimga(e.target.value)}>
+          <option value="">— tanlang —</option>
+          {variantlar.map((x) => <option key={x.id} value={x.id}>{x.ism} ({x.izoh})</option>)}
+        </select>
+      </label>
+      <Summa qiymat={summa} izoh={farq === null ? null : farq === 0 ? "Farq yo'q" : `Farq: ${som(farq)}`} />
+      <Klaviatura qiymat={summa} onOzgar={setSumma} />
+      <button className="pos-tugma" disabled={summa === '' || !kimga} onClick={() => onYuborish(Number(summa), Number(kimga))}>Topshirib chiqish</button>
     </div>
   )
 }
@@ -185,14 +270,21 @@ function SummaForma({ yorliq, tugma, onYuborish, nolRuxsat, izohYorliq }) {
   )
 }
 
-function SmenaYopish({ hisobda, tekshirilmagan, onYuborish }) {
+function SmenaYopish({ hisobda, tekshirilmagan, rahbarlar, onYuborish }) {
   const [summa, setSumma] = useState('')
   const [izoh, setIzoh] = useState('')
   const [surov, setSurov] = useState(false)
+  const [rahbar, setRahbar] = useState('')  // bo'sh — pul seyfda qoladi
   const farq = summa === '' ? null : Number(summa) - hisobda
   return (
     <div className="stack">
-      <p className="malumot">Hisobda: <b>{som(hisobda)}</b>. Kassadagi naqd pulni sanab kiriting.</p>
+      <p className="malumot">Sizda (tizim bo'yicha): <b>{som(hisobda)}</b>. Qo'lingizdagi naqd pulni sanab kiriting.</p>
+      <label>Pul qayerda qoladi
+        <select value={rahbar} onChange={(e) => setRahbar(e.target.value)}>
+          <option value="">Seyfda — ertaga ochgan xodim sanab qabul qiladi</option>
+          {rahbarlar.map((r) => <option key={r.id} value={r.id}>Rahbarga topshiraman: {r.ism}</option>)}
+        </select>
+      </label>
       {tekshirilmagan > 0 && <p className="ogohlantirish">{tekshirilmagan} ta zalog tekshirilmagan — yopishdan oldin «Zaloglar» bo'limida belgilang.</p>}
       <Summa qiymat={summa} izoh={farq === null ? null : farq === 0 ? 'Farq yo\'q' : `Farq: ${som(farq)}`} />
       <Klaviatura qiymat={summa} onOzgar={setSumma} />
@@ -200,8 +292,8 @@ function SmenaYopish({ hisobda, tekshirilmagan, onYuborish }) {
       <button className="pos-tugma" disabled={summa === '' || (farq !== 0 && !izoh.trim())} onClick={() => setSurov(true)}>Smenani yopish</button>
       {surov && (
         <Tasdiq sarlavha="Smenani yopasizmi?" tugma="Smenani yopish"
-          matn={`Smena yopiladi, keyin to'lov qabul qilib bo'lmaydi. Sanalgan naqd: ${som(Number(summa))}.`}
-          onYop={() => setSurov(false)} onTasdiq={() => { setSurov(false); onYuborish(Number(summa), izoh) }} />
+          matn={`Smena yopiladi, keyin to'lov qabul qilib bo'lmaydi. Sanalgan naqd: ${som(Number(summa))}${rahbar ? ` — ${rahbarlar.find((r) => String(r.id) === rahbar)?.ism}ga topshiriladi, u Telegramda tasdiqlaydi` : ' — seyfda qoladi'}.`}
+          onYop={() => setSurov(false)} onTasdiq={() => { setSurov(false); onYuborish(Number(summa), izoh, rahbar ? Number(rahbar) : undefined) }} />
       )}
     </div>
   )
@@ -258,7 +350,7 @@ function TolovPOS({ boshZakaz, onTolandi, onSmenaOchish }) {
           {royxat?.map((x) => (
             <button key={x.id} type="button" className={`pos-zakaz${x.id === tanlangan ? ' tanlandi' : ''}`} aria-pressed={x.id === tanlangan} onClick={() => tanla(x.id)}>
               <span className="zakaz-eskiz">{x.rasm ? <img src={x.rasm} alt="" loading="lazy" /> : <LibosSiluet />}</span>
-              <span className="zakaz-nom"><b>#{x.raqam} {x.mijoz}</b><small>{x.liboslar.join(', ')} · {sanaMatni(x.olib_ketish)}</small></span>
+              <span className="zakaz-nom"><b>#{x.raqam} {x.mijoz}</b><small>{x.liboslar.join(', ')} · {sanaMatni(x.olib_ketish)}{x.sotuvchi && ` · sotuvchi: ${x.sotuvchi}`}</small></span>
               <span className="pos-zakaz-summa"><b>{som(x.jami - x.tolangan)}</b><small>{x.holat === 'vaqtinchalik' ? 'avans' : 'qoldiq'}</small></span>
             </button>
           ))}
@@ -374,12 +466,21 @@ function XarajatPOS({ onYuborish }) {
   )
 }
 
-// FT-12.6: rahbarga topshirilgan naqd pul — alohida chiqim, tushum va xarajatga kirmaydi.
-function InkassatsiyaPOS({ onYuborish }) {
+// FT-12.6: rahbarga topshirilgan naqd pul — alohida chiqim, tushum va xarajatga kirmaydi. Rahbar Telegramda tasdiqlaydi.
+function InkassatsiyaPOS({ rahbarlar, onYuborish }) {
+  const [rahbar, setRahbar] = useState(rahbarlar.length === 1 ? String(rahbarlar[0].id) : '')
+  if (!rahbarlar.length) return <section className="blok pos-tor"><p className="malumot">Salonda boshqa faol rahbar yo'q.</p></section>
   return (
     <section className="blok pos-tor">
       <h3>Inkassatsiya — naqd pulni rahbarga topshirish</h3>
-      <SummaForma yorliq="Topshiriladigan summa" tugma="Inkassatsiyani yozish" izohYorliq="Izoh (kimga topshirildi)" onYuborish={onYuborish} />
+      <label>Kimga
+        <select value={rahbar} onChange={(e) => setRahbar(e.target.value)}>
+          <option value="">— tanlang —</option>
+          {rahbarlar.map((r) => <option key={r.id} value={r.id}>{r.ism}</option>)}
+        </select>
+      </label>
+      <SummaForma yorliq="Topshiriladigan summa" tugma="Inkassatsiyani yozish" izohYorliq="Izoh"
+        onYuborish={(summa, izoh) => (rahbar ? onYuborish(summa, izoh, Number(rahbar)) : Promise.resolve(false))} />
     </section>
   )
 }

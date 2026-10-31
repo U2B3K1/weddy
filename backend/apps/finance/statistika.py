@@ -10,7 +10,7 @@ P&L va dashbord esa kassa usulida (pul kirgan kun, `reports.foyda`) — «Pul oq
 from collections import defaultdict
 from datetime import timedelta
 
-from django.db.models import Avg, Count, Q, Sum
+from django.db.models import Avg, Count, F, Q, Sum
 from django.utils import timezone
 
 from apps.bookings.models import Bron
@@ -298,16 +298,20 @@ def kassa(salon, dan, gacha, filial=None, **_):
     for s in smenalar:
         p = pul.get(s.id, {})
         ishchilar = [i.xodim.ism for i in s.ishtirokchilar.all()] or [s.ochgan.ism]
-        izoh = [f'{i.xodim.ism} chiqishda {i.farq:+,}'.replace(',', ' ') for i in s.ishtirokchilar.all() if i.farq]
+        izoh = [f'{i.xodim.ism} topshirishda {i.farq:+,}'.replace(',', ' ') for i in s.ishtirokchilar.all() if i.farq]
+        chiqqanlar_farqi = sum(i.farq or 0 for i in s.ishtirokchilar.all())
         izoh.append(s.izoh if s.yopilgan else 'smena ochiq')
         kutilgan = s.hisobdagi_qoldiq if s.yopilgan else kassa_hisobot(s)['hisobdagi_qoldiq']
         qatorlar.append([s.sana, ', '.join(dict.fromkeys(ishchilar)), p.get('naqd') or 0, p.get('naqdsiz') or 0,
-                         p.get('qaytarilgan') or 0, p.get('xarajat') or 0, kutilgan, s.fakt_qoldiq, s.farq,
+                         p.get('qaytarilgan') or 0, p.get('xarajat') or 0, kutilgan, s.fakt_qoldiq,
+                         (s.farq or 0) + chiqqanlar_farqi if s.yopilgan or chiqqanlar_farqi else None,
                          ' · '.join(x for x in izoh if x)])
     jami = ['Jami', ''] + [sum(q[i] for q in qatorlar) for i in range(2, 6)] + [None, None, sum(q[8] or 0 for q in qatorlar), '']
     return {'sarlavha': 'Kunlik kassa',
-            'izoh': "Har smena alohida. «Kassada bo'lishi kerak» — boshlang'ich naqd + naqd kirim va zalog − naqd chiqimlar. "
-                    "Farq manfiy bo'lsa — kamomad, musbat — ortiqcha. Ijara, oylik kabi kassadan tashqari xarajatlar bu yerga kirmaydi.",
+            'izoh': "Har smena alohida. «Kassada bo'lishi kerak» — smenani yopgan xodim qo'lida bo'lishi kerak bo'lgan naqd "
+                    "(o'zi olgani va unga topshirilgani). «Farq» — kun bo'yicha jami: yopgan xodim va kun o'rtasida pulini "
+                    "topshirib chiqqanlar (kim qancha — izohda). Manfiy — kamomad, musbat — ortiqcha. "
+                    "Ijara, oylik kabi kassadan tashqari xarajatlar bu yerga kirmaydi.",
             'ustunlar': _u(('Sana', 'sana'), ('Xodim', 'matn'), ('Naqd kirdi', 'pul'), ('Karta, Click, Payme', 'pul'),
                            ('Mijozga qaytarildi', 'pul'), ('Kassadan xarajat', 'pul'), ("Kassada bo'lishi kerak", 'pul'),
                            ('Sanaldi', 'pul'), ('Farq', 'pul'), ('Izoh', 'matn')),
@@ -364,7 +368,7 @@ def chegirmalar(salon, dan, gacha, sotuvchi=None, **_):
 def xodimlar_nazorati(salon, dan, gacha, **_):
     """Rahbar uchun: har bir xodim kassani to'g'ri topshiryaptimi va pulga ta'sir qiladigan amallari odatdan
     tashqari ko'pmi. Kassa farqi smenani yopgan (yoki kun o'rtasida chiqqan) xodimga yoziladi."""
-    from apps.cash.models import SmenaIshtirokchi
+    from apps.cash.models import KassaTopshirish, SmenaIshtirokchi
     from apps.orders.models import ZakazTarixi
     smena = defaultdict(int)
     farq = defaultdict(int)
@@ -384,26 +388,38 @@ def xodimlar_nazorati(salon, dan, gacha, **_):
                      .values_list('xodim_id').annotate(s=Sum('summa')))
     cheg = dict(ChegirmaSorovi.objects.filter(salon=salon, yaratilgan__date__range=(dan, gacha))
                 .values_list('sotuvchi_id').annotate(n=Count('id')))
+    # Sotuvchi zakazlaridan kirgan pul (kim qabul qilganidan qat'i nazar — «alohida kassir» rejimida ham sotuvchiga)
+    T = Tolov.Tur
+    tushum = dict(Tolov.objects.filter(salon=salon, vaqt__date__range=(dan, gacha), tur__in=[T.AVANS, T.QOLDIQ, T.VOZVRAT],
+                                       zakaz__sotuvchi__isnull=False).values_list('zakaz__sotuvchi_id').annotate(
+        s=Sum('summa', filter=~Q(tur=T.VOZVRAT), default=0) - Sum('summa', filter=Q(tur=T.VOZVRAT), default=0)))
+    kelishmovchilik = dict(KassaTopshirish.objects.filter(salon=salon, yaratilgan__date__range=(dan, gacha),
+                                                          qabul_summa__isnull=False).exclude(qabul_summa=F('summa'))
+                           .values_list('kimdan_id').annotate(n=Count('id')))
     qatorlar = []
     for x in Xodim.objects.filter(salon=salon).order_by('ism'):
-        if not (smena[x.id] or yangi.get(x.id) or bekor.get(x.id) or qaytargan.get(x.id) or cheg.get(x.id)):
+        if not (smena[x.id] or yangi.get(x.id) or bekor.get(x.id) or qaytargan.get(x.id) or cheg.get(x.id) or tushum.get(x.id)):
             continue
         diqqat = []
         if kamomad[x.id]:
             diqqat.append(f'kamomad {kamomad[x.id]} marta')
+        if kelishmovchilik.get(x.id):
+            diqqat.append(f"pul topshirishda kelishmovchilik {kelishmovchilik[x.id]} marta")
         b, y = bekor.get(x.id, 0), yangi.get(x.id, 0)
         if b >= 2 and b * 5 >= max(y, 1):  # bekor qilganlari yangi zakazlarining 20% idan ko'p
             diqqat.append("bekor qilish ko'p")
-        qatorlar.append([x.ism, smena[x.id], farq[x.id], y, b, qaytargan.get(x.id, 0), cheg.get(x.id, 0), ', '.join(diqqat)])
+        qatorlar.append([x.ism, smena[x.id], farq[x.id], y, tushum.get(x.id, 0), b, qaytargan.get(x.id, 0),
+                         cheg.get(x.id, 0), ', '.join(diqqat)])
     return {'sarlavha': 'Xodimlar nazorati',
-            'izoh': "Kassa farqi manfiy — kamomad: xodim smenani yopganda (yoki kun o'rtasida chiqqanda) sanagan naqd "
-                    "kerakligidan kam bo'lgan. «Diqqat» ustuni kamomad va odatdan ko'p bekor qilishni belgilaydi.",
+            'izoh': "Kassa farqi manfiy — kamomad: xodim o'z qo'lidagi naqdni topshirganda (smenadan chiqish yoki yopishda) "
+                    "kerakligidan kam bo'lgan; har kim faqat o'z hisobiga javob beradi. «Zakazlaridan tushum» — sotuvchi "
+                    "olgan zakazlarga shu davrda kirgan pul (kassir qabul qilgan bo'lsa ham). «Diqqat» ustuni kamomad, "
+                    "pul topshirishdagi kelishmovchilik va odatdan ko'p bekor qilishni belgilaydi.",
             'ustunlar': _u(('Xodim', 'matn'), ('Smenalar', 'son'), ('Kassa farqi', 'pul'), ('Yangi zakazlar', 'son'),
-                           ('Bekor qilgan', 'son'), ('Mijozga qaytargan pul', 'pul'), ("Chegirma so'ragan", 'son'),
-                           ('Diqqat', 'matn')),
+                           ('Zakazlaridan tushum', 'pul'), ('Bekor qilgan', 'son'), ('Mijozga qaytargan pul', 'pul'),
+                           ("Chegirma so'ragan", 'son'), ('Diqqat', 'matn')),
             'qatorlar': qatorlar,
-            'jami': ['Jami', sum(q[1] for q in qatorlar), sum(q[2] for q in qatorlar), sum(q[3] for q in qatorlar),
-                     sum(q[4] for q in qatorlar), sum(q[5] for q in qatorlar), sum(q[6] for q in qatorlar), '']}
+            'jami': ['Jami'] + [sum(q[i] for q in qatorlar) for i in range(1, 8)] + ['']}
 
 
 HISOBOTLAR = {

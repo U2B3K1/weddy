@@ -15,6 +15,7 @@ import SummaInput from '../components/SummaInput'
 
 // GET /sozlamalar/ javobidagi faqat o'qiladigan belgilar (integratsiyalardan) saqlashga yuborilmaydi
 const faqatSozlama = ({ fiskal_eslatma: _f, fiskal_izoh: _i, tolov_havolasi: _t, ...qolgan }) => qolgan
+const ROLLAR = [['sotuvchi', 'Sotuvchi'], ['kassir', 'Kassir'], ['rahbar', 'Rahbar']]
 
 // Sozlama bo'limlarining statik ro'yxati — chap paneldagi nav (App.jsx) ham, mazmun ham shu ro'yxatga mos.
 // Pastdagi `bolimlar` massivi bilan bir xil tartibda va nomlarda bo'lishi shart.
@@ -290,6 +291,30 @@ export default function Sozlamalar({ menId, bolim, onBolim }) {
       ),
     },
     {
+      id: 'kassa', nomi: 'Kassa',
+      render: () => (
+        <section className="blok stack">
+          <h3>Kim pul qabul qiladi</h3>
+          <label className="qator">
+            <input type="radio" name="kassa_rejimi" checked={s.kassa_rejimi === 'sotuvchi'} onChange={() => set('kassa_rejimi', 'sotuvchi')} />
+            Sotuvchining o'zi kassir
+          </label>
+          <p className="malumot">Har sotuvchi o'z mijozidan pul oladi va o'z qo'lidagi naqdga javob beradi (har biriga alohida quti yoki hamyon).
+            Ketayotganda pulini smenada qolgan xodimga yoki rahbarga topshiradi — qabul qiluvchi Telegramda tasdiqlaydi.
+            Kamomad faqat topshirgan xodimga yoziladi.</p>
+          <label className="qator">
+            <input type="radio" name="kassa_rejimi" checked={s.kassa_rejimi === 'kassir'} onChange={() => set('kassa_rejimi', 'kassir')} />
+            Alohida kassir
+          </label>
+          <p className="malumot">Sotuvchilar faqat zakaz oladi; pulni kassir (yoki rahbar) qabul qiladi — xuddi restoranda ofitsiant buyurtma
+            olib, hisobni kassir yopgandek. Kassada sotuvchining zakazi «To'lov kutayotganlar» ro'yxatida chiqadi.
+            Har sotuvchining zakazlaridan qancha pul kirgani Hisobot → «Xodimlar nazorati» da ko'rinadi.
+            Xodimlar bo'limida kamida bitta xodimga «Kassir» rolini bering.</p>
+          <p className="malumot">Rejimni o'zgartirishdan oldin ochiq smenani yoping. «Sozlamalarni saqlash» bosilgach kuchga kiradi.</p>
+        </section>
+      ),
+    },
+    {
       id: 'promokod', nomi: 'Promokodlar',
       render: () => (
         <section className="blok stack">
@@ -530,7 +555,7 @@ function Xodim({ x, men, onOzgartir }) {
           <span><b className="xodim-ism">{x.ism}{men ? ' (siz)' : ''}</b>{x.telefon && <small>{x.telefon}</small>}</span>
         </span>
         <span className="xodim-belgilar">
-          <span className={`holat ${x.rol === 'rahbar' ? 'berildi' : 'qaytarildi'}`}>{x.rol === 'rahbar' ? 'Rahbar' : 'Sotuvchi'}</span>
+          <span className={`holat ${x.rol === 'rahbar' ? 'berildi' : 'qaytarildi'}`}>{ROLLAR.find(([k]) => k === x.rol)?.[1]}</span>
           {!x.faol && <span className="holat qarz">Nofaol</span>}
           {x.bloklangan && <span className="holat vaqtinchalik">PIN bloklangan</span>}
         </span>
@@ -548,9 +573,11 @@ function Xodim({ x, men, onOzgartir }) {
           </label>
           <button className="ikkinchi" disabled={!/^\d{4,6}$/.test(pin)}
             onClick={() => onOzgartir({ pin }, 'PIN tiklandi.').then((ok) => ok && setPin(''))}>PIN ni tiklash</button>
-          <button className="ikkinchi" onClick={() => onOzgartir({ rol: x.rol === 'rahbar' ? 'sotuvchi' : 'rahbar' }, "Rol o'zgartirildi.")}>
-            {x.rol === 'rahbar' ? 'Sotuvchi qilish' : 'Rahbar qilish'}
-          </button>
+          <label>Rol
+            <select value={x.rol} onChange={(e) => onOzgartir({ rol: e.target.value }, "Rol o'zgartirildi.")}>
+              {ROLLAR.map(([k, nom]) => <option key={k} value={k}>{nom}</option>)}
+            </select>
+          </label>
           <button className="ikkinchi" onClick={() => onOzgartir({ faol: !x.faol }, x.faol ? 'Xodim nofaol qilindi.' : 'Xodim faollashtirildi.')}>
             {x.faol ? 'Nofaol qilish' : 'Faollashtirish'}
           </button>
@@ -613,7 +640,7 @@ function XodimForma({ onYuborish }) {
         <label>Telefon<input inputMode="tel" value={f.telefon || ''} onChange={set('telefon')} /></label>
         <label>Rol
           <select value={f.rol} onChange={set('rol')}>
-            <option value="sotuvchi">Sotuvchi</option><option value="rahbar">Rahbar</option>
+            {ROLLAR.map(([k, nom]) => <option key={k} value={k}>{nom}</option>)}
           </select>
         </label>
         <label>PIN (4–6 raqam)

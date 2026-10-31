@@ -21,12 +21,13 @@ from .models import ChegirmaSorovi, Zakaz, ZakazTarixi, Zalog
 def _qisqa(z):
     return {'id': z.id, 'raqam': z.raqam, 'holat': z.holat, 'mijoz': z.mijoz.fio or z.mijoz.telefon,
             'telefon': z.mijoz.telefon, 'olib_ketish': z.olib_ketish, 'qaytarish': z.qaytarish,
-            'jami': z.jami, 'filial': z.filial_id, 'liboslar': [p.libos.nomi for p in z.pozitsiyalar.all()],
+            'jami': z.jami, 'filial': z.filial_id, 'sotuvchi': z.sotuvchi.ism if z.sotuvchi_id else None,
+            'liboslar': [p.libos.nomi for p in z.pozitsiyalar.all()],
             'aksessuarlar': [f'{a.dona.aksessuar.nomi} ({a.dona.yorliq})' for a in z.aksessuarlar.all()]}
 
 
 def _zakazlar(salon):
-    return (Zakaz.objects.filter(salon=salon).select_related('mijoz')
+    return (Zakaz.objects.filter(salon=salon).select_related('mijoz', 'sotuvchi')
             .prefetch_related('pozitsiyalar__libos', 'aksessuarlar__dona__aksessuar'))
 
 

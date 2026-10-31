@@ -163,6 +163,7 @@ class Xodim(SalonModel):
     class Rol(models.TextChoices):
         RAHBAR = 'rahbar', 'Rahbar'
         SOTUVCHI = 'sotuvchi', 'Sotuvchi'
+        KASSIR = 'kassir', 'Kassir'
 
     ism = models.CharField(max_length=200)
     telefon = models.CharField(max_length=20, blank=True)
@@ -294,6 +295,10 @@ class SalonSozlamalari(models.Model):
     shartnoma_bandlari = models.JSONField(default=list, blank=True)
     # Har filialda alohida kassa (smena). O'chirilgan bo'lsa salonda bitta umumiy smena (FT-12.7)
     filial_kassasi = models.BooleanField(default=False)
+    # Kim pul qabul qiladi: «sotuvchi» — har sotuvchi o'z naqd hisobiga javob beradi (smena oxirida topshiradi);
+    # «kassir» — sotuvchi faqat zakaz oladi, pulni kassir (yoki rahbar) qabul qiladi, xuddi restoranda stol yopilgandek
+    kassa_rejimi = models.CharField(max_length=10, choices=[('sotuvchi', "Sotuvchi o'zi kassir"), ('kassir', 'Alohida kassir')],
+                                    default='sotuvchi')
     sms_eslatma = models.BooleanField(default=False)  # mijozga SMS: ertaga olib ketish / qaytarish
 
     def zalog_turlari(self):

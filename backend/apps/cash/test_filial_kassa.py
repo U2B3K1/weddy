@@ -64,7 +64,7 @@ class FilialKassaTests(TestCase):
         s1 = smena_ochish(salon=self.salon, xodim=self.malika, boshlangich_qoldiq=100_000, filial=self.f1)
         s2 = smena_ochish(salon=self.salon, xodim=self.dilnoza, boshlangich_qoldiq=50_000, filial=self.f2)
         smenaga_qoshilish(salon=self.salon, xodim=self.rahbar, filial=self.f1)
-        ish = smena_chiqish(salon=self.salon, xodim=self.rahbar, sanalgan_summa=100_000, filial=self.f1)
+        ish = smena_chiqish(salon=self.salon, xodim=self.rahbar, sanalgan_summa=0, filial=self.f1)  # rahbar pul olmagan
         self.assertEqual((ish.smena, ish.farq), (s1, 0))
         # Dilnoza boshqa filial qurilmasidan bossa ham o'z kassasini yopadi
         yopilgan = smena_yopish(salon=self.salon, xodim=self.dilnoza, fakt_qoldiq=50_000, filial=self.f1)
@@ -83,7 +83,8 @@ class FilialKassaTests(TestCase):
 
         m, d = api(self.malika, q1), api(self.dilnoza, q2)
         self.assertEqual(m.post('/api/kassa/smena/ochish/', {'boshlangich_qoldiq': 0}, format='json').status_code, 201)
-        self.assertEqual(d.get('/api/kassa/smena/').data, {'ochiq': False, 'filial': 'Yunusobod'})
+        h = d.get('/api/kassa/smena/').data
+        self.assertEqual((h['ochiq'], h['filial']), (False, 'Yunusobod'))
         self.assertEqual(d.post('/api/kassa/smena/ochish/', {'boshlangich_qoldiq': 0}, format='json').status_code, 201)
         self.assertEqual((m.get('/api/kassa/smena/').data['filial'], d.get('/api/kassa/smena/').data['filial']), ('Chilonzor', 'Yunusobod'))
         r = api(self.rahbar, q2)

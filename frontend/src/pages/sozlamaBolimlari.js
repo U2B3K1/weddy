@@ -16,6 +16,7 @@ export const SOZLAMA_BOLIMLAR = [
   { id: 'sms', ikon: 'xabar', nomi: 'SMS eslatma', guruh: "Ko'rinish va xabarlar" },
   { id: 'integratsiyalar', ikon: 'vilka', nomi: 'Integratsiyalar', guruh: "Ko'rinish va xabarlar" },
   { id: 'xodimlar', ikon: 'mijozlar', nomi: 'Xodimlar', guruh: 'Salon' },
+  { id: 'kassa', ikon: 'kassa', nomi: 'Kassa', guruh: 'Salon' },
   { id: 'filiallar', ikon: 'joy', nomi: 'Filiallar', guruh: 'Salon' },
   { id: 'rekvizitlar', ikon: 'bino', nomi: 'Rekvizitlar', guruh: 'Salon' },
   { id: 'qurilmalar', ikon: 'qurilma', nomi: 'Qurilmalar', guruh: 'Salon' },

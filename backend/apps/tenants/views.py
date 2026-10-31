@@ -11,7 +11,7 @@ from rest_framework.views import APIView
 
 from . import cheklov
 from .auth import make_device_token, make_staff_token, qurilma_holati
-from .models import Ariza, IshonchliQurilma, Salon, Xodim, jurnalga_yoz
+from .models import Ariza, IshonchliQurilma, Salon, Xodim, jurnalga_yoz, sozlama
 from .permissions import salon_yoza_oladimi
 
 
@@ -231,6 +231,7 @@ class MeView(APIView):
         holat, qolgan = request.salon.obuna_holati()
         return Response({'id': request.user.id, 'ism': request.user.ism,
                          'rol': request.user.rol, 'salon': request.salon.nomi,
+                         'kassa_rejimi': sozlama(request.salon).kassa_rejimi,
                          'salon_holati': holat,
                          # muddat o'tgan: shuncha kundan keyin «faqat ko'rish» (FT-22.8)
                          'obuna_ogohlantirish_kun': qolgan if holat != Salon.Holat.FAQAT_KORISH else None})
