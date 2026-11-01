@@ -362,7 +362,8 @@ function TolovPOS({ boshZakaz, onTolandi, onSmenaOchish }) {
   useEffect(() => { sozlamalar().then(setSoz).catch(() => {}) }, [])
 
   const yukla = useCallback(() => Promise.all([zakazlarRoyxat({ holat: 'vaqtinchalik', q: q || undefined }), zakazlarRoyxat({ holat: 'bron', q: q || undefined })])
-    .then(([a, b]) => setRoyxat([...a, ...b].filter((z) => z.jami - z.tolangan > 0)
+    // to'liq chegirmali (0 so'm) vaqtinchalik bron ham — kassir uni «to'lovsiz» tasdiqlaydi
+    .then(([a, b]) => setRoyxat([...a, ...b].filter((z) => z.jami - z.tolangan > 0 || (z.holat === 'vaqtinchalik' && z.jami === 0))
       .sort((x, y) => String(x.olib_ketish).localeCompare(String(y.olib_ketish)))))
     .catch((e) => setXato(xatoMatni(e))), [q])
   useEffect(() => { const t = setTimeout(yukla, q ? 300 : 0); return () => clearTimeout(t) }, [yukla, q])
@@ -428,6 +429,14 @@ function TolovPOS({ boshZakaz, onTolandi, onSmenaOchish }) {
               <tr><td>To'langan</td><td>{som(z.tolangan)}</td></tr>
               <tr><td><b>{avans ? 'Avans (qoldiq)' : 'Qoldiq'}</b></td><td><b>{som(qoldiq)}</b></td></tr>
             </tbody></table>
+            {z.jami === 0 ? (
+              <button className="pos-tugma" disabled={band} onClick={async () => {
+                setXato(''); setBand(true)
+                try { await tolovQabul({ zakaz: z.id, tur: 'avans', summa: 0, usul: 'naqd' }); setTanlangan(null); await Promise.all([yukla(), onTolandi?.()]) } catch (e) { setXato(xatoMatni(e)) } finally { setBand(false) }
+              }}>Bronni tasdiqlash (to'liq chegirma — to'lov yo'q)</button>
+            ) : null}
+            {z.jami === 0 && xato && <p className="xato">{xato}</p>}
+            {z.jami !== 0 && (<>
             <Summa qiymat={summa} izoh={Number(summa) > qoldiq ? `Qoldiqdan oshib ketdi (${som(qoldiq)})` : null} />
             <div className="pos-tez">
               <button type="button" className="ikkinchi kichik" onClick={() => setSumma(String(qoldiq))}>To'liq: {som(qoldiq)}</button>
@@ -452,6 +461,7 @@ function TolovPOS({ boshZakaz, onTolandi, onSmenaOchish }) {
             <button className="pos-tugma" disabled={band || !(Number(summa) > 0) || Number(summa) > qoldiq} onClick={qabul}>
               {band ? 'Qabul qilinmoqda…' : `Qabul qilish${Number(summa) > 0 ? ` · ${som(Number(summa))}` : ''}`}
             </button>
+            </>)}
           </>
         )}
       </section>

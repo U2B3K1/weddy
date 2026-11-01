@@ -236,9 +236,12 @@ function Karta({ id, onOrqaga, onKassa }) {
           Bronni tasdiqlash (to'liq chegirma — to'lov yo'q)
         </button>
       )}
-      {h === 'bron' && z.qoldiq === 0 && <BerishForma soz={soz} libosZalogi={z.libos_zalogi} olibKetish={z.olib_ketish}
+      {h === 'bron' && z.qoldiq === 0 && <BerishForma soz={soz} pulsiz={kassirda} libosZalogi={z.libos_zalogi} olibKetish={z.olib_ketish}
         onYuborish={(zaloglar, erta) => bajar(() => berish(z.id, zaloglar, erta), 'Libos berildi.')} />}
-      {h === 'berildi' && <QaytarishForma qaytarish={z.qaytarish} kechikishJarimasi={soz ? (soz.kechikish_jarimasi ? soz.kechikish_kunlik_summa : 0) : null} baholash={soz ? soz.mijoz_bahosi : true} tillo={z.zaloglar.some((g) => g.turi === 'tillo')} onYuborish={(b) => bajar(() => qaytarish(z.id, b), 'Qaytarish rasmiylashtirildi.')} />}
+      {h === 'berildi' && kassirda && z.zaloglar.some((g) => g.turi === 'pul' && g.holat === 'saqlanmoqda') && (
+        <p className="malumot">Pul zalogni kassir qaytaradi — libos qaytarilishini kassir rasmiylashtiradi (zakaz #{z.raqam}).</p>
+      )}
+      {h === 'berildi' && !(kassirda && z.zaloglar.some((g) => g.turi === 'pul' && g.holat === 'saqlanmoqda')) && <QaytarishForma pulsiz={kassirda} qaytarish={z.qaytarish} kechikishJarimasi={soz ? (soz.kechikish_jarimasi ? soz.kechikish_kunlik_summa : 0) : null} baholash={soz ? soz.mijoz_bahosi : true} tillo={z.zaloglar.some((g) => g.turi === 'tillo')} onYuborish={(b) => bajar(() => qaytarish(z.id, b), 'Qaytarish rasmiylashtirildi.')} />}
       {!kassirda && h === 'qaytarildi' && z.qarz > 0 && (
         <TolovForma sarlavha="Jarima qarzini to'lash" maks={z.qarz} usulsiz
           onYuborish={(summa) => bajar(() => qarzTolash(z.id, summa), "Qarz to'landi.")} />
@@ -500,9 +503,9 @@ function ChegirmaForma({ zakazId, z, bajar }) {
   )
 }
 
-function BerishForma({ onYuborish, soz, libosZalogi, olibKetish }) {
+function BerishForma({ onYuborish, soz, libosZalogi, olibKetish, pulsiz }) {
   const TURLAR = [['pul', 'Pul', 'zalog_pul'], ['hujjat', 'Hujjat', 'zalog_hujjat'], ['tillo', 'Tillo buyum', 'zalog_tillo']]
-    .filter(([, , k]) => !soz || soz[k])  // admin panelda yoqilgan turlar (FT-7.1)
+    .filter(([t, , k]) => (!soz || soz[k]) && !(pulsiz && t === 'pul'))  // admin panelda yoqilgan turlar (FT-7.1); kassir rejimida sotuvchi pul olmaydi
   const [tanlov, setTuri] = useState('')
   const turi = TURLAR.some(([t]) => t === tanlov) ? tanlov : TURLAR[0]?.[0]
   const [f, setF] = useState({})
@@ -540,7 +543,7 @@ function BerishForma({ onYuborish, soz, libosZalogi, olibKetish }) {
   )
 }
 
-function QaytarishForma({ onYuborish, baholash, tillo, qaytarish, kechikishJarimasi }) {
+function QaytarishForma({ onYuborish, baholash, tillo, qaytarish, kechikishJarimasi, pulsiz }) {
   const [f, setF] = useState({ tekshiruv: 'butun' })
   const [bugun] = useState(() => new Date().toLocaleDateString('sv-SE'))  // YYYY-MM-DD, mahalliy sana
   // Kechikkan qaytarish: jarima avtomatik hisoblanishi yoki o'chirilgani (jim nol jarima bo'lmasin)
@@ -569,7 +572,7 @@ function QaytarishForma({ onYuborish, baholash, tillo, qaytarish, kechikishJarim
         </select>
       </label>
       <label>Jarima<SummaInput onChange={set('jarima')} /></label>
-      <label>Shu zahoti to'langan jarima (zalogdan ortig'i)<SummaInput onChange={set('jarima_tolandi')} /></label>
+      {!pulsiz && <label>Shu zahoti to'langan jarima (zalogdan ortig'i)<SummaInput onChange={set('jarima_tolandi')} /></label>}
       {tillo && <label>Tillo qayta tortildi, g<input type="number" step="0.01" onChange={set('tortilgan_gr')} /></label>}
       {baholash && <label>Mijoz bahosi (1–5)<input type="number" min="1" max="5" onChange={set('baho')} /></label>}
       <button onClick={() => onYuborish(body)}>Qaytarishni rasmiylashtirish</button>
