@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import Info from '../components/Info'
 import Vitrina from '../components/Vitrina'
 import LibosSiluet from '../components/LibosSiluet'
 import { SalonchiForma } from './Salonchilar'
@@ -365,6 +366,7 @@ export default function YangiZakaz({ onTayyor, onTolov }) {
             <option value="">— yo'q —</option>
             {salonchiRoyxat.map((s) => <option key={s.id} value={s.id}>{s.ism}{s.salon_nomi ? ` · ${s.salon_nomi}` : ''}</option>)}
           </select>
+          <Info nom="Salonchi">Mijozni olib kelgan yoki tavsiya qilgan makiyaj ustasi. Unga komissiya hisoblanmaydi — faqat «Salonchilar» hisobotida kim qancha mijoz olib kelgani ko'rinadi.</Info>
         </label>
         {tanlanganSalonchi?.instagram && (
           <a className="tugma-havola" href={tanlanganSalonchi.instagram} target="_blank" rel="noreferrer">

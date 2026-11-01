@@ -39,13 +39,13 @@ class StatistikaTests(TestCase):
         smena_ochish(salon=cls.salon, xodim=cls.malika, boshlangich_qoldiq=1_000_000)
         t = lambda tur, summa, z=None: tolov_qabul(salon=cls.salon, xodim=cls.malika, tur=tur, summa=summa, zakaz=z)
 
-        # 1) A: to'liq to'landi, berildi, kechikib va jarima bilan qaytdi (salonchi Madina, baho 4)
+        # 1) A: to'liq to'landi, berildi, kechikib va jarima bilan qaytdi (salonchi Madina)
         z1 = zakaz_yaratish(salon=cls.salon, xodim=cls.malika, telefon='+998901', fio='Dilnoza', olib_ketish=kun(0),
                             qaytarish=kun(0), libos_idlari=[cls.a.id], salonchi=cls.madina)
         t(Tolov.Tur.AVANS, 2_000_000, z1)
         libos_berish(salon=cls.salon, xodim=cls.malika, zakaz=z1, zaloglar=[{'turi': 'pul', 'summa': 500_000}])
         Zakaz.objects.filter(id=z1.id).update(qaytarish=kun(-2))
-        libos_qaytarish(salon=cls.salon, xodim=cls.malika, zakaz=z1, jarima=100_000, baho=4)
+        libos_qaytarish(salon=cls.salon, xodim=cls.malika, zakaz=z1, jarima=100_000)
         # 2) B: chegirma 10% (rahbar tasdiqladi), to'liq to'landi, berildi (hujjat zalogi), hali qaytmagan
         z2 = zakaz_yaratish(salon=cls.salon, xodim=cls.malika, telefon='+998902', fio='Nodira', olib_ketish=kun(0),
                             qaytarish=kun(3), libos_idlari=[cls.b.id], manba='instagram')
@@ -88,8 +88,8 @@ class StatistikaTests(TestCase):
         self.assertEqual(self.qator(k, 'Milliy')[1:], [1, 2_000_000])
         self.assertEqual(self.qator(k, 'Pachka')[1:], [1, 1_000_000])
         s = self.qator(self.h('sotuvchi'), 'Malika')
-        # 3 ta yangi (bekor qilingani chiqariladi), 2 tasi to'langan, tushum 2 000 000 + 900 000, 1 chegirma tasdiqlangan, baho 4.0
-        self.assertEqual(s[1:], [3, 2, 2_900_000, 1, 0, 4.0])
+        # 3 ta yangi (bekor qilingani chiqariladi), 2 tasi to'langan, tushum 2 000 000 + 900 000, 1 chegirma tasdiqlangan
+        self.assertEqual(s[1:], [3, 2, 2_900_000, 1, 0])
 
     def test_salonchi_va_manba(self):
         self.assertEqual(self.qator(self.h('salonchi'), 'Madina')[2:], [1, 2_000_000])

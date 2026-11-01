@@ -133,12 +133,9 @@ class QaytarishTests(RentalBase):
         self.assertEqual(z.qaytarish_akti.kechikish_kunlari, kutilgan)
         self.assertEqual(z.qaytarish_akti.jarima, kutilgan * 10)
 
-    def test_berilmagan_zakaz_qaytmaydi_va_baho_chegarasi(self):
+    def test_berilmagan_zakaz_qaytmaydi(self):
         with self.assertRaises(BerishXatosi):
             self.qaytar()
-        self.tolash(); self.ber([PUL])
-        with self.assertRaises(BerishXatosi):
-            self.qaytar(baho=6)
 
     def test_tozalash_tugagach_libos_bosh(self):
         self.tolash(); self.ber([PUL]); self.qaytar()

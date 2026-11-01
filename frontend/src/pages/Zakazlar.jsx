@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import Info from '../components/Info'
 import Hujjat from '../components/Hujjat'
 import CalendarPage from '../components/kalendar/CalendarPage'
 import Tasdiq from '../components/Tasdiq'
@@ -242,7 +243,7 @@ function Karta({ id, onOrqaga, onKassa }) {
       {h === 'berildi' && kassirda && z.zaloglar.some((g) => g.turi === 'pul' && g.holat === 'saqlanmoqda') && (
         <p className="malumot">Pul zalogni kassir qaytaradi — libos qaytarilishini kassir rasmiylashtiradi (zakaz #{z.raqam}).</p>
       )}
-      {h === 'berildi' && !(kassirda && z.zaloglar.some((g) => g.turi === 'pul' && g.holat === 'saqlanmoqda')) && <QaytarishForma pulsiz={kassirda} qaytarish={z.qaytarish} kechikishJarimasi={soz ? (soz.kechikish_jarimasi ? soz.kechikish_kunlik_summa : 0) : null} baholash={soz ? soz.mijoz_bahosi : true} tillo={z.zaloglar.some((g) => g.turi === 'tillo')} onYuborish={(b) => bajar(() => qaytarish(z.id, b), 'Qaytarish rasmiylashtirildi.')} />}
+      {h === 'berildi' && !(kassirda && z.zaloglar.some((g) => g.turi === 'pul' && g.holat === 'saqlanmoqda')) && <QaytarishForma pulsiz={kassirda} qaytarish={z.qaytarish} kechikishJarimasi={soz ? (soz.kechikish_jarimasi ? soz.kechikish_kunlik_summa : 0) : null} tillo={z.zaloglar.some((g) => g.turi === 'tillo')} onYuborish={(b) => bajar(() => qaytarish(z.id, b), 'Qaytarish rasmiylashtirildi.')} />}
       {!kassirda && h === 'qaytarildi' && z.qarz > 0 && (
         <TolovForma sarlavha="Jarima qarzini to'lash" maks={z.qarz} usulsiz
           onYuborish={(summa) => bajar(() => qarzTolash(z.id, summa), "Qarz to'landi.")} />
@@ -571,7 +572,7 @@ function BerishForma({ onYuborish, soz, libosZalogi, olibKetish, pulsiz }) {
   )
 }
 
-function QaytarishForma({ onYuborish, baholash, tillo, qaytarish, kechikishJarimasi, pulsiz }) {
+function QaytarishForma({ onYuborish, tillo, qaytarish, kechikishJarimasi, pulsiz }) {
   const [f, setF] = useState({ tekshiruv: 'butun' })
   const [bugun] = useState(() => new Date().toLocaleDateString('sv-SE'))  // YYYY-MM-DD, mahalliy sana
   // Kechikkan qaytarish: jarima avtomatik hisoblanishi yoki o'chirilgani (jim nol jarima bo'lmasin)
@@ -580,7 +581,7 @@ function QaytarishForma({ onYuborish, baholash, tillo, qaytarish, kechikishJarim
   const body = {
     tekshiruv: f.tekshiruv, jarima: Number(f.jarima || 0), jarima_tolandi: Number(f.jarima_tolandi || 0),
     ...(f.tortilgan_gr ? { tortilgan_gr: f.tortilgan_gr } : {}),
-    ...(f.baho ? { baho: Number(f.baho) } : {}), izoh: f.izoh || '',
+    izoh: f.izoh || '',
   }
   return (
     <Amal sarlavha="Qaytarish" id="asosiy-amal">
@@ -599,10 +600,9 @@ function QaytarishForma({ onYuborish, baholash, tillo, qaytarish, kechikishJarim
           <option value="yirtiq">Yirtiq</option><option value="aksessuar_yoq">Aksessuar yo'q</option>
         </select>
       </label>
-      <label>Jarima<SummaInput onChange={set('jarima')} /></label>
-      {!pulsiz && <label>Shu zahoti to'langan jarima (zalogdan ortig'i)<SummaInput onChange={set('jarima_tolandi')} /></label>}
-      {tillo && <label>Tillo qayta tortildi, g<input type="number" step="0.01" onChange={set('tortilgan_gr')} /></label>}
-      {baholash && <label>Mijoz bahosi (1–5)<input type="number" min="1" max="5" onChange={set('baho')} /></label>}
+      <label>Jarima<SummaInput onChange={set('jarima')} /><Info nom="Jarima">Libosga yetgan zarar uchun summa: dog', yirtiq, yo'qolgan aksessuar. Avval pul zalogidan ushlanadi; zalog yetmasa, qolgani mijoz qarzi bo'ladi. Kechikish jarimasi (yoqilgan bo'lsa) bunga o'zi qo'shiladi.</Info></label>
+      {!pulsiz && <label>Shu zahoti to'langan jarima (zalogdan ortig'i)<SummaInput onChange={set('jarima_tolandi')} /><Info nom="To'langan jarima">Jarima pul zalogidan oshsa, ortig'ini mijoz hozir to'lasa — shu yerga yozing, kassaga tushadi. Yozilmasa, ortig'i mijoz qarzi bo'lib qoladi.</Info></label>}
+      {tillo && <label>Tillo qayta tortildi, g<input type="number" step="0.01" onChange={set('tortilgan_gr')} /><Info nom="Tillo og'irligi">Zalogga olingan tillo buyumni qaytarishdan oldin qayta torting. Berilgandagi og'irlikdan farq qilsa, qaytarish to'xtatiladi — buyum almashtirilmaganiga ishonch hosil qilish uchun.</Info></label>}
       <button onClick={() => onYuborish(body)}>Qaytarishni rasmiylashtirish</button>
     </Amal>
   )

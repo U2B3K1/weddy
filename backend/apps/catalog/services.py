@@ -1,3 +1,5 @@
+import re
+
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
@@ -12,6 +14,20 @@ class KatalogXatosi(Exception):
 
 def _rahbar(xodim):
     return xodim.rol == Xodim.Rol.RAHBAR
+
+
+def keyingi_artikul(salon, soz=None):
+    """Avto artikul: prefiks + (shu prefiksli eng katta raqam + 1), boshlang'ich raqamdan kam emas. L-0001, L-0002…
+
+    Qo'lda kiritilgan «L-0057» ham hisobga olinadi — keyingisi L-0058 bo'ladi, takror chiqmaydi.
+    """
+    soz = soz or sozlama(salon)
+    p = soz.artikul_prefiks
+    naqsh = re.compile(re.escape(p) + r'(\d+)$')
+    eng_katta = max((int(m.group(1)) for a in Libos.objects.filter(salon=salon, artikul__startswith=p)
+                     .values_list('artikul', flat=True) if (m := naqsh.match(a))), default=None)
+    n = soz.artikul_boshlanish if eng_katta is None else max(eng_katta + 1, soz.artikul_boshlanish)
+    return f'{p}{n:0{soz.artikul_xona}d}'
 
 
 @transaction.atomic
@@ -30,10 +46,16 @@ def libos_qoshish(*, salon, xodim, artikul, nomi, kategoriya, olcham='', rang=''
         raise KatalogXatosi("Libosni faqat rahbar qo'shadi (sozlamalarda belgilangan).")
     if not rahbar:
         tannarx = None  # sotuvchi tannarx kirita olmaydi
+    artikul = artikul.strip()
+    if not artikul:
+        if not soz.artikul_avto:
+            raise KatalogXatosi('Artikul kiriting.')
+        # sozlama qatori qulflanadi: ikki xodim bir vaqtda qo'shsa ham bir xil raqam olmaydi
+        artikul = keyingi_artikul(salon, type(soz).objects.select_for_update().get(id=soz.id))
     try:
         with transaction.atomic():
             libos = Libos.objects.create(
-                salon=salon, artikul=artikul.strip(), nomi=nomi.strip(), kategoriya=kategoriya,
+                salon=salon, artikul=artikul, nomi=nomi.strip(), kategoriya=kategoriya,
                 olcham=olcham, rang=rang, ijara_narxi=ijara_narxi, zalog=zalog, tannarx=tannarx,
                 qoshgan=xodim,
                 # tasdiq o'chirilgan bo'lsa sotuvchi libosi darhol katalogga chiqadi (FT-3.6, S23)

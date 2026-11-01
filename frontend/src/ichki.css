@@ -995,3 +995,26 @@ main .boshlash-panel .qator-btn { text-align: left; }
 .yetkazib-tafsilot > .qator { flex-wrap: wrap; }
 .yetkazib-tafsilot > .qator > :not(button) { flex: 1 1 200px; min-width: 0; }
 @media (max-width: 767px) { .yetkazib-tafsilot > .qator > :not(button), .yetkazib-tafsilot > .qator > button { flex: 1 1 100%; } }
+
+/* «i» — maydon haqida qisqa ma'lumot (components/Info.jsx) */
+.info { position: relative; display: inline-flex; vertical-align: middle; margin-left: 6px; }
+label:has(> .info) { position: relative; }
+label:not(.qator) > .info { position: absolute; top: 0; right: 0; margin: 0; }
+/* yorliq matni «i» ostiga kirmasin; maydonlar esa to'liq kenglikda qoladi */
+label:not(.qator):has(> .info) { padding-right: 26px; }
+label:not(.qator):has(> .info) > :not(.info) { margin-right: -26px; }
+label.qator > .info { margin-left: auto; }
+.info-tugma {
+  min-height: 0; width: 18px; height: 18px; padding: 0; border-radius: 50%; box-shadow: none;
+  display: inline-grid; place-items: center; font: italic 700 12px/1 var(--kursiv);
+  background: transparent; color: var(--tilla); border: 1.5px solid var(--tilla);
+}
+.info-tugma::before { content: ''; position: absolute; inset: -12px; }  /* barmoq uchun kattaroq bosish joyi */
+.info-tugma[aria-expanded="true"] { background: var(--tilla); color: var(--siyoh); }
+.info-matn {
+  position: absolute; top: calc(100% + 6px); left: 0; z-index: 30; width: max-content; max-width: min(280px, 78vw);
+  padding: 10px 12px; border-radius: var(--r-ichki); background: var(--siyoh); border: 1px solid var(--shisha-chet);
+  box-shadow: 0 12px 32px -8px rgba(0, 0, 0, .6); color: var(--matn); font: 400 13px/1.45 var(--sans); white-space: normal;
+  text-align: left; cursor: auto;
+}
+label > .info .info-matn, th .info .info-matn { left: auto; right: 0; }

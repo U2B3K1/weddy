@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useState } from 'react'
+import Info from '../components/Info'
 import Xarajatlar from '../components/Xarajatlar'
 import OylikGrafik from '../components/OylikGrafik'
 import Tasdiq from '../components/Tasdiq'
@@ -320,8 +321,10 @@ function Pnl({ r, filial }) {
         </p>
       )}
       {r.rentabellik !== null && (
-        <p className="malumot" title="Foyda libosni xarid qilishga ketgan pulni (tannarxni) xarajat sifatida hisoblamaydi — pastdagi qatorda investitsiya qanchasi qoplangani ko'rsatilgan.">
+        <p className="malumot">
           Rentabellik: {r.rentabellik}% <span className="malumot">(libos xarid tannarxisiz)</span>
+          <Info nom="Rentabellik">Sof foyda tushumning necha foizi. Libos xaridi (tannarx) xarajat sifatida hisoblanmaydi — u investitsiya;
+            qanchasi qoplangani «Libos samaradorligi» hisobotida.</Info>
         </p>
       )}
       {r.libos_xaridi > 0 && (

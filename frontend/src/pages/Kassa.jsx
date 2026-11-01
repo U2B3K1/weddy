@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import Info from '../components/Info'
 import Hujjat from '../components/Hujjat'
 import LibosSiluet from '../components/LibosSiluet'
 import Oyna from '../components/Oyna'
@@ -331,6 +332,8 @@ function SmenaYopish({ hisobda, tekshirilmagan, rahbarlar, terminalda, onYuboris
       {terminalda > 0 && (
         <label>Terminal sverkasi — terminaldan chiqarilgan summa (tizimda {som(terminalda)})
           <SummaInput aria-label="Terminal sverkasi" value={terminal} onChange={(e) => setTerminal(e.target.value)} />
+          <Info nom="Terminal sverkasi">Kun oxirida terminaldan chiqariladigan yakuniy chekdagi jami summa. Tizimga yozilgan karta to'lovlari bilan
+            solishtiriladi: farq bo'lsa — terminaldan o'tgan, lekin tizimga yozilmagan (yoki aksincha) to'lov bor.</Info>
           {tFarq !== null && <small className={tFarq ? 'qizil' : 'malumot'}>{tFarq ? `Terminal farqi: ${som(tFarq)}` : "Terminal bo'yicha farq yo'q"}</small>}
         </label>
       )}

@@ -7,13 +7,12 @@ from rest_framework.test import APIClient
 from apps.bookings.tests import libos_yarat, salon_yarat
 from apps.cash.models import Tolov
 from apps.cash.services import smena_ochish, tolov_qabul
-from apps.finance import statistika
 from apps.tenants.auth import make_staff_token
 from apps.tenants.models import Xodim, sozlama
 
 from .models import Primerka, QaytarishAkti, Zakaz
 from .primerka import PrimerkaXatosi, primerka_belgilash, primerka_ozgartirish
-from .rental import libos_berish, libos_qaytarish
+from .rental import BerishXatosi, libos_berish, libos_qaytarish
 from .services import zakaz_yaratish
 from .views_royxat import eslatmalar
 
@@ -167,16 +166,13 @@ class BahoTests(PrimerkaBase):
         libos_qaytarish(salon=self.salon, xodim=self.malika, zakaz=z, baho=baho)
         return z
 
-    def test_ochirilgan_bolsa_baho_yozilmaydi(self):
-        self.sozla(mijoz_bahosi=False)
+    def test_standart_ochirilgan_baho_yozilmaydi(self):
         z = self.qaytar(5)
         self.assertIsNone(QaytarishAkti.objects.get(zakaz=z).baho)
 
-    def test_libos_boyicha_ortacha_baho(self):
+    def test_yoqilgan_bolsa_baho_va_chegarasi(self):
+        self.sozla(mijoz_bahosi=True)
         z = self.qaytar(4)
-        h = statistika.libos_samaradorligi(self.salon, self.bugun, self.bugun)
-        self.assertEqual(h['ustunlar'][-1]['nom'], "O'rtacha baho")
-        libos = z.pozitsiyalar.get().libos
-        (qator,) = [q for q in h['qatorlar'] if q[0].startswith(libos.artikul)]
-        self.assertEqual(qator[-1], 4.0)
-        self.assertEqual(len(h['jami']), len(h['ustunlar']))
+        self.assertEqual(QaytarishAkti.objects.get(zakaz=z).baho, 4)
+        with self.assertRaises(BerishXatosi):
+            self.qaytar(6)

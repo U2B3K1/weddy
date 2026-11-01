@@ -237,6 +237,40 @@ test('yetkazib beruvchi: libos qisman to\'lab olinadi, qarz to\'lanadi', async (
     await expect(page.getByText("Libos katalogga qo'shildi.")).toBeVisible()
   })
 
+  await test.step('libos artikuli: sozlamada prefiks va avto raqam, formada «i»', async () => {
+    try {
+      await nav(page).getByRole('button', { name: 'Sozlama', exact: true }).click()
+      const guruh = nav(page).getByRole('button', { name: "Ko'rinish va xabarlar" })
+      if (await guruh.getAttribute('aria-expanded') !== 'true') await guruh.click()
+      await nav(page).getByRole('button', { name: 'Libos artikuli', exact: true }).click()
+      await page.getByLabel('Prefiks').fill('E-')
+      await page.getByLabel("Raqam avtomatik qo'yilsin").check()
+      await page.getByLabel('Sanoq nechidan boshlansin').fill('5')
+      await page.getByLabel('Raqam necha xonali').selectOption('3')
+      await expect(page.locator('.blok', { hasText: 'Libos artikuli' })).toContainText('Namuna: E-005, E-006, E-007')
+      await page.getByRole('button', { name: 'Saqlash', exact: true }).click()
+      await expect(page.getByText('Sozlamalar saqlandi.')).toBeVisible()
+      await ikkiKenglik(page, '13-artikul-sozlama')
+
+      await nav(page).getByRole('button', { name: 'Asosiy', exact: true }).click()  // Sozlama menyusida ham «Katalog» bo'limi bor
+      await nav(page).getByRole('button', { name: 'Katalog', exact: true }).click()
+      await page.getByRole('tab', { name: 'Liboslar' }).click()
+      await page.getByRole('button', { name: 'Libos qo\'shish' }).click()
+      const oyna = page.getByRole('dialog')
+      await expect(oyna.getByLabel('Artikul')).toHaveAttribute('placeholder', 'avtomatik: E-005')
+      await oyna.getByRole('button', { name: 'Izoh' }).first().click()
+      await expect(oyna.getByRole('note')).toContainText("tizim keyingi raqamni o'zi beradi: E-005")
+      await page.screenshot({ path: 'test-results/korinish/14-artikul-info.png' })
+      await oyna.getByLabel('Nomi').fill('Avto libos')  // artikul bo'sh qoldiriladi
+      await expect(oyna.getByRole('note')).toHaveCount(0)  // boshqa joy bosilsa izoh yopiladi
+      await oyna.getByRole('button', { name: "Qo'shish", exact: true }).click()
+      await expect(page.getByText("Libos katalogga qo'shildi.")).toBeVisible()
+      await expect(page.getByText('E-005').first()).toBeVisible()
+    } finally {
+      await apiSorov(page, 'PATCH', '/sozlamalar/', { artikul_avto: false, artikul_prefiks: '' })
+    }
+  })
+
   await test.step('aksessuar ham: 3 dona × 100 000, 100 000 to\'landi', async () => {
     await page.getByRole('tab', { name: 'Aksessuarlar' }).click()
     await page.getByRole('button', { name: "Aksessuar qo'shish" }).click()

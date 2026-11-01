@@ -107,7 +107,7 @@ export default function Kalendar({ onZakaz }) {
       <p className="malumot kalendar-izoh">
         <span className="k-band" /> bron (avans olingan) <span className="k-vaqtinchalik" /> vaqtinchalik bron
         <span className="k-bufer" /> tozalash (bufer kun)
-        <span className="primerka-belgi">P</span> primerka
+        {qatorlar.some((l) => l.primerkalar?.length) && <><span className="primerka-belgi">P</span> primerka</>}
       </p>
     </div>
   )

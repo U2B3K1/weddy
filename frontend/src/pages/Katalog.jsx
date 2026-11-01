@@ -1,4 +1,5 @@
 import { Fragment, useCallback, useEffect, useState } from 'react'
+import Info from '../components/Info'
 import NavIkona from '../components/NavIkona'
 import Oyna from '../components/Oyna'
 import RasmBlok from '../components/RasmBlok'
@@ -7,7 +8,7 @@ import AksessuarBolimi from './AksessuarBolimi'
 import LibosSanogi from './LibosSanogi'
 import YetkazibBeruvchilar from './YetkazibBeruvchilar'
 import {
-  filiallar, kategoriyalar, kategoriyaOchir, kategoriyaOzgartir, kategoriyaYarat, libosOzgartir, libosTasdiq, libosYarat, liboslar, som, xatoMatni, yetkazibBeruvchilar,
+  filiallar, kategoriyalar, kategoriyaOchir, kategoriyaOzgartir, kategoriyaYarat, keyingiArtikul, libosOzgartir, libosTasdiq, libosYarat, liboslar, som, xatoMatni, yetkazibBeruvchilar,
 } from '../api'
 import SummaInput from '../components/SummaInput'
 import LibosSiluet from '../components/LibosSiluet'
@@ -16,6 +17,10 @@ import LibosSiluet from '../components/LibosSiluet'
 const NOFAOL = ['sotildi', 'hisobdan_chiqarildi', 'arxiv']
 const HOLAT_FILTR = [['', 'Faol liboslar'], ['bosh', "Bo'sh"], ['tamirda', "Ta'mirda"], ['tozalashda', 'Tozalashda'],
   ['sotildi', 'Sotilgan'], ['arxiv', 'Arxiv'], ['hammasi', 'Hammasi']]
+// «i» matnlari: qo'shish va tahrirlash formalarida bir xil
+const ZALOG_INFO = "Libos berilganda mijozdan olinadigan garov. Berishda pul zalogi summasiga shu son o'zi qo'yiladi. Libos butun qaytsa, zalog to'liq qaytariladi; jarima bo'lsa, avval shundan ushlanadi."
+const TANNARX_INFO = "Libosni sotib olishga ketgan pul. Faqat rahbarga ko'rinadi. «Libos samaradorligi» hisobotidagi qoplash (tushum ÷ tannarx) va yetkazib beruvchiga qarz shundan hisoblanadi."
+const TOLANDI_INFO = "Yetkazib beruvchiga hozir berilgan pul. Bo'sh qoldirsangiz — tannarx to'liq to'langan deb yoziladi; kamroq yozsangiz, qolgani unga qarz bo'lib turadi. Bu pul kassadan chiqmaydi."
 const holatSinfi = (h) => ({ bosh: 'bron', tamirda: 'qarz', tozalashda: 'vaqtinchalik', tasdiq_kutilmoqda: 'vaqtinchalik' }[h] || 'qaytarildi')
 const HOLAT = {
   bosh: "Bo'sh", tasdiq_kutilmoqda: 'Tasdiq kutilmoqda', tozalashda: 'Tozalashda', tamirda: "Ta'mirda",
@@ -204,8 +209,8 @@ function Tafsilot({ l, rahbar, onSaqla, onRasm, fil = [], ybs = [] }) {
         <>
           <div className="libos-narxlar">
             <label>Ijara narxi<SummaInput value={f.ijara_narxi} onChange={set('ijara_narxi')} /></label>
-            <label>Zalog<SummaInput value={f.zalog} onChange={set('zalog')} /></label>
-            <label>Tannarx<SummaInput value={f.tannarx} onChange={set('tannarx')} /></label>
+            <label>Zalog<SummaInput value={f.zalog} onChange={set('zalog')} /><Info nom="Zalog">{ZALOG_INFO}</Info></label>
+            <label>Tannarx<SummaInput value={f.tannarx} onChange={set('tannarx')} /><Info nom="Tannarx">{TANNARX_INFO}</Info></label>
           </div>
           <button onClick={() => onSaqla({
             ijara_narxi: Number(f.ijara_narxi), zalog: Number(f.zalog),
@@ -256,11 +261,20 @@ function TasdiqForma({ libos, onYuborish, rahbar, onRasm }) {
 
 function LibosForma({ kats, rahbar, ybs = [], onYuborish }) {
   const [f, setF] = useState({ kategoriya: '' })
+  // Sozlama → «Libos artikuli»: avto bo'lsa keyingi raqam ko'rsatiladi, bo'lmasa maydon prefiks bilan boshlanadi
+  const [art, setArt] = useState({ prefiks: '', artikul: null })
+  useEffect(() => {
+    keyingiArtikul().then((a) => {
+      setArt(a)
+      if (!a.artikul && a.prefiks) setF((x) => (x.artikul ? x : { ...x, artikul: a.prefiks }))
+    }).catch(() => {})
+  }, [])
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value })
-  const tayyor = f.artikul && f.nomi && (f.kategoriya || kats[0])
+  const artikul = (f.artikul || '').trim()
+  const tayyor = (art.artikul || (artikul && artikul !== art.prefiks)) && f.nomi && (f.kategoriya || kats[0])
   const yubor = async () => {
     const body = {
-      artikul: f.artikul, nomi: f.nomi, kategoriya: Number(f.kategoriya || kats[0].id), olcham: f.olcham || '',
+      artikul, nomi: f.nomi, kategoriya: Number(f.kategoriya || kats[0].id), olcham: f.olcham || '',
       rang: f.rang || '', ijara_narxi: Number(f.ijara_narxi || 0), zalog: Number(f.zalog || 0),
       ...(rahbar && f.tannarx ? { tannarx: Number(f.tannarx) } : {}),
       // bo'sh qoldirilsa — tannarx to'liq to'langan; kami — yetkazib beruvchiga qarz
@@ -270,8 +284,20 @@ function LibosForma({ kats, rahbar, ybs = [], onYuborish }) {
   }
   return (
     <div className="stack">
-        <label>Artikul<input value={f.artikul || ''} onChange={set('artikul')} /></label>
-        <label>Nomi<input value={f.nomi || ''} onChange={set('nomi')} /></label>
+        <label>Artikul
+          <input value={f.artikul || ''} placeholder={art.artikul ? `avtomatik: ${art.artikul}` : 'L-0001'} maxLength={50} onChange={set('artikul')} />
+          <Info nom="Artikul">
+            Libosning salondagi takrorlanmas kodi — yorlig'iga yoziladi. Zakazda libosni tez topish, sanoqda skanerlash va
+            hisobotlar shu kod bilan ishlaydi. Ikki libosning artikuli bir xil bo'lolmaydi.
+            {art.artikul
+              ? <> Bo'sh qoldirsangiz, tizim keyingi raqamni o'zi beradi: <b>{art.artikul}</b>. O'zingiz yozsangiz, yozganingiz qoladi.</>
+              : <> Avtomatik raqamlashni Sozlama → «Libos artikuli» da yoqasiz.</>}
+          </Info>
+        </label>
+        <label>Nomi
+          <input value={f.nomi || ''} onChange={set('nomi')} />
+          <Info nom="Nomi">Sotuvchi ro'yxatda darrov tanishi uchun qisqa tavsif: «Oq atlas, uzun shleyf». Takrorlanishi mumkin.</Info>
+        </label>
         <label>Kategoriya
           <select value={f.kategoriya || kats[0]?.id || ''} onChange={set('kategoriya')}>
             {kats.map((k) => <option key={k.id} value={k.id}>{k.nomi}</option>)}
@@ -283,8 +309,8 @@ function LibosForma({ kats, rahbar, ybs = [], onYuborish }) {
         </div>
         <div className="libos-narxlar">
           <label>Ijara narxi<SummaInput value={f.ijara_narxi || ''} onChange={set('ijara_narxi')} /></label>
-          <label>Tavsiya etilgan zalog<SummaInput value={f.zalog || ''} onChange={set('zalog')} /></label>
-          {rahbar && <label>Tannarx<SummaInput value={f.tannarx || ''} onChange={set('tannarx')} /></label>}
+          <label>Tavsiya etilgan zalog<SummaInput value={f.zalog || ''} onChange={set('zalog')} /><Info nom="Zalog">{ZALOG_INFO}</Info></label>
+          {rahbar && <label>Tannarx<SummaInput value={f.tannarx || ''} onChange={set('tannarx')} /><Info nom="Tannarx">{TANNARX_INFO}</Info></label>}
         </div>
         {rahbar && ybs.length > 0 && (
           <div className="libos-narxlar">
@@ -295,7 +321,7 @@ function LibosForma({ kats, rahbar, ybs = [], onYuborish }) {
               </select>
             </label>
             {f.yetkazib_beruvchi && (
-              <label>Hozir to'landi<SummaInput placeholder={f.tannarx ? `to'liq: ${som(Number(f.tannarx))}` : ''} value={f.tolandi ?? ''} onChange={set('tolandi')} /></label>
+              <label>Hozir to'landi<SummaInput placeholder={f.tannarx ? `to'liq: ${som(Number(f.tannarx))}` : ''} value={f.tolandi ?? ''} onChange={set('tolandi')} /><Info nom="Hozir to'landi">{TOLANDI_INFO}</Info></label>
             )}
           </div>
         )}

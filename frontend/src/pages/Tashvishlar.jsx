@@ -22,7 +22,7 @@ import './tashvishlar.css'
 // Har fonda pol boshqa joyda, shuning uchun har slaydga alohida.
 const SLAYDLAR = [
   { nom: 'Bron', obraz: 'Atlas ko\'ylak va zarchopon', joy: 'Saroy zali', x: 38, y: 90, h: 62, shior: 'Bitta libos — ikki kelin emas',
-    qatorlar: ["Band libos ikkinchi marta bron bo'lmaydi — buni tizim o'zi tekshiradi", 'Kalendar va bandlik bir qarashda', 'Tozalash uchun bufer kunlar', 'Primerka vaqti'] },
+    qatorlar: ["Band libos ikkinchi marta bron bo'lmaydi — buni tizim o'zi tekshiradi", 'Kalendar va bandlik bir qarashda', 'Tozalash uchun bufer kunlar'] },
   { nom: 'Zakaz', obraz: 'Buxoro zardo\'zi libosi', joy: 'Saroy zinasi', x: 37, y: 88, h: 60, shior: 'Zalog kimda qolgani — yozilgan',
     qatorlar: ['Avans, qoldiq va qarz', 'Pul, hujjat yoki tillo zalog — har biri yorliq bilan', 'Berish va qaytarish', 'Shartnoma va kvitansiya'] },
   { nom: 'Katalog', obraz: 'Oq to\'y libosi va do\'ppi', joy: 'Primerka xonasi', x: 38.5, y: 82, h: 54, shior: 'Har libosning o\'z pasporti',

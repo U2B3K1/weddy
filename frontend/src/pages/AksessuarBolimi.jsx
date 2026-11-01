@@ -1,4 +1,5 @@
 import { Fragment, useCallback, useEffect, useRef, useState } from 'react'
+import Info from '../components/Info'
 import Manekin from '../components/Manekin'
 import NavIkona from '../components/NavIkona'
 import Oyna from '../components/Oyna'
@@ -7,6 +8,9 @@ import {
   kategoriyalar, sanaMatni, som, xatoMatni, yetkazibBeruvchilar,
 } from '../api'
 import SummaInput from '../components/SummaInput'
+
+// «i» matni: partiya va yangi aksessuar formalarida bir xil
+const TOLANDI_INFO = "Yetkazib beruvchiga hozir berilgan pul. Bo'sh qoldirsangiz — to'liq to'langan deb yoziladi; kamroq yozsangiz, qolgani unga qarz bo'lib turadi. Bu pul kassadan chiqmaydi."
 
 const DONA_HOLAT = { bosh: "Bo'sh", tamirda: "Ta'mirda", yoqolgan: "Yo'qolgan", arxiv: 'Arxiv' }
 
@@ -236,7 +240,7 @@ function DonaQoshish({ a, ybs, onYuborish }) {
       <div className="stack">
         <div className="qator">
           <label>Soni<input type="number" min="1" max="200" value={f.soni} onChange={set('soni')} /></label>
-          <label>Bir dona narxi<SummaInput placeholder={a.tannarx != null ? som(a.tannarx) : ''} value={f.narx} onChange={set('narx')} /></label>
+          <label>Bir dona narxi<SummaInput placeholder={a.tannarx != null ? som(a.tannarx) : ''} value={f.narx} onChange={set('narx')} /><Info nom="Bir dona narxi">Shu partiyadagi bir donaning xarid narxi. Har partiya o'z narxi bilan saqlanadi — keyingi xarid qimmatroq bo'lsa, eskilari o'zgarmaydi. Bo'sh qoldirilsa, aksessuarning odatiy tannarxi olinadi.</Info></label>
         </div>
         {ybs.length > 0 && (
           <div className="qator">
@@ -246,7 +250,7 @@ function DonaQoshish({ a, ybs, onYuborish }) {
                 {ybs.map((y) => <option key={y.id} value={y.id}>{y.nomi}</option>)}
               </select>
             </label>
-            {f.yb && <label>Hozir to'landi<SummaInput placeholder={`to'liq: ${som(jami)}`} value={f.tolandi} onChange={set('tolandi')} /></label>}
+            {f.yb && <label>Hozir to'landi<SummaInput placeholder={`to'liq: ${som(jami)}`} value={f.tolandi} onChange={set('tolandi')} /><Info nom="Hozir to'landi">{TOLANDI_INFO}</Info></label>}
           </div>
         )}
         {f.yb && f.tolandi !== '' && Number(f.tolandi) < jami && (
@@ -364,7 +368,7 @@ function Forma({ kats, rahbar, ybs = [], onYuborish }) {
   return (
     <div className="stack">
         <label>Nomi<input value={f.nomi || ''} onChange={set('nomi')} /></label>
-        <label>Kod (yorliq prefiksi, masalan FT → FT-01, FT-02)<input maxLength={10} value={f.kod || ''} onChange={set('kod')} /></label>
+        <label>Kod<input placeholder="FT" maxLength={10} value={f.kod || ''} onChange={set('kod')} /><Info nom="Kod">Aksessuar turining qisqa kodi. Har donaning yorlig'i shu koddan yasaladi: FT → FT-01, FT-02… Salonda takrorlanmaydi.</Info></label>
         <label>Kategoriya
           <select value={f.kategoriya || kats[0].id} onChange={set('kategoriya')}>
             {kats.map((k) => <option key={k.id} value={k.id}>{k.nomi}</option>)}
@@ -373,7 +377,7 @@ function Forma({ kats, rahbar, ybs = [], onYuborish }) {
         <div className="libos-narxlar">
           <label>Ijara narxi<SummaInput value={f.ijara_narxi || ''} onChange={set('ijara_narxi')} /></label>
           <label>Dona soni<input type="number" min="1" max="200" value={f.soni} onChange={set('soni')} /></label>
-          {rahbar && <label>Tannarx (1 dona)<SummaInput value={f.tannarx || ''} onChange={set('tannarx')} /></label>}
+          {rahbar && <label>Tannarx (1 dona)<SummaInput value={f.tannarx || ''} onChange={set('tannarx')} /><Info nom="Tannarx">Bir donani sotib olishga ketgan pul. Faqat rahbarga ko'rinadi. Keyin qo'shiladigan donalar uchun ham odatiy narx bo'ladi.</Info></label>}
         </div>
         {rahbar && ybs.length > 0 && (
           <div className="libos-narxlar">
@@ -384,7 +388,7 @@ function Forma({ kats, rahbar, ybs = [], onYuborish }) {
               </select>
             </label>
             {f.yetkazib_beruvchi && (
-              <label>Hozir to'landi<SummaInput placeholder={f.tannarx ? `to'liq: ${som(Number(f.tannarx) * Number(f.soni || 1))}` : ''} value={f.tolandi || ''} onChange={set('tolandi')} /></label>
+              <label>Hozir to'landi<SummaInput placeholder={f.tannarx ? `to'liq: ${som(Number(f.tannarx) * Number(f.soni || 1))}` : ''} value={f.tolandi || ''} onChange={set('tolandi')} /><Info nom="Hozir to'landi">{TOLANDI_INFO}</Info></label>
             )}
           </div>
         )}

@@ -5,7 +5,7 @@ from rest_framework.parsers import FormParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.tenants.models import Jurnal, Xodim, jurnalga_yoz
+from apps.tenants.models import Jurnal, Xodim, jurnalga_yoz, sozlama
 from apps.tenants.permissions import IsRahbar, IsStaff, SalonYozishRuxsati
 
 from apps.cash.services import KassaXatosi, xato_tanasi
@@ -17,8 +17,8 @@ from .rasm import rasm_yuklash, rasmni_ochirish
 from .sanoq import belgilash, ochiq_sanoq, qator_json, sanoq_boshlash, sanoq_json, sanoq_yakunlash
 from .tamir import tamirga_berish, tamirni_tugatish
 from .yetkazib import YetkazibXatosi, libos_xaridi_yoz
-from .services import (KatalogXatosi, QOLDA_HOLATLAR, tozalashni_yakunla, libos_qoshish, libosni_ozgartirish,
-                       libosni_tasdiqlash)
+from .services import (KatalogXatosi, QOLDA_HOLATLAR, keyingi_artikul, tozalashni_yakunla, libos_qoshish,
+                       libosni_ozgartirish, libosni_tasdiqlash)
 
 
 def rasm_json(r, request):
@@ -67,7 +67,7 @@ def _bajar(fn, **kw):
 
 
 class LibosYaratSerializer(serializers.Serializer):
-    artikul = serializers.CharField(max_length=50)
+    artikul = serializers.CharField(max_length=50, required=False, allow_blank=True, default='')  # avto sozlamada bo'sh bo'lishi mumkin
     nomi = serializers.CharField(max_length=200)
     kategoriya = serializers.IntegerField()
     olcham = serializers.CharField(required=False, allow_blank=True, default='')
@@ -78,6 +78,16 @@ class LibosYaratSerializer(serializers.Serializer):
     # faqat rahbar: qayerdan olingan va hozir qancha to'langan (berilmasa — tannarx to'liq to'langan; qolgani qarz)
     yetkazib_beruvchi = serializers.IntegerField(required=False, allow_null=True)
     tolandi = serializers.IntegerField(min_value=0, required=False, allow_null=True)
+
+
+class KeyingiArtikulView(APIView):
+    """GET — libos qo'shish formasi uchun: prefiks va keyingi avto artikul (avto o'chirilgan bo'lsa null)."""
+    permission_classes = [IsStaff]
+
+    def get(self, request):
+        soz = sozlama(request.salon)
+        return Response({'prefiks': soz.artikul_prefiks,
+                         'artikul': keyingi_artikul(request.salon, soz) if soz.artikul_avto else None})
 
 
 class LiboslarView(APIView):

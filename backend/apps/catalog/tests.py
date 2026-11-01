@@ -84,6 +84,44 @@ class LibosQoshishTests(KatalogBase):
         self.assertEqual((j.harakat, j.xodim, j.obyekt), ('libos_qoshildi', self.malika, 'libos N1'))
 
 
+class AvtoArtikulTests(KatalogBase):
+    def sozla(self, **kw):
+        r = self.api(self.rahbar).patch('/api/sozlamalar/', kw, format='json')
+        self.assertEqual(r.status_code, 200, r.content)
+
+    def keyingi(self, xodim=None):
+        return self.api(xodim or self.malika).get('/api/liboslar/keyingi-artikul/').json()['artikul']
+
+    def test_ochirilgan_bolsa_artikul_majburiy(self):
+        self.assertIsNone(self.keyingi())
+        r = self.yangi(self.api(self.rahbar), '  ')
+        self.assertEqual(r.status_code, 409)
+        self.assertIn('Artikul kiriting', r.json()['detail'])
+
+    def test_bosh_artikulga_keyingi_raqam_beriladi(self):
+        self.sozla(artikul_avto=True, artikul_prefiks='L-', artikul_boshlanish=7, artikul_xona=3)
+        self.assertEqual(self.keyingi(), 'L-007')
+        c = self.api(self.rahbar)
+        self.assertEqual(self.yangi(c, '').json()['artikul'], 'L-007')
+        self.assertEqual(self.yangi(c, '').json()['artikul'], 'L-008')
+        # qo'lda kiritilgani qoladi va hisobga olinadi; boshqa prefiksli va boshqa salon artikuli ta'sir qilmaydi
+        self.assertEqual(self.yangi(c, 'L-050').json()['artikul'], 'L-050')
+        self.yangi(c, 'K-900')
+        _, xodim_b, kat_b = salon_yarat('b')
+        self.api(xodim_b).post('/api/liboslar/', {'artikul': 'L-999', 'nomi': 'x', 'kategoriya': kat_b.id}, format='json')
+        self.assertEqual(self.keyingi(), 'L-051')
+        self.assertEqual(self.yangi(self.api(self.malika), '').json()['artikul'], 'L-051')  # sotuvchi ham
+
+    def test_prefikssiz_va_noto_gri_sozlama(self):
+        self.sozla(artikul_avto=True)  # standart: prefiks yo'q, 1 dan, 4 xona
+        self.assertEqual(self.keyingi(), '0001')
+        r = self.api(self.rahbar).patch('/api/sozlamalar/', {'artikul_prefiks': "L 1"}, format='json')
+        self.assertEqual(r.status_code, 400)
+        r = self.api(self.rahbar).patch('/api/sozlamalar/', {'artikul_xona': 9}, format='json')
+        self.assertEqual(r.status_code, 400)
+        self.assertEqual(self.api(self.malika).patch('/api/sozlamalar/', {'artikul_avto': False}, format='json').status_code, 403)
+
+
 class TasdiqTests(KatalogBase):
     def sotuvchi_libosi(self):
         return Libos.objects.get(id=self.yangi(self.api(self.malika)).json()['id'])

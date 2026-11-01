@@ -5,6 +5,7 @@ import TayyorChegirmalar from '../components/TayyorChegirmalar'
 import Promokodlar from './Promokodlar'
 import Jurnal from '../components/Jurnal'
 import NavIkona from '../components/NavIkona'
+import Info from '../components/Info'
 import Oyna from '../components/Oyna'
 import { GURUHLAR, SOZLAMA_BOLIMLAR } from './sozlamaBolimlari'
 import {
@@ -160,6 +161,51 @@ export default function Sozlamalar({ menId, bolim, onBolim }) {
       ),
     },
     {
+      id: 'artikul', nomi: 'Libos artikuli',
+      render: () => {
+        const xona = s.artikul_xona || 4
+        const namuna = (n) => `${s.artikul_prefiks || ''}${String(n).padStart(xona, '0')}`
+        const bosh = Number(s.artikul_boshlanish) || 0
+        return (
+          <section className="blok stack">
+            <h3>Libos artikuli</h3>
+            {/* «i» matn yonida: label htmlFor bilan inputga bog'langan (ichidagi tugmaga emas) */}
+            <label htmlFor="artikul-prefiks">
+              <span>Prefiks (ixtiyoriy)
+                <Info nom="Prefiks">Har artikul boshidagi bir xil qism, masalan «L-» yoki «OQ-». Avtomatik raqamlash o'chiq bo'lsa ham,
+                  libos qo'shishda Artikul maydoni shu prefiks bilan boshlanadi — faqat raqamini yozasiz.</Info>
+              </span>
+              <input id="artikul-prefiks" maxLength={10} placeholder="L-" value={s.artikul_prefiks} onChange={(e) => set('artikul_prefiks', e.target.value.replace(/\s/g, ''))} />
+            </label>
+            <label className="qator">
+              <input type="checkbox" checked={s.artikul_avto} onChange={(e) => set('artikul_avto', e.target.checked)} />
+              <span>Raqam avtomatik qo'yilsin
+                <Info nom="Avtomatik raqam">Libos qo'shishda Artikul bo'sh qoldirilsa, tizim keyingi raqamni o'zi beradi. Qo'lda yozilgan
+                  artikul ham hisobga olinadi: oxirgisi {namuna(57)} bo'lsa, keyingisi {namuna(58)}. Ikki xodim bir vaqtda qo'shsa ham raqam takrorlanmaydi.</Info>
+              </span>
+            </label>
+            {s.artikul_avto && (
+              <div className="qator keng">
+                <label>Sanoq nechidan boshlansin
+                  <input type="number" min="0" max="99999999" value={s.artikul_boshlanish} onChange={son('artikul_boshlanish')} />
+                </label>
+                <label>Raqam necha xonali
+                  <select value={xona} onChange={(e) => set('artikul_xona', Number(e.target.value))}>
+                    {[1, 2, 3, 4, 5, 6].map((n) => <option key={n} value={n}>{n} — {'0'.repeat(n - 1)}1</option>)}
+                  </select>
+                </label>
+              </div>
+            )}
+            <p className="malumot">
+              {s.artikul_avto
+                ? <>Namuna: <b>{namuna(bosh)}</b>, <b>{namuna(bosh + 1)}</b>, <b>{namuna(bosh + 2)}</b>… Agar salonda shu prefiksli kattaroq raqam bo'lsa, undan keyingisi beriladi.</>
+                : "Avtomatik raqam o'chiq: artikulni har safar o'zingiz yozasiz."}
+            </p>
+          </section>
+        )
+      },
+    },
+    {
       id: 'dashbord', nomi: 'Dashboard va hisobot',
       render: () => (
         <section className="blok stack">
@@ -247,22 +293,6 @@ export default function Sozlamalar({ menId, bolim, onBolim }) {
               Band qo'shish
             </button>
           )}
-        </section>
-      ),
-    },
-    {
-      id: 'primerka', nomi: 'Primerka va baho',
-      render: () => (
-        <section className="blok stack">
-          <h3>Primerka va mijoz bahosi</h3>
-          <label className="qator">
-            <input type="checkbox" checked={s.primerka} onChange={(e) => set('primerka', e.target.checked)} />
-            Primerka (zakazga sana va vaqt, moslash xizmati narxi bilan)
-          </label>
-          <label className="qator">
-            <input type="checkbox" checked={s.mijoz_bahosi} onChange={(e) => set('mijoz_bahosi', e.target.checked)} />
-            Qaytarishda mijoz bahosi (1–5) yoziladi
-          </label>
         </section>
       ),
     },

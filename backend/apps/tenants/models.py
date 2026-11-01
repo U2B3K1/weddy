@@ -280,8 +280,8 @@ class SalonSozlamalari(models.Model):
     mavsumiy_narx = models.BooleanField(default=False)            # FT-15.2: qoidalar orders.MavsumiyNarx da
     sotuvchi_bonusi = models.BooleanField(default=False)          # FT-15.1
     bonus_foiz = models.DecimalField(max_digits=5, decimal_places=2, default=0)
-    primerka = models.BooleanField(default=False)                 # FT-2.8
-    mijoz_bahosi = models.BooleanField(default=True)              # FT-9.5, FT-15.4
+    primerka = models.BooleanField(default=False)                 # FT-2.8; sozlamada ko'rsatilmaydi (kerak emas)
+    mijoz_bahosi = models.BooleanField(default=False)             # FT-9.5; sozlamada ko'rsatilmaydi (kerak emas)
     # 4.16 ning qolgan sozlamalari
     qulf_daqiqa = models.PositiveSmallIntegerField(default=15)    # libosni qulflash vaqti (FT-2.7)
     sotuvchi_libos_qoshadi = models.BooleanField(default=True)    # libos qo'shish huquqi: ikkalasi / faqat rahbar
@@ -308,6 +308,11 @@ class SalonSozlamalari(models.Model):
     # Qaytarish kuni «Qaytarildi» deb qabul qilinmagan libos haqida shu vaqtdan keyin eslatma (salon yopilishidan oldin)
     qaytarish_tekshiruv_vaqti = models.TimeField(default=datetime.time(18, 0))
     terminal_sverkasi = models.BooleanField(default=True)
+    # Libos artikuli: prefiks + raqam (L-0001). Avto yoqilsa, bo'sh qoldirilgan artikulga keyingi raqam beriladi
+    artikul_prefiks = models.CharField(max_length=10, blank=True, default='')
+    artikul_avto = models.BooleanField(default=False)
+    artikul_boshlanish = models.PositiveIntegerField(default=1)
+    artikul_xona = models.PositiveSmallIntegerField(default=4)  # raqam necha xonali: 4 → 0001
 
     def zalog_turlari(self):
         return [t for t, yoq in (('pul', self.zalog_pul), ('hujjat', self.zalog_hujjat),

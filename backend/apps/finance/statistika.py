@@ -10,7 +10,7 @@ P&L va dashbord esa kassa usulida (pul kirgan kun, `reports.foyda`) — «Pul oq
 from collections import defaultdict
 from datetime import timedelta
 
-from django.db.models import Avg, Count, F, Q, Sum
+from django.db.models import Count, F, Q, Sum
 from django.utils import timezone
 
 from apps.bookings.models import Bron
@@ -81,24 +81,19 @@ def libos_samaradorligi(salon, dan, gacha, kategoriya=None, filial=None, **_):
     for lid, sana in (ZakazPozitsiya.objects.filter(salon=salon, zakaz__holat__in=BERILGAN)
                       .values_list('libos_id', 'zakaz__olib_ketish').order_by('zakaz__olib_ketish')):
         oxirgi[lid] = min(sana, bugun)  # olib ketish sanasidan oldin berilgan libos kelajak sanada «oxirgi marta» bo'lib qolmasin
-    # FT-15.4: libos bo'yicha o'rtacha mijoz bahosi (davrdagi qaytarishlar)
-    baho = dict(ZakazPozitsiya.objects.filter(salon=salon, zakaz__qaytarish_akti__sana__range=(dan, gacha),
-                                              zakaz__qaytarish_akti__baho__isnull=False)
-                .values_list('libos_id').annotate(a=Avg('zakaz__qaytarish_akti__baho')))
     qatorlar = []
     for l in _liboslar(salon, kategoriya, filial).select_related('kategoriya').order_by('artikul'):
         jami = umumiy.get(l.id, 0)
         qatorlar.append([f'{l.artikul} {l.nomi}', l.kategoriya.nomi, berilgan.get(l.id, 0), davr_tushum.get(l.id, 0),
                          round(jami / l.tannarx * 100, 1) if l.tannarx else None, oxirgi.get(l.id),
-                         (bugun - oxirgi[l.id]).days if l.id in oxirgi else None,
-                         round(baho[l.id], 1) if l.id in baho else None])
+                         (bugun - oxirgi[l.id]).days if l.id in oxirgi else None])
     kalitlar = [l.id for l in _liboslar(salon, kategoriya, filial).order_by('artikul')]
     return {'kalitlar': kalitlar, 'sarlavha': 'Libos samaradorligi',
             'izoh': "Tushum — libosning ijara narxi bo'yicha (chegirma va ustamasiz). Qoplash — butun davrdagi tushum / tannarx.",
             'ustunlar': _u(('Libos', 'matn'), ('Kategoriya', 'matn'), ('Berilgan', 'son'), ('Tushum', 'pul'),
-                           ('Qoplash', 'foiz'), ('Oxirgi marta', 'sana'), ("Bo'sh turgan kun", 'son'), ("O'rtacha baho", 'son')),
+                           ('Qoplash', 'foiz'), ('Oxirgi marta', 'sana'), ("Bo'sh turgan kun", 'son')),
             'qatorlar': qatorlar,
-            'jami': ['Jami', '', sum(q[2] for q in qatorlar), sum(q[3] for q in qatorlar), None, None, None, None]}
+            'jami': ['Jami', '', sum(q[2] for q in qatorlar), sum(q[3] for q in qatorlar), None, None, None]}
 
 
 def kategoriyalar(salon, dan, gacha, sotuvchi=None, filial=None, **_):
@@ -128,21 +123,18 @@ def sotuvchilar(salon, dan, gacha, filial=None, **_):
                                                         holat__in=[ChegirmaSorovi.Holat.TASDIQLANDI, ChegirmaSorovi.Holat.RAD])
                           .values_list('sotuvchi_id', 'holat').annotate(n=Count('id'))):
         cheg[sid][0 if holat == ChegirmaSorovi.Holat.TASDIQLANDI else 1] = n
-    baho = dict(QaytarishAkti.objects.filter(salon=salon, sana__range=(dan, gacha), baho__isnull=False, **zf)
-                .values_list('zakaz__sotuvchi_id').annotate(a=Avg('baho')))
     qatorlar, kalitlar = [], []
     for x in Xodim.objects.filter(salon=salon).order_by('ism'):
         t = tol.get(x.id, {})
         if not (x.faol or t or summa.get(x.id) or yangi.get(x.id)):
             continue
         kalitlar.append(x.id)
-        qatorlar.append([x.ism, yangi.get(x.id, 0), t.get('n', 0), summa.get(x.id, 0), cheg[x.id][0], cheg[x.id][1],
-                         round(baho[x.id], 1) if x.id in baho else None])
+        qatorlar.append([x.ism, yangi.get(x.id, 0), t.get('n', 0), summa.get(x.id, 0), cheg[x.id][0], cheg[x.id][1]])
     return {'kalitlar': kalitlar, 'sarlavha': 'Sotuvchilar', 'izoh': '',
             'ustunlar': _u(('Sotuvchi', 'matn'), ('Yangi zakazlar', 'son'), ("To'langan zakazlar", 'son'), ('Tushum', 'pul'),
-                           ('Chegirma tasdiqlandi', 'son'), ('Chegirma rad', 'son'), ("O'rtacha baho", 'son')),
+                           ('Chegirma tasdiqlandi', 'son'), ('Chegirma rad', 'son')),
             'qatorlar': qatorlar,
-            'jami': ['Jami', sum(q[1] for q in qatorlar), sum(q[2] for q in qatorlar), sum(q[3] for q in qatorlar), None, None, None]}
+            'jami': ['Jami', sum(q[1] for q in qatorlar), sum(q[2] for q in qatorlar), sum(q[3] for q in qatorlar), None, None]}
 
 
 def salonchilar(salon, dan, gacha, sotuvchi=None, **_):

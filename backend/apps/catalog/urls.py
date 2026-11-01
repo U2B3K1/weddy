@@ -4,6 +4,7 @@ from . import views, views_aksessuar, views_yetkazib
 
 urlpatterns = [
     path('liboslar/', views.LiboslarView.as_view()),
+    path('liboslar/keyingi-artikul/', views.KeyingiArtikulView.as_view()),
     path('liboslar/<int:pk>/', views.LibosTafsilotView.as_view()),
     path('liboslar/<int:pk>/tasdiq/', views.LibosTasdiqView.as_view()),
     path('liboslar/<int:pk>/rasmlar/', views.RasmlarView.as_view()),

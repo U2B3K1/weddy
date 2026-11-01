@@ -20,7 +20,8 @@ SOZLAMA_MAYDONLARI = ('bufer_kun', 'vaqtinchalik_bron_soat', 'zalog_pul', 'zalog
                       'promokod_tasdiqsiz', 'promokod_chegirma_birga', 'salonchi_kodlari',
                       'mavsumiy_narx', 'sotuvchi_bonusi', 'bonus_foiz', 'primerka', 'mijoz_bahosi',
                       'qulf_daqiqa', 'sotuvchi_libos_qoshadi', 'qoplamagan_royxat',
-                      'qoplamagan_kun', 'kunlik_hisobot', 'kunlik_hisobot_vaqti', 'promokodlar_bolimi', 'manekin', 'shartnoma_bandlari', 'filial_kassasi', 'sms_eslatma', 'kassa_rejimi', 'sms_kvitansiya', 'otkazma_tasdigi', 'terminal_sverkasi', 'qaytarish_tekshiruv_vaqti')
+                      'qoplamagan_kun', 'kunlik_hisobot', 'kunlik_hisobot_vaqti', 'promokodlar_bolimi', 'manekin', 'shartnoma_bandlari', 'filial_kassasi', 'sms_eslatma', 'kassa_rejimi', 'sms_kvitansiya', 'otkazma_tasdigi', 'terminal_sverkasi', 'qaytarish_tekshiruv_vaqti',
+                      'artikul_prefiks', 'artikul_avto', 'artikul_boshlanish', 'artikul_xona')
 
 
 def sozlama_json(s):
@@ -69,6 +70,11 @@ class SozlamaSerializer(serializers.Serializer):
     qaytarish_tekshiruv_vaqti = serializers.TimeField(required=False)
     sotuvchi_bonusi = serializers.BooleanField(required=False)
     bonus_foiz = serializers.DecimalField(max_digits=5, decimal_places=2, min_value=0, max_value=100, required=False)
+    artikul_prefiks = serializers.RegexField(r'^[A-Za-z0-9\-_/.]*$', max_length=10, allow_blank=True, required=False,
+                                             error_messages={'invalid': "Prefiksda faqat harf, raqam va - _ / . bo'ladi."})
+    artikul_avto = serializers.BooleanField(required=False)
+    artikul_boshlanish = serializers.IntegerField(min_value=0, max_value=99_999_999, required=False)
+    artikul_xona = serializers.IntegerField(min_value=1, max_value=8, required=False)
 
     def validate_qaytarish_qoidasi(self, qoida):
         """[[kun, foiz], ...]: kunlar kamayib boradi va 0 bilan tugaydi, foiz 0–100 va kamayib boradi."""
