@@ -58,6 +58,13 @@ test('rahbar sahifalari keng ekranda va telefonda', async ({ page }) => {
     }
     await nav(page).getByRole('button', { name: 'Umumiy hisobot', exact: true }).click()
     await ikkiKenglik(page, '4c-umumiy-hisobot')
+    // seed: o'tgan oyda to'langan, shu oyda bekor qilingan zakaz — sotuvchi tushumidan ayiriladi
+    await page.getByLabel('Hisobot turi').selectOption({ label: 'Sotuvchilar' })
+    await page.getByRole('row', { name: /Sotuvchi/ }).getByRole('button', { name: 'Sotuvchi' }).click()
+    await expect(page.locator('.tafsilot')).toContainText('Bekor qilindi (storno)')
+    await expect(page.locator('.tafsilot')).toContainText("Storno Mijoz")
+    await expect(page.locator('.tafsilot')).toContainText("-500 000 so'm")
+    await ikkiKenglik(page, '4c-storno')
   })
 
   await test.step('kirgach manzilda #kirish qolmaydi; ichki bo\'limlar bir joyda', async () => {
@@ -77,7 +84,7 @@ test('rahbar sahifalari keng ekranda va telefonda', async ({ page }) => {
   await test.step('zakaz kartasi keng ekranda', async () => {
     await nav(page).getByRole('button', { name: 'Zakazlar', exact: true }).click()
     // kassa-topshirish.spec.js dagi zakaz
-    await page.locator('.zakaz-jadval tbody tr').first().click()
+    await page.locator('.zakaz-jadval tbody tr', { hasText: 'Naqdsiz Sinov' }).first().click()
     await expect(page.getByRole('heading', { name: /^Zakaz #\d+$/ })).toBeVisible()
     await ikkiKenglik(page, '4e-zakaz-kartasi')
   })

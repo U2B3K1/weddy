@@ -5,10 +5,13 @@ Har ishga tushirishda yangi login — oldingi sinov qoldiqlari xalaqit bermaydi.
 import json
 import sys
 import time
+from datetime import timedelta
 
 from django.conf import settings
+from django.utils import timezone
 
 from apps.catalog.models import Aksessuar, AksessuarDona, Kategoriya, Libos
+from apps.orders.models import Mijoz, Zakaz, ZakazPozitsiya
 from apps.tenants.models import Salon, Xodim
 
 # Xavfsizlik: dev bazaga (foydalanuvchi ma'lumotlari) hech qachon yozilmasin
@@ -32,4 +35,11 @@ fata = Aksessuar.objects.create(salon=salon, nomi='Fata Klassik', kod='FT', ijar
                                 kategoriya=Kategoriya.objects.create(salon=salon, nomi='Fata', turi=Kategoriya.Turi.AKSESSUAR))
 for yorliq in ('FT-01', 'FT-02'):
     AksessuarDona.objects.create(salon=salon, aksessuar=fata, yorliq=yorliq)
+# Storno: o'tgan oyda to'liq to'langan (daromadga kirgan), bugun bekor qilingan zakaz — shu oy tushumidan ayiriladi
+otgan_oy = timezone.localdate().replace(day=1) - timedelta(days=5)
+z = Zakaz.objects.create(salon=salon, raqam=1, holat=Zakaz.Holat.BEKOR, olib_ketish=otgan_oy, qaytarish=otgan_oy,
+                         asosiy_narx=500_000, jami=500_000, tolangan_sana=otgan_oy, bekor_sabab='E2E storno',
+                         bekor_vaqti=timezone.now(), sotuvchi=Xodim.objects.get(salon=salon, ism='Sotuvchi'),
+                         mijoz=Mijoz.objects.create(salon=salon, fio='Storno Mijoz', telefon='+998900000001'))
+ZakazPozitsiya.objects.create(salon=salon, zakaz=z, libos=Libos.objects.get(salon=salon, artikul='E2E-2'), narx=500_000)
 print('E2E_SALON=' + json.dumps({'login': login, 'parol': 'e2e-parol'}))
