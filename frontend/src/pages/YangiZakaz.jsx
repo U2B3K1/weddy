@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import Info from '../components/Info'
 import Vitrina from '../components/Vitrina'
+import NavIkona from '../components/NavIkona'
 import LibosSiluet from '../components/LibosSiluet'
 import { SalonchiForma } from './Salonchilar'
 import Manekin from '../components/Manekin'
@@ -301,34 +302,41 @@ export default function YangiZakaz({ onTayyor, onTolov }) {
           )}
 
           {qadam === 2 && liboslar && (<>
-            <section className="stack filtrlar">
-              <div className="filtr-bosh">
-                <input type="search" aria-label="Libos qidirish" placeholder="Artikul yoki nom (band libos ham chiqadi)" value={filtr.q}
-                  onChange={(e) => setFiltr({ ...filtr, q: e.target.value })} />
+            {/* Filtrlar — Katalogdagi asboblar qatori bilan bir xil: kategoriya tablari, ixcham tanlovlar, ikonali qidiruv */}
+            <section className="blok jadval-panel libos-filtr" aria-label="Libos filtrlari">
+              <div className="jadval-asboblar">
+                <div className="tezkor-tablar" role="tablist" aria-label="Kategoriya">
+                  {[['', 'Hammasi'], ...noyob('kategoriya').map((k) => [k, k])].map(([k, nom]) => (
+                    <button key={k || 'hammasi'} type="button" role="tab" aria-selected={filtr.kat === k}
+                      className={filtr.kat === k ? 'faol' : ''} onClick={() => setFiltr({ ...filtr, kat: k })}>{nom}</button>
+                  ))}
+                </div>
                 {korsatiladigan.length > 0 && (
-                  <button className="ikkinchi kichik" onClick={() => setVitrina(true)}>
-                    Mijozga ko'rsatish ({tanlangan.length > 0 ? 'tanlanganlar' : "bo'sh liboslar"})
-                  </button>
+                  <span className="filtr-amal">
+                    <button type="button" className="ikkinchi kichik" onClick={() => setVitrina(true)}
+                      title={tanlangan.length > 0 ? 'Tanlangan liboslar' : "Shu sanalardagi bo'sh liboslar"}>
+                      Mijozga ko'rsatish
+                    </button>
+                  </span>
                 )}
               </div>
-              <div className="chiplar">
-                <button className={filtr.kat ? 'ikkinchi kichik' : 'kichik'} onClick={() => setFiltr({ ...filtr, kat: '' })}>Hammasi</button>
-                {noyob('kategoriya').map((k) => (
-                  <button key={k} className={filtr.kat === k ? 'kichik' : 'ikkinchi kichik'} onClick={() => setFiltr({ ...filtr, kat: k })}>{k}</button>
-                ))}
-              </div>
-              <div className="qator">
+              <div className="jadval-asboblar">
+                <label className="qidiruv-maydon" title="Qidiruvda band libos ham chiqadi">
+                  <NavIkona nom="qidiruv" className="tugma-ikon" />
+                  <input type="search" className="jadval-qidiruv" aria-label="Libos qidirish" placeholder="Artikul yoki nom" value={filtr.q}
+                    onChange={(e) => setFiltr({ ...filtr, q: e.target.value })} />
+                </label>
                 {fil.length > 0 && (
-                  <select value={filtr.filial} aria-label="Filial" onChange={(e) => setFiltr({ ...filtr, filial: e.target.value })}>
+                  <select className="kichik-tanlov" value={filtr.filial} aria-label="Filial" onChange={(e) => setFiltr({ ...filtr, filial: e.target.value })}>
                     <option value="">Barcha filiallar</option>
                     {fil.map((f) => <option key={f.id} value={f.id}>{f.nomi}</option>)}
                   </select>
                 )}
-                <select value={filtr.olcham} aria-label="O'lcham" onChange={(e) => setFiltr({ ...filtr, olcham: e.target.value })}>
+                <select className="kichik-tanlov" value={filtr.olcham} aria-label="O'lcham" onChange={(e) => setFiltr({ ...filtr, olcham: e.target.value })}>
                   <option value="">O'lcham</option>
                   {noyob('olcham').map((o) => <option key={o} value={o}>{o}</option>)}
                 </select>
-                <select value={filtr.rang} aria-label="Rang" onChange={(e) => setFiltr({ ...filtr, rang: e.target.value })}>
+                <select className="kichik-tanlov" value={filtr.rang} aria-label="Rang" onChange={(e) => setFiltr({ ...filtr, rang: e.target.value })}>
                   <option value="">Rang</option>
                   {noyob('rang').map((o) => <option key={o} value={o}>{o}</option>)}
                 </select>

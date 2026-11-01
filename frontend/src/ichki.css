@@ -270,40 +270,47 @@ label > input, label > select { color: var(--oq); }
 .libos-narx { font-weight: 700; color: var(--tilla); font-variant-numeric: tabular-nums; }
 .libos-grid li button { width: 100%; flex-basis: auto; margin-top: auto; }
 .libos-grid li em { font-size: 13px; color: var(--matn-2); font-style: normal; }
-.filtr-bosh { display: flex; flex-wrap: wrap; gap: var(--o-2); }
-.filtr-bosh input { flex: 1 1 240px; min-width: 0; }
-.filtr-bosh button { flex: none; }
+/* Libos filtrlari — Katalogdagi asboblar qatori (.jadval-asboblar, .tezkor-tablar, .kichik-tanlov) bilan bir xil */
+.libos-filtr .jadval-asboblar { padding: var(--o-2) var(--o-3); gap: var(--o-2); }
+.libos-filtr .jadval-asboblar + .jadval-asboblar { border-bottom: 0; }
+.libos-filtr .qidiruv-maydon { flex: 1 1 150px; }
+:where(.ilova) .libos-filtr .jadval-qidiruv, :where(.ilova) .libos-filtr .narx-filtr { min-height: 34px; font-size: 14px; background-color: var(--yuza-1); }
+:where(.ilova) .libos-filtr .narx-filtr { width: 112px; padding: 0 var(--o-3); }
+.filtr-amal { flex: none; }
+@media (max-width: 767px) {
+  .libos-filtr .qidiruv-maydon { flex-basis: 100%; }  /* qidiruv alohida qatorda, tanlovlar ostida teng bo'linadi */
+  .libos-filtr .kichik-tanlov, :where(.ilova) .libos-filtr .narx-filtr { flex: 1 1 0; min-width: 0; width: auto; }
+  .filtr-amal, .filtr-amal button { width: 100%; }
+}
 
 /* Qadamlar: tilla ip ustidagi uchta tugun (haqiqiy ketma-ketlik — raqam o'rinli). O'tilgani — tugma (qaytish) */
 .zakaz-ip { list-style: none; margin: 0; padding: 0; display: flex; align-items: center; max-width: 560px; }
 .zakaz-ip li { display: flex; align-items: center; flex: 1; min-width: 0; }
 .zakaz-ip li:last-child { flex: none; }
-.zakaz-ip li:not(:last-child)::after { content: ''; flex: 1; height: 1px; margin: 0 12px; background: var(--chegara-kuchli); }
+.zakaz-ip li:not(:last-child)::after { content: ''; flex: 1; height: 1px; margin: 0 10px; background: var(--chegara-kuchli); }
 .zakaz-ip li.otdi::after { background: linear-gradient(90deg, var(--tilla), rgba(228, 193, 150, .35)); }
-.zakaz-ip li > span, .zakaz-ip li > button { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; color: var(--matn-3); white-space: nowrap; }
-.zakaz-ip li > button { min-height: 0; padding: 6px 0; background: none; border: 0; box-shadow: none; border-radius: 0; color: var(--matn-2); font-weight: 600; cursor: pointer; }
+.zakaz-ip li > span, .zakaz-ip li > button { display: inline-flex; align-items: center; gap: 6px; font-size: 13.5px; color: var(--matn-3); white-space: nowrap; }
+.zakaz-ip li > button { min-height: 0; padding: 4px 0; background: none; border: 0; box-shadow: none; border-radius: 0; color: var(--matn-2); font-weight: 600; cursor: pointer; }
 .zakaz-ip li > button:hover { color: var(--oq); }
-.ip-tugun { width: 26px; height: 26px; flex: none; border-radius: 50%; display: inline-grid; place-items: center; font-size: 12.5px; font-weight: 700;
+.ip-tugun { width: 22px; height: 22px; flex: none; border-radius: 50%; display: inline-grid; place-items: center; font-size: 12px; font-weight: 700;
   border: 1px solid var(--chegara-kuchli); color: var(--matn-2); }
 .zakaz-ip li.joriy > span { color: var(--oq); font-weight: 600; }
 .zakaz-ip li.otdi > span { color: var(--matn-2); }
-.zakaz-ip li.joriy .ip-tugun { background: var(--tilla); border-color: var(--tilla); color: var(--siyoh); box-shadow: 0 0 0 5px var(--tilla-xira); }
+.zakaz-ip li.joriy .ip-tugun { background: var(--tilla); border-color: var(--tilla); color: var(--siyoh); box-shadow: 0 0 0 4px var(--tilla-xira); }
 .zakaz-ip li.otdi .ip-tugun { border-color: var(--tilla); color: var(--tilla); }
 
-/* ---------- Zakaz varaqasi: to'y taklifnomasidek fil suyagi qog'oz, ikki qavat tilla hoshiya ----------
-   Sahifadagi yagona yorug' yuza: zakaz «yozilayotgani» shu yerda ko'rinadi. Saqlanganda unga muhr bosiladi. */
+/* ---------- Zakaz varaqasi: to'y taklifnomasi tuzilishi, sayt palitrasida (tungi shisha panel, tilla hoshiya) ----------
+   Zakaz «yozilayotgani» shu yerda ko'rinadi: sanalar, kimga, liboslar, jami. Saqlanganda unga muhr bosiladi. */
 .varaq {
-  --qogoz: #F5EEE2; --qogoz-2: #E9DECB; --siyoh-q: #1E2533; --siyoh-2: #5C5649; --zar: #8A5F27; --zar-chiziq: rgba(160, 118, 58, .5);
-  position: relative; display: flex; flex-direction: column; gap: var(--o-4); padding: 30px 26px 24px; border-radius: 6px; color: var(--siyoh-q);
-  background:
-    radial-gradient(120% 70% at 50% 0%, rgba(255, 255, 255, .6), transparent 60%),
-    radial-gradient(140% 90% at 50% 115%, rgba(201, 154, 91, .2), transparent 60%),
-    var(--qogoz);
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .7), 0 34px 60px -30px rgba(0, 0, 0, .85), 0 10px 22px -12px rgba(0, 0, 0, .6);
+  --qogoz-2: var(--yuza-2); --siyoh-q: var(--oq); --siyoh-2: var(--matn-2); --zar: var(--tilla); --zar-chiziq: rgba(228, 193, 150, .28);
+  position: relative; display: flex; flex-direction: column; gap: var(--o-4); padding: 30px 26px 24px; border-radius: var(--r-3); color: var(--siyoh-q);
+  background: radial-gradient(120% 55% at 50% 0%, rgba(228, 193, 150, .1), transparent 65%), var(--yuza-1);
+  border: 1px solid var(--chegara); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 24px 50px -30px rgba(0, 0, 0, .8);
 }
-.varaq::before, .varaq::after { content: ''; position: absolute; pointer-events: none; border-radius: 3px; }
-.varaq::before { inset: 9px; border: 1px solid var(--zar-chiziq); }
-.varaq::after { inset: 13px; border: 1px solid rgba(160, 118, 58, .2); }
+.varaq::before, .varaq::after { content: ''; position: absolute; pointer-events: none; }
+.varaq::before { inset: 8px; border: 1px solid var(--zar-chiziq); border-radius: 10px; }
+.varaq::after { inset: 12px; border: 1px solid rgba(228, 193, 150, .1); border-radius: 7px; }
 .varaq-izoh { margin: 0; text-align: center; font: italic 500 16px/1.45 var(--kursiv); color: var(--siyoh-2); }
 .varaq-kimga { margin: 0; text-align: center; font: 400 40px/1.1 'Great Vibes', var(--kursiv); color: var(--siyoh-q); overflow-wrap: anywhere; }
 .varaq-bezak { align-self: center; width: 120px; height: 12px; fill: none; stroke: var(--zar); stroke-width: 1; }
@@ -334,16 +341,13 @@ label > input, label > select { color: var(--oq); }
 .varaq-jami b { font: 400 30px/1 var(--serif); font-variant-numeric: tabular-nums lining-nums; white-space: nowrap; }
 
 .varaq .zakaz-tugmalar { display: flex; gap: 10px; }
-.varaq .zakaz-tugmalar button { flex: 1; min-height: 48px; padding: 0 14px; border-radius: 4px; border: 0; box-shadow: none; white-space: nowrap;
-  background: var(--siyoh-q); color: var(--qogoz); font-weight: 600; }
-.varaq .zakaz-tugmalar button.ikkinchi { flex: 0 0 auto; background: transparent; color: var(--siyoh-q); border: 1px solid rgba(30, 37, 51, .35); backdrop-filter: none; }
-.varaq .zakaz-tugmalar button:disabled { opacity: .38; }
-.varaq button:focus-visible { outline: 2px solid var(--zar); outline-offset: 2px; }
+.varaq .zakaz-tugmalar button { flex: 1; padding-inline: 14px; white-space: nowrap; }
+.varaq .zakaz-tugmalar button.ikkinchi { flex: 0 0 auto; }
 
 .zakaz-joy { display: flex; flex-direction: column; gap: 16px; }
 @media (max-width: 767px) {
   /* Telefonda varaq — pastki tasma: sanalar, jami va tugmalar; ro'yxat va bezaklar ekranni yopmasin */
-  .zakaz-joy > .varaq { position: sticky; bottom: 84px; z-index: 2; gap: 10px; padding: 14px 16px; }
+  .zakaz-joy > .varaq { position: sticky; bottom: 84px; z-index: 2; gap: 10px; padding: 14px 16px; background: rgba(16, 26, 44, .96); }
   .zakaz-joy > .varaq::after, .zakaz-joy > .varaq :is(.varaq-kimga, .varaq-bezak, .varaq-royxat, .varaq-sana small, .varaq-sana em),
   .zakaz-joy > .varaq > .varaq-izoh { display: none; }
   .zakaz-joy > .varaq::before { inset: 5px; }
@@ -1123,15 +1127,15 @@ label > .info .info-matn, th .info .info-matn { left: auto; right: 0; }
   55% { opacity: 1; transform: scale(.9) rotate(-5deg); }
   100% { transform: rotate(-8deg); }
 }
-.muhr-joy { position: absolute; top: 22px; right: 24px; width: 70px; height: 70px; border-radius: 50%; border: 1.5px dashed rgba(160, 118, 58, .5); }
+.muhr-joy { position: absolute; top: 22px; right: 24px; width: 70px; height: 70px; border-radius: 50%; border: 1.5px dashed rgba(228, 193, 150, .4); }
 .shtamp { position: absolute; top: 22px; right: 18px; z-index: 1; padding: 4px 10px; transform: rotate(-9deg); border: 2px solid currentColor; border-radius: 4px;
-  outline: 1px solid currentColor; outline-offset: 2px; color: rgba(140, 40, 46, .75); font: 600 13px/1.2 var(--sans); letter-spacing: .06em; }
+  outline: 1px solid currentColor; outline-offset: 2px; color: var(--xavf); font: 600 13px/1.2 var(--sans); letter-spacing: .06em; }
 .varaq-bekor { filter: saturate(.35); }
 .varaq-telefon { align-self: center; color: var(--siyoh-2); font-size: 14px; font-variant-numeric: tabular-nums; text-underline-offset: 3px; }
 .karta-asosiy .varaq-kimga { padding: 0 72px; }  /* ism muhr ostiga kirmasin */
 .karta-asosiy .karta-liboslar { justify-content: center; margin: var(--o-2) 0 0; }
 .karta-asosiy .karta-libos { flex-basis: 132px; }
-.karta-asosiy .karta-libos-foto { padding: 4px; border-radius: 4px; background: var(--qogoz-2); border: 1px solid var(--zar-chiziq); color: var(--zar); }
+.karta-asosiy .karta-libos-foto { padding: 4px; border-radius: var(--r-1); background: var(--qogoz-2); border: 1px solid var(--zar-chiziq); color: var(--zar); }
 .karta-asosiy .karta-libos-foto img { border-radius: 2px; }
 .karta-asosiy .karta-libos-foto svg { width: 40%; height: auto; }
 .karta-asosiy .karta-libos figcaption { color: var(--siyoh-q); }
@@ -1142,12 +1146,9 @@ label > .info .info-matn, th .info .info-matn { left: auto; right: 0; }
 .varaq-hisob dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
 .varaq-hisob-matn dd { min-width: 0; overflow-wrap: anywhere; }
 .varaq-hisob .varaq-qoldiq dd { font-weight: 700; }
-.varaq-hisob .varaq-qarz { color: #9E2A30; font-weight: 600; }
+.varaq-hisob .varaq-qarz { color: var(--h-qarz); font-weight: 600; }
 .varaq a { color: var(--siyoh-q); }
 .karta-asosiy .hujjat-havolalar { justify-content: center; flex-wrap: wrap; margin-top: var(--o-2); }
-.varaq .hujjat-havolalar button { min-height: 38px; padding: 0 14px; border-radius: 4px; box-shadow: none; backdrop-filter: none;
-  background: transparent; color: var(--siyoh-q); border: 1px solid rgba(30, 37, 51, .3); font-weight: 600; }
-.varaq .hujjat-havolalar button:hover { background: rgba(30, 37, 51, .06); }
 @media (max-width: 767px) {
   .karta-asosiy.varaq { padding: 30px 18px 20px; }
   .karta-asosiy .varaq-kimga { padding: 0 56px; font-size: 34px; }
