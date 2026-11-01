@@ -74,8 +74,11 @@ function Qator({ x, bajar, moddalar }) {
         <div className="qator">
           {!x.kassadan && <SummaInput value={summa} aria-label="Summa" onChange={(e) => setSumma(e.target.value)} />}
           <button className="kichik" onClick={() => bajar(() => xarajatQaror(x.id, 'tasdiq', x.kassadan ? undefined : Number(summa)), 'Tasdiqlandi.')}>Tasdiqlash</button>
-          {/* kassadan to'langan pul chiqib bo'lgan — rad etilmaydi, faqat tasdiqlanadi */}
-          {!x.kassadan && <button className="ikkinchi kichik" onClick={() => bajar(() => xarajatQaror(x.id, 'rad'), 'Rad etildi.')}>Rad etish</button>}
+          {/* kassadan to'langan pul chiqib bo'lgan — rad etilsa kiritgan xodimning kamomadi bo'ladi */}
+          <button className="ikkinchi kichik" title={x.kassadan ? "Pul kassadan chiqqan — rad etilsa summa xodimning kamomadi bo'ladi" : undefined}
+            onClick={() => bajar(() => xarajatQaror(x.id, 'rad'), x.kassadan ? `Rad etildi — ${som(x.summa)} ${x.kiritgan || 'xodim'}ning kamomadi.` : 'Rad etildi.')}>
+            {x.kassadan ? 'Rad etish (xodim kamomadi)' : 'Rad etish'}
+          </button>
         </div>
       )}
       {x.holat !== 'rad' && <XarajatTahrir x={x} moddalar={moddalar} bajar={bajar} />}

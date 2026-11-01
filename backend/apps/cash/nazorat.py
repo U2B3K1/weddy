@@ -121,6 +121,10 @@ def dashbord_nazorati(salon, bugun=None, kun=7):
             if f and f < 0:
                 kamomad.setdefault(i.xodim_id, [i.xodim.ism, 0])[1] += f
         terminal += s.terminal_farq or 0
+    from apps.finance.services import rad_xarajatlar
+    rad = rad_xarajatlar(salon, dan, bugun)  # rahbar rad etgan kassa xarajati — kiritgan xodim kamomadi
+    for x in Xodim.objects.filter(id__in=rad):
+        kamomad.setdefault(x.id, [x.ism, 0])[1] -= rad[x.id][1]
     kelmadi = Tolov.objects.filter(salon=salon, tasdiq=Tolov.Tasdiq.KELMADI, tasdiq_vaqti__date__range=(dan, bugun))
     oxirgi = Sanoq.objects.filter(salon=salon, yakunlangan__isnull=False).order_by('-yakunlangan').first()
     return {

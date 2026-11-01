@@ -47,6 +47,8 @@ def xarajat_kiritish(*, salon, xodim, modda, summa, sana=None, usul='naqd', izoh
 
 @transaction.atomic
 def xarajat_qarori(*, salon, rahbar, xarajat, tasdiqlash, summa=None):
+    """Rahbar xarajatni tasdiqlaydi yoki rad etadi. Kassadan to'langan xarajat rad etilsa, pul kassadan chiqib bo'lgan —
+    u kiritgan xodimning kamomadi hisoblanadi (soxta xarajat bilan kassadagi naqdni «yopish»ga qarshi)."""
     if rahbar.rol != Xodim.Rol.RAHBAR:
         raise XarajatXatosi('Xarajatni faqat rahbar tasdiqlaydi.')
     xarajat = Xarajat.objects.select_for_update().get(id=xarajat.id, salon=salon)
@@ -58,13 +60,23 @@ def xarajat_qarori(*, salon, rahbar, xarajat, tasdiqlash, summa=None):
         if summa <= 0:
             raise XarajatXatosi("Summa musbat bo'lishi kerak.")
         xarajat.summa = summa
-    if not tasdiqlash and xarajat.tolov_id:  # rad etilsa P&L dan chiqardi, lekin pul kassadan chiqib bo'lgan
-        raise XarajatXatosi("Kassadan to'langan xarajat rad etilmaydi: pul kassadan chiqqan. "
-                            "Tasdiqlab, kerak bo'lsa moddasi va izohini tuzating.")
     xarajat.holat = Xarajat.Holat.TASDIQLANDI if tasdiqlash else Xarajat.Holat.RAD
     xarajat.tasdiqlagan = rahbar
     xarajat.save()
+    if not tasdiqlash and xarajat.tolov_id and xarajat.kiritgan_id:
+        from apps.notify.services import som, xabar_yoz
+        xabar_yoz(xarajat.kiritgan, 'xarajat_rad',
+                  f"Kassadan yozgan xarajatingiz ({xarajat.sana:%d.%m}, {som(xarajat.summa)}) rahbar tomonidan rad etildi — "
+                  f"bu summa sizning kamomadingiz sifatida hisoblanadi.")
     return xarajat
+
+
+def rad_xarajatlar(salon, dan, gacha):
+    """Kassadan to'langan, lekin rahbar rad etgan xarajatlar: xodim id -> (soni, summa). Bu xodim kamomadi."""
+    from django.db.models import Count, Sum
+    return {r['kiritgan']: (r['n'], r['s']) for r in Xarajat.objects.filter(
+        salon=salon, holat=Xarajat.Holat.RAD, tolov__isnull=False, kiritgan__isnull=False, sana__range=(dan, gacha))
+        .values('kiritgan').annotate(n=Count('id'), s=Sum('summa'))}
 
 
 def _tuzatsa_boladimi(salon, xarajat):

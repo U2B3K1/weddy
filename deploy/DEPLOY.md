@@ -225,13 +225,27 @@ sudo systemctl restart libosa.service libosa-telegram.service
 
 ## 15. Zaxira (backup)
 
-PostgreSQL dump (kunlik cron qilib qo'yish mumkin):
+Zakaz va to'lovlar faqat bazada — disk buzilsa hammasi yo'qoladi. `deploy/zaxira.sh` har kuni bazani
+(`pg_dump -Fc`, 14 kun saqlanadi), yakshanba kunlari media papkasini (4 hafta) `/var/backups/libosa/` ga yozadi.
+Bir marta o'rnatish (root sifatida):
 
 ```bash
-sudo -u postgres pg_dump libosa | gzip > /var/backups/libosa-$(date +%F).sql.gz
+chmod +x /var/www/libosa/deploy/zaxira.sh
+echo '30 3 * * * root /var/www/libosa/deploy/zaxira.sh >> /var/log/libosa-zaxira.log 2>&1' > /etc/cron.d/libosa-zaxira
+/var/www/libosa/deploy/zaxira.sh          # hozir bir marta sinab ko'ring
+ls -lh /var/backups/libosa/
 ```
 
-Media papkasini ham nusxalang: `/var/www/libosa/backend/media/`.
+Tiklash (avval saytni to'xtating — `systemctl stop libosa.service libosa-telegram.service`):
+
+```bash
+sudo -u postgres pg_restore --clean --if-exists -d libosa /var/backups/libosa/baza-YYYY-MM-DD.dump
+tar -xzf /var/backups/libosa/media-YYYY-MM-DD.tar.gz -C /var/www/libosa/backend/
+```
+
+**Nusxani server tashqarisiga ham yuboring** — server butunlay ishdan chiqsa, shu yerdagi nusxa ham yo'qoladi.
+Eng oddiy yo'li: `rclone` (Google Drive, Yandex Disk, S3) sozlab, `zaxira.sh` oxiridagi izohdagi qatorni yoqish.
+Oyda bir marta tiklashni sinov bazasida tekshirib ko'ring — tekshirilmagan nusxa nusxa emas.
 
 ---
 

@@ -176,14 +176,29 @@ class OchiqSavollarTests(Base):
         r = reports.foyda_zarar(self.salon, b.year, b.month)
         self.assertEqual((r['kirim'], r['qaytarilgan'], r['tushum']), (z.jami, z.jami, 0))  # to'liq qaytarildi
 
-    def test_kassadan_tolangan_xarajat_rad_etilmaydi(self):
+    def test_kassadan_tolangan_xarajat_rad_etilsa_xodim_kamomadi(self):
+        # Soxta xarajat: sotuvchi kassadan «transport» yozib pulni oldi — smena farqsiz yopiladi, lekin rahbar rad etsa
+        # summa sotuvchining kamomadi bo'lib hisobot va dashbordda chiqadi; P&L ga kirmaydi
+        from apps.cash.nazorat import dashbord_nazorati
+        from apps.notify.models import Xabar
+
+        from . import reports
         from .services import xarajat_qarori
-        x = xarajat_kiritish(salon=self.salon, xodim=self.xodim, modda='transport', summa=1000)
-        with self.assertRaisesMessage(XarajatXatosi, 'rad etilmaydi'):
-            xarajat_qarori(salon=self.salon, rahbar=self.rahbar, xarajat=x, tasdiqlash=False)
+        from .statistika import xodimlar_nazorati
+        self.xodim.telegram_id = 555
+        self.xodim.save()
+        x = xarajat_kiritish(salon=self.salon, xodim=self.xodim, modda='transport', summa=300_000, izoh='taksi')
+        xarajat_qarori(salon=self.salon, rahbar=self.rahbar, xarajat=x, tasdiqlash=False)
         x.refresh_from_db()
-        self.assertEqual(x.holat, Xarajat.Holat.KUTILMOQDA)
-        xarajat_qarori(salon=self.salon, rahbar=self.rahbar, xarajat=x, tasdiqlash=True)
+        self.assertEqual(x.holat, Xarajat.Holat.RAD)
+        self.assertTrue(Tolov.objects.filter(id=x.tolov_id).exists())  # pul kassadan chiqqan — to'lov o'chmaydi
+        b = timezone.localdate()
+        q = {r[0]: r for r in xodimlar_nazorati(self.salon, b, b)['qatorlar']}[self.xodim.ism]
+        self.assertEqual((q[1], q[2]), ('xarajati rad etildi 1 marta', -300_000))
+        n = dashbord_nazorati(self.salon, b)
+        self.assertEqual((n['kamomad'], n['kamomad_xodimlar']), (-300_000, [{'ism': self.xodim.ism, 'summa': -300_000}]))
+        self.assertEqual(reports.foyda_zarar(self.salon, b.year, b.month)['sof_foyda'], 0)  # rad xarajat P&L da yo'q
+        self.assertIn('kamomadingiz', Xabar.objects.get(xodim=self.xodim, tur='xarajat_rad').matn)
 
     def test_faqat_korish_salonida_royxat_get_zakazni_bekor_qilmaydi(self):
         from apps.bookings.models import Bron

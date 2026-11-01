@@ -399,16 +399,23 @@ def xodimlar_nazorati(salon, dan, gacha, **_):
         s=Sum('summa', filter=~Q(tur=T.VOZVRAT), default=0) - Sum('summa', filter=Q(tur=T.VOZVRAT), default=0)))
     kelmadi = dict(Tolov.objects.filter(salon=salon, tasdiq=Tolov.Tasdiq.KELMADI, vaqt__date__range=(dan, gacha))
                    .values_list('xodim_id').annotate(n=Count('id')))
+    from .services import rad_xarajatlar
+    rad = rad_xarajatlar(salon, dan, gacha)  # kassadan yozilib rad etilgan xarajat — xodim kamomadi
+    for xid, (n, s) in rad.items():
+        farq[xid] -= s
     kelishmovchilik = dict(KassaTopshirish.objects.filter(salon=salon, yaratilgan__date__range=(dan, gacha),
                                                           qabul_summa__isnull=False).exclude(qabul_summa=F('summa'))
                            .values_list('kimdan_id').annotate(n=Count('id')))
     qatorlar = []
     for x in Xodim.objects.filter(salon=salon).order_by('ism'):
-        if not (smena[x.id] or yangi.get(x.id) or bekor.get(x.id) or qaytargan.get(x.id) or cheg.get(x.id) or tushum.get(x.id)):
+        if not (smena[x.id] or yangi.get(x.id) or bekor.get(x.id) or qaytargan.get(x.id) or cheg.get(x.id) or tushum.get(x.id)
+                or x.id in rad):
             continue
         diqqat = []
         if kamomad[x.id]:
             diqqat.append(f'kamomad {kamomad[x.id]} marta')
+        if x.id in rad:
+            diqqat.append(f"xarajati rad etildi {rad[x.id][0]} marta")
         if kelmadi.get(x.id):
             diqqat.append(f"o'tkazma kelmadi {kelmadi[x.id]} marta")
         if kelishmovchilik.get(x.id):
@@ -422,7 +429,8 @@ def xodimlar_nazorati(salon, dan, gacha, **_):
             'izoh': "Kassa farqi manfiy — kamomad: xodim o'z qo'lidagi naqdni topshirganda (smenadan chiqish yoki yopishda) "
                     "kerakligidan kam bo'lgan; har kim faqat o'z hisobiga javob beradi. «Zakazlaridan tushum» — sotuvchi "
                     "olgan zakazlarga shu davrda kirgan pul (kassir qabul qilgan bo'lsa ham). «Diqqat» ustuni kamomad, "
-                    "pul topshirishdagi kelishmovchilik va odatdan ko'p bekor qilishni belgilaydi.",
+                    "pul topshirishdagi kelishmovchilik va odatdan ko'p bekor qilishni belgilaydi. Kassadan yozilib rahbar "
+                    "rad etgan xarajat ham kamomadga qo'shiladi.",
             'ustunlar': _u(('Xodim', 'matn'), ('Diqqat', 'matn'), ('Kassa farqi', 'pul'), ('Smenalar', 'son'),
                            ('Yangi zakazlar', 'son'), ('Zakazlaridan tushum', 'pul'), ('Bekor qilgan', 'son'),
                            ('Mijozga qaytargan pul', 'pul'), ("Chegirma so'ragan", 'son')),
