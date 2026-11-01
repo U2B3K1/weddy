@@ -125,6 +125,21 @@ class LibosXaridiTests(FinanceBase):
         r = reports.foyda_zarar(self.salon, b.year, b.month)
         self.assertEqual((r['libos_xaridi'], r['libos_xaridi_soni']), (9_000_000, 1))
 
+    def test_aksessuar_partiyasi_ham_xarid(self):
+        from apps.catalog.models import Kategoriya, YetkazibBeruvchi
+        from apps.catalog.services import aksessuar_qoshish
+        from apps.catalog.yetkazib import aksessuar_xaridi_yoz
+        b = timezone.localdate()
+        Salon.objects.filter(id=self.salon.id).update(yaratilgan=timezone.now() - timedelta(days=90))
+        self.salon.refresh_from_db()
+        akat = Kategoriya.objects.create(salon=self.salon, nomi='Fata', turi=Kategoriya.Turi.AKSESSUAR)
+        aksessuar_qoshish(salon=self.salon, xodim=self.rahbar, nomi='Fata', kod='FT', kategoriya=akat, tannarx=100_000, soni=3)
+        toj = aksessuar_qoshish(salon=self.salon, xodim=self.rahbar, nomi='Toj', kod='TJ', kategoriya=akat, tannarx=200_000, soni=2)
+        yb = YetkazibBeruvchi.objects.create(salon=self.salon, nomi='Optom')
+        # yetkazib beruvchidan olingan partiya o'zi emas, unga to'langan pul hisoblanadi (150 000, qolgani qarz)
+        aksessuar_xaridi_yoz(salon=self.salon, rahbar=self.rahbar, partiya=toj.partiyalar.get(), yb=yb, tolandi=150_000)
+        self.assertEqual(reports.foyda_zarar(self.salon, b.year, b.month)['libos_xaridi'], 300_000 + 150_000)
+
 
 class KutilayotganTests(FinanceBase):
     def test_c5_s22_hozirgi_va_kutilayotgan(self):

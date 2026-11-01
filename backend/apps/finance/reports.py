@@ -231,21 +231,24 @@ def libos_xaridi(salon, boshi, oxiri, filial=None):
     """Davrda liboslarga ketgan pul — egasining «foyda bor, pul qani?» savoliga javob.
 
     Foyda libos xaridini xarajat deb hisoblamaydi (u investitsiya), lekin pul baribir ketgan: «qo'lda qolgan pul» =
-    sof foyda − libos xaridi. Yetkazib beruvchisi yozilgan libos uchun — unga davrda to'langan pul (qarzga olingani
-    to'langanda ketadi), yozilmagani uchun — qo'shilgan kuni tannarxi. Salon ochilgandan keyingi birinchi 30 kun —
-    mavjud zaxirani tizimga kiritish (boshlang'ich katalog), xarid emas: hisoblanmaydi.
+    sof foyda − libos xaridi. Yetkazib beruvchisi yozilgan libos va aksessuar partiyasi uchun — unga davrda to'langan pul
+    (qarzga olingani to'langanda ketadi), yozilmagani uchun — qo'shilgan kuni narxi (libos tannarxi, partiya soni × narx).
+    Salon ochilgandan keyingi birinchi 30 kun — mavjud zaxirani tizimga kiritish (boshlang'ich katalog), xarid emas.
     """
-    from apps.catalog.models import YetkazibBeruvchiTolov
+    from apps.catalog.models import AksessuarPartiya, YetkazibBeruvchiTolov
     dan = max(boshi, timezone.localdate(salon.yaratilgan) + timedelta(days=BOSHLANGICH_KATALOG_KUN))
     q = Libos.objects.filter(salon=salon, tannarx__isnull=False, yaratilgan__date__range=(dan, oxiri))
     if filial:
         q = q.filter(filial_id=filial)
     soni = q.count()
     ozi = q.filter(yetkazib_beruvchi__isnull=True).aggregate(s=Sum('tannarx'))['s'] or 0
-    # yetkazib beruvchi to'lovlari filialga bog'lanmagan — filial ko'rinishida faqat yozilmaganlar
-    tolangan = 0 if filial else (YetkazibBeruvchiTolov.objects.filter(salon=salon, sana__range=(dan, oxiri))
-                                 .aggregate(s=Sum('summa'))['s'] or 0)
-    return {'libos_xaridi': ozi + tolangan, 'libos_xaridi_soni': soni}
+    # yetkazib beruvchi to'lovlari va aksessuar partiyalari filialga bog'lanmagan — filial ko'rinishida faqat liboslar
+    if filial:
+        return {'libos_xaridi': ozi, 'libos_xaridi_soni': soni}
+    aksessuar = (AksessuarPartiya.objects.filter(salon=salon, yetkazib_beruvchi__isnull=True, sana__range=(dan, oxiri))
+                 .aggregate(s=Sum(F('soni') * F('narx')))['s'] or 0)
+    tolangan = YetkazibBeruvchiTolov.objects.filter(salon=salon, sana__range=(dan, oxiri)).aggregate(s=Sum('summa'))['s'] or 0
+    return {'libos_xaridi': ozi + aksessuar + tolangan, 'libos_xaridi_soni': soni}
 
 
 PNL_QATORLARI = {'kirim': 'Kirgan pul (avans va qoldiq)', 'qaytarilgan': 'Mijozlarga qaytarilgan',

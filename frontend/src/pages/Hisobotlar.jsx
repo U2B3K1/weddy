@@ -326,9 +326,9 @@ function Pnl({ r, filial }) {
       )}
       {r.libos_xaridi > 0 && (
         <p>
-          Shu oy liboslar uchun to'landi: {som(r.libos_xaridi)}{r.libos_xaridi_soni > 0 ? ` (${r.libos_xaridi_soni} ta yangi libos)` : ''}. Qo'lingizda qolgan pul:{' '}
+          Shu oy libos va aksessuarlar uchun to'landi: {som(r.libos_xaridi)}{r.libos_xaridi_soni > 0 ? ` (${r.libos_xaridi_soni} ta yangi libos)` : ''}. Qo'lingizda qolgan pul:{' '}
           <b className={r.sof_foyda - r.libos_xaridi < 0 ? 'qizil' : ''}>{som(r.sof_foyda - r.libos_xaridi)}</b>
-          <span className="malumot"> — sof foyda minus libos xaridi. Libos foydadan ayirilmaydi: u investitsiya, keyingi oylarda o'zini qoplaydi.</span>
+          <span className="malumot"> — sof foyda minus xarid. Libos va aksessuar foydadan ayirilmaydi: u investitsiya, keyingi oylarda o'zini qoplaydi.</span>
         </p>
       )}
       {r.yetkazib_qarz > 0 && (
