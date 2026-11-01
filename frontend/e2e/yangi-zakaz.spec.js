@@ -68,6 +68,13 @@ test('yangi zakaz: har qadam ikki kenglikda', async ({ page }) => {
   await aks.getByRole('button', { name: "Qo'shish" }).click()
   await expect(aks.locator('.aks-jami')).toContainText('1 ×')
   await expect(page.locator('.varaq-royxat li')).toHaveCount(2)
+  // «Aksessuarlar» tabi: faqat aksessuar kartochkalari, o'lcham/rang tanlovlari yo'q
+  await page.getByRole('tab', { name: /^Aksessuarlar/ }).click()
+  await expect(page.locator('.aks-kartalar li').first()).toBeVisible()
+  await expect(page.locator('ul.liboslar:not(.aks-kartalar)')).toHaveCount(0)
+  await expect(page.getByLabel("O'lcham")).toHaveCount(0)
+  await suratlar(page, '2-aksessuarlar-tabi')
+  await page.getByRole('tab', { name: 'Hammasi' }).click()
   await suratlar(page, '2-libos-tanlandi')
 
   await page.getByRole('button', { name: 'Davom etish', exact: true }).click()

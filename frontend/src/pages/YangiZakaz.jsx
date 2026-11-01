@@ -231,6 +231,14 @@ export default function YangiZakaz({ onTayyor, onTolov }) {
   }, [filtr.q])
 
   const noyob = (kalit) => [...new Set((liboslar || []).map((l) => l[kalit]).filter(Boolean))].sort()
+  // Kategoriya tablari: «Hammasi» — liboslar va aksessuarlar, libos kategoriyasi — faqat o'sha liboslar,
+  // «Aksessuarlar» — faqat aksessuarlar (qidiruv va narx ularga ham qo'llanadi)
+  const AKS = '__aksessuar'
+  const libosKorinadi = filtr.kat !== AKS
+  const aksKorinadi = !filtr.kat || filtr.kat === AKS
+  const qAks = filtr.q.trim().toLowerCase()
+  const aksKorinadigan = aksessuarlar.filter((a) => (!qAks || a.nomi.toLowerCase().includes(qAks) || a.kod.toLowerCase().includes(qAks))
+    && (!filtr.narx || a.ijara_narxi <= Number(filtr.narx)))
   const korinadi = (liboslar || []).filter((l) => (!filtr.kat || l.kategoriya === filtr.kat)
     && (!filtr.olcham || l.olcham === filtr.olcham) && (!filtr.rang || l.rang === filtr.rang)
     && (!filtr.narx || l.ijara_narxi <= Number(filtr.narx))
@@ -306,9 +314,11 @@ export default function YangiZakaz({ onTayyor, onTolov }) {
             <section className="blok jadval-panel libos-filtr" aria-label="Libos filtrlari">
               <div className="jadval-asboblar">
                 <div className="tezkor-tablar" role="tablist" aria-label="Kategoriya">
-                  {[['', 'Hammasi'], ...noyob('kategoriya').map((k) => [k, k])].map(([k, nom]) => (
+                  {[['', 'Hammasi'], ...noyob('kategoriya').map((k) => [k, k]), ...(aksessuarlar.length > 0 ? [[AKS, 'Aksessuarlar']] : [])].map(([k, nom]) => (
                     <button key={k || 'hammasi'} type="button" role="tab" aria-selected={filtr.kat === k}
-                      className={filtr.kat === k ? 'faol' : ''} onClick={() => setFiltr({ ...filtr, kat: k })}>{nom}</button>
+                      className={filtr.kat === k ? 'faol' : ''} onClick={() => setFiltr({ ...filtr, kat: k })}>
+                      {nom}{k === AKS && <span className="tab-son">{aksessuarlar.length}</span>}
+                    </button>
                   ))}
                 </div>
                 {korsatiladigan.length > 0 && (
@@ -332,19 +342,21 @@ export default function YangiZakaz({ onTayyor, onTolov }) {
                     {fil.map((f) => <option key={f.id} value={f.id}>{f.nomi}</option>)}
                   </select>
                 )}
-                <select className="kichik-tanlov" value={filtr.olcham} aria-label="O'lcham" onChange={(e) => setFiltr({ ...filtr, olcham: e.target.value })}>
-                  <option value="">O'lcham</option>
-                  {noyob('olcham').map((o) => <option key={o} value={o}>{o}</option>)}
-                </select>
-                <select className="kichik-tanlov" value={filtr.rang} aria-label="Rang" onChange={(e) => setFiltr({ ...filtr, rang: e.target.value })}>
-                  <option value="">Rang</option>
-                  {noyob('rang').map((o) => <option key={o} value={o}>{o}</option>)}
-                </select>
+                {libosKorinadi && (<>
+                  <select className="kichik-tanlov" value={filtr.olcham} aria-label="O'lcham" onChange={(e) => setFiltr({ ...filtr, olcham: e.target.value })}>
+                    <option value="">O'lcham</option>
+                    {noyob('olcham').map((o) => <option key={o} value={o}>{o}</option>)}
+                  </select>
+                  <select className="kichik-tanlov" value={filtr.rang} aria-label="Rang" onChange={(e) => setFiltr({ ...filtr, rang: e.target.value })}>
+                    <option value="">Rang</option>
+                    {noyob('rang').map((o) => <option key={o} value={o}>{o}</option>)}
+                  </select>
+                </>)}
                 <SummaInput className="narx-filtr" aria-label="Narx gacha" placeholder="Narx gacha" value={filtr.narx}
                   onChange={(e) => setFiltr({ ...filtr, narx: e.target.value })} />
               </div>
             </section>
-            <ul className="liboslar libos-grid">
+            {libosKorinadi && <ul className="liboslar libos-grid">
               {korinadi.length === 0 && (
                 <li className="libos-bosh">
                   {liboslar.length === 0 ? "Bu sanalarga bo'sh libos yo'q. Boshqa sanani tanlang yoki «Bandlarni ham ko'rsatish» ni yoqing." : 'Filtrga mos libos topilmadi.'}
@@ -382,14 +394,15 @@ export default function YangiZakaz({ onTayyor, onTolov }) {
                   </li>
                 )
               })}
-            </ul>
-            {aksessuarlar.length > 0 && (
+            </ul>}
+            {aksKorinadi && aksessuarlar.length > 0 && (
               <section className="stack aks-bolim">
-                <h3>Aksessuarlar</h3>
+                {libosKorinadi && <h3>Aksessuarlar</h3>}
+                {aksKorinadigan.length === 0 && <p className="malumot">Qidiruvga mos aksessuar topilmadi.</p>}
                 {/* Ko'ylaklar bilan bir xil kartochka: rasm (Katalog → Aksessuarlar → Rasm), nomi, narxi, shu sanalarga
                     nechta bor. Tanlanmagan — «Qo'shish», tanlangan — soni va hisob (2 × 300 000 = 600 000) */}
                 <ul className="liboslar libos-grid aks-kartalar">
-                  {aksessuarlar.map((a) => {
+                  {aksKorinadigan.map((a) => {
                     const n = aksSoni[a.id] || 0
                     const o = (d) => setAksSoni({ ...aksSoni, [a.id]: Math.max(0, Math.min(a.bosh_soni, n + d)) })
                     return (
