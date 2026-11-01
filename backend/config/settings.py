@@ -213,3 +213,8 @@ if not DEBUG:
     SESSION_COOKIE_SECURE = True
     CSRF_COOKIE_SECURE = True
     CSRF_TRUSTED_ORIGINS = [f'https://{h}' for h in ALLOWED_HOSTS if h != '*']
+    # HSTS: brauzer saytni faqat HTTPS orqali ochadi. Boshida 1 kun (HTTPS barqarorligi ko'rilgach .env da oshiriladi,
+    # masalan 31536000 — 1 yil); 0 — o'chiq. Subdomenlarga tarqatilmaydi.
+    SECURE_HSTS_SECONDS = env.int('HSTS_SONIYA', default=86400)
+    # check --deploy: HTTP→HTTPS yo'naltirish nginx'da (W008); subdomen va preload ataylab yoqilmagan (W005, W021)
+    SILENCED_SYSTEM_CHECKS = ['security.W005', 'security.W008', 'security.W021']
