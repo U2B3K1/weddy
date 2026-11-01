@@ -305,6 +305,8 @@ class SalonSozlamalari(models.Model):
     # Naqdsiz pul nazorati (kerak bo'lmasa o'chiriladi): o'tkazmani rahbar «keldi» deb tasdiqlaydi; terminal to'lovi
     # bo'lgan smena terminal sverkasi summasisiz yopilmaydi
     otkazma_tasdigi = models.BooleanField(default=True)
+    # Qaytarish kuni «Qaytarildi» deb qabul qilinmagan libos haqida shu vaqtdan keyin eslatma (salon yopilishidan oldin)
+    qaytarish_tekshiruv_vaqti = models.TimeField(default=datetime.time(18, 0))
     terminal_sverkasi = models.BooleanField(default=True)
 
     def zalog_turlari(self):

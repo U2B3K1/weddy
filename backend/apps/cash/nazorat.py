@@ -17,7 +17,6 @@ from .models import KassaTopshirish, Tolov
 TOPSHIRIQ_KUTISH = timedelta(minutes=2)    # qabul qiluvchiga qayta eslatma
 TOPSHIRIQ_RAHBARGA = timedelta(minutes=15)  # shundan keyin ham tasdiqlanmasa — rahbarga
 OTKAZMA_KUTISH = timedelta(minutes=2)  # mijoz hali salonda bo'lganida bilish kerak: pul kelmasa undan so'raladi
-QAYTARISH_TEKSHIRUV_SOAT = 18  # shu soatdan keyin qaytarish kuni kelgan, lekin qabul qilinmagan libos — eslatma
 
 
 def _topshiriqlar(hozir):
@@ -51,17 +50,22 @@ def _otkazmalar(hozir):
 
 def _qaytmagan_liboslar(hozir):
     """Qaytarish kuni kelgan (yoki o'tgan), lekin «Qaytarildi» deb qabul qilinmagan libos: kechqurun libosni bergan
-    sotuvchiga va rahbarga. Libos qaytgan bo'lsa — tizimda qabul qilinmagan; qaytmagan bo'lsa — mijoz bilan bog'lanish kerak."""
+    sotuvchiga va rahbarga. Libos qaytgan bo'lsa — tizimda qabul qilinmagan; qaytmagan bo'lsa — mijoz bilan bog'lanish kerak.
+    Vaqt — salon sozlamasidagi `qaytarish_tekshiruv_vaqti` (standart 18:00)."""
     from apps.orders.models import Zakaz
+    from apps.tenants.models import sozlama
 
     mahalliy = timezone.localtime(hozir)
-    if mahalliy.hour < QAYTARISH_TEKSHIRUV_SOAT:
-        return 0
     bugun = mahalliy.date()
+    vaqtlar = {}  # salon -> tekshiruv vaqti keldimi
     soni = 0
     for z in (Zakaz.objects.filter(holat=Zakaz.Holat.BERILDI, qaytarish__lte=bugun)
               .exclude(salon__holat=Salon.Holat.BLOKLANGAN).select_related('salon', 'mijoz', 'sotuvchi')
               .prefetch_related('pozitsiyalar__libos')):
+        if z.salon_id not in vaqtlar:
+            vaqtlar[z.salon_id] = mahalliy.time() >= sozlama(z.salon).qaytarish_tekshiruv_vaqti
+        if not vaqtlar[z.salon_id]:
+            continue
         kun = (bugun - z.qaytarish).days
         liboslar = ', '.join(f'{p.libos.artikul} {p.libos.nomi}' for p in z.pozitsiyalar.all())
         matn = (f"⏰ Zakaz #{z.raqam} · {z.mijoz.fio or 'mijoz'} ({z.mijoz.telefon}): {liboslar} "

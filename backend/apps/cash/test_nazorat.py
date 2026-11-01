@@ -120,6 +120,13 @@ class QaytmaganLibosTests(TestCase):
         self.assertEqual(nazorat_eslatmalari(self.soat(19, kun=1)), 2)  # ertasi kuni — kechikmoqda
         self.assertIn('1 kun kechikmoqda', Xabar.objects.filter(xodim=self.rahbar, tur='libos_qaytmadi').first().matn)
 
+    def test_salon_ozi_vaqtni_belgilaydi(self):
+        from datetime import time
+        from apps.tenants.models import SalonSozlamalari
+        SalonSozlamalari.objects.filter(salon=self.salon).update(qaytarish_tekshiruv_vaqti=time(20, 30))
+        self.assertEqual(nazorat_eslatmalari(self.soat(19)), 0)
+        self.assertEqual(nazorat_eslatmalari(self.soat(21)), 2)
+
     def test_qaytarilgan_libosga_eslatma_yoq(self):
         from apps.orders.models import Zakaz
         Zakaz.objects.filter(id=self.z.id).update(holat=Zakaz.Holat.QAYTARILDI)

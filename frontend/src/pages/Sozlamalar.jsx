@@ -105,6 +105,11 @@ export default function Sozlamalar({ menId, bolim, onBolim }) {
               <SummaInput value={s.kechikish_kunlik_summa} onChange={son('kechikish_kunlik_summa')} />
             </label>
           )}
+          <label>Qaytmagan libos eslatmasi vaqti
+            <input type="time" value={String(s.qaytarish_tekshiruv_vaqti).slice(0, 5)} onChange={(e) => e.target.value && set('qaytarish_tekshiruv_vaqti', e.target.value)} />
+          </label>
+          <p className="malumot">Qaytarish kuni kelgan, lekin «Qaytarildi» deb qabul qilinmagan libos haqida shu vaqtdan keyin sotuvchi va
+            rahbarga Telegramda eslatma boradi (har kuni bir marta, libos qabul qilinguncha). Salon yopilishidan oldingi vaqtni qo'ying.</p>
         </section>
       ),
     },
