@@ -167,6 +167,28 @@ class OtkazmaTasdiqView(APIView):
         return Response({'id': t.id, 'tasdiq': t.tasdiq})
 
 
+class TolovTuzatishView(APIView):
+    """POST {usul?, summa?, sabab} — rahbar xato yozilgan avans/qoldiqni tuzatadi (smena ochiq paytda)."""
+
+    def get_permissions(self):
+        from apps.tenants.permissions import IsRahbar
+        return [IsRahbar(), SalonYozishRuxsati()]
+
+    def post(self, request, pk):
+        t = Tolov.objects.filter(salon=request.salon, id=pk).first()
+        if not t:
+            return Response({'detail': "To'lov topilmadi."}, status=404)
+        d = request.data
+        usul = serializers.CharField(required=False).run_validation(d['usul']) if d.get('usul') else None
+        summa = serializers.IntegerField(min_value=1).run_validation(d['summa']) if d.get('summa') not in (None, '') else None
+        sabab = serializers.CharField(max_length=200, allow_blank=True).run_validation(d.get('sabab', ''))
+        try:
+            t = services.tolov_tuzatish(salon=request.salon, rahbar=request.user, tolov=t, usul=usul, summa=summa, sabab=sabab)
+        except KassaXatosi as e:
+            return xato(e)
+        return Response({'id': t.id, 'usul': t.usul, 'summa': t.summa, 'tasdiq': t.tasdiq})
+
+
 class InkassatsiyaView(APIView):
     """POST {summa, rahbar, izoh?} — naqdning bir qismini rahbarga berish; rahbar Telegramda tasdiqlaydi."""
     permission_classes = [SalonYozishRuxsati]

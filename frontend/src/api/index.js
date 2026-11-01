@@ -161,6 +161,7 @@ export const smenaChiqish = (summa, kimga) => post('/kassa/smena/chiqish/', { su
 export const smenaYopish = (summa, izoh, rahbar, terminal) => post('/kassa/smena/yopish/', { summa, izoh, ...(rahbar ? { rahbar } : {}), ...(terminal != null ? { terminal } : {}) })
 export const inkassatsiyaQil = (body) => post('/kassa/inkassatsiya/', body)
 export const otkazmaTasdiq = (id, keldi) => post(`/kassa/tolovlar/${id}/tasdiq/`, { keldi })
+export const tolovTuzat = (id, tana) => post(`/kassa/tolovlar/${id}/tuzatish/`, tana)
 export const topshiriqQabul = (id, summa) => post(`/kassa/topshiriqlar/${id}/qabul/`, summa === undefined ? {} : { summa })
 
 export const dashbord = (davr = 'oy', filial) => get('/dashbord/', { davr, filial: filial || undefined })

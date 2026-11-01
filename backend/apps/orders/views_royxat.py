@@ -127,9 +127,10 @@ class ZakazTafsilotView(APIView):
         return Response({
             **_qisqa(z), 'asosiy_narx': z.asosiy_narx, 'ustama': z.ustama, 'ustama_foiz': z.ustama_foiz, 'chegirma': z.chegirma,
             'tolangan': tolangan, 'qoldiq': z.jami - tolangan,
-            'tolovlar': [{'tur': t.tur, 'tur_nomi': t.get_tur_display(), 'summa': t.summa, 'usul': t.usul,
+            'tolovlar': [{'id': t.id, 'tur': t.tur, 'tur_nomi': t.get_tur_display(), 'summa': t.summa, 'usul': t.usul,
                           'usul_nomi': t.get_usul_display(), 'xodim': t.xodim.ism, 'tasdiq': t.tasdiq,
-                          'vaqt': t.vaqt} for t in z.tolovlar.select_related('xodim')],
+                          'vaqt': t.vaqt, 'tuzatsa_boladi': _tuzatsa_boladimi(t)}
+                         for t in z.tolovlar.select_related('xodim', 'smena')],
             'zaloglar': [{'id': g.id, 'turi': g.turi, 'turi_nomi': g.get_turi_display(), 'holat': g.holat,
                           'holat_nomi': g.get_holat_display(), 'summa': g.summa,
                           'tavsif': g.tavsif, 'yorliq': g.yorliq} for g in z.zaloglar.all()],
@@ -393,6 +394,13 @@ class QarzdorlarView(APIView):
             'qarzdorlar': qarzdorlar, 'qarz_jami': sum(q['qarz'] for q in qarzdorlar),
             'qoldiq_kutilmoqda': kutilmoqda, 'qoldiq_jami': sum(k['qoldiq'] for k in kutilmoqda),
         })
+
+
+def _tuzatsa_boladimi(t):
+    """`cash.services.tolov_tuzatish` shartlari: avans/qoldiq, smena ochiq, xodim pulini topshirmagan, o'tkazma tasdiqlanmagan."""
+    return (t.tur in (Tolov.Tur.AVANS, Tolov.Tur.QOLDIQ) and t.summa > 0 and t.smena is not None and not t.smena.yopilgan
+            and t.tasdiq not in (Tolov.Tasdiq.KELDI, Tolov.Tasdiq.KELMADI)
+            and not t.smena.ishtirokchilar.filter(xodim_id=t.xodim_id, chiqqan__isnull=False).exists())
 
 
 class TolovHavolaView(APIView):

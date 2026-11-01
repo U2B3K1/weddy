@@ -324,6 +324,13 @@ function Pnl({ r, filial }) {
           Rentabellik: {r.rentabellik}% <span className="malumot">(libos xarid tannarxisiz)</span>
         </p>
       )}
+      {r.libos_xaridi > 0 && (
+        <p>
+          Shu oy {r.libos_xaridi_soni} ta yangi libos olindi: {som(r.libos_xaridi)} (tannarxi). Qo'lingizda qolgan pul:{' '}
+          <b className={r.sof_foyda - r.libos_xaridi < 0 ? 'qizil' : ''}>{som(r.sof_foyda - r.libos_xaridi)}</b>
+          <span className="malumot"> — sof foyda minus libos xaridi. Libos foydadan ayirilmaydi: u investitsiya, keyingi oylarda o'zini qoplaydi.</span>
+        </p>
+      )}
       {r.investitsiya > 0 && (
         <p className="malumot">
           Libos investitsiyasi: {som(r.investitsiya)} · shundan qoplangan {som(r.investitsiya_qoplagan)} (<b>{r.qoplash_foiz}%</b>)

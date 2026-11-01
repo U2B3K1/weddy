@@ -244,6 +244,56 @@ def otkazma_tasdiqlash(*, salon, rahbar, tolov, keldi):
     return t
 
 
+TUZATILADIGAN_USULLAR = (Tolov.Usul.NAQD, Tolov.Usul.KARTA, Tolov.Usul.OTKAZMA)
+
+
+@transaction.atomic
+def tolov_tuzatish(*, salon, rahbar, tolov, usul=None, summa=None, sabab=''):
+    """Rahbar xato yozilgan avans/qoldiqni tuzatadi (naqd «Terminal» deb yoki 100 000 o'rniga 1 000 000 yozilgan).
+
+    Faqat smena ochiq va to'lovni olgan xodim hali pulini topshirmagan paytda: shunda smena yopilishida kassa farqi,
+    terminal sverkasi va xodimning shaxsiy hisobi to'g'ri chiqadi. Yopilgan smena «Smenalar tarixi» da tuzatiladi.
+    """
+    from apps.orders.changes import _log, tolov_holatini_mosla
+    if rahbar.rol != Xodim.Rol.RAHBAR or rahbar.salon_id != salon.id:
+        raise KassaXatosi("To'lovni faqat rahbar tuzatadi.")
+    if not sabab.strip():
+        raise KassaXatosi('Tuzatish sababini yozing.')
+    t = Tolov.objects.select_for_update(of=('self',)).select_related('smena', 'xodim').get(id=tolov.id, salon=salon)
+    if t.tur not in (Tolov.Tur.AVANS, Tolov.Tur.QOLDIQ) or not t.zakaz_id:
+        raise KassaXatosi("Faqat zakazning avans yoki qoldiq to'lovi tuzatiladi.")
+    if t.smena.yopilgan:
+        raise KassaXatosi("Smena yopilgan: kassa farqini «Smenalar tarixi» da tuzating.")
+    if t.smena.ishtirokchilar.filter(xodim=t.xodim, chiqqan__isnull=False).exists():
+        raise KassaXatosi(f"{t.xodim.ism} pulini topshirib chiqqan: to'lov endi tuzatilmaydi.")
+    if t.tasdiq in (Tolov.Tasdiq.KELDI, Tolov.Tasdiq.KELMADI):
+        raise KassaXatosi("O'tkazma allaqachon tasdiqlangan: tuzatilmaydi.")
+    usul = usul or t.usul
+    summa = t.summa if summa is None else summa
+    if usul not in TUZATILADIGAN_USULLAR:
+        raise KassaXatosi("To'lov usuli noto'g'ri.")
+    if summa <= 0:
+        raise KassaXatosi("Summa musbat bo'lishi kerak.")
+    if (usul, summa) == (t.usul, t.summa):
+        raise KassaXatosi("Hech narsa o'zgarmadi.")
+    zakaz = Zakaz.objects.select_for_update().get(id=t.zakaz_id, salon=salon)
+    from apps.notify.services import som, xabar_yoz
+    eski = f'{t.get_usul_display()} {som(t.summa)}'
+    t.usul, t.summa = usul, summa
+    otkazma = usul in Tolov.OTKAZMA_USULLARI and sozlama(salon).otkazma_tasdigi
+    t.tasdiq = Tolov.Tasdiq.KUTILMOQDA if otkazma else ''
+    t.save(update_fields=['usul', 'summa', 'tasdiq'])
+    tolov_holatini_mosla(zakaz, KassaXatosi)  # to'langan jamidan oshmasin; to'liq to'langan sana mos kelsin
+    zakaz.save(update_fields=['tolangan_sana'])
+    yangi = f'{t.get_usul_display()} {som(t.summa)}'
+    _log(zakaz, rahbar, 'tolov_tuzatildi', eski, yangi, sabab.strip())
+    if t.tasdiq == Tolov.Tasdiq.KUTILMOQDA:
+        _otkazma_xabari(t)  # tolov_qabul dagi kabi: xabar_yoz o'zi tranzaksiya tugagach yuboradi
+    xabar_yoz(t.xodim, 'tolov_tuzatildi', f"✏️ Zakaz #{zakaz.raqam} to'lovingizni rahbar tuzatdi: {eski} → {yangi}. "
+              f"Sabab: {sabab.strip()}")
+    return t
+
+
 def terminal_tizimda(smena):
     """Smenada terminal (karta) orqali kirgan pul — terminal sverkasi bilan solishtiriladi."""
     r = smena.tolovlar.filter(usul=Tolov.Usul.KARTA).aggregate(

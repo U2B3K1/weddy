@@ -11,7 +11,7 @@ from apps.catalog.models import Libos
 from apps.orders.models import Mijoz, QaytarishAkti, Zakaz
 from apps.orders.services import zakaz_yaratish
 from apps.tenants.auth import make_staff_token
-from apps.tenants.models import Xodim
+from apps.tenants.models import Salon, Xodim
 
 from . import reports
 from .models import Xarajat
@@ -108,6 +108,22 @@ class PnlTests(FinanceBase):
         Zakaz.objects.create(salon=b, raqam=1, mijoz=mijoz, olib_ketish=date(2026, 10, 20),
                              qaytarish=date(2026, 10, 22), jami=5_000_000, tolangan_sana=date(2026, 10, 3))
         self.assertEqual(reports.foyda_zarar(self.salon, 2026, 10)['tushum'], 0)
+
+
+class LibosXaridiTests(FinanceBase):
+    """«Qo'lingizda qolgan pul»: davrda olingan liboslar tannarxi; boshlang'ich katalog (ochilgandan 30 kun) xarid emas."""
+
+    def test_yangi_libos_xaridi_va_boshlangich_katalog(self):
+        from apps.catalog.models import Kategoriya
+        b = timezone.localdate()
+        kat = Kategoriya.objects.create(salon=self.salon, nomi='Xarid')
+        libos_yarat(self.salon, kat, 'X1', tannarx=9_000_000)
+        libos_yarat(self.salon, kat, 'X2')  # tannarxsiz — hisoblanmaydi
+        self.assertEqual(reports.foyda_zarar(self.salon, b.year, b.month)['libos_xaridi'], 0)  # salon yangi — boshlang'ich katalog
+        Salon.objects.filter(id=self.salon.id).update(yaratilgan=timezone.now() - timedelta(days=90))
+        self.salon.refresh_from_db()
+        r = reports.foyda_zarar(self.salon, b.year, b.month)
+        self.assertEqual((r['libos_xaridi'], r['libos_xaridi_soni']), (9_000_000, 1))
 
 
 class KutilayotganTests(FinanceBase):

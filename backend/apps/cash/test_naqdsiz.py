@@ -166,3 +166,52 @@ class ReviewTuzatishlariTests(Base):
         self.assertFalse(SmsXabar.objects.exists())  # pul hali kelmagan — kvitansiya yo'q
         tugma_ishla(111, f'ot:{t.id}:k')
         self.assertIn("1 000 000 so'm qabul qilindi (o'tkazma)", SmsXabar.objects.get(kalit=f'tolov:{t.id}').matn)
+
+
+class TolovTuzatishTests(Base):
+    """Rahbar xato yozilgan to'lovni smena ochiq paytda tuzatadi — kassa farqi, terminal va zakaz qoldig'i to'g'ri chiqadi."""
+
+    def tuzat(self, t, xodim=None, **tana):
+        return api(xodim or self.rahbar).post(f'/api/kassa/tolovlar/{t.id}/tuzatish/', {'sabab': 'xato yozilgan', **tana},
+                                               format='json')
+
+    def test_terminal_deb_yozilgan_naqd_tuzatiladi_smena_farqsiz_yopiladi(self):
+        t = self.tolov(500_000, U.KARTA)
+        self.assertTrue(api(self.rahbar).get(f'/api/zakazlar/{self.z.id}/').data['tolovlar'][0]['tuzatsa_boladi'])
+        r = self.tuzat(t, usul='naqd')
+        self.assertEqual((r.status_code, r.data['usul']), (200, 'naqd'))
+        s = smena_yopish(salon=self.salon, xodim=self.malika, fakt_qoldiq=500_000)  # naqd kassada — farq yo'q, sverka kerak emas
+        self.assertEqual(s.farq, 0)
+        self.assertIn("rahbar tuzatdi", Xabar.objects.get(xodim=self.malika, tur='tolov_tuzatildi').matn)
+        tarix = api(self.rahbar).get(f'/api/zakazlar/{self.z.id}/tarix/').data
+        self.assertEqual(tarix[0]['harakat'], 'tolov_tuzatildi')
+        # smena yopildi — endi tuzatilmaydi
+        self.assertFalse(api(self.rahbar).get(f'/api/zakazlar/{self.z.id}/').data['tolovlar'][0]['tuzatsa_boladi'])
+        self.assertEqual(self.tuzat(t, usul='karta').status_code, 409)
+
+    def test_summa_tuzatilsa_zakaz_qoldigi_va_tolangan_sana_mos(self):
+        t = self.tolov(2_000_000, U.NAQD)  # aslida 200 000 edi — zakaz «to'liq to'langan» bo'lib qolgan
+        self.z.refresh_from_db()
+        self.assertIsNotNone(self.z.tolangan_sana)
+        self.assertEqual(self.tuzat(t, summa=200_000).status_code, 200)
+        self.z.refresh_from_db()
+        self.assertEqual((tolangan_summa(self.z), self.z.tolangan_sana), (200_000, None))
+        self.assertEqual(self.tuzat(t, summa=3_000_000).status_code, 409)  # jamidan oshmaydi
+
+    def test_otkazmaga_tuzatilsa_rahbar_tasdigi_kutiladi(self):
+        t = self.tolov(700_000, U.NAQD)
+        self.assertEqual(self.tuzat(t, usul='otkazma').data['tasdiq'], 'kutilmoqda')
+        self.assertTrue(Xabar.objects.filter(xodim=self.rahbar, tur='otkazma_tasdiq').exists())
+
+    def test_cheklovlar(self):
+        t = self.tolov(500_000, U.NAQD)
+        self.assertEqual(self.tuzat(t, self.malika, usul='karta').status_code, 403)  # sotuvchi o'zi tuzatmaydi
+        r = api(self.rahbar).post(f'/api/kassa/tolovlar/{t.id}/tuzatish/', {'usul': 'karta', 'sabab': ' '}, format='json')
+        self.assertEqual(r.status_code, 409)  # sabab majburiy
+        self.assertEqual(self.tuzat(t, usul='naqd').status_code, 409)  # hech narsa o'zgarmadi
+        o = self.tolov(300_000, U.OTKAZMA, tur=T.QOLDIQ)
+        tugma_ishla(111, f'ot:{o.id}:k')
+        self.assertEqual(self.tuzat(o, usul='naqd').status_code, 409)  # tasdiqlangan o'tkazma
+        boshqa_salon, _, _ = salon_yarat('begona')
+        b_rahbar = Xodim.objects.create(salon=boshqa_salon, ism='Begona', rol=Xodim.Rol.RAHBAR)
+        self.assertEqual(self.tuzat(t, b_rahbar, usul='karta').status_code, 404)  # boshqa salon to'lovi ko'rinmaydi

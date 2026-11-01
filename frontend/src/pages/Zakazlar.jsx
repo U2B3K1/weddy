@@ -7,7 +7,7 @@ import LibosSiluet from '../components/LibosSiluet'
 import NavIkona from '../components/NavIkona'
 import {
   bekorQilish, berish, chegirmaSora, mijozOzgartir, tolovHavola, primerkaBelgila, primerkaOzgartir, promokodOlibTashla, promokodQolla, qarzTolash, qaytarish, sanaKochirish, som, sozlamalar, tayyorChegirmalar,
-  saqlangan, tolovQabul, xatoMatni, zakazAksessuarOchir, zakazAksessuarQosh, zakazTafsilot, zakazTarixi, zakazlarRoyxat,
+  saqlangan, tolovQabul, tolovTuzat, xatoMatni, zakazAksessuarOchir, zakazAksessuarQosh, zakazTafsilot, zakazTarixi, zakazlarRoyxat,
   boshAksessuarlar, boshLiboslar, libosAlmashtirish, salonchilar, zakazSalonchi,
   sanaMatni,
 } from '../api'
@@ -123,6 +123,7 @@ function Karta({ id, onOrqaga, onKassa }) {
   useEffect(() => { sozlamalar().then(setSoz).catch(() => {}) }, [])
   // «Alohida kassir» rejimida sotuvchi pul qabul qilmaydi — to'lov tugmalari o'rniga eslatma
   const kassirda = soz?.kassa_rejimi === 'kassir' && saqlangan.xodim()?.rol === 'sotuvchi'
+  const rahbar = saqlangan.xodim()?.rol === 'rahbar'
 
   const yukla = useCallback(() => zakazTafsilot(id).then(setZ), [id])
   useEffect(() => { yukla() }, [yukla])
@@ -271,9 +272,10 @@ function Karta({ id, onOrqaga, onKassa }) {
         <h3>To'lovlar</h3>
         {z.tolovlar.length === 0 && <p className="malumot">Hali yo'q</p>}
         {z.tolovlar.map((t, i) => (
-          <p key={i} className="qator-matn">{t.tur_nomi} · {som(t.summa)} · {t.usul_nomi} · {t.xodim}
+          <div key={i} className="qator-matn">{t.tur_nomi} · {som(t.summa)} · {t.usul_nomi} · {t.xodim}
             {t.tasdiq === 'kutilmoqda' && <span className="malumot"> · rahbar tasdig'i kutilmoqda</span>}
-            {t.tasdiq === 'kelmadi' && <b className="qizil"> · KELMADI — hisobga olinmagan</b>}</p>
+            {t.tasdiq === 'kelmadi' && <b className="qizil"> · KELMADI — hisobga olinmagan</b>}
+            {rahbar && t.tuzatsa_boladi && <TolovTuzatish t={t} onYuborish={(tana) => bajar(() => tolovTuzat(t.id, tana), "To'lov tuzatildi.")} />}</div>
         ))}
         {z.zaloglar.map((g) => (
           <p key={g.id} className="qator-matn">Zalog {g.yorliq}: {g.turi_nomi} · {g.holat_nomi}</p>
@@ -502,6 +504,30 @@ function ChegirmaForma({ zakazId, z, bajar }) {
         Rahbardan so'rash
       </button>
     </Amal>
+  )
+}
+
+// Rahbar xato yozilgan to'lovni tuzatadi (naqd «Terminal» deb yoki summa xato) — faqat smena ochiq paytda
+function TolovTuzatish({ t, onYuborish }) {
+  const [usul, setUsul] = useState(t.usul)
+  const [summa, setSumma] = useState(String(t.summa))
+  const [sabab, setSabab] = useState('')
+  const ozgardi = usul !== t.usul || Number(summa) !== t.summa
+  return (
+    <details className="tolov-tuzatish">
+      <summary className="havola-tugma">Tuzatish</summary>
+      <div className="stack">
+        <label>To'lov usuli
+          <select value={usul} onChange={(e) => setUsul(e.target.value)}>
+            <option value="naqd">Naqd</option><option value="karta">Terminal</option><option value="otkazma">O'tkazma</option>
+          </select>
+        </label>
+        <label>Summa<SummaInput value={summa} onChange={(e) => setSumma(e.target.value)} /></label>
+        <label>Sabab<input value={sabab} maxLength={200} placeholder="masalan: naqd edi, terminal deb yozilgan" onChange={(e) => setSabab(e.target.value)} /></label>
+        <button className="kichik" disabled={!ozgardi || !sabab.trim() || !(Number(summa) > 0)}
+          onClick={() => onYuborish({ usul, summa: Number(summa), sabab })}>Tuzatishni saqlash</button>
+      </div>
+    </details>
   )
 }
 

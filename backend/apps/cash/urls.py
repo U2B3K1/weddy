@@ -10,6 +10,7 @@ urlpatterns = [
     path('smena/yopish/', views.SmenaYopishView.as_view()),
     path('tolovlar/', views.TolovView.as_view()),
     path('tolovlar/<int:pk>/tasdiq/', views.OtkazmaTasdiqView.as_view()),
+    path('tolovlar/<int:pk>/tuzatish/', views.TolovTuzatishView.as_view()),
     path('inkassatsiya/', views.InkassatsiyaView.as_view()),
     path('topshiriqlar/<int:pk>/qabul/', views.TopshiriqQabulView.as_view()),
     path('zaloglar/', views.ZaloglarView.as_view()),

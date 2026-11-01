@@ -141,3 +141,30 @@ test('to\'liq chegirmali (0 so\'m) bron kassada to\'lovsiz tasdiqlanadi', async 
   }
   expect(xatolar).toEqual([])
 })
+
+test('rahbar xato yozilgan to\'lovni tuzatadi (Terminal → Naqd)', async ({ page }) => {
+  const xatolar = xatolarniKuzat(page)
+  await kirish(page, 'Rahbar', '1111')
+  const libos = (await apiSorov(page, 'GET', '/liboslar/')).find((l) => l.artikul === 'E2E-2')
+  const z = await apiSorov(page, 'POST', '/zakazlar/', { telefon: `+99894${String(Date.now()).slice(-7)}`, fio: 'Tuzatish Sinov',
+    dan: iso(70), gacha: iso(72), liboslar: [libos.id] })
+  await apiSorov(page, 'POST', '/kassa/smena/ochish/', { boshlangich_qoldiq: 0 })
+  try {
+    await apiSorov(page, 'POST', '/kassa/tolovlar/', { zakaz: z.id, tur: 'avans', summa: 400_000, usul: 'karta' })
+    await nav(page).getByRole('button', { name: 'Zakazlar', exact: true }).click()
+    await page.locator('input.jadval-qidiruv').fill('Tuzatish Sinov')
+    await page.locator('.zakaz-jadval tbody tr', { hasText: 'Tuzatish Sinov' }).first().click()
+    const tolovlar = page.locator('.karta-tolovlar')
+    await expect(tolovlar).toContainText("Avans · 400 000 so'm · Terminal")
+    await tolovlar.getByText('Tuzatish', { exact: true }).click()
+    await tolovlar.getByLabel("To'lov usuli").selectOption('naqd')
+    await tolovlar.getByLabel('Sabab').fill('naqd edi, terminal deb yozilgan')
+    await ikkiKenglik(page, '9-tolov-tuzatish')
+    await tolovlar.getByRole('button', { name: 'Tuzatishni saqlash' }).click()
+    await expect(page.getByText("To'lov tuzatildi.")).toBeVisible()
+    await expect(tolovlar).toContainText("Avans · 400 000 so'm · Naqd")
+  } finally {
+    await apiSorov(page, 'POST', '/kassa/smena/yopish/', { summa: 400_000, izoh: '' })
+  }
+  expect(xatolar).toEqual([])
+})

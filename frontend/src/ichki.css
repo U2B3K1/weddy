@@ -981,3 +981,7 @@ main .boshlash-panel .qator-btn { text-align: left; }
 .sanoq-kiritish { display: flex; gap: var(--o-2); align-items: stretch; }
 .sanoq-kiritish input { flex: 1; min-width: 0; }
 .sanoq-kiritish button { flex: none; }
+/* Zakaz kartasi: to'lov qatori (ichida rahbar uchun «Tuzatish» formasi bo'lgani uchun <p> emas, <div>) */
+.karta-tolovlar div.qator-matn { margin: 0 0 var(--o-3); }
+.tolov-tuzatish { margin-top: var(--o-1); }
+.tolov-tuzatish > .stack { margin-top: var(--o-2); padding: var(--o-3); border: 1px solid var(--chegara); border-radius: var(--r-1); }

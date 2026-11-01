@@ -7,5 +7,5 @@ export const ZAKAZ_HOLATLARI = {
 export const TARIX_HARAKATLARI = {
   sana_kochirildi: "Sana ko'chirildi", libos_almashtirildi: 'Libos almashtirildi', aksessuar_qoshildi: "Aksessuar qo'shildi",
   aksessuar_olib_tashlandi: 'Aksessuar olib tashlandi', moslash_narxi: 'Moslash narxi', bekor_qilindi: 'Bekor qilindi',
-  avtomatik_bekor: 'Avtomatik bekor qilindi', boglandi: "Mijoz bilan bog'lanildi",
+  avtomatik_bekor: 'Avtomatik bekor qilindi', boglandi: "Mijoz bilan bog'lanildi", tolov_tuzatildi: "To'lov tuzatildi",
 }

@@ -8,7 +8,7 @@ Zalog daromad emas. Soliq hisoblanmaydi. Shu sabab o'tgan davr raqamlari keyin o
 tahlili (statistika hisobotlari: kategoriya, sotuvchi, salonchi...) uchun ishlatiladi.
 """
 import calendar
-from datetime import date
+from datetime import date, timedelta
 from decimal import ROUND_HALF_UP, Decimal
 
 from django.db.models import Count, Exists, F, Max, OuterRef, Q, Subquery, Sum
@@ -192,6 +192,7 @@ def foyda_zarar(salon, yil, oy, filial=None):
         'oy': f'{yil}-{oy:02d}', 'filial': filial,
         **foyda(salon, boshi, oxiri, filial),
         **libos_investitsiyasi(salon, filial),
+        **libos_xaridi(salon, boshi, oxiri, filial),
         'kelgusi_avanslar': kelgusi_avanslar(salon, filial),
         'tannarxsiz_liboslar': Libos.objects.filter(
             salon=salon, tannarx__isnull=True, holat__in=FAOL_LIBOS_HOLATLARI).count(),
@@ -215,6 +216,24 @@ def libos_investitsiyasi(salon, filial=None):
     ).exclude(zakaz__holat=Zakaz.Holat.BEKOR).aggregate(s=Sum('narx'))['s'] or 0
     return {'investitsiya': investitsiya, 'investitsiya_qoplagan': qoplagan,
             'qoplash_foiz': round(qoplagan / investitsiya * 100, 1) if investitsiya else None}
+
+
+BOSHLANGICH_KATALOG_KUN = 30
+
+
+def libos_xaridi(salon, boshi, oxiri, filial=None):
+    """Davrda katalogga qo'shilgan liboslar tannarxi — egasining «foyda bor, pul qani?» savoliga javob.
+
+    Foyda libos xaridini xarajat deb hisoblamaydi (u investitsiya), lekin pul baribir ketgan: «qo'lda qolgan pul» =
+    sof foyda − libos xaridi. Salon ochilgandan keyingi birinchi 30 kunda kiritilgan liboslar — mavjud zaxirani
+    tizimga kiritish (boshlang'ich katalog), xarid emas: ular hisoblanmaydi.
+    """
+    chegara = timezone.localdate(salon.yaratilgan) + timedelta(days=BOSHLANGICH_KATALOG_KUN)
+    q = Libos.objects.filter(salon=salon, tannarx__isnull=False, yaratilgan__date__range=(max(boshi, chegara), oxiri))
+    if filial:
+        q = q.filter(filial_id=filial)
+    r = q.aggregate(s=Sum('tannarx'), n=Count('id'))
+    return {'libos_xaridi': r['s'] or 0, 'libos_xaridi_soni': r['n']}
 
 
 PNL_QATORLARI = {'kirim': 'Kirgan pul (avans va qoldiq)', 'qaytarilgan': 'Mijozlarga qaytarilgan',
