@@ -54,6 +54,11 @@ test('yangi zakaz: har qadam ikki kenglikda', async ({ page }) => {
   await suratlar(page, '2-libos')
   await libos.getByRole('button', { name: "Qo'shish" }).click()
   await expect(page.locator('.varaq-royxat li')).toHaveCount(1)
+  // aksessuar: kartochkada «Qo'shish» → soni va hisob, varaqqa ham yoziladi
+  const aks = page.locator('.aks-grid li').first()
+  await aks.getByRole('button', { name: "Qo'shish" }).click()
+  await expect(aks.locator('.aks-jami')).toContainText('1 ×')
+  await expect(page.locator('.varaq-royxat li')).toHaveCount(2)
   await suratlar(page, '2-libos-tanlandi')
 
   await page.getByRole('button', { name: 'Davom etish', exact: true }).click()

@@ -378,21 +378,34 @@ export default function YangiZakaz({ onTayyor, onTolov }) {
             {aksessuarlar.length > 0 && (
               <section className="blok">
                 <h3>Aksessuarlar</h3>
-                {aksessuarlar.map((a) => {
-                  const n = aksSoni[a.id] || 0
-                  const o = (d) => setAksSoni({ ...aksSoni, [a.id]: Math.max(0, Math.min(a.bosh_soni, n + d)) })
-                  return (
-                    <div key={a.id} className="qator aks-qator">
-                      <span className="matn-ustun">
-                        <span><b>{a.nomi}</b>, {a.kategoriya}</span>
-                        <span className="malumot">{som(a.ijara_narxi)}, bo'sh: {a.bosh_soni} dona</span>
-                      </span>
-                      <button type="button" className="ikkinchi kichik" aria-label={`${a.nomi}: bittaga kamaytirish`} onClick={() => o(-1)} disabled={n === 0}>−</button>
-                      <b className="son">{n}</b>
-                      <button type="button" className="ikkinchi kichik" aria-label={`${a.nomi}: bittaga ko'paytirish`} onClick={() => o(1)} disabled={n >= a.bosh_soni}>+</button>
-                    </div>
-                  )
-                })}
+                {/* Libos kartalaridek: nima, necha pul, shu sanalarga nechta bor. Tanlanmagan — «Qo'shish»,
+                    tanlangan — soni va hisob (2 × 300 000 = 600 000) */}
+                <ul className="aks-grid">
+                  {aksessuarlar.map((a) => {
+                    const n = aksSoni[a.id] || 0
+                    const o = (d) => setAksSoni({ ...aksSoni, [a.id]: Math.max(0, Math.min(a.bosh_soni, n + d)) })
+                    return (
+                      <li key={a.id} className={n > 0 ? 'tanlandi' : ''}>
+                        <span className="aks-belgi" aria-hidden="true">{a.rasm ? <img src={a.rasm} alt="" /> : a.kod}</span>
+                        <span className="aks-matn">
+                          <b>{a.nomi}</b>
+                          <span className="libos-narx">{som(a.ijara_narxi)} <small>bir donasi</small></span>
+                          <span className="malumot">Shu sanalarga {a.bosh_soni} dona bor</span>
+                        </span>
+                        {n === 0 ? (
+                          <button type="button" className="ikkinchi kichik" onClick={() => o(1)}>Qo'shish</button>
+                        ) : (<>
+                          <div className="aks-son" role="group" aria-label={`${a.nomi} soni`}>
+                            <button type="button" className="ikkinchi kichik" aria-label={`${a.nomi}: bittaga kamaytirish`} onClick={() => o(-1)}>−</button>
+                            <output aria-live="polite">{n} dona</output>
+                            <button type="button" className="ikkinchi kichik" aria-label={`${a.nomi}: bittaga ko'paytirish`} onClick={() => o(1)} disabled={n >= a.bosh_soni}>+</button>
+                          </div>
+                          <span className="aks-jami">{n} × {som(a.ijara_narxi)} = <b>{som(n * a.ijara_narxi)}</b></span>
+                        </>)}
+                      </li>
+                    )
+                  })}
+                </ul>
               </section>
             )}
           </>)}

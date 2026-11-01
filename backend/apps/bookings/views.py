@@ -155,6 +155,8 @@ class BoshAksessuarlarView(APIView):
         return Response([
             {'id': a.id, 'nomi': a.nomi, 'kod': a.kod, 'kategoriya': a.kategoriya.nomi,
              'ijara_narxi': a.ijara_narxi, 'bosh_soni': soni,
+             # yangi zakazdagi aksessuar kartochkasi uchun (fonsiz rasm bo'lsa; bo'lmasa kod ko'rsatiladi)
+             'rasm': request.build_absolute_uri(a.manekin_rasm.url) if a.manekin_rasm else None,
              'manekin': aksessuar_manekin_json(a, request) if manekin_yoq else None}
             for a, soni in bosh_aksessuarlar(request.salon, dan, gacha)])
 
