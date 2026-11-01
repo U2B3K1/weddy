@@ -134,3 +134,53 @@ class SanoqTests(TestCase):
         c.credentials(HTTP_AUTHORIZATION='Bearer ' + make_staff_token(x2))
         self.assertIsNone(c.get('/api/sanoq/').data['ochiq'])
         self.assertEqual(c.post('/api/sanoq/belgilash/', {'artikul': 'A-1'}, format='json').status_code, 404)
+
+
+class AksessuarSanoqTests(TestCase):
+    """Aksessuar donalari (yorliqli: FT-01) ham sanoqqa kiradi."""
+    berish = SanoqTests.berish
+    boshla = SanoqTests.boshla
+
+    def setUp(self):
+        SanoqTests.setUp(self)
+        from .models import Kategoriya
+        from .services import aksessuar_qoshish
+        akat = Kategoriya.objects.create(salon=self.salon, nomi='Fatalar', turi=Kategoriya.Turi.AKSESSUAR)
+        self.fata = aksessuar_qoshish(salon=self.salon, xodim=self.rahbar, nomi='Fata', kod='FT', kategoriya=akat,
+                                      ijara_narxi=100_000, tannarx=300_000, soni=3)
+        self.donalar = list(self.fata.donalar.order_by('yorliq'))
+
+    def test_donalar_royxatda_va_yorliq_bilan_belgilanadi(self):
+        from .models import AksessuarDona
+        AksessuarDona.objects.filter(id=self.donalar[2].id).update(holat=AksessuarDona.Holat.YOQOLGAN)  # sanalmaydi
+        s = self.boshla()
+        belgilar = [q.belgi for q in s.qatorlar.all()]
+        self.assertEqual(belgilar, ['A-1', 'A-2', 'A-3', 'FT-01', 'FT-02'])
+        q = belgilash(salon=self.salon, xodim=self.malika, sanoq=s, artikul='ft-01')
+        self.assertEqual((q.dona_id, q.topildi), (self.donalar[0].id, True))
+        for l in (self.a, self.b):
+            belgilash(salon=self.salon, xodim=self.malika, sanoq=s, libos=l)
+        s = sanoq_yakunlash(salon=self.salon, xodim=self.malika, sanoq=s)
+        self.assertEqual((s.kutilgan, s.topilgan, s.yoq), (4, 3, 1))
+        self.assertIn("Yo'q (1): FT-02 Fata", Xabar.objects.get(xodim=self.rahbar, tur='libos_sanogi').matn)
+
+    def test_mijozdagi_dona(self):
+        smena_ochish(salon=self.salon, xodim=self.malika, boshlangich_qoldiq=0)
+        z = zakaz_yaratish(salon=self.salon, xodim=self.malika, telefon='+998901', olib_ketish=kun(0),
+                           qaytarish=kun(2), libos_idlari=[self.a.id], aksessuar_idlari=[self.fata.id])
+        tolov_qabul(salon=self.salon, xodim=self.malika, tur=Tolov.Tur.AVANS, summa=z.jami, zakaz=z)
+        libos_berish(salon=self.salon, xodim=self.malika, zakaz=z, zaloglar=[{'turi': 'pul', 'summa': 1}])
+        s = self.boshla()
+        joylar = {q.belgi: q.joy for q in s.qatorlar.all()}
+        berilgan = z.aksessuarlar.get().dona.yorliq
+        self.assertEqual(joylar[berilgan], 'mijozda')
+        self.assertEqual(sum(1 for j in joylar.values() if j == 'salonda'), 3)  # A-2 va qolgan ikki fata
+
+    def test_api_dona(self):
+        c = APIClient()
+        c.credentials(HTTP_AUTHORIZATION='Bearer ' + make_staff_token(self.malika))
+        r = c.post('/api/sanoq/', {}, format='json')
+        d = [q for q in r.data['qatorlar'] if q['tur'] == 'aksessuar']
+        self.assertEqual([q['artikul'] for q in d], ['FT-01', 'FT-02', 'FT-03'])
+        r = c.post('/api/sanoq/belgilash/', {'dona': d[1]['dona']}, format='json')
+        self.assertEqual((r.status_code, r.data['artikul'], r.data['topildi']), (200, 'FT-02', True))

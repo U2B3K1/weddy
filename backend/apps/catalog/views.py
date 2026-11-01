@@ -11,10 +11,10 @@ from apps.tenants.permissions import IsRahbar, IsStaff, SalonYozishRuxsati
 from apps.cash.services import KassaXatosi, xato_tanasi
 from apps.finance.services import XarajatXatosi
 
-from .models import Kategoriya, Libos, Rasm, Sanoq, TamirYozuvi
+from .models import AksessuarDona, Kategoriya, Libos, Rasm, Sanoq, TamirYozuvi
 from .manekin import joylashuvni_saqlash, manekin_json, qatlam_yaratish
 from .rasm import rasm_yuklash, rasmni_ochirish
-from .sanoq import belgilash, ochiq_sanoq, sanoq_boshlash, sanoq_json, sanoq_yakunlash
+from .sanoq import belgilash, ochiq_sanoq, qator_json, sanoq_boshlash, sanoq_json, sanoq_yakunlash
 from .tamir import tamirga_berish, tamirni_tugatish
 from .services import (KatalogXatosi, QOLDA_HOLATLAR, tozalashni_yakunla, libos_qoshish, libosni_ozgartirish,
                        libosni_tasdiqlash)
@@ -265,31 +265,35 @@ class SanoqView(APIView):
 class SanoqBelgilashSerializer(serializers.Serializer):
     artikul = serializers.CharField(max_length=50, required=False, allow_blank=True, default='')
     libos = serializers.IntegerField(required=False)
+    dona = serializers.IntegerField(required=False)  # aksessuar donasi (yorliqli)
     topildi = serializers.BooleanField(default=True)
 
 
 class SanoqBelgilashView(APIView):
-    """POST {artikul} (skaner yoki qo'lda) yoki {libos, topildi} (ro'yxatdan) — ochiq sanoqda belgilash."""
+    """POST {artikul} (libos artikuli yoki dona yorlig'i — skaner yoki qo'lda) yoki {libos|dona, topildi} (ro'yxatdan)."""
     permission_classes = [SalonYozishRuxsati]
 
     def post(self, request):
         ser = SanoqBelgilashSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
         d = ser.validated_data
-        if not d['artikul'].strip() and 'libos' not in d:
-            raise ValidationError({'artikul': ['Artikulni kiriting.']})
+        if not d['artikul'].strip() and 'libos' not in d and 'dona' not in d:
+            raise ValidationError({'artikul': ['Artikul yoki yorliqni kiriting.']})
         sanoq = ochiq_sanoq(request.salon)
         if not sanoq:
             raise NotFound("Ochiq sanoq yo'q.")
-        libos = None
+        libos = dona = None
         if 'libos' in d:
             libos = Libos.objects.filter(salon=request.salon, id=d['libos']).first()
             if not libos:
                 raise NotFound('Libos topilmadi.')
+        elif 'dona' in d:
+            dona = AksessuarDona.objects.filter(salon=request.salon, id=d['dona']).first()
+            if not dona:
+                raise NotFound('Aksessuar donasi topilmadi.')
         q, err = _bajar(belgilash, salon=request.salon, xodim=request.user, sanoq=sanoq, topildi=d['topildi'],
-                        libos=libos, artikul=d['artikul'])
-        return err or Response({'libos': q.libos_id, 'artikul': q.libos.artikul, 'nomi': q.libos.nomi,
-                                'joy': q.joy, 'topildi': q.topildi})
+                        libos=libos, dona=dona, artikul=d['artikul'])
+        return err or Response(qator_json(q))
 
 
 class SanoqYakunlashView(APIView):

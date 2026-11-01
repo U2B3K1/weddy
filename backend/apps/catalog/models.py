@@ -230,14 +230,30 @@ class SanoqQatori(SalonModel):
         TOZALASHDA = 'tozalashda', 'Tozalashda'
 
     sanoq = models.ForeignKey(Sanoq, on_delete=models.CASCADE, related_name='qatorlar')
-    libos = models.ForeignKey(Libos, on_delete=models.CASCADE, related_name='+')
+    # Qator yoki libos, yoki aksessuar donasi (yorliqli: FT-01) — bittasi to'ldiriladi
+    libos = models.ForeignKey(Libos, null=True, blank=True, on_delete=models.CASCADE, related_name='+')
+    dona = models.ForeignKey(AksessuarDona, null=True, blank=True, on_delete=models.CASCADE, related_name='+')
     joy = models.CharField(max_length=12, choices=Joy.choices)  # tizim bo'yicha qayerda bo'lishi kerak
     topildi = models.BooleanField(default=False)
     xodim = models.ForeignKey('tenants.Xodim', null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
     vaqt = models.DateTimeField(null=True, blank=True)
 
     class Meta:
-        ordering = ['libos__artikul']
+        ordering = ['id']
         constraints = [
-            models.UniqueConstraint(fields=['sanoq', 'libos'], name='sanoqda_libos_bir_marta'),
+            models.UniqueConstraint(fields=['sanoq', 'libos'], condition=models.Q(libos__isnull=False),
+                                    name='sanoqda_libos_bir_marta'),
+            models.UniqueConstraint(fields=['sanoq', 'dona'], condition=models.Q(dona__isnull=False),
+                                    name='sanoqda_dona_bir_marta'),
+            models.CheckConstraint(condition=models.Q(libos__isnull=False, dona__isnull=True)
+                                   | models.Q(libos__isnull=True, dona__isnull=False), name='sanoq_qatori_libos_yoki_dona'),
         ]
+
+    @property
+    def belgi(self):
+        """Javondagi yorliq: libos artikuli yoki aksessuar donasi yorlig'i."""
+        return self.libos.artikul if self.libos_id else self.dona.yorliq
+
+    @property
+    def nomi(self):
+        return self.libos.nomi if self.libos_id else self.dona.aksessuar.nomi
