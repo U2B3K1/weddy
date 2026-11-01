@@ -24,6 +24,7 @@ urlpatterns = [
     path('zakazlar/<int:pk>/bekor/', views_ozgartirish.BekorQilishView.as_view()),
     path('zakazlar/<int:pk>/tarix/', views_ozgartirish.ZakazTarixiView.as_view()),
     path('zakazlar/royxat/', views_royxat.ZakazlarRoyxatiView.as_view()),
+    path('zakazlar/sonlar/', views_royxat.ZakazSonlariView.as_view()),
     path('zakazlar/<int:pk>/', views_royxat.ZakazTafsilotView.as_view()),
     path('zakazlar/<int:pk>/hujjat/', views_royxat.HujjatView.as_view()),
     path('zakazlar/<int:pk>/tolov-havola/', views_royxat.TolovHavolaView.as_view()),

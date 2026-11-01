@@ -32,3 +32,13 @@ export const Bezak = () => (
 export const Muhr = ({ raqam, bosildi = true, className = '' }) => (
   <div className={`muhr ${bosildi ? 'muhr-bosildi' : ''} ${className}`} aria-hidden="true"><span>№</span>{raqam}</div>
 )
+
+// Jadval qatori uchun ixcham sana: «12 – 14 dekabr», oylar har xil bo'lsa «30 noyabr – 2 dekabr», bir kunlik — «27 oktabr»
+export function IjaraSana({ dan, gacha }) {
+  const a = sanaQismlari(dan), b = sanaQismlari(gacha)
+  return (
+    <span className="ijara-sana">
+      {dan !== gacha && <><b>{a.kun}</b>{a.oy !== b.oy && <> {a.oy}</>}<i>–</i></>}<b>{b.kun}</b> {b.oy}
+    </span>
+  )
+}

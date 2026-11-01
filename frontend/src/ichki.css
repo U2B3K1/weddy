@@ -670,6 +670,19 @@ main .boshlash-panel .qator-btn { text-align: left; }
 .tolov-progress i::after { content: ''; position: absolute; inset: 0 auto 0 0; width: var(--foiz); border-radius: 6px; background: var(--h-vaqt); }
 .tolov-progress i.toliq::after { background: var(--h-bron); }
 .tolov-progress small { font-size: var(--t-meta); color: var(--matn-2); font-variant-numeric: tabular-nums; }
+/* Ijara: varaqdagi sanalar kabi — serif kun raqamlari tilla rangda, ostida «qachon?» javobi */
+.ijara-katak { line-height: 1.25; }
+.ijara-sana { display: inline-flex; align-items: baseline; gap: 4px; font-family: var(--serif); font-size: 15px; color: var(--matn-2); letter-spacing: .02em; }
+.ijara-sana b { font-weight: 400; font-size: 21px; line-height: 1; color: var(--tilla); font-variant-numeric: lining-nums; }
+.ijara-sana i { font-style: normal; color: var(--matn-3); }
+.muddat { display: block; margin-top: 2px; font-size: var(--t-meta); color: var(--matn-3); }
+.muddat.bugun { color: var(--h-vaqt); font-weight: 600; }
+.muddat.kech { color: var(--h-qarz); font-weight: 600; }
+.zakaz-jadval tr.kechikkan td:first-child { box-shadow: inset 3px 0 0 var(--h-qarz); }
+/* tablar sonlar bilan uzaygach qidiruv o'z qatoriga tushadi — shu qatorni to'ldiradi, «Yangi zakaz» o'ngda */
+.qidiruv-maydon.zakaz-qidiruv { flex: 1 1 260px; }
+:where(.ilova) .zakaz-qidiruv .jadval-qidiruv { width: 100%; }
+.tezkor-tablar .tab-kech .tab-son { background: rgba(255, 155, 146, .16); color: var(--h-qarz); }
 /* Telefon: jadval qatori ikki qatorli kartochka — tepada zakaz, ostida holat va summa (gorizontal aylantirishsiz) */
 @media (max-width: 767px) {
   .jadval-asboblar > button { display: none; }  /* yangi zakaz — pastki paneldagi «+» */
@@ -681,6 +694,14 @@ main .boshlash-panel .qator-btn { text-align: left; }
     padding: var(--o-3); border-bottom: 1px solid var(--chegara); }
   .zakaz-jadval td { display: block; padding: 0; border: 0; }
   .zakaz-jadval td:first-child { grid-column: 1 / -1; white-space: normal; }
+  /* zakazlar: tepada zakaz va holat, ostida sana (qachon?) va jami */
+  .zakaz-jadval tbody tr:has(> .ijara-katak) { grid-template-areas: 'zakaz holat' 'ijara jami'; }
+  .zakaz-jadval tbody tr:has(> .ijara-katak) > td:first-child { grid-area: zakaz; grid-column: auto; }
+  .zakaz-jadval .holat-katak { grid-area: holat; justify-self: end; }
+  .zakaz-jadval .ijara-katak { grid-area: ijara; padding-left: calc(34px + var(--o-3)); }
+  .zakaz-jadval .jami-katak { grid-area: jami; align-self: end; }
+  .zakaz-jadval tr.kechikkan { box-shadow: inset 3px 0 0 var(--h-qarz); }
+  .zakaz-jadval tr.kechikkan td:first-child { box-shadow: none; }
   .zakaz-jadval .tor-yashir { display: none; }
   .zakaz-nom small { max-width: none; }
 }

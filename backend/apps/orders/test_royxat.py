@@ -38,6 +38,20 @@ class RoyxatTests(TestCase):
         self.assertEqual(c.get('/api/zakazlar/royxat/?q=999').json(), [])
         self.assertEqual(c.get('/api/zakazlar/royxat/?holat=bekor').json(), [])
 
+    def test_tab_sonlari_va_kechikkan(self):
+        from .models import Zakaz
+        bugun = timezone.localdate()
+        b = libos_yarat(self.salon, self.kat, 'B')
+        k = zakaz_yaratish(salon=self.salon, xodim=self.malika, telefon='+998905556677', olib_ketish=bugun + timedelta(days=5),
+                           qaytarish=bugun + timedelta(days=6), libos_idlari=[b.id])
+        Zakaz.objects.filter(id=k.id).update(holat=Zakaz.Holat.BERILDI, qaytarish=bugun - timedelta(days=2))
+        c = self.api(self.malika)
+        self.assertEqual(c.get('/api/zakazlar/sonlar/').json(), {'': 2, 'bron': 1, 'berildi': 1, 'kechikkan': 1})
+        self.assertEqual(c.get('/api/zakazlar/sonlar/?q=5566').json(), {'': 1, 'berildi': 1, 'kechikkan': 1})
+        self.assertEqual([z['id'] for z in c.get('/api/zakazlar/royxat/?holat=kechikkan').json()], [k.id])
+        _, xodim_b, _ = salon_yarat('b')
+        self.assertEqual(self.api(xodim_b).get('/api/zakazlar/sonlar/').json(), {'': 0, 'kechikkan': 0})
+
     def test_tafsilot(self):
         d = self.api(self.malika).get(f'/api/zakazlar/{self.z.id}/').json()
         self.assertEqual((d['tolangan'], d['qoldiq'], d['liboslar']), (500_000, 1_500_000, ['Libos A']))

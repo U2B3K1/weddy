@@ -6,15 +6,16 @@ import Tasdiq from '../components/Tasdiq'
 import SmenaTugma from '../components/SmenaTugma'
 import LibosSiluet from '../components/LibosSiluet'
 import NavIkona from '../components/NavIkona'
-import { Bezak, Muhr, VaraqSana } from '../components/Varaq'
+import { Bezak, IjaraSana, Muhr, VaraqSana } from '../components/Varaq'
 import {
   bekorQilish, berish, chegirmaSora, mijozOzgartir, tolovHavola, primerkaBelgila, primerkaOzgartir, promokodOlibTashla, promokodQolla, qarzTolash, qaytarish, sanaKochirish, som, sozlamalar, tayyorChegirmalar,
-  saqlangan, tolovQabul, tolovTuzat, xatoMatni, zakazAksessuarOchir, zakazAksessuarQosh, zakazTafsilot, zakazTarixi, zakazlarRoyxat,
+  saqlangan, tolovQabul, tolovTuzat, xatoMatni, zakazAksessuarOchir, zakazAksessuarQosh, zakazSonlari, zakazTafsilot, zakazTarixi, zakazlarRoyxat,
   boshAksessuarlar, boshLiboslar, libosAlmashtirish, salonchilar, zakazSalonchi,
   sanaMatni,
 } from '../api'
 import SummaInput from '../components/SummaInput'
 import { TARIX_HARAKATLARI, ZAKAZ_HOLATLARI } from '../nomlar'
+import { bugunIso } from '../components/kalendar/sana'
 
 // Zakaz yo'li: 4 qadam; «yopildi» — hammasi o'tilgan, «bekor» — hech biri.
 const QADAMLAR = ['Bron', 'Avans', 'Berildi', 'Qaytarildi']
@@ -41,54 +42,85 @@ function asosiyTugma(z) {
 const MUHRLI = ['bron', 'berildi', 'qaytarildi', 'yopildi']
 const holatSinfi = (h) =>({ vaqtinchalik: 'vaqtinchalik', chegirma_kutilmoqda: 'vaqtinchalik', bron: 'bron', berildi: 'berildi', qaytarildi: 'qarz', yopildi: 'qaytarildi', bekor: 'qarz' }[h] || 'bron')
 
-// Tezkor holat tablari — eng ko'p qidiriladiganlari; qolganlari (chegirma tasdig'i) «Hammasi» ichida ko'rinadi
-const HOLAT_TABLARI = [['', 'Hammasi'], ['vaqtinchalik', 'Vaqtinchalik'], ['bron', 'Bron'], ['berildi', 'Berildi'],
+// Tezkor holat tablari — eng ko'p qidiriladiganlari; qolganlari (chegirma tasdig'i) «Hammasi» ichida ko'rinadi.
+// «Kechikkan» — holat emas (berildi + qaytarish o'tgan): faqat shunday zakaz bo'lsa chiqadi
+const HOLAT_TABLARI = [['', 'Hammasi'], ['vaqtinchalik', 'Vaqtinchalik'], ['bron', 'Bron'], ['berildi', 'Berildi'], ['kechikkan', 'Kechikkan'],
   ['qaytarildi', 'Qarz bor'], ['yopildi', 'Yopilgan'], ['bekor', 'Bekor']]
 const mln = (n) => `${(n / 1e6).toLocaleString('ru-RU', { maximumFractionDigits: 2 })} mln`
+const kunFarqi = (a, b) => Math.round((Date.parse(b) - Date.parse(a)) / 86400000)
+// Sotuvchi uchun eng muhim savol — «qachon?»: olib ketishgacha yoki qaytarishgacha qancha qoldi, kechikdimi
+function muddat(z, bugun) {
+  if (['vaqtinchalik', 'chegirma_kutilmoqda', 'bron'].includes(z.holat)) {
+    const d = kunFarqi(bugun, z.olib_ketish)
+    if (d < 0) return ["olib ketish kuni o'tdi", 'kech']
+    if (d === 0) return ['bugun olib ketadi', 'bugun']
+    if (d === 1) return ['ertaga olib ketadi', 'bugun']
+    return [`${d} kun qoldi`, '']
+  }
+  if (z.holat === 'berildi') {
+    const d = kunFarqi(bugun, z.qaytarish)
+    if (d < 0) return [`${-d} kun kechikdi`, 'kech']
+    if (d === 0) return ['bugun qaytaradi', 'bugun']
+    if (d === 1) return ['ertaga qaytaradi', 'bugun']
+    return [`mijozda, yana ${d} kun`, '']
+  }
+  return null
+}
 
 export default function Zakazlar({ tanlangan, onTanla, onYangi, onKassa, boshQ }) {
   // boshQ — yuqori paneldagi qidiruv matni; har yangi qidiruvda App komponentni key bilan qayta ochadi
   const [q, setQ] = useState(boshQ || '')
   const [holat, setHolat] = useState('')
-  const [royxat, setRoyxat] = useState([])
+  const [royxat, setRoyxat] = useState(null)
+  const [sonlar, setSonlar] = useState({})
   const [xato, setXato] = useState('')
 
   useEffect(() => {
     zakazlarRoyxat({ q: q || undefined, holat: holat || undefined })
       .then(setRoyxat).catch((e) => setXato(xatoMatni(e)))
   }, [q, holat, tanlangan])
+  useEffect(() => {
+    zakazSonlari({ q: q || undefined }).then(setSonlar).catch(() => {})
+  }, [q, tanlangan])
 
   if (tanlangan) return <Karta id={tanlangan} onOrqaga={() => onTanla(null)} onKassa={onKassa} />
 
+  const bugun = bugunIso()
   return (
     <section className="blok jadval-panel">
-      {/* Asboblar paneli: tepada holat tablari, o'ngda qidiruv va asosiy amal — hammasi bir joyda, ixcham */}
+      {/* Asboblar paneli: tepada holat tablari (yonida soni), o'ngda qidiruv va asosiy amal — hammasi bir joyda, ixcham */}
       <div className="jadval-asboblar">
+        <h3 className="panel-nom">Zakazlar</h3>
         <div className="tezkor-tablar" role="tablist" aria-label="Holat bo'yicha">
-          {HOLAT_TABLARI.map(([k, nom]) => (
+          {HOLAT_TABLARI.filter(([k]) => k !== 'kechikkan' || sonlar.kechikkan || holat === k).map(([k, nom]) => (
             <button key={k || 'hammasi'} type="button" role="tab" aria-selected={holat === k}
-              className={holat === k ? 'faol' : ''} onClick={() => setHolat(k)}>{nom}</button>
+              className={`${holat === k ? 'faol' : ''} ${k === 'kechikkan' ? 'tab-kech' : ''}`} onClick={() => setHolat(k)}>
+              {nom}{sonlar[k] > 0 && <span className="tab-son">{sonlar[k]}</span>}
+            </button>
           ))}
         </div>
-        <label className="qidiruv-maydon">
+        <label className="qidiruv-maydon zakaz-qidiruv">
           <NavIkona nom="qidiruv" className="tugma-ikon" />
           <input type="search" className="jadval-qidiruv" placeholder="Raqam, telefon yoki ism" aria-label="Zakaz qidirish"
             value={q} onChange={(e) => setQ(e.target.value)} />
         </label>
         {onYangi && <button type="button" className="kichik" onClick={onYangi}><NavIkona nom="qosh" className="tugma-ikon" />Yangi zakaz</button>}
       </div>
-      {xato && <p className="xato">{xato}</p>}
-      {royxat.length === 0 ? <p className="malumot jadval-bosh">Bu filtr bo'yicha zakaz yo'q.</p> : (
+      {xato && <p className="xato jadval-bosh">{xato}</p>}
+      {royxat === null ? null : royxat.length === 0 ? (
+        <p className="malumot jadval-bosh">{q ? `«${q}» bo'yicha zakaz topilmadi.` : "Bu filtr bo'yicha zakaz yo'q."}</p>
+      ) : (
         <div className="jadval-ora">
           <table className="zakaz-jadval">
             <thead>
-              <tr><th>Zakaz</th><th className="tor-yashir">Ijara</th><th>Holat</th><th className="tor-yashir">To'lov</th><th className="ong">Jami</th></tr>
+              <tr><th>Zakaz</th><th>Ijara</th><th>Holat</th><th className="tor-yashir">To'lov</th><th className="ong">Jami</th></tr>
             </thead>
             <tbody>
               {royxat.map((z) => {
                 const foiz = z.jami ? Math.min(100, Math.round((z.tolangan / z.jami) * 100)) : 100
+                const m = muddat(z, bugun)
                 return (
-                  <tr key={z.id} onClick={() => onTanla(z.id)}>
+                  <tr key={z.id} onClick={() => onTanla(z.id)} className={m?.[1] === 'kech' ? 'kechikkan' : ''}>
                     <td>
                       {/* tugma — klaviatura uchun; bosish hodisasi qatorga ko'tariladi */}
                       <button type="button" className="zakaz-katak">
@@ -96,8 +128,11 @@ export default function Zakazlar({ tanlangan, onTanla, onYangi, onKassa, boshQ }
                         <span className="zakaz-nom"><b>#{z.raqam} {z.mijoz}</b><small>{z.liboslar.join(', ')}</small></span>
                       </button>
                     </td>
-                    <td className="tor-yashir">{sanaMatni(z.olib_ketish)} – {sanaMatni(z.qaytarish)}</td>
-                    <td><span className={`holat ${holatSinfi(z.holat)}`}>{ZAKAZ_HOLATLARI[z.holat]}</span></td>
+                    <td className="ijara-katak">
+                      <IjaraSana dan={z.olib_ketish} gacha={z.qaytarish} />
+                      {m && <small className={`muddat ${m[1]}`}>{m[0]}</small>}
+                    </td>
+                    <td className="holat-katak"><span className={`holat ${holatSinfi(z.holat)}`}>{ZAKAZ_HOLATLARI[z.holat]}</span></td>
                     <td className="tor-yashir">
                       {z.holat === 'bekor' ? <span className="malumot">—</span> : (
                         <span className="tolov-progress" title={`${som(z.tolangan)} to'langan`}>
@@ -106,7 +141,7 @@ export default function Zakazlar({ tanlangan, onTanla, onYangi, onKassa, boshQ }
                         </span>
                       )}
                     </td>
-                    <td className="ong"><b>{som(z.jami)}</b></td>
+                    <td className="ong jami-katak"><b>{som(z.jami)}</b></td>
                   </tr>
                 )
               })}

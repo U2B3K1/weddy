@@ -29,6 +29,7 @@ test('mijozlar: ro\'yxat va mijoz varaqasi', async ({ page }) => {
 
   await qator.click()
   await expect(page.getByRole('heading', { name: 'Storno Mijoz' })).toBeVisible()
+  await page.waitForLoadState('networkidle')  // dev (StrictMode) karta ikki marta yuklanadi — kech javob kiritilganni bosmasin
   await page.getByLabel("To'y sanasi").fill(iso(30))
   await page.getByLabel("Ko'krak").fill('88')
   await page.getByLabel('Bel').fill('64')

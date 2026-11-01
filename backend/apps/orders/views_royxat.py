@@ -1,5 +1,5 @@
 """Ro'yxat va dashbord endpointlari: zakazlar, sotuvchi bosh ekrani (FT-1.2), rahbar dashbordi (6.5)."""
-from django.db.models import Q, Sum
+from django.db.models import Count, Q, Sum
 from django.utils import timezone
 from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.response import Response
@@ -78,26 +78,38 @@ def eslatmalar(salon, bugun):
     return natija
 
 
+def _qidiruv(request, qs):
+    """Ro'yxat va tab sonlari uchun umumiy filtr: ?filial= va ?q= (raqam yoki telefon/F.I.O.)."""
+    filial = request.query_params.get('filial', '')
+    if filial.isdigit():
+        qs = qs.filter(filial_id=int(filial))
+    q = request.query_params.get('q', '').strip()
+    if q:
+        f = Q(mijoz__telefon__icontains=q) | Q(mijoz__fio__icontains=q)
+        if q.isdigit():
+            f |= Q(raqam=int(q))
+        qs = qs.filter(f)
+    return qs
+
+
+def _kechikkan(qs):
+    """Libos mijozda, qaytarish sanasi o'tgan."""
+    return qs.filter(holat=Zakaz.Holat.BERILDI, qaytarish__lt=timezone.localdate())
+
+
 class ZakazlarRoyxatiView(APIView):
-    """GET /api/zakazlar/royxat/?holat=&q=  (q: raqam yoki telefon/F.I.O.)"""
+    """GET /api/zakazlar/royxat/?holat=&q=  (q: raqam yoki telefon/F.I.O.; holat=kechikkan — qaytarish o'tgan)"""
     permission_classes = [IsStaff]
 
     def get(self, request):
         if salon_yoza_oladimi(request.salon):  # «faqat ko'rish» salonida GET hech narsa yozmaydi; cron baribir ishlaydi
             muddati_otganlarni_bekor_qil(request.salon)
-        qs = _zakazlar(request.salon)
+        qs = _qidiruv(request, _zakazlar(request.salon))
         holat = request.query_params.get('holat')
-        if holat:
+        if holat == 'kechikkan':
+            qs = _kechikkan(qs)
+        elif holat:
             qs = qs.filter(holat=holat)
-        filial = request.query_params.get('filial', '')
-        if filial.isdigit():
-            qs = qs.filter(filial_id=int(filial))
-        q = request.query_params.get('q', '').strip()
-        if q:
-            f = Q(mijoz__telefon__icontains=q) | Q(mijoz__fio__icontains=q)
-            if q.isdigit():
-                f |= Q(raqam=int(q))
-            qs = qs.filter(f)
         # Jadval uchun: to'lov progressi (to'langan / jami) va birinchi libos rasmi — bitta so'rovda, zakaz boshiga emas
         qs = (qs.prefetch_related('pozitsiyalar__libos__rasmlar')
               .annotate(tolangan_s=Sum('tolovlar__summa', filter=~Q(tolovlar__tasdiq='kelmadi') & Q(tolovlar__tur__in=[Tolov.Tur.AVANS, Tolov.Tur.QOLDIQ]))))
@@ -107,6 +119,16 @@ class ZakazlarRoyxatiView(APIView):
             natija.append({**_qisqa(z), 'tolangan': z.tolangan_s or 0,
                            'rasm': _libos_rasmi(request, poz.libos) if poz else None})
         return Response(natija)
+
+
+class ZakazSonlariView(APIView):
+    """GET /api/zakazlar/sonlar/?q=&filial= — holat tablari yonidagi sonlar (ro'yxat bilan bir xil qidiruv)."""
+    permission_classes = [IsStaff]
+
+    def get(self, request):
+        qs = _qidiruv(request, Zakaz.objects.filter(salon=request.salon))
+        sonlar = dict(qs.values_list('holat').annotate(n=Count('id')).order_by())
+        return Response({**sonlar, '': sum(sonlar.values()), 'kechikkan': _kechikkan(qs).count()})
 
 
 def _libos_rasmi(request, libos):

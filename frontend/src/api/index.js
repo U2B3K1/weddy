@@ -140,6 +140,7 @@ const post = (url, body) => api.post(url, body || {}).then((r) => r.data)
 
 export const boshEkran = () => get('/bosh-ekran/')
 export const zakazlarRoyxat = (params) => get('/zakazlar/royxat/', params)
+export const zakazSonlari = (params) => get('/zakazlar/sonlar/', params)
 export const zakazTafsilot = (id) => get(`/zakazlar/${id}/`)
 export const zakazTarixi = (id) => get(`/zakazlar/${id}/tarix/`)
 export const tolovQabul = (body) => post('/kassa/tolovlar/', body)
