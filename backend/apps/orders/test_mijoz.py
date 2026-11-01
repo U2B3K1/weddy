@@ -32,6 +32,18 @@ class MijozTests(TestCase):
         self.assertEqual(self.api(self.malika).get('/api/mijozlar/').status_code, 400)       # sotuvchi varaqlay olmaydi
         self.assertEqual(self.api(self.malika).get('/api/mijozlar/?q=998').status_code, 400)  # juda qisqa qidiruv
 
+    def test_royxatda_jami_va_oxirgi_zakaz(self):
+        # bekor qilingan zakaz jami va oxirgi sanaga kirmaydi
+        zakaz_yaratish(salon=self.salon, xodim=self.malika, telefon='+998901112233', olib_ketish=date(2026, 12, 20),
+                       qaytarish=date(2026, 12, 21), libos_idlari=[self.libos.id])
+        bekor = zakaz_yaratish(salon=self.salon, xodim=self.malika, telefon='+998901112233', olib_ketish=date(2027, 1, 5),
+                               qaytarish=date(2027, 1, 6), libos_idlari=[self.libos.id])
+        bekor.holat = bekor.Holat.BEKOR
+        bekor.save(update_fields=['holat'])
+        d = self.api(self.rahbar).get('/api/mijozlar/').json()
+        self.assertEqual([(m['zakazlar_soni'], m['jami_summa'], m['oxirgi_zakaz']) for m in d],
+                         [(2, 2_000_000, '2026-12-20'), (0, 0, None)])
+
     def test_sotuvchi_qidiradi(self):
         c = self.api(self.malika)
         self.assertEqual([m['fio'] for m in c.get('/api/mijozlar/?q=1122').json()], ['Dilnoza Karimova'])

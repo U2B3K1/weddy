@@ -3,7 +3,7 @@
 Mijozlarning to'liq ro'yxatini faqat rahbar ko'radi (Ilova B). Sotuvchi faqat qidiradi: telefon yoki ismning kamida
 4 ta belgisi bilan, shunda u butun bazani varaqlab chiqa olmaydi. Ro'yxatni fayl qilib yuklab olish yo'q (7.4).
 """
-from django.db.models import Count, Q
+from django.db.models import Count, Max, Q, Sum
 from rest_framework import serializers
 from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
@@ -19,8 +19,10 @@ QIDIRUV_MIN = 4
 
 
 def mijoz_json(m, tolik=False):
-    d = {'id': m.id, 'fio': m.fio, 'telefon': m.telefon, 'qora_royxat': m.qora_royxat,
-         'zakazlar_soni': getattr(m, 'zakazlar_soni', None)}
+    d = {'id': m.id, 'fio': m.fio, 'telefon': m.telefon, 'qora_royxat': m.qora_royxat, 'toy_sanasi': m.toy_sanasi,
+         'zakazlar_soni': getattr(m, 'zakazlar_soni', None),
+         # ro'yxat jadvali uchun: bekor qilinmagan zakazlar jami va oxirgi olib ketish sanasi
+         'jami_summa': getattr(m, 'jami_summa', None) or 0, 'oxirgi_zakaz': getattr(m, 'oxirgi_zakaz', None)}
     if tolik:
         d.update({'qoshimcha_telefon': m.qoshimcha_telefon, 'toy_sanasi': m.toy_sanasi, 'manba': m.manba,
                   'qora_royxat_sabab': m.qora_royxat_sabab, 'izoh': m.izoh, 'kiyim_olchami': m.kiyim_olchami,
@@ -37,8 +39,10 @@ class MijozlarView(APIView):
         if not rahbar and len(q) < QIDIRUV_MIN:
             return Response({'detail': f"Qidirish uchun telefon yoki ismning kamida {QIDIRUV_MIN} ta belgisini kiriting."},
                             status=400)
+        faol = ~Q(zakazlar__holat=Zakaz.Holat.BEKOR)
         qs = Mijoz.objects.filter(salon=request.salon).annotate(
-            zakazlar_soni=Count('zakazlar', filter=~Q(zakazlar__holat=Zakaz.Holat.BEKOR)))
+            zakazlar_soni=Count('zakazlar', filter=faol), jami_summa=Sum('zakazlar__jami', filter=faol),
+            oxirgi_zakaz=Max('zakazlar__olib_ketish', filter=faol))
         if q:
             qs = qs.filter(Q(telefon__icontains=q) | Q(fio__icontains=q) | Q(qoshimcha_telefon__icontains=q))
         if request.query_params.get('qora_royxat') == '1':

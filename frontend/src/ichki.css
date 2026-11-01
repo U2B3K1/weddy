@@ -1184,3 +1184,24 @@ label > .info .info-matn, th .info .info-matn { left: auto; right: 0; }
 .aks-rasm-qator { display: flex; align-items: flex-start; gap: var(--o-3); }
 .aks-rasm { flex: none; width: 120px; aspect-ratio: 2 / 3; object-fit: cover; border-radius: var(--r-1); background: #fff; }
 .aks-rasm-bosh { display: grid; place-items: center; background: var(--yuza-2); border: 1px dashed var(--chegara-kuchli); color: var(--tilla); font: 400 26px/1 var(--serif); }
+
+/* ---------- Mijozlar: ro'yxatda bosh harf doirasi; kartada mijoz varaqasi (to'y kuni, raqamlar, o'lchamlar) va tarix ---------- */
+.mijoz-belgi { flex: none; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center;
+  background: var(--tilla-xira); color: var(--tilla); font: 400 17px/1 var(--serif); }
+.mijoz-belgi.qora { background: rgba(255, 155, 146, .12); color: var(--h-qarz); }
+.mijoz-qora { margin-left: 8px; font-size: 12px; font-weight: 600; }
+.toy-kuni { grid-template-columns: 1fr; justify-items: center; gap: 6px; }
+.toy-kuni i { padding-top: 0; }
+.mijoz-raqamlar { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; padding: 12px 0;
+  border-top: 1px solid var(--zar-chiziq); border-bottom: 1px solid var(--zar-chiziq); }
+.mijoz-raqamlar div { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; }
+.mijoz-raqamlar b { font: 400 20px/1.15 var(--serif); color: var(--zar); overflow-wrap: anywhere; font-variant-numeric: lining-nums; }
+.mijoz-raqamlar span { font: italic 500 14px/1.2 var(--kursiv); color: var(--siyoh-2); }
+.mijoz-olchamlar { display: grid; grid-template-columns: repeat(auto-fit, minmax(92px, 1fr)); gap: 8px; margin: 0; }
+.mijoz-olchamlar div { padding: 8px; border-radius: var(--r-1); background: var(--yuza-2); border: 1px solid var(--chegara); }
+.mijoz-olchamlar dt { font-size: var(--t-meta); color: var(--siyoh-2); }
+.mijoz-olchamlar dd { margin: 2px 0 0; font: 400 18px/1.2 var(--serif); }
+:where(.ilova) .tarix-qator { width: 100%; min-height: 0; padding: 10px 0; border: 0; border-top: 1px solid var(--chegara); border-radius: 0;
+  background: none; box-shadow: none; color: var(--oq); font-weight: 400; text-align: left; cursor: pointer; }
+.tarix-qator:hover .tolov-nom b { color: var(--tilla); }
+.tarix-ong { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
