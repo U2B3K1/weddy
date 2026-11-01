@@ -8,7 +8,7 @@ import time
 
 from django.conf import settings
 
-from apps.catalog.models import Kategoriya, Libos
+from apps.catalog.models import Aksessuar, AksessuarDona, Kategoriya, Libos
 from apps.tenants.models import Salon, Xodim
 
 # Xavfsizlik: dev bazaga (foydalanuvchi ma'lumotlari) hech qachon yozilmasin
@@ -27,4 +27,9 @@ kat = Kategoriya.objects.create(salon=salon, nomi='Milliy')
 for artikul, narx in (('E2E-1', 1_000_000), ('E2E-2', 2_000_000)):
     Libos.objects.create(salon=salon, kategoriya=kat, artikul=artikul, nomi=f'Libos {artikul}', ijara_narxi=narx,
                          tannarx=narx * 3)
+# Aksessuar: har dona o'z yorlig'i bilan (sanoqda skaner qilinadi)
+fata = Aksessuar.objects.create(salon=salon, nomi='Fata Klassik', kod='FT', ijara_narxi=100_000,
+                                kategoriya=Kategoriya.objects.create(salon=salon, nomi='Fata', turi=Kategoriya.Turi.AKSESSUAR))
+for yorliq in ('FT-01', 'FT-02'):
+    AksessuarDona.objects.create(salon=salon, aksessuar=fata, yorliq=yorliq)
 print('E2E_SALON=' + json.dumps({'login': login, 'parol': 'e2e-parol'}))

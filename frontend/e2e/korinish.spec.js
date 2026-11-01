@@ -8,6 +8,7 @@ import { QURILMA_HOLATI, kirish, xatolarniKuzat } from './yordam.js'
 const nav = (page) => page.getByRole('navigation', { name: "Bo'limlar" })
 const TELEFON = { width: 390, height: 844 }
 const KENG = { width: 1280, height: 860 }
+const iso = (kun) => { const t = new Date(); t.setDate(t.getDate() + kun); return t.toLocaleDateString('sv-SE') }
 
 // Ikki kenglikda skrinshot; telefonda sahifa gorizontal surilmasligi tekshiriladi
 async function ikkiKenglik(page, nom) {
@@ -70,6 +71,9 @@ test('libos sanog\'i: boshlash, skaner, yakun', async ({ page }) => {
     await k.press('Enter')
     await expect(page.getByText('✓ E2E-1 Libos E2E-1')).toBeVisible()
     await expect(k).toBeFocused()  // skaner keyingi artikulni darhol yozadi
+    await k.fill('ft-01')  // aksessuar donasi — yorlig'i bo'yicha
+    await k.press('Enter')
+    await expect(page.getByText('✓ FT-01 Fata Klassik')).toBeVisible()
     await k.fill('YOQ-999')
     await k.press('Enter')
     await expect(page.locator('p.xato')).toBeVisible()
@@ -79,7 +83,7 @@ test('libos sanog\'i: boshlash, skaner, yakun', async ({ page }) => {
   await test.step('yakun: topilmagan libos «yo\'q» bo\'lib chiqadi', async () => {
     await page.getByRole('button', { name: 'Yakunlash' }).click()
     const natija = page.locator('.blok', { hasText: 'Sanoq yakunlandi' })
-    await expect(natija).toContainText("Yo'q (1): E2E-2 Libos E2E-2")
+    await expect(natija).toContainText("Yo'q (2): E2E-2 Libos E2E-2, FT-02 Fata Klassik")
     await ikkiKenglik(page, '6-sanoq-natija')
   })
   expect(xatolar).toEqual([])
@@ -111,4 +115,29 @@ test('kassir rejimi: sotuvchining zakaz kartasida pul formalari yo\'q', async ({
   } finally {
     await apiSorov(page, 'PATCH', '/sozlamalar/', { kassa_rejimi: 'sotuvchi' })
   }
+})
+
+test('to\'liq chegirmali (0 so\'m) bron kassada to\'lovsiz tasdiqlanadi', async ({ page }) => {
+  const xatolar = xatolarniKuzat(page)
+  await kirish(page, 'Rahbar', '1111')
+  const libos = (await apiSorov(page, 'GET', '/liboslar/')).find((l) => l.artikul === 'E2E-1')
+  const z = await apiSorov(page, 'POST', '/zakazlar/', { telefon: `+99893${String(Date.now()).slice(-7)}`, fio: 'Bepul Kelin',
+    dan: iso(60), gacha: iso(62), liboslar: [libos.id] })
+  const ch = await apiSorov(page, 'POST', `/zakazlar/${z.id}/chegirma/`, { sabab: 'boshqa', foiz: 100, izoh: 'homiylik' })
+  await apiSorov(page, 'POST', `/chegirma-sorovlari/${ch.sorov.id}/qaror/`, { qaror: 'tasdiq' })
+  await apiSorov(page, 'POST', '/kassa/smena/ochish/', { boshlangich_qoldiq: 0 })
+  try {
+    await nav(page).getByRole('button', { name: 'Kassa', exact: true }).click()
+    await nav(page).getByRole('button', { name: "To'lov qabul", exact: true }).click()
+    await page.locator('.pos-zakaz', { hasText: 'Bepul Kelin' }).click()
+    const chek = page.getByRole('region', { name: "To'lov" })
+    await expect(chek).toContainText("Jami0 so'm")
+    await ikkiKenglik(page, '8-bepul-bron-kassada')
+    await chek.getByRole('button', { name: /^Bronni tasdiqlash/ }).click()
+    await expect(page.locator('.pos-zakaz', { hasText: 'Bepul Kelin' })).toHaveCount(0)
+    expect((await apiSorov(page, 'GET', `/zakazlar/${z.id}/`)).holat).toBe('bron')
+  } finally {  // keyingi test (zakaz-oqimi) smenani o'zi ochadi
+    await apiSorov(page, 'POST', '/kassa/smena/yopish/', { summa: 0, izoh: '' })
+  }
+  expect(xatolar).toEqual([])
 })

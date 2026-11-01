@@ -42,7 +42,7 @@ export default function LibosSanogi() {
         <div className="qator">
           {fil.length > 0 && (
             <select className="kichik-tanlov" value={filial} aria-label="Filial" onChange={(e) => setFilial(e.target.value)}>
-              <option value="">Barcha liboslar</option>
+              <option value="">Barcha filiallar</option>
               {fil.map((f) => <option key={f.id} value={f.id}>{f.nomi}</option>)}
             </select>
           )}
@@ -120,7 +120,7 @@ function OchiqSanoq({ s, onYangila, onYakun }) {
       </section>
       <section className="blok jadval-panel">
         <div className="jadval-asboblar">
-          <h3 className="panel-nom">{hammasi ? 'Barcha liboslar' : 'Hali topilmaganlar'}</h3>
+          <h3 className="panel-nom">{hammasi ? 'Hammasi' : 'Hali topilmaganlar'}</h3>
           <label className="qator malumot"><input type="checkbox" checked={hammasi} onChange={(e) => setHammasi(e.target.checked)} /> topilganlarni ham ko'rsatish</label>
         </div>
         {korinadi.length === 0 && <p className="malumot jadval-bosh">Hammasi belgilandi.</p>}
@@ -142,7 +142,7 @@ function OchiqSanoq({ s, onYangila, onYakun }) {
       </section>
       <section className="blok">
         <h3>Sanoqni yakunlash</h3>
-        {salonda.length - topildi > 0 && <p className="ogohlantirish">{salonda.length - topildi} ta libos hali topilmagan — yakunlasangiz «yo'q» deb rahbarga yuboriladi.</p>}
+        {salonda.length - topildi > 0 && <p className="ogohlantirish">{salonda.length - topildi} ta buyum hali topilmagan — yakunlasangiz «yo'q» deb rahbarga yuboriladi.</p>}
         <div className="qator">
           <input value={izoh} onChange={(e) => setIzoh(e.target.value)} placeholder="Izoh (ixtiyoriy)" aria-label="Izoh" maxLength={300} />
           <button onClick={yakunla} disabled={band}>Yakunlash</button>
