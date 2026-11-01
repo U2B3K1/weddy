@@ -262,6 +262,7 @@ function Pnl({ r, filial }) {
   const qatorlar = [
     { nom: 'Kirgan pul (avans va qoldiq)', v: r.kirim, kalit: 'kirim' },
     { nom: 'Mijozlarga qaytarilgan', izoh: 'bekor qilingan zakazlar', v: -r.qaytarilgan, kalit: 'qaytarilgan' },
+    { nom: "Kelmagan o'tkazmalar", izoh: "rahbar «kelmadi» degan kuni", v: -r.kelmadi, kalit: 'kelmadi', yashir: !r.kelmadi },
     { nom: 'Tushum', v: r.tushum, oralik: true },
     { nom: 'Jarimalar', v: r.jarimalar, kalit: 'jarima' },
     { nom: 'Xarajatlar', v: -r.xarajatlar, kalit: 'xarajat' },

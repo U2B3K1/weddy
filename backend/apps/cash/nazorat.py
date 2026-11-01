@@ -19,10 +19,20 @@ TOPSHIRIQ_RAHBARGA = timedelta(minutes=15)  # shundan keyin ham tasdiqlanmasa �
 OTKAZMA_KUTISH = timedelta(minutes=2)  # mijoz hali salonda bo'lganida bilish kerak: pul kelmasa undan so'raladi
 
 
+def _yozilgan(kalitlar):
+    """Shu kalitli eslatmalar allaqachon yozilganmi — har daqiqada qayta INSERT urinib ko'rmaslik uchun."""
+    from apps.notify.models import Xabar
+    return set(Xabar.objects.filter(kalit__in=kalitlar).values_list('kalit', flat=True)) if kalitlar else set()
+
+
 def _topshiriqlar(hozir):
     soni = 0
-    for t in (KassaTopshirish.objects.filter(holat=KassaTopshirish.Holat.KUTILMOQDA, yaratilgan__lte=hozir - TOPSHIRIQ_KUTISH)
-              .select_related('kimdan', 'kimga', 'salon')):
+    royxat = list(KassaTopshirish.objects.filter(holat=KassaTopshirish.Holat.KUTILMOQDA, yaratilgan__lte=hozir - TOPSHIRIQ_KUTISH)
+                  .exclude(salon__holat=Salon.Holat.BLOKLANGAN).select_related('kimdan', 'kimga', 'salon'))
+    bor = _yozilgan([f'kt_eslatma:{t.id}' for t in royxat] + [f'kt_rahbar:{t.id}' for t in royxat])
+    for t in royxat:
+        if f'kt_eslatma:{t.id}' in bor and (t.rahbarga or f'kt_rahbar:{t.id}' in bor):
+            continue
         tugmalar = [[{'text': f'✅ {som(t.summa)} qabul qildim', 'callback_data': f'kt:{t.id}:q'},
                      {'text': '✏️ Boshqa summa', 'callback_data': f'kt:{t.id}:b'}]]
         soni += bool(xabar_yoz(t.kimga, 'kassa_topshirish', f"⏰ Eslatma: {t.kimdan.ism} sizga {som(t.summa)} topshirgan — "
@@ -37,8 +47,12 @@ def _topshiriqlar(hozir):
 
 def _otkazmalar(hozir):
     soni = 0
-    for t in (Tolov.objects.filter(tasdiq=Tolov.Tasdiq.KUTILMOQDA, vaqt__lte=hozir - OTKAZMA_KUTISH)
-              .select_related('salon', 'xodim', 'zakaz')):
+    royxat = list(Tolov.objects.filter(tasdiq=Tolov.Tasdiq.KUTILMOQDA, vaqt__lte=hozir - OTKAZMA_KUTISH)
+                  .exclude(salon__holat=Salon.Holat.BLOKLANGAN).select_related('salon', 'xodim', 'zakaz'))
+    bor = _yozilgan([f'ot_eslatma:{t.id}' for t in royxat])
+    for t in royxat:
+        if f'ot_eslatma:{t.id}' in bor:
+            continue
         tugmalar = [[{'text': '✅ Keldi', 'callback_data': f'ot:{t.id}:k'},
                      {'text': '❌ Kelmadi', 'callback_data': f'ot:{t.id}:y'}]]
         z = f' (zakaz #{t.zakaz.raqam})' if t.zakaz_id else ''
@@ -98,21 +112,21 @@ def dashbord_nazorati(salon, bugun=None, kun=7):
     from .models import Smena
     bugun = bugun or timezone.localdate()
     dan = bugun - timedelta(days=kun - 1)
-    kamomad = {}  # xodim -> jami (faqat manfiy farqlar)
+    kamomad = {}  # xodim id -> [ism, jami] (faqat manfiy farqlar)
     terminal = 0
     for s in (Smena.objects.filter(salon=salon, sana__range=(dan, bugun), yopilgan__isnull=False)
               .prefetch_related('ishtirokchilar__xodim')):
         for i in s.ishtirokchilar.all():
             f = i.farq if i.farq is not None else (s.farq if i.chiqqan == s.yopilgan else None)
             if f and f < 0:
-                kamomad[i.xodim.ism] = kamomad.get(i.xodim.ism, 0) + f
+                kamomad.setdefault(i.xodim_id, [i.xodim.ism, 0])[1] += f
         terminal += s.terminal_farq or 0
     kelmadi = Tolov.objects.filter(salon=salon, tasdiq=Tolov.Tasdiq.KELMADI, tasdiq_vaqti__date__range=(dan, bugun))
     oxirgi = Sanoq.objects.filter(salon=salon, yakunlangan__isnull=False).order_by('-yakunlangan').first()
     return {
         'kun': kun,
-        'kamomad': sum(kamomad.values()),
-        'kamomad_xodimlar': [{'ism': k, 'summa': v} for k, v in sorted(kamomad.items(), key=lambda x: x[1])],
+        'kamomad': sum(v for _, v in kamomad.values()),
+        'kamomad_xodimlar': [{'ism': ism, 'summa': v} for ism, v in sorted(kamomad.values(), key=lambda x: x[1])],
         'terminal_farq': terminal,
         'topshiriqlar': KassaTopshirish.objects.filter(salon=salon, holat=KassaTopshirish.Holat.KUTILMOQDA).count(),
         'otkazmalar': Tolov.objects.filter(salon=salon, tasdiq=Tolov.Tasdiq.KUTILMOQDA).count(),

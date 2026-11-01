@@ -114,11 +114,15 @@ def storno_zakazlari(salon, boshi, oxiri, f):
 
 def pul_harakati(salon, boshi, oxiri, filial=None):
     """Davrda kassaga kirgan va mijozga qaytarilgan pul (barcha to'lov usullari): `kirim` — avans va qoldiq,
-    `qaytarilgan` — bekor qilingan zakazlarga qaytarilgan pul, `jarimalar`."""
+    `qaytarilgan` — bekor qilingan zakazlarga qaytarilgan pul, `jarimalar`, `kelmadi` — rahbar «kelmadi» degan
+    o'tkazmalar. «Kelmadi» qaytarilgan pul kabi belgilangan kuni ayiriladi: to'lov kunining davri (yopilgan oy) o'zgarmaydi."""
     T = Tolov.Tur
-    r = Tolov.objects.filter(tolov_filiali(filial), Tolov.HAQIQIY, salon=salon, vaqt__date__range=(boshi, oxiri)).aggregate(
+    q = Tolov.objects.filter(tolov_filiali(filial), salon=salon)
+    r = q.filter(vaqt__date__range=(boshi, oxiri)).aggregate(
         kirim=Sum('summa', filter=Q(tur__in=[T.AVANS, T.QOLDIQ])), qaytarilgan=Sum('summa', filter=Q(tur=T.VOZVRAT)),
         jarimalar=Sum('summa', filter=Q(tur=T.JARIMA)))
+    r['kelmadi'] = q.filter(tasdiq=Tolov.Tasdiq.KELMADI, tur__in=[T.AVANS, T.QOLDIQ],
+                            tasdiq_vaqti__date__range=(boshi, oxiri)).aggregate(s=Sum('summa'))['s']
     return {k: v or 0 for k, v in r.items()}
 
 
@@ -130,7 +134,7 @@ def foyda(salon, boshi, oxiri, filial=None):
     """
     f = {'filial_id': filial} if filial else {}
     pul = pul_harakati(salon, boshi, oxiri, filial)
-    tushum = pul['kirim'] - pul['qaytarilgan']
+    tushum = pul['kirim'] - pul['qaytarilgan'] - pul['kelmadi']
 
     xarajatlar = Xarajat.objects.filter(salon=salon, holat=Xarajat.Holat.TASDIQLANDI,
                                         sana__range=(boshi, oxiri), **f)
@@ -158,7 +162,7 @@ def foyda(salon, boshi, oxiri, filial=None):
     yangi = (Zakaz.objects.filter(salon=salon, **f).annotate(birinchi=Subquery(birinchi))
              .filter(birinchi__date__range=(boshi, oxiri)).aggregate(n=Count('id'), s=Sum('jami')))
     return {
-        'tushum': tushum, 'kirim': pul['kirim'], 'qaytarilgan': pul['qaytarilgan'],
+        'tushum': tushum, 'kirim': pul['kirim'], 'qaytarilgan': pul['qaytarilgan'], 'kelmadi': pul['kelmadi'],
         'togridan_togri_xarajat': togridan_jami, 'togridan_togri_moddalar': modda_boyicha(togridan),
         'yalpi_foyda': yalpi,
         'operatsion_xarajat': operatsion_jami + bonus, 'operatsion_moddalar': modda_boyicha(operatsion),
@@ -213,7 +217,8 @@ def libos_investitsiyasi(salon, filial=None):
             'qoplash_foiz': round(qoplagan / investitsiya * 100, 1) if investitsiya else None}
 
 
-PNL_QATORLARI = {'kirim': 'Kirgan pul (avans va qoldiq)', 'qaytarilgan': 'Mijozlarga qaytarilgan', 'jarima': 'Jarimalar',
+PNL_QATORLARI = {'kirim': 'Kirgan pul (avans va qoldiq)', 'qaytarilgan': 'Mijozlarga qaytarilgan',
+                 'kelmadi': "Kelmagan o'tkazmalar", 'jarima': 'Jarimalar',
                  'xarajat': 'Xarajatlar', 'bonus': 'Sotuvchi bonusi'}
 
 
@@ -231,11 +236,18 @@ def pnl_tafsilot(salon, yil, oy, qator, filial=None):
     turlar = {'kirim': [Tolov.Tur.AVANS, Tolov.Tur.QOLDIQ], 'qaytarilgan': [Tolov.Tur.VOZVRAT],
               'jarima': [Tolov.Tur.JARIMA]}.get(qator)
     if turlar:
-        for t in (Tolov.objects.filter(tolov_filiali(filial), Tolov.HAQIQIY, salon=salon, tur__in=turlar, vaqt__date__range=(boshi, oxiri))
+        for t in (Tolov.objects.filter(tolov_filiali(filial), salon=salon, tur__in=turlar, vaqt__date__range=(boshi, oxiri))
                   .select_related('zakaz__mijoz').order_by('vaqt')):
             z = t.zakaz
             matn = t.get_tur_display() + (f' · zakaz #{z.raqam} · {z.mijoz.fio or z.mijoz.telefon}' if z else '')
             qosh(f'{matn} · {t.get_usul_display()}', t.summa, timezone.localtime(t.vaqt).date(), z)
+    elif qator == 'kelmadi':
+        for t in (Tolov.objects.filter(tolov_filiali(filial), salon=salon, tasdiq=Tolov.Tasdiq.KELMADI,
+                                       tur__in=[Tolov.Tur.AVANS, Tolov.Tur.QOLDIQ], tasdiq_vaqti__date__range=(boshi, oxiri))
+                  .select_related('zakaz__mijoz').order_by('tasdiq_vaqti')):
+            z = t.zakaz
+            qosh(f"{t.get_tur_display()} · zakaz #{z.raqam} · {z.mijoz.fio or z.mijoz.telefon} · {t.get_usul_display()} "
+                 f"({timezone.localtime(t.vaqt):%d.%m} olingan)", t.summa, timezone.localtime(t.tasdiq_vaqti).date(), z)
     elif qator == 'xarajat':
         from .moddalar import modda_nomlari
         nomlar = modda_nomlari(salon)

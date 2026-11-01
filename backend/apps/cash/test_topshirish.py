@@ -211,3 +211,21 @@ class TopshirishAPITests(Base):
         self.assertEqual((r.status_code, r.data['kimga']), (201, 'Rahbar'))
         r = m.post('/api/kassa/inkassatsiya/', {'summa': 100, 'rahbar': self.dilnoza.id}, format='json')
         self.assertEqual(r.status_code, 409)  # sotuvchiga inkassatsiya yo'q
+
+
+class QabulFarqiTests(Base):
+    def test_qisman_inkassatsiyada_kam_sanalsa_topshiruvchida_qoladi(self):
+        self.ikkovi()
+        t = inkassatsiya(salon=self.salon, xodim=self.malika, rahbar=self.rahbar, summa=1_000_000)
+        self.assertEqual(xodim_qoldigi(self.smena, self.malika), 500_000)
+        topshiriqni_qabul(salon=self.salon, xodim=self.rahbar, topshirish=t, summa=800_000)
+        self.assertEqual(xodim_qoldigi(self.smena, self.malika), 700_000)  # 200 ming rahbarga yetmagan — Malikada
+
+    def test_yopishda_rahbar_boshqa_summa_sanasa_fakt_ham(self):
+        s = smena_ochish(salon=self.salon, xodim=self.malika, boshlangich_qoldiq=0)
+        self.tolov(self.malika, T.AVANS, 800_000, zakaz=self.zakaz(self.malika))
+        s = smena_yopish(salon=self.salon, xodim=self.malika, fakt_qoldiq=800_000, rahbar=self.rahbar)
+        t = KassaTopshirish.objects.get(smena=s)
+        topshiriqni_qabul(salon=self.salon, xodim=self.rahbar, topshirish=t, summa=790_000)
+        s.refresh_from_db()
+        self.assertEqual((s.fakt_qoldiq, s.farq), (790_000, -10_000))

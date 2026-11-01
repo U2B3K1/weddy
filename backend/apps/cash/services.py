@@ -1,5 +1,5 @@
 from django.db import IntegrityError, transaction
-from django.db.models import Q, Sum
+from django.db.models import F, Q, Sum
 from django.utils import timezone
 
 from apps.bookings.models import AksessuarBron, Bron
@@ -166,7 +166,7 @@ def tolov_qabul(*, salon, xodim, tur, summa, usul=Tolov.Usul.NAQD, zakaz=None, i
             raise KassaXatosi("Vaqtinchalik bron muddati o'tib, libos yoki aksessuar boshqa zakazga berilgan. "
                               "Bu zakazni bekor qilib, qaytadan rasmiylashtiring.")
 
-    otkazma = (tur in Tolov.KIRIM and usul in Tolov.OTKAZMA_USULLARI and summa > 0
+    otkazma = (tur in (Tolov.Tur.AVANS, Tolov.Tur.QOLDIQ) and usul in Tolov.OTKAZMA_USULLARI and summa > 0
                and sozlama(salon).otkazma_tasdigi)
     tolov = Tolov.objects.create(salon=salon, smena=smena, zakaz=zakaz, tur=tur, usul=usul,
                                  summa=summa, xodim=xodim, izoh=izoh,
@@ -227,10 +227,12 @@ def otkazma_tasdiqlash(*, salon, rahbar, tolov, keldi):
     t.tasdiq = Tolov.Tasdiq.KELDI if keldi else Tolov.Tasdiq.KELMADI
     t.tasdiqlagan, t.tasdiq_vaqti = rahbar, timezone.now()
     t.save(update_fields=['tasdiq', 'tasdiqlagan', 'tasdiq_vaqti'])
-    if keldi:  # sotuvchi mijozni kuzatib qo'yishi mumkin
+    if keldi:  # sotuvchi mijozni kuzatib qo'yishi mumkin; mijozga kvitansiya endi boradi
         from apps.notify.services import som, xabar_yoz
         xabar_yoz(t.xodim, 'otkazma_keldi', f"✅ {t.get_usul_display()} {som(t.summa)}"
                   f"{f' (zakaz #{t.zakaz.raqam})' if t.zakaz_id else ''} rahbar hisobiga keldi.")
+        from apps.notify.sms import kvitansiya_yoz
+        kvitansiya_yoz(t)
     if not keldi:
         z = t.zakaz
         if z and z.tolangan_sana and tolangan_summa(z) < z.jami:  # to'liq to'lanmagan bo'lib qoldi
@@ -284,8 +286,11 @@ def xodim_qoldigi(smena, xodim):
     # To'liq topshirgan xodimning hisobi nolga tushadi; rahbarga berilgan qismi to'lov (inkassatsiya) sifatida ayirilgan
     b = smena.topshiriqlar.filter(kimdan=xodim, toliq=True).aggregate(
         h=Sum('hisobdagi'), s=Sum('summa', filter=Q(rahbarga=True)))
+    # Qisman inkassatsiya: chiqim aytilgan summada yozilgan; rahbar kamroq sanagan bo'lsa, farq hali xodimda
+    qisman = (smena.topshiriqlar.filter(kimdan=xodim, toliq=False, rahbarga=True, holat=KassaTopshirish.Holat.QABUL)
+              .aggregate(s=Sum(F('summa') - F('qabul_summa')))['s'] or 0)
     boshlangich = smena.boshlangich_qoldiq if smena.ochgan_id == xodim.id else 0
-    return boshlangich + (r['kirim'] or 0) - (r['chiqim'] or 0) + olgan - ((b['h'] or 0) - (b['s'] or 0))
+    return boshlangich + (r['kirim'] or 0) - (r['chiqim'] or 0) + olgan - ((b['h'] or 0) - (b['s'] or 0)) + qisman
 
 
 def _kutayotgani_yoq(smena, xodim):
@@ -459,10 +464,11 @@ def topshiriqni_qabul(*, salon, xodim, topshirish, summa=None):
     t.save(update_fields=['qabul_summa', 'holat', 'qabul_vaqti'])
     if qabul != t.summa and t.toliq:
         farq = qabul - t.hisobdagi
-        if t.smena_yopishda:
-            Smena.objects.filter(id=t.smena_id).update(farq=farq)
+        if t.smena_yopishda:  # «sanaldi» ham qabul qiluvchi sanagani — Kunlik kassa ustunlari mos tushadi
+            Smena.objects.filter(id=t.smena_id).update(farq=farq, fakt_qoldiq=qabul)
         elif t.ishtirokchi_id:
-            SmenaIshtirokchi.objects.filter(id=t.ishtirokchi_id).update(farq=farq)
+            SmenaIshtirokchi.objects.filter(id=t.ishtirokchi_id).update(farq=farq, sanalgan_summa=qabul)
+    # Qisman inkassatsiyada farq topshiruvchining hisobida qoladi (xodim_qoldigi) — smena yopishda kamomad bo'lib chiqadi
 
     from apps.notify.services import rahbarlarga, som, xabar_yoz
     xabar_yoz(t.kimdan, 'kassa_topshirish_qabul',

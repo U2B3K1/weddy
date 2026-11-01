@@ -207,7 +207,8 @@ class TolovSerializer(serializers.Serializer):
     # To'g'ridan-to'g'ri kiritiladigan turlar. Qolgan chiqimlar o'z jarayoni orqali: xarajat — rahbar tasdig'i
     # bilan (finance), vozvrat — zakazni bekor qilishda, zalog/jarima — berish va qaytarishda. Aks holda
     # sotuvchi kassadan xarajat yoki «vozvrat» deb pulni hisobsiz olib chiqa olardi.
-    tur = serializers.ChoiceField(choices=[Tolov.Tur.AVANS, Tolov.Tur.QOLDIQ, Tolov.Tur.INKASSATSIYA])
+    # Inkassatsiya — faqat /inkassatsiya/ orqali (kimga topshirilgani va rahbar tasdig'i bilan)
+    tur = serializers.ChoiceField(choices=[Tolov.Tur.AVANS, Tolov.Tur.QOLDIQ])
     summa = serializers.IntegerField(min_value=0)  # 0 — faqat to'liq bepul zakaz bronini tasdiqlash (tolov_qabul tekshiradi)
     usul = serializers.ChoiceField(choices=Tolov.Usul.choices, default=Tolov.Usul.NAQD)
     zakaz = serializers.IntegerField(required=False)

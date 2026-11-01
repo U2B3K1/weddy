@@ -70,3 +70,15 @@ class KvitansiyaTests(TestCase):
             sms._bittasini_yubor(x.id)
         x.refresh_from_db()
         self.assertEqual((x.holat, x.xato_matni), ('kutilmoqda', 'HTTP 500'))
+
+    def test_cron_yangi_kvitansiyani_olmaydi(self):
+        """Fon oqimi yuborayotgan yangi kvitansiyani cron 2 daqiqa tegmaydi — mijozga ikki marta SMS bormasin."""
+        from datetime import timedelta
+        from django.utils import timezone
+        self.yoq()
+        t = self.tolov(1_000_000)
+        with mock.patch.object(sms, 'sozlangan', return_value=True), mock.patch.object(sms, 'yubor') as yubor:
+            self.assertEqual(sms.kutayotganlarni_yubor(), 0)
+            SmsXabar.objects.filter(kalit=f'tolov:{t.id}').update(yaratilgan=timezone.now() - timedelta(minutes=3))
+            self.assertEqual(sms.kutayotganlarni_yubor(), 1)  # fon oqimi yubora olmagan bo'lsa — cron yuboradi
+        yubor.assert_called_once()

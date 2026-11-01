@@ -107,7 +107,7 @@ class SmenaTuzatishTests(Base):
 
     def test_inkassatsiya(self):  # FT-12.6
         smena_ochish(salon=self.salon, xodim=self.malika, boshlangich_qoldiq=500_000)
-        j = self.m.post('/api/kassa/tolovlar/', {'tur': 'inkassatsiya', 'summa': 400_000, 'izoh': 'Rahbarga topshirildi'}, format='json')
+        j = self.m.post('/api/kassa/inkassatsiya/', {'summa': 400_000, 'rahbar': self.rahbar.id, 'izoh': 'Rahbarga topshirildi'}, format='json')
         self.assertEqual(j.status_code, 201)
         h = self.m.get('/api/kassa/smena/').data['hisobot']
         self.assertEqual((h['vozvrat_va_inkassatsiya'], h['hisobdagi_qoldiq'], h['tushum']), (400_000, 100_000, 0))

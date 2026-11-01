@@ -41,15 +41,15 @@ class KassaTests(Base):
                 self.assertRaisesMessage(KassaXatosi, 'yopilgan'):
             tolov_qabul(salon=self.salon, xodim=self.xodim, tur=Tolov.Tur.INKASSATSIYA, summa=1000)
 
-    def test_tolov_endpointi_faqat_kirim_va_inkassatsiya(self):
+    def test_tolov_endpointi_faqat_kirim(self):
         c = self.api(self.xodim)
-        for tur in ('xarajat', 'vozvrat', 'zalog_qaytarish', 'jarima'):
+        # inkassatsiya ham yo'q: u /kassa/inkassatsiya/ orqali, rahbar tasdig'i bilan
+        for tur in ('xarajat', 'vozvrat', 'zalog_qaytarish', 'jarima', 'inkassatsiya'):
             self.assertEqual(c.post('/api/kassa/tolovlar/', {'tur': tur, 'summa': 1000}, format='json').status_code, 400)
-        self.assertEqual(c.post('/api/kassa/tolovlar/', {'tur': 'inkassatsiya', 'summa': 1000}, format='json').status_code, 201)
 
     def test_uzun_izoh_500_emas_400(self):
         c = self.api(self.xodim)
-        self.assertEqual(c.post('/api/kassa/tolovlar/', {'tur': 'inkassatsiya', 'summa': 1, 'izoh': 'x' * 301},
+        self.assertEqual(c.post('/api/kassa/tolovlar/', {'tur': 'qoldiq', 'summa': 1, 'izoh': 'x' * 301},
                                 format='json').status_code, 400)
         self.assertEqual(c.post('/api/xarajatlar/', {'modda': 'transport', 'summa': 1, 'izoh': 'x' * 301},
                                 format='json').status_code, 400)

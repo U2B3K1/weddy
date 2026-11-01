@@ -137,3 +137,32 @@ class OchirilganNazoratTests(Base):
     def test_sozlama_api(self):
         r = api(self.rahbar).patch('/api/sozlamalar/', {'otkazma_tasdigi': True, 'terminal_sverkasi': True}, format='json')
         self.assertEqual((r.status_code, r.data['otkazma_tasdigi'], r.data['terminal_sverkasi']), (200, True, True))
+
+
+class ReviewTuzatishlariTests(Base):
+    def test_otgan_oy_kelmadi_bilan_ozgarmaydi(self):
+        from datetime import timedelta
+        t = self.tolov(2_000_000, U.OTKAZMA)
+        otgan = timezone.localtime(t.vaqt).replace(day=1) - timedelta(days=1)
+        Tolov.objects.filter(id=t.id).update(vaqt=otgan)
+        oldin = reports.foyda_zarar(self.salon, otgan.year, otgan.month)['tushum']
+        tugma_ishla(111, f'ot:{t.id}:y')
+        self.assertEqual(reports.foyda_zarar(self.salon, otgan.year, otgan.month)['tushum'], oldin)  # yopilgan oy o'zgarmaydi
+        b = timezone.localdate()
+        bu = reports.foyda_zarar(self.salon, b.year, b.month)
+        self.assertEqual((bu['kelmadi'], bu['tushum']), (2_000_000, -2_000_000))  # «kelmadi» kuni ayiriladi
+        self.assertEqual(reports.pnl_tafsilot(self.salon, b.year, b.month, 'kelmadi')['jami'], 2_000_000)
+
+    def test_tolovlar_endpointi_inkassatsiya_qabul_qilmaydi(self):
+        r = api(self.malika).post('/api/kassa/tolovlar/', {'tur': 'inkassatsiya', 'summa': 1000}, format='json')
+        self.assertEqual(r.status_code, 400)
+
+    def test_kvitansiya_otkazma_keldi_bolganda(self):
+        from apps.notify.models import SmsXabar
+        from apps.tenants.models import SalonSozlamalari, sozlama
+        sozlama(self.salon)
+        SalonSozlamalari.objects.filter(salon=self.salon).update(sms_kvitansiya=True)
+        t = self.tolov(1_000_000, U.OTKAZMA)
+        self.assertFalse(SmsXabar.objects.exists())  # pul hali kelmagan — kvitansiya yo'q
+        tugma_ishla(111, f'ot:{t.id}:k')
+        self.assertIn("1 000 000 so'm qabul qilindi (o'tkazma)", SmsXabar.objects.get(kalit=f'tolov:{t.id}').matn)

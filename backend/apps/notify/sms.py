@@ -137,6 +137,8 @@ def kvitansiya_yoz(tolov):
     z = tolov.zakaz
     if not z or not tolov.summa or tolov.tur not in KVITANSIYA_TURLARI or not sozlama(tolov.salon_id).sms_kvitansiya:
         return None
+    if tolov.tasdiq == 'kutilmoqda':  # o'tkazma rahbar «keldi» deganda (otkazma_tasdiqlash) kvitansiya boradi
+        return None
     salon = tolov.salon
     matn = SHABLONLAR['tolov_kvitansiya'].format(
         salon=salon.nomi, raqam=z.raqam, summa=_pul(tolov.summa), usul=tolov.get_usul_display().lower(),
@@ -198,7 +200,10 @@ def kutayotganlarni_yubor(chegara=200):
     """Kutayotgan SMS larni yuboradi. Shlyuz sozlanmagan bo'lsa hech narsa qilmaydi (keyin sozlansa yuboriladi)."""
     yuborildi = 0
     eskirgan = timezone.now() - timedelta(days=1)  # kechikkan eslatma endi keraksiz
-    for x in SmsXabar.objects.filter(holat=SmsXabar.Holat.KUTILMOQDA).order_by('id')[:chegara]:
+    # endigina yozilgan kvitansiyani fon oqimi yuborayotgan bo'lishi mumkin — cron uni 2 daqiqadan keyin oladi
+    yangi = timezone.now() - timedelta(minutes=2)
+    for x in (SmsXabar.objects.filter(holat=SmsXabar.Holat.KUTILMOQDA)
+              .exclude(tur='tolov_kvitansiya', yaratilgan__gt=yangi).order_by('id')[:chegara]):
         if not sozlangan(x.salon_id):  # hisobi yo'q salon SMS i kutib turadi
             continue
         if x.yaratilgan < eskirgan:
