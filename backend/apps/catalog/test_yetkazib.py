@@ -85,7 +85,7 @@ class YetkazibBeruvchiTests(TestCase):
 
 
 class AksessuarYetkazibTests(TestCase):
-    """Aksessuar ham yetkazib beruvchidan olinadi: xarid = bir dona tannarxi × donalar soni."""
+    """Aksessuar partiyalab olinadi: qarz = har partiyaning donalar soni × bir dona narxi (shu partiya narxida)."""
 
     def setUp(self):
         from .models import Kategoriya
@@ -95,26 +95,62 @@ class AksessuarYetkazibTests(TestCase):
         self.kat = Kategoriya.objects.create(salon=self.salon, nomi='Fata', turi=Kategoriya.Turi.AKSESSUAR)
         self.yb = self.c.post('/api/yetkazib-beruvchilar/', {'nomi': 'Fata Optom'}).data
 
-    def holat(self):
-        return self.c.get('/api/yetkazib-beruvchilar/').data[0]
+    def holat(self, i=0):
+        return self.c.get('/api/yetkazib-beruvchilar/').data[i]
 
-    def test_aksessuar_qisman_tolangan_va_dona_qoshilsa_qarz_oshadi(self):
+    def test_aksessuar_qisman_tolangan_va_yangi_partiya_oz_narxida(self):
         r = self.c.post('/api/aksessuarlar/', {'nomi': 'Fata Klassik', 'kod': 'FT', 'kategoriya': self.kat.id, 'tannarx': 200_000,
                                                'soni': 5, 'yetkazib_beruvchi': self.yb['id'], 'tolandi': 600_000}, format='json')
-        self.assertEqual((r.status_code, r.data['yetkazib_beruvchi']), (201, self.yb['id']))
+        self.assertEqual(r.status_code, 201)
+        self.assertEqual([(p['soni'], p['narx'], p['yetkazib_beruvchi']) for p in r.data['partiyalar']], [(5, 200_000, self.yb['id'])])
         h = self.holat()
         self.assertEqual((h['aksessuar_donalar'], h['xarid'], h['tolangan'], h['qarz']), (5, 1_000_000, 600_000, 400_000))
-        self.c.post(f"/api/aksessuarlar/{r.data['id']}/donalar/", {'soni': 2})  # yana 2 dona shu yetkazib beruvchidan
-        self.assertEqual(self.holat()['qarz'], 800_000)
+        # ikkinchi partiya qimmatroq: eski 5 donaning qarzi o'zgarmaydi
+        self.c.post(f"/api/aksessuarlar/{r.data['id']}/donalar/", {'soni': 2, 'narx': 250_000, 'yetkazib_beruvchi': self.yb['id'],
+                                                                   'tolandi': 0}, format='json')
+        self.assertEqual(self.holat()['qarz'], 900_000)
+        # aksessuar tannarxi o'zgartirilsa ham olingan partiyalar o'zgarmaydi
+        self.c.patch(f"/api/aksessuarlar/{r.data['id']}/", {'tannarx': 300_000}, format='json')
+        self.assertEqual((self.holat()['aksessuar_donalar'], self.holat()['qarz']), (7, 900_000))
         d = self.c.get(f"/api/yetkazib-beruvchilar/{self.yb['id']}/").data
-        self.assertEqual(d['aksessuarlar'], [{'id': r.data['id'], 'kod': 'FT', 'nomi': 'Fata Klassik', 'tannarx': 200_000,
-                                               'donalar_soni': 7, 'jami': 1_400_000}])
+        self.assertEqual([(a['kod'], a['soni'], a['narx'], a['jami']) for a in d['aksessuarlar']],
+                         [('FT', 2, 250_000, 500_000), ('FT', 5, 200_000, 1_000_000)])
+
+    def test_boshqa_yetkazib_beruvchidan_partiya(self):
+        boshqa = self.c.post('/api/yetkazib-beruvchilar/', {'nomi': 'Boshqa'}).data
+        r = self.c.post('/api/aksessuarlar/', {'nomi': 'Toj', 'kod': 'TJ', 'kategoriya': self.kat.id, 'tannarx': 100_000,
+                                               'soni': 3, 'yetkazib_beruvchi': self.yb['id'], 'tolandi': 0}, format='json')
+        self.c.post(f"/api/aksessuarlar/{r.data['id']}/donalar/", {'soni': 2, 'yetkazib_beruvchi': boshqa['id'], 'tolandi': 0},
+                    format='json')  # narx berilmasa — tannarx
+        royxat = {y['nomi']: y['qarz'] for y in self.c.get('/api/yetkazib-beruvchilar/').data}
+        self.assertEqual(royxat, {'Fata Optom': 300_000, 'Boshqa': 200_000})
 
     def test_keyin_biriktirish_va_cheklov(self):
         r = self.c.post('/api/aksessuarlar/', {'nomi': 'Toj', 'kod': 'TJ', 'kategoriya': self.kat.id, 'tannarx': 100_000, 'soni': 3})
-        self.assertEqual(self.c.patch(f"/api/aksessuarlar/{r.data['id']}/", {'yetkazib_beruvchi': self.yb['id']},
+        p = r.data['partiyalar'][0]
+        self.assertEqual(self.c.patch(f"/api/aksessuar-partiyalari/{p['id']}/", {'yetkazib_beruvchi': self.yb['id']},
                                       format='json').data['yetkazib_beruvchi'], self.yb['id'])
         self.assertEqual(self.holat()['qarz'], 300_000)  # keyin biriktirilgan — hammasi qarz
+        self.c.patch(f"/api/aksessuar-partiyalari/{p['id']}/", {'narx': 90_000}, format='json')  # xato narx tuzatildi
+        self.assertEqual(self.holat()['qarz'], 270_000)
         x = self.c.post('/api/aksessuarlar/', {'nomi': 'Toj 2', 'kod': 'TJ2', 'kategoriya': self.kat.id, 'tannarx': 100_000,
                                                'soni': 2, 'yetkazib_beruvchi': self.yb['id'], 'tolandi': 300_000}, format='json')
         self.assertEqual(x.status_code, 400)  # 2 × 100 000 dan ko'p to'lanmaydi
+        y = self.c.post(f"/api/aksessuarlar/{r.data['id']}/donalar/", {'soni': 1, 'yetkazib_beruvchi': self.yb['id'],
+                                                                       'tolandi': 200_000}, format='json')
+        self.assertEqual(y.status_code, 400)
+
+    def test_sotuvchi_partiyani_ozgartirmaydi_va_tasdiqda_narx_tushadi(self):
+        from apps.tenants.models import sozlama
+        s = sozlama(self.salon)
+        s.sotuvchi_libos_qoshadi, s.libos_tasdigi = True, True
+        s.save()
+        sotuvchi = Xodim.objects.create(salon=self.salon, ism='Malika', rol=Xodim.Rol.SOTUVCHI)
+        r = api(sotuvchi).post('/api/aksessuarlar/', {'nomi': 'Toj', 'kod': 'TJ', 'kategoriya': self.kat.id, 'soni': 2,
+                                                      'yetkazib_beruvchi': self.yb['id']}, format='json')
+        self.assertEqual(r.status_code, 201)
+        p = self.c.get(f"/api/aksessuarlar/{r.data['id']}/").data['partiyalar'][0]
+        self.assertEqual((p['narx'], p['yetkazib_beruvchi']), (None, None))  # sotuvchi tannarx/yetkazib beruvchi kiritmaydi
+        self.assertEqual(api(sotuvchi).patch(f"/api/aksessuar-partiyalari/{p['id']}/", {'narx': 1}, format='json').status_code, 403)
+        self.c.post(f"/api/aksessuarlar/{r.data['id']}/tasdiq/", {'ijara_narxi': 50_000, 'tannarx': 80_000}, format='json')
+        self.assertEqual(self.c.get(f"/api/aksessuarlar/{r.data['id']}/").data['partiyalar'][0]['narx'], 80_000)

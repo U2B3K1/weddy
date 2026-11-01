@@ -77,7 +77,7 @@ function Tafsilot({ id, bajar }) {
       ))}
       {d.aksessuarlar.length > 0 && <h4>Olingan aksessuarlar</h4>}
       {d.aksessuarlar.map((a) => (
-        <p key={a.id} className="qator-matn"><b>{a.kod}</b> {a.nomi} · {a.donalar_soni} dona × {a.tannarx == null ? 'tannarx kiritilmagan' : `${som(a.tannarx)} = ${som(a.jami)}`}</p>
+        <p key={a.id} className="qator-matn">{sanaMatni(a.sana)} · <b>{a.kod}</b> {a.nomi} · {a.soni} dona × {a.narx == null ? 'narx kiritilmagan' : `${som(a.narx)} = ${som(a.jami)}`}</p>
       ))}
       <h4>To'lovlar ({d.tolovlar.length})</h4>
       {d.tolovlar.map((t) => (

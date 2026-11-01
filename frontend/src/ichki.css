@@ -976,6 +976,8 @@ main .boshlash-panel .qator-btn { text-align: left; }
 
 /* Hisobot: keng ekranda bo'limlar chap panelda — tepadagi segment faqat telefonda */
 @media (min-width: 768px) { .ichki-segment.faqat-telefon { display: none; } }
+/* Sozlama menyusi chap panelda ochiq bo'lsa sahifa tepasidagi ☰ menyu takrorlanmaydi («← Asosiy» bosilsa qaytadi) */
+@media (min-width: 768px) { .ilova[data-nav="sozlamalar"] .sozlama-menu { display: none; } }
 
 /* Libos sanog'i: artikul (skaner) maydoni — telefonda ham to'liq kenglikda, tugma yonida */
 .sanoq-kiritish { display: flex; gap: var(--o-2); align-items: stretch; }

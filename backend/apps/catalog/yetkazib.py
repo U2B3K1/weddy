@@ -1,18 +1,19 @@
 """Yetkazib beruvchilar: libos va aksessuar qayerdan olingani va ularga qancha qarz qolgani.
 
-Qarz = shu yetkazib beruvchidan olingan liboslar tannarxi + aksessuarlar (bir dona tannarxi × donalar soni) − unga
-to'langan pul. Tannarx — xarid narxi, shuning uchun
-alohida «xarid» yozuvi yo'q: libos qo'shilganda yetkazib beruvchi va hozir to'langan summa kiritiladi, qolgani qarz.
+Qarz = shu yetkazib beruvchidan olingan liboslar tannarxi + aksessuar partiyalari (donalar soni × bir dona narxi) −
+unga to'langan pul. Libosda tannarx — xarid narxi, aksessuarda har partiyaning o'z narxi bor (keyingi partiya boshqa
+narxda yoki boshqa yetkazib beruvchidan bo'lishi mumkin). Qo'shilganda yetkazib beruvchi va hozir to'langan summa
+kiritiladi, qolgani qarz.
 To'lov kassadan emas (rahbar o'zi to'laydi) va foydaga kirmaydi — libos investitsiya; P&L dagi «qo'lingizda qolgan pul»
 qatorida hisoblanadi (`finance.reports.libos_xaridi`).
 """
 from django.db import IntegrityError, transaction
-from django.db.models import Count, Sum
+from django.db.models import Count, F, Sum
 from django.utils import timezone
 
 from apps.tenants.models import Xodim, jurnalga_yoz
 
-from .models import Aksessuar, Libos, YetkazibBeruvchi, YetkazibBeruvchiTolov
+from .models import AksessuarPartiya, Libos, YetkazibBeruvchi, YetkazibBeruvchiTolov
 
 
 class YetkazibXatosi(Exception):
@@ -27,10 +28,10 @@ def _rahbarmi(xodim):
 def holati(salon, yb_idlar=None):
     """{id: {'liboslar_soni', 'aksessuar_donalar', 'xarid', 'tolangan', 'qarz'}} — manfiy qarz: oldindan to'langan."""
     liboslar = Libos.objects.filter(salon=salon, yetkazib_beruvchi__isnull=False)
-    aksessuarlar = Aksessuar.objects.filter(salon=salon, yetkazib_beruvchi__isnull=False)
+    partiyalar = AksessuarPartiya.objects.filter(salon=salon, yetkazib_beruvchi__isnull=False)
     tolovlar = YetkazibBeruvchiTolov.objects.filter(salon=salon)
     if yb_idlar is not None:
-        liboslar, aksessuarlar, tolovlar = (q.filter(yetkazib_beruvchi__in=yb_idlar) for q in (liboslar, aksessuarlar, tolovlar))
+        liboslar, partiyalar, tolovlar = (q.filter(yetkazib_beruvchi__in=yb_idlar) for q in (liboslar, partiyalar, tolovlar))
     natija = {}
 
     def qator(yid):
@@ -38,10 +39,9 @@ def holati(salon, yb_idlar=None):
     for r in liboslar.values('yetkazib_beruvchi').annotate(n=Count('id'), s=Sum('tannarx')):
         q = qator(r['yetkazib_beruvchi'])
         q['liboslar_soni'], q['xarid'] = r['n'], q['xarid'] + (r['s'] or 0)
-    for a in aksessuarlar.annotate(n=Count('donalar')):  # tannarx — bir dona narxi
-        q = qator(a.yetkazib_beruvchi_id)
-        q['aksessuar_donalar'] += a.n
-        q['xarid'] += (a.tannarx or 0) * a.n
+    for r in partiyalar.values('yetkazib_beruvchi').annotate(n=Sum('soni'), s=Sum(F('soni') * F('narx'))):
+        q = qator(r['yetkazib_beruvchi'])
+        q['aksessuar_donalar'], q['xarid'] = r['n'], q['xarid'] + (r['s'] or 0)
     for yid, s in tolovlar.values_list('yetkazib_beruvchi').annotate(s=Sum('summa')):
         qator(yid)['tolangan'] = s
     for q in natija.values():
@@ -121,6 +121,28 @@ def libos_xaridi_yoz(*, salon, rahbar, libos, yb, tolandi=None):
               izoh=f'libos {libos.artikul} xaridi', tolandi=tolandi)
 
 
-def aksessuar_xaridi_yoz(*, salon, rahbar, aksessuar, yb, soni, tolandi=None):
-    xarid_yoz(salon=salon, rahbar=rahbar, obyekt=aksessuar, yb=yb, jami=(aksessuar.tannarx or 0) * soni,
-              izoh=f'aksessuar {aksessuar.kod} xaridi, {soni} dona', tolandi=tolandi)
+def aksessuar_xaridi_yoz(*, salon, rahbar, partiya, yb, tolandi=None):
+    xarid_yoz(salon=salon, rahbar=rahbar, obyekt=partiya, yb=yb, jami=(partiya.narx or 0) * partiya.soni,
+              izoh=f'aksessuar {partiya.aksessuar.kod} xaridi, {partiya.soni} dona', tolandi=tolandi)
+
+
+def partiya_json(p):
+    return {'id': p.id, 'sana': p.sana, 'soni': p.soni, 'narx': p.narx, 'jami': (p.narx or 0) * p.soni,
+            'yetkazib_beruvchi': p.yetkazib_beruvchi_id}
+
+
+@transaction.atomic
+def partiyani_ozgartirish(*, salon, rahbar, partiya, **maydonlar):
+    """Unutilgan yetkazib beruvchini keyin biriktirish yoki xato narxni tuzatish (to'lov yozilmaydi — qarz o'zgaradi)."""
+    _rahbarmi(rahbar)
+    yb = maydonlar.get('yetkazib_beruvchi')
+    if yb is not None and yb.salon_id != salon.id:
+        raise YetkazibXatosi('Yetkazib beruvchi topilmadi.')
+    for k, v in maydonlar.items():
+        eski = getattr(partiya, k)
+        if eski != v:
+            jurnalga_yoz(salon, rahbar, f'aksessuar_partiyasi_{k}', f'{partiya.aksessuar.kod} partiya #{partiya.id}',
+                         getattr(eski, 'nomi', eski) if eski is not None else '', getattr(v, 'nomi', v) if v is not None else '')
+            setattr(partiya, k, v)
+    partiya.save()
+    return partiya

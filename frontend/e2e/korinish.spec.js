@@ -45,6 +45,42 @@ test('rahbar sahifalari keng ekranda va telefonda', async ({ page }) => {
     await expect(page.getByText('Kirgan pul (avans va qoldiq)')).toBeVisible()
     await ikkiKenglik(page, '4-foyda-zarar')
   })
+
+  await test.step('Sotuvchi bonusi va Umumiy hisobot', async () => {
+    // seed'da bonus o'chiq — jadvalni ko'rish uchun vaqtincha 5% yoqiladi
+    await apiSorov(page, 'PATCH', '/sozlamalar/', { sotuvchi_bonusi: true, bonus_foiz: '5' })
+    try {
+      await nav(page).getByRole('button', { name: 'Sotuvchi bonusi', exact: true }).click()
+      await expect(page.getByRole('columnheader', { name: 'Bonus (5%)' })).toBeVisible()
+      await ikkiKenglik(page, '4b-sotuvchi-bonusi')
+    } finally {
+      await apiSorov(page, 'PATCH', '/sozlamalar/', { sotuvchi_bonusi: false, bonus_foiz: '0' })
+    }
+    await nav(page).getByRole('button', { name: 'Umumiy hisobot', exact: true }).click()
+    await ikkiKenglik(page, '4c-umumiy-hisobot')
+  })
+
+  await test.step('kirgach manzilda #kirish qolmaydi; ichki bo\'limlar bir joyda', async () => {
+    expect(new URL(page.url()).hash).toBe('')
+    const segment = page.locator('.ichki-segment')
+    await expect(segment).toBeHidden()  // Hisobot bo'limlari chap panelda
+    await nav(page).getByRole('button', { name: 'Asosiy' }).click()
+    await expect(segment).toBeVisible()  // chap panel asosiy menyuda — bo'limlar tepada qaytadi
+    await nav(page).getByRole('button', { name: 'Sozlama', exact: true }).click()
+    await expect(page.locator('.sozlama-menu')).toBeHidden()  // Sozlama menyusi chap panelda
+    await page.waitForLoadState('networkidle')
+    await page.screenshot({ path: 'test-results/korinish/4d-sozlama-keng.png', fullPage: true })
+    await nav(page).getByRole('button', { name: 'Asosiy' }).click()
+    await expect(page.locator('.sozlama-menu')).toBeVisible()
+  })
+
+  await test.step('zakaz kartasi keng ekranda', async () => {
+    await nav(page).getByRole('button', { name: 'Zakazlar', exact: true }).click()
+    // kassa-topshirish.spec.js dagi zakaz
+    await page.locator('.zakaz-jadval tbody tr').first().click()
+    await expect(page.getByRole('heading', { name: /^Zakaz #\d+$/ })).toBeVisible()
+    await ikkiKenglik(page, '4e-zakaz-kartasi')
+  })
   expect(xatolar).toEqual([])
 })
 
@@ -209,15 +245,33 @@ test('yetkazib beruvchi: libos qisman to\'lab olinadi, qarz to\'lanadi', async (
     await expect(page.getByText("Aksessuar qo'shildi.")).toBeVisible()
   })
 
+  await test.step('yangi partiya qimmatroq: 2 dona × 120 000, to\'lanmadi', async () => {
+    await page.getByRole('button', { name: /Toj Oltin/ }).click()
+    const t = page.locator('.tafsilot-qator')
+    await t.getByText("Dona qo'shish", { exact: true }).click()
+    await t.getByLabel('Soni').fill('2')
+    await t.getByLabel('Bir dona narxi').fill('120000')
+    await t.getByLabel('Qayerdan olingan').selectOption({ label: 'Istanbul Bridal' })
+    await t.getByLabel("Hozir to'landi").fill('0')
+    await expect(t).toContainText("Yetkazib beruvchiga qarz: 240 000 so'm")
+    await t.getByRole('button', { name: "Qo'shish", exact: true }).click()
+    await expect(page.getByText("Donalar qo'shildi.")).toBeVisible()
+    await t.getByText('Partiyalar (2)').click()
+    await expect(t).toContainText("3 dona × 100 000 so'm = 300 000 so'm")
+    await expect(t).toContainText("2 dona × 120 000 so'm = 240 000 so'm")
+    await ikkiKenglik(page, '11-aksessuar-partiyalar')
+  })
+
   await test.step('qarz ko\'rinadi va to\'lanadi', async () => {
     await page.getByRole('tab', { name: 'Yetkazib beruvchilar' }).click()
     const qator = page.locator('.yetkazib-qator', { hasText: 'Istanbul Bridal' })
-    await expect(qator).toContainText("qarz 6 200 000 so'm")
+    await expect(qator).toContainText("qarz 6 440 000 so'm")
     await qator.getByRole('button', { name: /Istanbul Bridal/ }).click()
     await expect(qator).toContainText('YB-1')
     await expect(qator).toContainText("TJ Toj Oltin · 3 dona × 100 000 so'm = 300 000 so'm")
-    await ikkiKenglik(page, '11-yetkazib-qarz')
-    await qator.getByLabel("To'lov summasi").fill('6200000')
+    await expect(qator).toContainText("TJ Toj Oltin · 2 dona × 120 000 so'm = 240 000 so'm")
+    await ikkiKenglik(page, '12-yetkazib-qarz')
+    await qator.getByLabel("To'lov summasi").fill('6440000')
     await qator.getByRole('button', { name: "To'lov qilish" }).click()
     await expect(qator).toContainText("qarz yo'q")
   })

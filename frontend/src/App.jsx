@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { boshlash, boshlashYop, dashbord, me, oflaynKesh, oflaynToplam, saqlangan, som, tarmoqXatosi } from './api'
 import BoshEkran from './pages/BoshEkran'
 import Tasdiq from './components/Tasdiq'
@@ -104,6 +104,8 @@ export default function App() {
   const kirgan = xodim !== null
   useEffect(() => {
     if (!kirgan) return undefined
+    // kirgach manzilda «#kirish» qolmaydi (chiqishda qayta qo'yiladi); tarixga yangi qadam qo'shilmaydi
+    if (window.location.hash === '#kirish') window.history.replaceState(null, '', window.location.pathname + window.location.search)
     let t, t0
     const chiq = () => { saqlangan.chiqish(); window.location.hash = '#kirish'; setKirish(true); setUxlayapti(false); setXodim(null) }
     const qayta = () => {
@@ -125,6 +127,15 @@ export default function App() {
     const t = setInterval(yangila, onlayn ? OFLAYN_KESH_MS : 10000)
     return () => clearInterval(t)
   }, [kirgan, onlayn])
+
+  // Telefonda tepadagi segment suriladi: tanlangan bo'lim yarim kesilib qolmasin (sahifa vertikal surilmaydi)
+  const segmentRef = useRef(null)
+  useEffect(() => {
+    const s = segmentRef.current, b = s?.querySelector('.faol')
+    if (!b) return
+    const d = b.getBoundingClientRect().left - s.getBoundingClientRect().left
+    s.scrollLeft += d - (s.clientWidth - b.offsetWidth) / 2
+  }, [sahifa, zakazlarBolim, katalogBolim, mijozlarBolim, kassaBolim, hisobotlarBolim])
 
   if (!tayyor) return null
   if (platforma) return (
@@ -247,7 +258,7 @@ export default function App() {
   const harf = (xodim.ism || '?').trim().charAt(0).toUpperCase()
 
   return (
-    <div className="ilova">
+    <div className="ilova" data-nav={navRejim || undefined}>
       <PlatformaFon nurli />
       <Shapka ochiq={menyu} onMenyu={() => setMenyu(!menyu)}>
         {/* Telefon shapkasi; keng ekranda xodim chap panel pastida */}
@@ -269,7 +280,7 @@ export default function App() {
           onBolim={setSahifa} onAlmashtir={almashtir}
           onQidir={(q) => { setQidiruv({ q, n: Date.now() }); setZakazlarBolim('royxat'); setSahifa('zakazlar') }} />
         {ichki && ichki.royxat.length > 1 && !(sahifa === 'zakazlar' && zakazId) && (
-          <div className={`ichki-segment${sahifa === 'hisobotlar' || sahifa === 'kassa' ? ' faqat-telefon' : ''}`} role="tablist">
+          <div className={`ichki-segment${navTekis && navRejim === sahifa ? ' faqat-telefon' : ''}`} role="tablist" ref={segmentRef}>
             {ichki.royxat.map(([id, nomi]) => (
               <button key={id} type="button" role="tab" aria-selected={ichki.joriy === id} className={ichki.joriy === id ? 'faol' : ''}
                 onClick={() => ichki.tanla(id)}>{nomi}</button>

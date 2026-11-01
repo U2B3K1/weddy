@@ -3,8 +3,8 @@ import Manekin from '../components/Manekin'
 import NavIkona from '../components/NavIkona'
 import Oyna from '../components/Oyna'
 import {
-  aksessuarManekinOchir, aksessuarManekinSaqla, aksessuarManekinYukla, aksessuarOzgartir, aksessuarTafsilot, aksessuarTasdiq, aksessuarYarat, aksessuarlar, donaFilial, donaHolati, filiallar, donaTamirTugat, donaTamirga, donalarQosh,
-  kategoriyalar, som, xatoMatni, yetkazibBeruvchilar,
+  aksessuarManekinOchir, aksessuarManekinSaqla, aksessuarManekinYukla, aksessuarOzgartir, aksessuarTafsilot, aksessuarTasdiq, aksessuarYarat, aksessuarlar, donaFilial, donaHolati, filiallar, donaTamirTugat, donaTamirga, donalarQosh, partiyaOzgartir,
+  kategoriyalar, sanaMatni, som, xatoMatni, yetkazibBeruvchilar,
 } from '../api'
 import SummaInput from '../components/SummaInput'
 
@@ -150,7 +150,6 @@ export default function AksessuarBolimi({ rahbar }) {
 function Tafsilot({ id, rahbar, bajar, ybs = [] }) {
   const [a, setA] = useState(null)
   const [narx, setNarx] = useState('')
-  const [soni, setSoni] = useState('1')
   const yukla = useCallback(() => aksessuarTafsilot(id).then((d) => { setA(d); setNarx(d.ijara_narxi) }), [id])
   useEffect(() => { yukla() }, [yukla])
   const amal = async (fn, ok) => { const r = await bajar(fn, ok); if (r) await yukla(); return r }
@@ -211,28 +210,83 @@ function Tafsilot({ id, rahbar, bajar, ybs = [] }) {
             <label>Ijara narxi<SummaInput value={narx} onChange={(e) => setNarx(e.target.value)} /></label>
             <button className="kichik" onClick={() => amal(() => aksessuarOzgartir(id, { ijara_narxi: Number(narx) }), "Narx saqlandi.")}>Saqlash</button>
           </div>
-          <div className="ixcham-forma">
-            <label>Yangi donalar soni<input type="number" min="1" max="200" value={soni} onChange={(e) => setSoni(e.target.value)} /></label>
-            <button className="ikkinchi kichik" onClick={() => amal(() => donalarQosh(id, Number(soni)), "Donalar qo'shildi.")}>Dona qo'shish</button>
-          </div>
+          <DonaQoshish a={a} ybs={ybs} onYuborish={(b) => amal(() => donalarQosh(id, b), "Donalar qo'shildi.")} />
           <div className="qator">
             <button className="ikkinchi kichik" onClick={() => amal(() => aksessuarOzgartir(id, { holat: a.holat === 'arxiv' ? 'faol' : 'arxiv' }), 'Holat o\'zgardi.')}>
               {a.holat === 'arxiv' ? 'Arxivdan chiqarish' : 'Arxivga'}
             </button>
             {a.tannarx != null && <span className="malumot">Tannarx: {som(a.tannarx)} (1 dona)</span>}
           </div>
-          {ybs.length > 0 && (
-            <label>Qayerdan olingan (darhol saqlanadi)
-              <select value={a.yetkazib_beruvchi || ''} onChange={(e) => amal(() => aksessuarOzgartir(id, { yetkazib_beruvchi: e.target.value ? Number(e.target.value) : null }), 'Saqlandi.')}>
-                <option value="">Ko'rsatilmagan</option>
-                {ybs.map((y) => <option key={y.id} value={y.id}>{y.nomi}</option>)}
-              </select>
-            </label>
-          )}
+          <Partiyalar a={a} ybs={ybs} amal={amal} />
         </>
       )}
       </div>
     </div>
+  )
+}
+
+// Yangi donalar — alohida partiya: o'z narxi va yetkazib beruvchisi bilan (eski donalar qarzi o'zgarmaydi)
+function DonaQoshish({ a, ybs, onYuborish }) {
+  const [f, setF] = useState({ soni: '1', narx: '', yb: '', tolandi: '' })
+  const set = (k) => (e) => setF({ ...f, [k]: e.target.value })
+  const jami = Number(f.narx || a.tannarx || 0) * Number(f.soni || 0)
+  return (
+    <details className="amal">
+      <summary>Dona qo'shish</summary>
+      <div className="stack">
+        <div className="qator">
+          <label>Soni<input type="number" min="1" max="200" value={f.soni} onChange={set('soni')} /></label>
+          <label>Bir dona narxi<SummaInput placeholder={a.tannarx != null ? som(a.tannarx) : ''} value={f.narx} onChange={set('narx')} /></label>
+        </div>
+        {ybs.length > 0 && (
+          <div className="qator">
+            <label>Qayerdan olingan
+              <select value={f.yb} onChange={set('yb')}>
+                <option value="">Ko'rsatilmagan</option>
+                {ybs.map((y) => <option key={y.id} value={y.id}>{y.nomi}</option>)}
+              </select>
+            </label>
+            {f.yb && <label>Hozir to'landi<SummaInput placeholder={`to'liq: ${som(jami)}`} value={f.tolandi} onChange={set('tolandi')} /></label>}
+          </div>
+        )}
+        {f.yb && f.tolandi !== '' && Number(f.tolandi) < jami && (
+          <p className="malumot">Yetkazib beruvchiga qarz: <b>{som(jami - Number(f.tolandi))}</b></p>
+        )}
+        <button className="ikkinchi" disabled={!(Number(f.soni) >= 1)} onClick={async () => {
+          const ok = await onYuborish({
+            soni: Number(f.soni), ...(f.narx !== '' ? { narx: Number(f.narx) } : {}),
+            // bo'sh qoldirilsa — to'liq to'langan; kami — yetkazib beruvchiga qarz
+            ...(f.yb ? { yetkazib_beruvchi: Number(f.yb), ...(f.tolandi !== '' ? { tolandi: Number(f.tolandi) } : {}) } : {}),
+          })
+          if (ok) setF({ soni: '1', narx: '', yb: '', tolandi: '' })
+        }}>Qo'shish</button>
+      </div>
+    </details>
+  )
+}
+
+// Har partiya kimdan va necha pulga olingani; yetkazib beruvchini keyin biriktirish mumkin (to'lov yozilmaydi — qarz)
+function Partiyalar({ a, ybs, amal }) {
+  const p = a.partiyalar || []
+  if (!p.length) return null
+  return (
+    <details className="amal">
+      <summary>Partiyalar ({p.length})</summary>
+      <div className="stack">
+        {p.map((x) => (
+          <div key={x.id} className="qator">
+            <span className="qator-matn">{sanaMatni(x.sana)} · {x.soni} dona × {x.narx == null ? 'narx kiritilmagan' : `${som(x.narx)} = ${som(x.jami)}`}</span>
+            {ybs.length > 0 && (
+              <select aria-label={`${x.soni} donalik partiya yetkazib beruvchisi`} value={x.yetkazib_beruvchi || ''}
+                onChange={(e) => amal(() => partiyaOzgartir(x.id, { yetkazib_beruvchi: e.target.value ? Number(e.target.value) : null }), 'Saqlandi.')}>
+                <option value="">Ko'rsatilmagan</option>
+                {ybs.map((y) => <option key={y.id} value={y.id}>{y.nomi}</option>)}
+              </select>
+            )}
+          </div>
+        ))}
+      </div>
+    </details>
   )
 }
 

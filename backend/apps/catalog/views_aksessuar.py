@@ -5,17 +5,16 @@ from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.tenants.models import jurnalga_yoz
 from apps.tenants.permissions import IsRahbar, IsStaff, SalonYozishRuxsati
 
 from .dona_tamir import dona_tamir_json, dona_tamirini_tugatish, donani_tamirga_berish
 from .manekin import (aksessuar_joylashuvi, aksessuar_manekin_json, aksessuar_qatlami,
                       aksessuar_qatlamini_ochirish)
-from .models import Aksessuar, AksessuarDona, DonaTamiri, Kategoriya, YetkazibBeruvchi
+from .models import Aksessuar, AksessuarDona, AksessuarPartiya, DonaTamiri, Kategoriya, YetkazibBeruvchi
 from .services import (KatalogXatosi, aksessuar_qoshish, aksessuarni_ozgartirish,
                        aksessuarni_tasdiqlash, donalar_qoshish)
 from .views import _bajar, _rahbar
-from .yetkazib import aksessuar_xaridi_yoz
+from .yetkazib import YetkazibXatosi, aksessuar_xaridi_yoz, partiya_json, partiyani_ozgartirish
 
 
 def aksessuar_json(request, a, rahbar, donalar=False):
@@ -32,12 +31,25 @@ def aksessuar_json(request, a, rahbar, donalar=False):
                          'tamir': dona_tamir_json(ochiq[x.id]) if x.id in ochiq else None} for x in d]
     if rahbar:
         j['tannarx'] = a.tannarx
-        j['yetkazib_beruvchi'] = a.yetkazib_beruvchi_id
+        if donalar:  # qaysi donalar kimdan va necha pulga olingani
+            j['partiyalar'] = [partiya_json(p) for p in a.partiyalar.all()]
     return j
 
 
+def _xarid_maydonlari(request, yb_id, tolandi, jami):
+    """Yetkazib beruvchi va hozir to'langan summani tekshiradi: (yb, xato javobi). Sotuvchi ularni kiritmaydi."""
+    if not yb_id or not _rahbar(request):
+        return None, None
+    yb = YetkazibBeruvchi.objects.filter(salon=request.salon, id=yb_id).first()
+    if not yb:
+        return None, Response({'yetkazib_beruvchi': ['Topilmadi.']}, status=400)
+    if tolandi is not None and tolandi > jami:
+        return None, Response({'tolandi': ["Bir dona narxi × donalar sonidan ko'p bo'lishi mumkin emas."]}, status=400)
+    return yb, None
+
+
 def _aksessuar(request, pk):
-    a = (Aksessuar.objects.select_related('kategoriya', 'qoshgan').prefetch_related('donalar')
+    a = (Aksessuar.objects.select_related('kategoriya', 'qoshgan').prefetch_related('donalar', 'partiyalar')
          .filter(salon=request.salon, id=pk).first())
     if not a:
         raise NotFound('Aksessuar topilmadi.')
@@ -76,19 +88,17 @@ class AksessuarlarView(APIView):
         kat = Kategoriya.objects.filter(salon=request.salon, id=d.pop('kategoriya')).first()
         if not kat:
             return Response({'kategoriya': ['Topilmadi.']}, status=400)
-        yb_id, tolandi = d.pop('yetkazib_beruvchi', None), d.pop('tolandi', None)
-        yb = None
-        if yb_id and _rahbar(request):  # sotuvchi tannarx kabi yetkazib beruvchini ham kiritmaydi
-            yb = YetkazibBeruvchi.objects.filter(salon=request.salon, id=yb_id).first()
-            if not yb:
-                return Response({'yetkazib_beruvchi': ['Topilmadi.']}, status=400)
-            if tolandi is not None and tolandi > (d.get('tannarx') or 0) * d['soni']:
-                return Response({'tolandi': ["Tannarx × donalar sonidan ko'p bo'lishi mumkin emas."]}, status=400)
+        tolandi = d.pop('tolandi', None)
+        yb, err = _xarid_maydonlari(request, d.pop('yetkazib_beruvchi', None), tolandi, (d.get('tannarx') or 0) * d['soni'])
+        if err:
+            return err
         with transaction.atomic():
             a, err = _bajar(aksessuar_qoshish, salon=request.salon, xodim=request.user, kategoriya=kat, **d)
             if yb and a is not None:
-                aksessuar_xaridi_yoz(salon=request.salon, rahbar=request.user, aksessuar=a, yb=yb, soni=d['soni'], tolandi=tolandi)
-        return err or Response(aksessuar_json(request, _aksessuar(request, a.id), _rahbar(request)), status=201)
+                aksessuar_xaridi_yoz(salon=request.salon, rahbar=request.user, partiya=a.partiyalar.get(), yb=yb,
+                                     tolandi=tolandi)
+        return err or Response(aksessuar_json(request, _aksessuar(request, a.id), _rahbar(request), donalar=True),
+                               status=201)
 
 
 class AksessuarTafsilotView(APIView):
@@ -108,20 +118,8 @@ class AksessuarTafsilotView(APIView):
 
         ser = S(data=request.data)
         ser.is_valid(raise_exception=True)
-        yb_ozgaradi, yb = 'yetkazib_beruvchi' in request.data, None
-        if yb_ozgaradi and request.data['yetkazib_beruvchi']:
-            yb = YetkazibBeruvchi.objects.filter(salon=request.salon, id=request.data['yetkazib_beruvchi']).first()
-            if not yb:
-                return Response({'yetkazib_beruvchi': ['Topilmadi.']}, status=400)
-        with transaction.atomic():
-            a, err = _bajar(aksessuarni_ozgartirish, salon=request.salon, rahbar=request.user,
-                            aksessuar=_aksessuar(request, pk), **ser.validated_data)
-            if not err and yb_ozgaradi and a.yetkazib_beruvchi_id != (yb.id if yb else None):
-                # keyin biriktirilsa to'lov yozilmaydi — tannarx × donalar qarzga qo'shiladi
-                jurnalga_yoz(request.salon, request.user, 'aksessuar_yetkazib_beruvchisi', a.kod,
-                             a.yetkazib_beruvchi_id or '', yb.id if yb else '')
-                a.yetkazib_beruvchi = yb
-                a.save(update_fields=['yetkazib_beruvchi'])
+        a, err = _bajar(aksessuarni_ozgartirish, salon=request.salon, rahbar=request.user,
+                        aksessuar=_aksessuar(request, pk), **ser.validated_data)
         return err or Response(aksessuar_json(request, _aksessuar(request, a.id), True, donalar=True))
 
 
@@ -173,9 +171,51 @@ class DonalarView(APIView):
     permission_classes = [IsRahbar, SalonYozishRuxsati]
 
     def post(self, request, pk):
-        soni = serializers.IntegerField(min_value=1, max_value=200).run_validation(request.data.get('soni'))
-        _, err = _bajar(donalar_qoshish, salon=request.salon, aksessuar=_aksessuar(request, pk), soni=soni)
+        class S(serializers.Serializer):
+            soni = serializers.IntegerField(min_value=1, max_value=200)
+            narx = serializers.IntegerField(min_value=0, required=False, allow_null=True)  # bir dona; bo'sh — tannarx
+            yetkazib_beruvchi = serializers.IntegerField(required=False, allow_null=True)
+            tolandi = serializers.IntegerField(min_value=0, required=False, allow_null=True)
+
+        ser = S(data=request.data)
+        ser.is_valid(raise_exception=True)
+        d, a = ser.validated_data, _aksessuar(request, pk)
+        narx = a.tannarx if d.get('narx') is None else d['narx']
+        yb, err = _xarid_maydonlari(request, d.get('yetkazib_beruvchi'), d.get('tolandi'), (narx or 0) * d['soni'])
+        if err:
+            return err
+        with transaction.atomic():
+            p, err = _bajar(donalar_qoshish, salon=request.salon, aksessuar=a, soni=d['soni'], narx=narx, xodim=request.user)
+            if yb and p is not None:
+                aksessuar_xaridi_yoz(salon=request.salon, rahbar=request.user, partiya=p, yb=yb, tolandi=d.get('tolandi'))
         return err or Response(aksessuar_json(request, _aksessuar(request, pk), True, donalar=True), status=201)
+
+
+class PartiyaView(APIView):
+    """Rahbar partiyaga yetkazib beruvchini keyin biriktiradi yoki bir dona narxini tuzatadi."""
+    permission_classes = [IsRahbar, SalonYozishRuxsati]
+
+    def patch(self, request, pk):
+        p = AksessuarPartiya.objects.filter(salon=request.salon, id=pk).select_related('aksessuar').first()
+        if not p:
+            raise NotFound('Partiya topilmadi.')
+
+        class S(serializers.Serializer):
+            yetkazib_beruvchi = serializers.IntegerField(required=False, allow_null=True)
+            narx = serializers.IntegerField(min_value=0, required=False)
+
+        ser = S(data=request.data)
+        ser.is_valid(raise_exception=True)
+        d = dict(ser.validated_data)
+        if d.get('yetkazib_beruvchi') is not None:
+            d['yetkazib_beruvchi'] = YetkazibBeruvchi.objects.filter(salon=request.salon, id=d['yetkazib_beruvchi']).first()
+            if not d['yetkazib_beruvchi']:
+                return Response({'yetkazib_beruvchi': ['Topilmadi.']}, status=400)
+        try:
+            p = partiyani_ozgartirish(salon=request.salon, rahbar=request.user, partiya=p, **d)
+        except YetkazibXatosi as e:
+            return Response({'detail': str(e)}, status=409)
+        return Response(partiya_json(p))
 
 
 class DonaView(APIView):

@@ -142,10 +142,9 @@ class Aksessuar(SalonModel):
     kod = models.CharField(max_length=10)  # yorliq prefiksi: FT -> FT-01, FT-02
     kategoriya = models.ForeignKey(Kategoriya, on_delete=models.PROTECT)
     ijara_narxi = models.PositiveIntegerField(default=0)
-    tannarx = models.PositiveIntegerField(null=True, blank=True)  # bir dona xarid narxi; faqat rahbarga ko'rinadi
+    # bir dona xarid narxi (yangi partiya uchun standart); faqat rahbarga ko'rinadi. Qarz partiya narxidan hisoblanadi
+    tannarx = models.PositiveIntegerField(null=True, blank=True)
     holat = models.CharField(max_length=20, choices=Holat.choices, default=Holat.FAOL)
-    yetkazib_beruvchi = models.ForeignKey(YetkazibBeruvchi, null=True, blank=True, on_delete=models.SET_NULL,
-                                          related_name='aksessuarlar')  # qayerdan olingan; xarid = tannarx × donalar
     qoshgan = models.ForeignKey('tenants.Xodim', null=True, on_delete=models.SET_NULL, related_name='+')
     # Manekin qatlami (FT-5.2): fonsiz rasm va libos ustidagi standart joylashuvi
     manekin_rasm = models.FileField(upload_to=rasm_yoli, blank=True)
@@ -183,6 +182,24 @@ class AksessuarDona(SalonModel):
 
     def __str__(self):
         return self.yorliq
+
+
+class AksessuarPartiya(SalonModel):
+    """Bir martada qo'shilgan donalar: kimdan, nechta va bir donasi necha pulga olingani.
+
+    Yetkazib beruvchi qarzi shundan hisoblanadi (soni × narx). Keyingi partiya boshqa narxda yoki boshqa yetkazib
+    beruvchidan olinishi mumkin; aksessuar tannarxi o'zgartirilsa ham olingan partiyalar o'zgarmaydi.
+    """
+    aksessuar = models.ForeignKey(Aksessuar, on_delete=models.CASCADE, related_name='partiyalar')
+    yetkazib_beruvchi = models.ForeignKey(YetkazibBeruvchi, null=True, blank=True, on_delete=models.SET_NULL,
+                                          related_name='aksessuar_partiyalari')
+    soni = models.PositiveIntegerField()
+    narx = models.PositiveIntegerField(null=True, blank=True)  # bir dona; sotuvchi qo'shsa rahbar tasdig'igacha bo'sh
+    sana = models.DateField()
+    kiritgan = models.ForeignKey('tenants.Xodim', null=True, on_delete=models.SET_NULL, related_name='+')
+
+    class Meta:
+        ordering = ['sana', 'id']
 
 
 class TamirYozuvi(SalonModel):

@@ -3,7 +3,7 @@ from django.utils import timezone
 
 from apps.tenants.models import Xodim, jurnalga_yoz, sozlama
 
-from .models import Aksessuar, AksessuarDona, Libos
+from .models import Aksessuar, AksessuarDona, AksessuarPartiya, Libos
 
 
 class KatalogXatosi(Exception):
@@ -163,15 +163,19 @@ def aksessuar_qoshish(*, salon, xodim, nomi, kod, kategoriya, ijara_narxi=0, tan
                        else Aksessuar.Holat.TASDIQ_KUTILMOQDA))
     except IntegrityError:
         raise KatalogXatosi(f'«{kod}» kodi salonda allaqachon bor.')
-    donalar_qoshish(salon=salon, aksessuar=a, soni=soni)
+    donalar_qoshish(salon=salon, aksessuar=a, soni=soni, xodim=xodim)
     jurnalga_yoz(salon, xodim, 'aksessuar_qoshildi', f'aksessuar {kod}', '',
                  f'{a.nomi}, {soni} dona, narx {ijara_narxi}, holat {a.holat}')
     return a
 
 
 @transaction.atomic
-def donalar_qoshish(*, salon, aksessuar, soni):
-    """`soni` ta yangi dona; yorliqlar ketma-ket (FT-01, FT-02 ...), salon ichida noyob (FT-4.2)."""
+def donalar_qoshish(*, salon, aksessuar, soni, narx=None, xodim=None):
+    """`soni` ta yangi dona; yorliqlar ketma-ket (FT-01, FT-02 ...), salon ichida noyob (FT-4.2).
+
+    Donalar bitta partiya sifatida yoziladi: bir donasi `narx` (berilmasa — aksessuar tannarxi). Qaysi yetkazib
+    beruvchidan olingani partiyaga keyin biriktiriladi (`yetkazib.aksessuar_xaridi_yoz`).
+    """
     if not 1 <= soni <= 200:
         raise KatalogXatosi("Dona soni 1 dan 200 gacha bo'lishi kerak.")
     aksessuar = Aksessuar.objects.select_for_update().get(id=aksessuar.id, salon=salon)
@@ -179,7 +183,9 @@ def donalar_qoshish(*, salon, aksessuar, soni):
     yangi = [AksessuarDona(salon=salon, aksessuar=aksessuar, yorliq=f'{aksessuar.kod}-{mavjud + i:02d}')
              for i in range(1, soni + 1)]
     AksessuarDona.objects.bulk_create(yangi)
-    return yangi
+    return AksessuarPartiya.objects.create(salon=salon, aksessuar=aksessuar, soni=soni,
+                                           narx=aksessuar.tannarx if narx is None else narx,
+                                           sana=timezone.localdate(), kiritgan=xodim)
 
 
 @transaction.atomic
@@ -191,6 +197,7 @@ def aksessuarni_tasdiqlash(*, salon, rahbar, aksessuar, ijara_narxi, tannarx):
         raise KatalogXatosi('Aksessuar tasdiq kutmayapti.')
     a.ijara_narxi, a.tannarx, a.holat = ijara_narxi, tannarx, Aksessuar.Holat.FAOL
     a.save()
+    a.partiyalar.filter(narx__isnull=True).update(narx=tannarx)  # sotuvchi qo'shgan donalar narxi
     jurnalga_yoz(salon, rahbar, 'aksessuar_tasdiqlandi', f'aksessuar {a.kod}', '',
                  f'narx {ijara_narxi}, tannarx {tannarx}')
     return a

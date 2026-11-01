@@ -344,7 +344,6 @@ textarea:focus {
 .sozlama-menu-rohat button.faol {
   background: linear-gradient(110deg, var(--tilla-toq), var(--tilla)); color: var(--siyoh);
 }
-@media (min-width: 768px) { .sozlama-menu { display: none; } }
 
 /* Keng ekranda: pastdagi nav chap tarafdagi panel (sidebar) bo'ladi — ChatGPT uslubi.
    Tor ekranlarda (telefon) avvalgi pastki nav saqlanib qoladi. */
