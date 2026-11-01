@@ -262,38 +262,142 @@ label > input, label > select { color: var(--oq); }
 @media (min-width: 1200px) { .kpi-tor { grid-template-columns: repeat(3, 1fr); } }
 
 /* ---------- Yangi zakaz: rasmli grid ---------- */
-.zakaz-qadamlar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.zakaz-qadamlar .raqam { font-family: var(--kursiv); font-style: italic; color: var(--tilla); font-size: 22px; }
-.zakaz-qadamlar ol { list-style: none; display: flex; gap: 8px; margin: 0; padding: 0; flex-wrap: wrap; }
-.zakaz-qadamlar li { padding: 6px 14px; border-radius: var(--r-tugma); border: 1px solid var(--chegara); color: var(--matn-2); font-size: 14px; }
-.zakaz-qadamlar li.joriy { color: var(--tilla); border-color: var(--tilla); background: rgba(228, 193, 150, .16); font-weight: 600; }
-.zakaz-qadamlar li.otdi { color: var(--oq); }
-.zakaz-tugmalar { display: flex; gap: 10px; }
-.zakaz-tugmalar button { flex: 1; white-space: nowrap; padding-inline: 10px; }  /* tor panelda «Zakazni saqlash» ikki qatorga bo'linmasin */
 .libos-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
-.libos-grid li { position: relative; display: flex; flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 8px; padding: 8px; margin: 0; }
-.libos-grid .eskiz { width: 100%; height: auto; aspect-ratio: 2 / 3; border-radius: 12px; }
-.libos-grid .tanlov-belgi { position: absolute; top: 14px; right: 14px; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: var(--tilla); color: var(--siyoh); font-weight: 700; }
-.libos-grid li button { width: 100%; flex-basis: auto; }
+.libos-grid li { position: relative; display: flex; flex-direction: column; flex-wrap: nowrap; align-items: stretch; gap: 10px; padding: 10px; margin: 0;
+  border-radius: var(--r-3); transition: border-color .2s ease, box-shadow .2s ease; }
+.libos-grid li.tanlandi { border-color: var(--tilla); box-shadow: 0 0 0 1px var(--tilla), 0 0 0 6px var(--tilla-xira); }
+.libos-grid .libos-bosh { grid-column: 1 / -1; padding: var(--o-5); color: var(--matn-2); }
+.libos-rasm { position: relative; display: block; }
+.libos-grid .eskiz { display: flex; width: 100%; height: auto; aspect-ratio: 3 / 4; border-radius: var(--r-2); }
+.libos-grid .bosh-eskiz .libos-siluet { width: 34%; height: auto; color: rgba(228, 193, 150, .55); }
+.libos-grid .tanlov-belgi { position: absolute; top: 8px; right: 8px; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  background: var(--tilla); color: var(--siyoh); font-weight: 700; box-shadow: 0 4px 12px -4px rgba(0, 0, 0, .6); }
+.libos-grid .matn-ustun { gap: 2px; }
+.libos-nom { font-size: 14px; line-height: 1.35; }
+.libos-narx { font-weight: 700; color: var(--tilla); font-variant-numeric: tabular-nums; }
+.libos-grid li button { width: 100%; flex-basis: auto; margin-top: auto; }
 .libos-grid li em { font-size: 13px; color: var(--matn-2); font-style: normal; }
+.filtr-bosh { display: flex; flex-wrap: wrap; gap: var(--o-2); }
+.filtr-bosh input { flex: 1 1 240px; min-width: 0; }
+.filtr-bosh button { flex: none; }
+
+/* Qadamlar: tilla ip ustidagi uchta tugun (haqiqiy ketma-ketlik — raqam o'rinli). O'tilgani — tugma (qaytish) */
+.zakaz-ip { list-style: none; margin: 0; padding: 0; display: flex; align-items: center; max-width: 560px; }
+.zakaz-ip li { display: flex; align-items: center; flex: 1; min-width: 0; }
+.zakaz-ip li:last-child { flex: none; }
+.zakaz-ip li:not(:last-child)::after { content: ''; flex: 1; height: 1px; margin: 0 12px; background: var(--chegara-kuchli); }
+.zakaz-ip li.otdi::after { background: linear-gradient(90deg, var(--tilla), rgba(228, 193, 150, .35)); }
+.zakaz-ip li > span, .zakaz-ip li > button { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; color: var(--matn-3); white-space: nowrap; }
+.zakaz-ip li > button { min-height: 0; padding: 6px 0; background: none; border: 0; box-shadow: none; border-radius: 0; color: var(--matn-2); font-weight: 600; cursor: pointer; }
+.zakaz-ip li > button:hover { color: var(--oq); }
+.ip-tugun { width: 26px; height: 26px; flex: none; border-radius: 50%; display: inline-grid; place-items: center; font-size: 12.5px; font-weight: 700;
+  border: 1px solid var(--chegara-kuchli); color: var(--matn-2); }
+.zakaz-ip li.joriy > span { color: var(--oq); font-weight: 600; }
+.zakaz-ip li.joriy .ip-tugun { background: var(--tilla); border-color: var(--tilla); color: var(--siyoh); box-shadow: 0 0 0 5px var(--tilla-xira); }
+.zakaz-ip li.otdi .ip-tugun { border-color: var(--tilla); color: var(--tilla); }
+
+/* ---------- Zakaz varaqasi: to'y taklifnomasidek fil suyagi qog'oz, ikki qavat tilla hoshiya ----------
+   Sahifadagi yagona yorug' yuza: zakaz «yozilayotgani» shu yerda ko'rinadi. Saqlanganda unga muhr bosiladi. */
+.varaq {
+  --qogoz: #F5EEE2; --qogoz-2: #E9DECB; --siyoh-q: #1E2533; --siyoh-2: #5C5649; --zar: #8A5F27; --zar-chiziq: rgba(160, 118, 58, .5);
+  position: relative; display: flex; flex-direction: column; gap: var(--o-4); padding: 30px 26px 24px; border-radius: 6px; color: var(--siyoh-q);
+  background:
+    radial-gradient(120% 70% at 50% 0%, rgba(255, 255, 255, .6), transparent 60%),
+    radial-gradient(140% 90% at 50% 115%, rgba(201, 154, 91, .2), transparent 60%),
+    var(--qogoz);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .7), 0 34px 60px -30px rgba(0, 0, 0, .85), 0 10px 22px -12px rgba(0, 0, 0, .6);
+}
+.varaq::before, .varaq::after { content: ''; position: absolute; pointer-events: none; border-radius: 3px; }
+.varaq::before { inset: 9px; border: 1px solid var(--zar-chiziq); }
+.varaq::after { inset: 13px; border: 1px solid rgba(160, 118, 58, .2); }
+.varaq-izoh { margin: 0; text-align: center; font: italic 500 16px/1.45 var(--kursiv); color: var(--siyoh-2); }
+.varaq-kimga { margin: 0; text-align: center; font: 400 40px/1.1 'Great Vibes', var(--kursiv); color: var(--siyoh-q); overflow-wrap: anywhere; }
+.varaq-bezak { align-self: center; width: 120px; height: 12px; fill: none; stroke: var(--zar); stroke-width: 1; }
+.varaq-bezak path + path, .varaq-bezak circle { fill: var(--zar); stroke: none; }
+
+.varaq-sana { display: grid; grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr); align-items: center; text-align: center; }
+.varaq-sana > div { display: flex; flex-direction: column; align-items: center; line-height: 1.1; }
+.varaq-sana small { margin-bottom: 6px; font: italic 500 14px/1.2 var(--kursiv); color: var(--siyoh-2); }
+.varaq-sana b { font: 400 54px/1 var(--serif); color: var(--zar); font-variant-numeric: lining-nums; }
+.varaq-sana span { margin-top: 4px; font: 400 17px/1.25 var(--serif); letter-spacing: .03em; }
+.varaq-sana em { font: italic 500 15px/1.3 var(--kursiv); color: var(--siyoh-2); }
+.varaq-sana i { display: flex; align-items: center; gap: 6px; padding-top: 18px; font: italic 600 16px/1 var(--kursiv); color: var(--zar); white-space: nowrap; }
+.varaq-sana i::before, .varaq-sana i::after { content: ''; width: 12px; height: 1px; background: var(--zar-chiziq); }
+
+.varaq-royxat { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.varaq-royxat li { display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; align-items: center; gap: 12px; font-size: 14px; line-height: 1.35;
+  animation: siyoh-yozildi .5s ease backwards; }
+.varaq-royxat li.varaq-aks { grid-template-columns: minmax(0, 1fr) auto; color: var(--siyoh-2); }
+.varaq-royxat img, .varaq-siluet { width: 36px; height: 48px; border-radius: 3px; object-fit: cover; background: var(--qogoz-2); }
+.varaq-siluet { display: grid; place-items: center; color: var(--zar); }
+.varaq-siluet svg { width: 22px; height: auto; }
+.varaq-narx { font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* tanlangan libos qog'ozga siyohdek «yoziladi» (harakat foydalanuvchi amaliga javob) */
+@keyframes siyoh-yozildi { from { opacity: 0; transform: translateY(4px); } }
+
+.varaq-jami { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; padding-top: 14px; border-top: 1px solid var(--zar-chiziq); }
+.varaq-jami span { font: italic 500 16px/1.2 var(--kursiv); color: var(--siyoh-2); }
+.varaq-jami b { font: 400 30px/1 var(--serif); font-variant-numeric: tabular-nums lining-nums; white-space: nowrap; }
+
+.varaq .zakaz-tugmalar { display: flex; gap: 10px; }
+.varaq .zakaz-tugmalar button { flex: 1; min-height: 48px; padding: 0 14px; border-radius: 4px; border: 0; box-shadow: none; white-space: nowrap;
+  background: var(--siyoh-q); color: var(--qogoz); font-weight: 600; }
+.varaq .zakaz-tugmalar button.ikkinchi { flex: 0 0 auto; background: transparent; color: var(--siyoh-q); border: 1px solid rgba(30, 37, 51, .35); backdrop-filter: none; }
+.varaq .zakaz-tugmalar button:disabled { opacity: .38; }
+.varaq button:focus-visible { outline: 2px solid var(--zar); outline-offset: 2px; }
+
 .zakaz-joy { display: flex; flex-direction: column; gap: 16px; }
-.zakaz-jami { display: flex; flex-direction: column; gap: 10px; }
-.zakaz-jami .jami { position: static; margin: 0; border: 0; background: none; backdrop-filter: none; box-shadow: none; padding: 0; flex-direction: column; align-items: stretch; }
 @media (max-width: 767px) {
-  .zakaz-jami { position: sticky; bottom: 84px; z-index: 2; padding: 10px; background: rgba(16, 26, 44, .94); border: 1px solid var(--chegara); border-radius: var(--r-panel); backdrop-filter: blur(16px); }
+  /* Telefonda varaq — pastki tasma: sanalar, jami va tugmalar; ro'yxat va bezaklar ekranni yopmasin */
+  .zakaz-joy > .varaq { position: sticky; bottom: 84px; z-index: 2; gap: 10px; padding: 14px 16px; }
+  .zakaz-joy > .varaq::after, .zakaz-joy > .varaq :is(.varaq-kimga, .varaq-bezak, .varaq-royxat, .varaq-sana small, .varaq-sana em),
+  .zakaz-joy > .varaq > .varaq-izoh { display: none; }
+  .zakaz-joy > .varaq::before { inset: 5px; }
+  .zakaz-joy > .varaq .varaq-sana > div { flex-direction: row; justify-content: center; align-items: baseline; gap: 5px; }
+  .zakaz-joy > .varaq .varaq-sana b { font-size: 26px; }
+  .zakaz-joy > .varaq .varaq-sana span { margin: 0; font-size: 15px; }
+  .zakaz-joy > .varaq .varaq-sana i { padding: 0 4px; font-size: 15px; }
+  .zakaz-joy > .varaq .varaq-jami { padding-top: 8px; }
+  .zakaz-joy > .varaq .varaq-jami b { font-size: 22px; }
+  .varaq-yakun { padding: 62px 20px 22px; }
+  .varaq-yakun .varaq-sana b { font-size: 44px; }
 }
 @media (min-width: 768px) {
-  .zakaz-joy { display: grid; grid-template-columns: minmax(0, 1fr) 300px; align-items: start; }
-  .zakaz-jami { position: sticky; top: 16px; padding: 16px; background: var(--yuza-1); border: 1px solid var(--chegara); border-radius: var(--r-panel); }
-  /* tugmalar sarlavha ostida, tanlangan liboslar ro'yxatidan oldin: libos qo'shilganda tugma pastga siljib ketmasin */
-  .zakaz-jami > b { order: -2; }
-  .zakaz-jami .zakaz-tugmalar { order: -1; }
+  .zakaz-joy { display: grid; grid-template-columns: minmax(0, 1fr) 340px; align-items: start; gap: 24px; }
+  .varaq { position: sticky; top: 16px; }
   .libos-grid { grid-template-columns: repeat(3, 1fr); }
 }
 @media (min-width: 1200px) {
-  .zakaz-joy { grid-template-columns: minmax(0, 1fr) 320px; }
+  .zakaz-joy { grid-template-columns: minmax(0, 1fr) 360px; }
   .libos-grid { grid-template-columns: repeat(4, 1fr); }
 }
+
+/* ---------- Saqlandi: varaqqa surg'uch muhr bosiladi (sahifadagi yagona o'z-o'zidan harakat) ---------- */
+.muhr-sahna { display: flex; flex-direction: column; align-items: center; gap: var(--o-5); padding: 64px 0 24px; }
+.varaq-yakun { width: min(100%, 460px); padding-top: 66px; text-align: center; animation: varaq-chiqdi .6s cubic-bezier(.2, .7, .2, 1) backwards; }
+.varaq-yakun h2 { margin: 0; font: 400 27px/1.2 var(--serif); letter-spacing: .01em; color: var(--siyoh-q); }
+.varaq-yakun h2:focus { outline: none; }
+.varaq-yakun .varaq-royxat li { text-align: left; }
+.muhr {
+  position: absolute; top: -48px; left: 50%; z-index: 1; width: 98px; height: 98px; margin-left: -49px;
+  display: flex; align-items: baseline; justify-content: center; gap: 2px; padding-top: 30px;
+  border-radius: 47% 53% 51% 49% / 53% 46% 54% 47%;
+  background: radial-gradient(circle at 34% 28%, #AD3D52 0, #7C2235 36%, #5A1626 70%, #44101D 100%);
+  box-shadow: inset 0 2px 3px rgba(255, 190, 190, .35), inset 0 -5px 9px rgba(0, 0, 0, .45), 0 12px 20px -8px rgba(40, 6, 12, .75);
+  color: #ECCBA2; font: 400 32px/1 var(--serif); text-shadow: 0 -1px 0 rgba(0, 0, 0, .5), 0 1px 0 rgba(255, 214, 190, .25);
+  animation: muhr-bosildi .8s cubic-bezier(.3, 1.35, .5, 1) .45s backwards;  /* backwards: kechikish paytida ko'rinmaydi, tugagach oddiy holat */
+}
+.muhr span { font-size: 15px; opacity: .85; }
+.muhr::before { content: ''; position: absolute; inset: 12px; border-radius: 50%; border: 1.5px solid rgba(236, 203, 162, .45); box-shadow: inset 0 1px 2px rgba(0, 0, 0, .45); }
+@keyframes varaq-chiqdi { from { opacity: 0; transform: translateY(16px); } }
+@keyframes muhr-bosildi {
+  0% { opacity: 0; transform: translateY(-40px) scale(1.8) rotate(-20deg); }
+  55% { opacity: 1; transform: translateY(0) scale(.9) rotate(4deg); }
+  100% { transform: none; }
+}
+.muhr-tugmalar { display: flex; flex-wrap: wrap; justify-content: center; gap: var(--o-2); width: min(100%, 460px); }
+.muhr-tugmalar button { flex: 1 1 180px; }
+.muhr-tugmalar button:first-child { flex-basis: 100%; }  /* asosiy amal tepada, qolgan ikkitasi yonma-yon */
 
 /* ---------- Zakazlar ro'yxati ---------- */
 .zakaz-qator { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; align-items: center; text-align: left; }
@@ -721,9 +825,6 @@ main .boshlash-panel .qator-btn { text-align: left; }
   .ustki-qidiruv, .ustki-xodim { display: none !important; }  /* telefonda: shapkada avatar, zakaz qidiruvi Zakazlarda */
   .xabar-menyu { width: min(320px, calc(100vw - 32px)); }
 }
-/* Yangi zakazda nom yuqori panelda — qadamlar qatoridagi takror sarlavha yashiriladi */
-/* Kassa ichida: sarlavha yuqori panelda, joriy qadam qadamlar tugmasida — sarlavha va «1 / 3» takrorlanmaydi */
-.zakaz-qadamlar h2, .zakaz-qadamlar .raqam { display: none; }
 
 /* KPI qatori (3 karta) va grafiklar qatori (2 karta) */
 .kpi-qator { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--o-4); }

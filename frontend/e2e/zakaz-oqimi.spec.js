@@ -38,7 +38,7 @@ test('sotuvchi: zakazdan smena yopilishigacha', async ({ page }) => {
     await kunniBos(page, iso(22))
     await page.getByRole('button', { name: 'Davom etish — liboslarni tanlash' }).click()
     await page.locator('ul.liboslar li', { hasText: 'E2E-1' }).getByRole('button', { name: "Qo'shish" }).click()
-    await expect(page.locator('.zakaz-jami')).toContainText("Jami: 1 000 000 so'm")
+    await expect(page.locator('.zakaz-jami .varaq-jami')).toContainText("1 000 000 so'm")
     await page.getByRole('button', { name: 'Davom etish', exact: true }).click()
     await page.getByLabel('Mijoz telefoni').fill(telefon)
     await page.getByLabel('Mijoz telefoni').blur()

@@ -5,10 +5,12 @@ import LibosSiluet from '../components/LibosSiluet'
 import { SalonchiForma } from './Salonchilar'
 import Manekin from '../components/Manekin'
 import CalendarPage from '../components/kalendar/CalendarPage'
+import { HAFTA, OYLAR, isoOch, ustun } from '../components/kalendar/sana'
 import { aksessuarManekinSaqla, boshAksessuarlar, filiallar, boshLiboslar, mijozQidir, qulf, qulfOchir, manekinSaqla, salonchiQosh, salonchilar, som, ustamaFoiz, zakazYarat } from '../api'
 import SummaInput from '../components/SummaInput'
 
-// Yangi zakaz: 1) sana va mijoz telefoni, 2) libos tanlash, 3) tasdiqlash (4-bo'lim).
+// Yangi zakaz: 1) sana, 2) libos tanlash, 3) mijoz va saqlash (4-bo'lim). O'ngda (telefonda pastda) zakaz
+// varaqasi tanlangan sari to'ladi; saqlangach unga muhr bosiladi.
 const QORALAMA = 'libosa.yangi_zakaz'
 const bugunIso = () => { const t = new Date(); return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}` }
 const qoralamaOl = () => {
@@ -29,10 +31,69 @@ const vaqtMatni = (s) => {
   return `${n(t.getDate())}.${n(t.getMonth() + 1)}.${t.getFullYear()} ${n(t.getHours())}:${n(t.getMinutes())}`
 }
 const kunlar = (a, b) => Math.round((Date.parse(b) - Date.parse(a)) / 86400000) + 1
+const QADAMLAR = ['Sana', 'Libos', 'Mijoz']
+// Varaqdagi sana: «11», «dekabr», «payshanba»
+const sanaQismlari = (s) => { const { y, m, d } = isoOch(s); return { kun: d, oy: OYLAR[m].toLowerCase(), hafta: HAFTA[ustun(y, m, d)][1].toLowerCase() } }
+// Bron muddati: «bugun 21:06», «ertaga 21:06» yoki «03.11.2026 21:06»
+const muddatMatni = (s) => {
+  const t = new Date(s), n = (x) => String(x).padStart(2, '0'), soat = `${n(t.getHours())}:${n(t.getMinutes())}`
+  const kunFarqi = Math.round((new Date(t.getFullYear(), t.getMonth(), t.getDate()) - new Date().setHours(0, 0, 0, 0)) / 86400000)
+  return kunFarqi === 0 ? `bugun ${soat}` : kunFarqi === 1 ? `ertaga ${soat}` : vaqtMatni(s)
+}
+
+// Zakaz varaqasi: to'y taklifnomasidek — sana, kimga, liboslar va jami tanlangan sari yozilib boradi.
+// Saqlangach (muhr bilan) shu varaq zakazning yakuniy ko'rinishi bo'ladi.
+function VaraqSana({ dan, gacha }) {
+  if (!dan || !gacha || gacha < dan) {
+    return <p className="varaq-izoh">Olib ketish va qaytarish kunini kalendarda belgilang.</p>
+  }
+  const a = sanaQismlari(dan), b = sanaQismlari(gacha)
+  return (
+    <div className="varaq-sana">
+      <div><small>olib ketish</small><b>{a.kun}</b><span>{a.oy}</span><em>{a.hafta}</em></div>
+      <i aria-label={`${kunlar(dan, gacha)} kun`}>{kunlar(dan, gacha)} kun</i>
+      <div><small>qaytarish</small><b>{b.kun}</b><span>{b.oy}</span><em>{b.hafta}</em></div>
+    </div>
+  )
+}
+
+function VaraqRoyxat({ liboslar, aksessuarlar, aksSoni, ustama, ustamaSumma }) {
+  const aks = aksessuarlar.filter((a) => aksSoni[a.id] > 0)
+  if (liboslar.length === 0 && aks.length === 0) return null
+  return (
+    <ul className="varaq-royxat">
+      {liboslar.map((l) => (
+        <li key={l.id}>
+          {l.rasm ? <img src={l.rasm} alt="" /> : <span className="varaq-siluet"><LibosSiluet /></span>}
+          <span><b>{l.artikul}</b> {l.nomi}</span>
+          <span className="varaq-narx">{som(l.ijara_narxi)}</span>
+        </li>
+      ))}
+      {aks.map((a) => (
+        <li key={`a${a.id}`} className="varaq-aks">
+          <span>{a.nomi} × {aksSoni[a.id]}</span>
+          <span className="varaq-narx">{som(a.ijara_narxi * aksSoni[a.id])}</span>
+        </li>
+      ))}
+      {ustama.foiz > 0 && (
+        <li className="varaq-aks">
+          <span>Ustama {ustama.foiz}% ({ustama.nomi || 'mavsumiy'})</span>
+          <span className="varaq-narx">{som(ustamaSumma)}</span>
+        </li>
+      )}
+    </ul>
+  )
+}
+
+const Bezak = () => (
+  <svg className="varaq-bezak" viewBox="0 0 120 12" aria-hidden="true">
+    <path d="M0 6h48M72 6h48" /><path d="M60 1.5 64.5 6 60 10.5 55.5 6Z" /><circle cx="51" cy="6" r="1.2" /><circle cx="69" cy="6" r="1.2" />
+  </svg>
+)
 
 export default function YangiZakaz({ onTayyor, onTolov }) {
   const q0 = useState(qoralamaOl)[0]
-  const [qadam, setQadam] = useState(q0.qadam || 1) // 1 Sana → 2 Libos → 3 Mijoz va tasdiq
+  const [qadam, setQadam] = useState(q0.qadam || 1) // 1 Sana → 2 Libos → 3 Mijoz
   const [dan, setDan] = useState(q0.dan || '')
   const [gacha, setGacha] = useState(q0.gacha || '')
   const [telefon, setTelefon] = useState(q0.telefon || '')
@@ -57,6 +118,9 @@ export default function YangiZakaz({ onTayyor, onTolov }) {
   const [xabar, setXabar] = useState('')
   const [zakaz, setZakaz] = useState(null)
   const [vitrina, setVitrina] = useState(false)
+  // Saqlangach fokus sarlavhaga: ekran o'quvchi va klaviatura «Zakaz #N saqlandi» dan boshlaydi
+  const sarlavha = useRef(null)
+  useEffect(() => { if (zakaz) sarlavha.current?.focus() }, [zakaz])
   const [manekin, setManekin] = useState(null) // 4.5: tanlangan libos manekinda
   // FT-3.2: kategoriya, o'lcham, rang, narx bo'yicha filtr; qidiruvda band libos ham chiqadi (FT-2.2)
   const [filtr, setFiltr] = useState({ kat: '', olcham: '', rang: '', narx: '', q: '', filial: '' })
@@ -198,17 +262,30 @@ export default function YangiZakaz({ onTayyor, onTolov }) {
     return <Vitrina liboslar={korsatiladigan} onChiqish={() => setVitrina(false)} />
   }
 
+  const mijozNomi = (mijoz?.yangi ? fio : mijoz?.fio || '').trim()
+  const royxat = <VaraqRoyxat liboslar={tanlangan} aksessuarlar={aksessuarlar} aksSoni={aksSoni} ustama={ustama} ustamaSumma={ustamaSumma} />
+
   if (zakaz) {
     return (
-      <div className="stack">
-        <h2>Zakaz #{zakaz.raqam} saqlandi</h2>
-        <p>Jami: <b>{som(zakaz.jami)}</b></p>
-        <p>Holat: vaqtinchalik bron{zakaz.bron_muddati ? ` — ${vaqtMatni(zakaz.bron_muddati)} gacha` : ''}.
-          Avans kiritilmasa bron bekor bo'ladi.</p>
-        {onTolov && zakaz.jami > 0 && <button onClick={() => onTolov(zakaz.id)}>Avans qabul qilish</button>}
-        <button className={onTolov ? 'ikkinchi' : ''} onClick={() => onTayyor(zakaz.id)}>Zakaz kartasini ochish</button>
-        <button className="ikkinchi" onClick={yangi}>Yangi zakaz</button>
-      </div>
+      <section className="muhr-sahna" aria-labelledby="muhr-sarlavha">
+        <div className="varaq varaq-yakun">
+          <div className="muhr" aria-hidden="true"><span>№</span>{zakaz.raqam}</div>
+          <h2 id="muhr-sarlavha" ref={sarlavha} tabIndex={-1}>Zakaz #{zakaz.raqam} saqlandi</h2>
+          {mijozNomi && <p className="varaq-kimga">{mijozNomi}</p>}
+          <Bezak />
+          <VaraqSana dan={dan} gacha={gacha} />
+          {royxat}
+          <div className="varaq-jami"><span>Jami</span><b>{som(zakaz.jami)}</b></div>
+          <p className="varaq-izoh">
+            {zakaz.bron_muddati ? `Bron ${muddatMatni(zakaz.bron_muddati)} gacha turadi.` : 'Bron vaqtinchalik.'} Avans olinmasa, bron o'zi bekor bo'ladi.
+          </p>
+        </div>
+        <div className="muhr-tugmalar">
+          {onTolov && zakaz.jami > 0 && <button onClick={() => onTolov(zakaz.id)}>Avans qabul qilish</button>}
+          <button className={onTolov ? 'ikkinchi' : ''} onClick={() => onTayyor(zakaz.id)}>Zakaz kartasini ochish</button>
+          <button className="ikkinchi" onClick={yangi}>Yangi zakaz</button>
+        </div>
+      </section>
     )
   }
 
@@ -216,201 +293,214 @@ export default function YangiZakaz({ onTayyor, onTolov }) {
   const davom = qadam === 2 ? () => { setXabar(''); setQadam(3) } : saqlash
   return (
     <div className="stack">
-      <div className="zakaz-qadamlar">
-        <h2>Yangi zakaz</h2>
-        <span className="raqam">{qadam} / 3</span>
-        <ol aria-label="Qadamlar">
-          {['Sana', 'Libos', 'Mijoz va tasdiq'].map((n, i) => <li key={n} className={i + 1 === qadam ? 'joriy' : i + 1 < qadam ? 'otdi' : ''}>{n}</li>)}
-        </ol>
-      </div>
+      {/* Qadamlar — tilla ip ustidagi tugunlar; o'tilgan qadamga bosib qaytiladi */}
+      <ol className="zakaz-ip" aria-label="Qadamlar">
+        {QADAMLAR.map((n, i) => {
+          const q = i + 1
+          const ichi = <><span className="ip-tugun" aria-hidden="true">{q < qadam ? '✓' : q}</span>{n}</>
+          return (
+            <li key={n} className={q === qadam ? 'joriy' : q < qadam ? 'otdi' : ''} aria-current={q === qadam ? 'step' : undefined}>
+              {q < qadam ? <button type="button" onClick={() => { setXabar(''); setQadam(q) }}>{ichi}</button> : <span>{ichi}</span>}
+            </li>
+          )
+        })}
+      </ol>
       {xabar && <p className="xato">{xabar}</p>}
 
-      {qadam === 1 && (
-        <section className="blok">
-          <h3>Sana</h3>
-          <CalendarPage dan={dan} gacha={gacha} onTanla={(d, g) => { setDan(d); setGacha(g) }} />
-          {sanaTayyor && kunlar(dan, gacha) > UZOQ_IJARA_KUN && (
-            <p className="ogohlantirish">Ijara {kunlar(dan, gacha)} kun — odatdagidan uzoq. Qaytarish kuni to'g'ri tanlanganini tekshiring.</p>
+      <div className="zakaz-joy">
+        <div className="stack">
+          {qadam === 1 && (
+            <section className="blok">
+              <CalendarPage dan={dan} gacha={gacha} onTanla={(d, g) => { setDan(d); setGacha(g) }} />
+              {sanaTayyor && kunlar(dan, gacha) > UZOQ_IJARA_KUN && (
+                <p className="ogohlantirish">Ijara {kunlar(dan, gacha)} kun — odatdagidan uzoq. Qaytarish kuni to'g'ri tanlanganini tekshiring.</p>
+              )}
+              <label className="qator">
+                <input type="checkbox" checked={bandlar} onChange={(e) => setBandlar(e.target.checked)} />
+                Bandlarni ham ko'rsatish
+              </label>
+            </section>
           )}
-          <label className="qator">
-            <input type="checkbox" checked={bandlar} onChange={(e) => setBandlar(e.target.checked)} />
-            Bandlarni ham ko'rsatish
-          </label>
-          <button disabled={!sanaTayyor} onClick={() => { setXabar(''); setQadam(2) }}>Davom etish — liboslarni tanlash</button>
-        </section>
-      )}
 
-      {qadam >= 2 && (
-        <div className="zakaz-joy">
-          <div className="stack">
-            {qadam === 2 && (<>
-      {korsatiladigan.length > 0 && (
-        <button className="ikkinchi" onClick={() => setVitrina(true)}>
-          Mijozga ko'rsatish ({tanlangan.length > 0 ? 'tanlanganlar' : "bo'sh liboslar"})
-        </button>
-      )}
-      {liboslar && (
-        <section className="stack filtrlar">
-          <input placeholder="Artikul yoki nom bo'yicha qidirish (band libos ham chiqadi)" value={filtr.q}
-            onChange={(e) => setFiltr({ ...filtr, q: e.target.value })} />
-          <div className="chiplar">
-            <button className={filtr.kat ? 'ikkinchi kichik' : 'kichik'} onClick={() => setFiltr({ ...filtr, kat: '' })}>Hammasi</button>
-            {noyob('kategoriya').map((k) => (
-              <button key={k} className={filtr.kat === k ? 'kichik' : 'ikkinchi kichik'} onClick={() => setFiltr({ ...filtr, kat: k })}>{k}</button>
-            ))}
-          </div>
-          <div className="qator">
-            {fil.length > 0 && (
-              <select value={filtr.filial} aria-label="Filial" onChange={(e) => setFiltr({ ...filtr, filial: e.target.value })}>
-                <option value="">Barcha filiallar</option>
-                {fil.map((f) => <option key={f.id} value={f.id}>{f.nomi}</option>)}
-              </select>
-            )}
-            <select value={filtr.olcham} onChange={(e) => setFiltr({ ...filtr, olcham: e.target.value })}>
-              <option value="">O'lcham</option>
-              {noyob('olcham').map((o) => <option key={o} value={o}>{o}</option>)}
-            </select>
-            <select value={filtr.rang} onChange={(e) => setFiltr({ ...filtr, rang: e.target.value })}>
-              <option value="">Rang</option>
-              {noyob('rang').map((o) => <option key={o} value={o}>{o}</option>)}
-            </select>
-            <SummaInput className="narx-filtr" placeholder="Narx gacha" value={filtr.narx}
-              onChange={(e) => setFiltr({ ...filtr, narx: e.target.value })} />
-          </div>
-        </section>
-      )}
-      {liboslar && (
-        <ul className="liboslar libos-grid">
-          {korinadi.length === 0 && <li>{liboslar.length === 0 ? "Bu sanalarga bo'sh libos yo'q." : 'Filtrga mos libos topilmadi.'}</li>}
-          {korinadi.map((l) => {
-            const tanlandi = tanlangan.some((t) => t.id === l.id)
-            const yopiq = l.band || l.qulflangan
-            return (
-              <li key={l.id} className={`${yopiq ? 'band' : ''} ${tanlandi ? 'tanlandi' : ''}`}>
-                {l.rasm ? <img className="eskiz" src={l.rasm} alt="" /> : <span className="eskiz bosh-eskiz"><LibosSiluet /></span>}
-                {tanlandi && <span className="tanlov-belgi" aria-hidden="true">✓</span>}
-                <span className="matn-ustun">
-                  <span><b>{l.artikul}</b> {l.nomi}</span>
-                  <span className="malumot">{l.kategoriya} · {som(l.ijara_narxi)}</span>
-                </span>
-                {l.qulflangan && <em>Hozir boshqa sotuvchi rasmiylashtiryapti</em>}
-                {l.band && (
-                  <em>
-                    Band{l.eng_yaqin_bosh ? ` · eng yaqin bo'sh sana: ${l.eng_yaqin_bosh}` : ''}
-                    {l.oxshashlar?.length > 0 && ` · o'xshash bo'sh: ${l.oxshashlar.map((o) => `${o.artikul} ${o.nomi}`).join(', ')}`}
-                  </em>
-                )}
-                {l.manekin && (
-                  <button type="button" className="ikkinchi kichik" onClick={() => setManekin(l)}>Manekinda</button>
-                )}
-                {!yopiq && (
-                  <button className={`kichik ${tanlandi ? '' : 'ikkinchi'}`} onClick={() => tanlash(l)}>
-                    {tanlandi ? 'Olib tashlash' : "Qo'shish"}
+          {qadam === 2 && liboslar && (<>
+            <section className="stack filtrlar">
+              <div className="filtr-bosh">
+                <input type="search" aria-label="Libos qidirish" placeholder="Artikul yoki nom (band libos ham chiqadi)" value={filtr.q}
+                  onChange={(e) => setFiltr({ ...filtr, q: e.target.value })} />
+                {korsatiladigan.length > 0 && (
+                  <button className="ikkinchi kichik" onClick={() => setVitrina(true)}>
+                    Mijozga ko'rsatish ({tanlangan.length > 0 ? 'tanlanganlar' : "bo'sh liboslar"})
                   </button>
                 )}
-              </li>
-            )
-          })}
-        </ul>
-      )}
-      {liboslar && aksessuarlar.length > 0 && (
-        <section className="blok">
-          <h3>Aksessuarlar</h3>
-          {aksessuarlar.map((a) => {
-            const n = aksSoni[a.id] || 0
-            const o = (d) => setAksSoni({ ...aksSoni, [a.id]: Math.max(0, Math.min(a.bosh_soni, n + d)) })
-            return (
-              <div key={a.id} className="qator aks-qator">
-                <span className="matn-ustun">
-                  <span><b>{a.nomi}</b> · {a.kategoriya}</span>
-                  <span className="malumot">{som(a.ijara_narxi)} · bo'sh: {a.bosh_soni} dona</span>
-                </span>
-                <button type="button" className="ikkinchi kichik" onClick={() => o(-1)} disabled={n === 0}>−</button>
-                <b className="son">{n}</b>
-                <button type="button" className="ikkinchi kichik" onClick={() => o(1)} disabled={n >= a.bosh_soni}>+</button>
               </div>
-            )
-          })}
-        </section>
-      )}
-            </>)}
-            {qadam === 3 && (
+              <div className="chiplar">
+                <button className={filtr.kat ? 'ikkinchi kichik' : 'kichik'} onClick={() => setFiltr({ ...filtr, kat: '' })}>Hammasi</button>
+                {noyob('kategoriya').map((k) => (
+                  <button key={k} className={filtr.kat === k ? 'kichik' : 'ikkinchi kichik'} onClick={() => setFiltr({ ...filtr, kat: k })}>{k}</button>
+                ))}
+              </div>
+              <div className="qator">
+                {fil.length > 0 && (
+                  <select value={filtr.filial} aria-label="Filial" onChange={(e) => setFiltr({ ...filtr, filial: e.target.value })}>
+                    <option value="">Barcha filiallar</option>
+                    {fil.map((f) => <option key={f.id} value={f.id}>{f.nomi}</option>)}
+                  </select>
+                )}
+                <select value={filtr.olcham} aria-label="O'lcham" onChange={(e) => setFiltr({ ...filtr, olcham: e.target.value })}>
+                  <option value="">O'lcham</option>
+                  {noyob('olcham').map((o) => <option key={o} value={o}>{o}</option>)}
+                </select>
+                <select value={filtr.rang} aria-label="Rang" onChange={(e) => setFiltr({ ...filtr, rang: e.target.value })}>
+                  <option value="">Rang</option>
+                  {noyob('rang').map((o) => <option key={o} value={o}>{o}</option>)}
+                </select>
+                <SummaInput className="narx-filtr" aria-label="Narx gacha" placeholder="Narx gacha" value={filtr.narx}
+                  onChange={(e) => setFiltr({ ...filtr, narx: e.target.value })} />
+              </div>
+            </section>
+            <ul className="liboslar libos-grid">
+              {korinadi.length === 0 && (
+                <li className="libos-bosh">
+                  {liboslar.length === 0 ? "Bu sanalarga bo'sh libos yo'q. Boshqa sanani tanlang yoki «Bandlarni ham ko'rsatish» ni yoqing." : 'Filtrga mos libos topilmadi.'}
+                </li>
+              )}
+              {korinadi.map((l) => {
+                const tanlandi = tanlangan.some((t) => t.id === l.id)
+                const yopiq = l.band || l.qulflangan
+                return (
+                  <li key={l.id} className={`${yopiq ? 'band' : ''} ${tanlandi ? 'tanlandi' : ''}`}>
+                    <span className="libos-rasm">
+                      {l.rasm ? <img className="eskiz" src={l.rasm} alt="" /> : <span className="eskiz bosh-eskiz"><LibosSiluet /></span>}
+                      {tanlandi && <span className="tanlov-belgi" aria-hidden="true">✓</span>}
+                    </span>
+                    <span className="matn-ustun">
+                      <span className="libos-nom"><b>{l.artikul}</b> {l.nomi}</span>
+                      <span className="libos-narx">{som(l.ijara_narxi)}</span>
+                      <span className="malumot">{[l.kategoriya, l.olcham, l.rang].filter(Boolean).join(', ')}</span>
+                    </span>
+                    {l.qulflangan && <em>Hozir boshqa sotuvchi rasmiylashtiryapti</em>}
+                    {l.band && (
+                      <em>
+                        Band{l.eng_yaqin_bosh ? `, eng yaqin bo'sh sana: ${l.eng_yaqin_bosh}` : ''}
+                        {l.oxshashlar?.length > 0 && `. O'xshash bo'sh: ${l.oxshashlar.map((o) => `${o.artikul} ${o.nomi}`).join(', ')}`}
+                      </em>
+                    )}
+                    {l.manekin && (
+                      <button type="button" className="ikkinchi kichik" onClick={() => setManekin(l)}>Manekinda</button>
+                    )}
+                    {!yopiq && (
+                      <button className={`kichik ${tanlandi ? '' : 'ikkinchi'}`} onClick={() => tanlash(l)}>
+                        {tanlandi ? 'Olib tashlash' : "Qo'shish"}
+                      </button>
+                    )}
+                  </li>
+                )
+              })}
+            </ul>
+            {aksessuarlar.length > 0 && (
               <section className="blok">
-                <h3>Mijoz</h3>
-        <label>Mijoz telefoni
-          <input value={telefon} inputMode="tel" placeholder="+998 90 123 45 67"
-            onChange={(e) => setTelefon(e.target.value)} onBlur={mijozniTekshir} />
-        </label>
-        {telefon && telefonRaqamlari(telefon) < 9 && <p className="malumot">Raqam to'liq emas: masalan, +998 90 123 45 67.</p>}
-        {mijoz?.yangi && (
-          <label>Yangi mijoz — F.I.O.<input value={fio} onChange={(e) => setFio(e.target.value)} /></label>
-        )}
-        {mijoz && !mijoz.yangi && (
-          <div className={mijoz.qora_royxat ? 'ogohlantirish' : 'malumot'}>
-            {mijoz.qora_royxat && <b>Qora ro'yxat: {mijoz.qora_royxat_sabab}. </b>}
-            {mijoz.fio} · oldingi zakazlar: {mijoz.tarix.length}
-            {mijoz.olchamlar && Object.values(mijoz.olchamlar).some((v) => v != null) && (
-              <> · o'lchamlar: {[mijoz.olchamlar.kokrak, mijoz.olchamlar.bel, mijoz.olchamlar.son].map((v) => v ?? '—').join('/')}{mijoz.olchamlar.boy ? `, bo'y ${mijoz.olchamlar.boy}` : ''}</>
-            )}
-          </div>
-        )}
-        {mijoz?.yangi && !salonchi && (
-          <label>Mijoz qayerdan keldi
-            <select value={manba} onChange={(e) => setManba(e.target.value)}>
-              <option value="instagram">Instagram</option><option value="tavsiya">Tavsiya</option><option value="boshqa">Boshqa</option>
-            </select>
-          </label>
-        )}
-        <label>Salonchi (makiyaj ustasi)
-          <select value={salonchi} onChange={(e) => setSalonchi(e.target.value)}>
-            <option value="">— yo'q —</option>
-            {salonchiRoyxat.map((s) => <option key={s.id} value={s.id}>{s.ism}{s.salon_nomi ? ` · ${s.salon_nomi}` : ''}</option>)}
-          </select>
-          <Info nom="Salonchi">Mijozni olib kelgan yoki tavsiya qilgan makiyaj ustasi. Unga komissiya hisoblanmaydi — faqat «Salonchilar» hisobotida kim qancha mijoz olib kelgani ko'rinadi.</Info>
-        </label>
-        {tanlanganSalonchi?.instagram && (
-          <a className="tugma-havola" href={tanlanganSalonchi.instagram} target="_blank" rel="noreferrer">
-            {tanlanganSalonchi.ism} ishlarini Instagramda ko'rish
-          </a>
-        )}
-        <SalonchiForma onYuborish={async (b) => {
-          const yangiS = await salonchiQosh(b)  // xato bo'lsa forma o'zi ko'rsatadi
-          setSalonchiRoyxat(await salonchilar()); setSalonchi(String(yangiS.id)); setXabar('')
-          return true
-        }} />
+                <h3>Aksessuarlar</h3>
+                {aksessuarlar.map((a) => {
+                  const n = aksSoni[a.id] || 0
+                  const o = (d) => setAksSoni({ ...aksSoni, [a.id]: Math.max(0, Math.min(a.bosh_soni, n + d)) })
+                  return (
+                    <div key={a.id} className="qator aks-qator">
+                      <span className="matn-ustun">
+                        <span><b>{a.nomi}</b>, {a.kategoriya}</span>
+                        <span className="malumot">{som(a.ijara_narxi)}, bo'sh: {a.bosh_soni} dona</span>
+                      </span>
+                      <button type="button" className="ikkinchi kichik" aria-label={`${a.nomi}: bittaga kamaytirish`} onClick={() => o(-1)} disabled={n === 0}>−</button>
+                      <b className="son">{n}</b>
+                      <button type="button" className="ikkinchi kichik" aria-label={`${a.nomi}: bittaga ko'paytirish`} onClick={() => o(1)} disabled={n >= a.bosh_soni}>+</button>
+                    </div>
+                  )
+                })}
               </section>
             )}
-      {manekin && (
-        <Manekin sarlavha={manekin.nomi} faylNomi={manekin.artikul} onYopish={() => setManekin(null)}
-          qatlamlar={[
-            { kalit: 'libos', nomi: 'Libos', standart: { x: 0, y: 0.08, k: 0.8 }, ...manekin.manekin, saqla: (b) => manekinSaqla(manekin.id, b) },
-            // FT-5.2: zakazga tanlangan (soni > 0) va manekin rasmi bor aksessuarlar libos ustidan qo'yiladi
-            ...aksessuarlar.filter((a) => a.manekin && aksSoni[a.id] > 0)
-              .map((a) => ({ kalit: `a${a.id}`, nomi: a.nomi, ...a.manekin, saqla: (b) => aksessuarManekinSaqla(a.id, b) })),
-          ]}
-          onSaqlandi={(q) => {
-            const yangi = (eski, kalit) => { const v = q.find((x) => x.kalit === kalit); return v ? { ...eski, x: v.x, y: v.y, kattalik: v.kattalik } : eski }
-            setLiboslar(liboslar.map((x) => (x.id === manekin.id ? { ...x, manekin: yangi(x.manekin, 'libos') } : x)))
-            setAksessuarlar(aksessuarlar.map((a) => (a.manekin ? { ...a, manekin: yangi(a.manekin, `a${a.id}`) } : a)))
-            setManekin({ ...manekin, manekin: yangi(manekin.manekin, 'libos') })
-          }} />
-      )}
-          </div>
-          <aside className="zakaz-jami">
-            <b>{tanlangan.length} ta libos</b>
-            {tanlangan.map((l) => <span key={l.id} className="malumot">{l.artikul} {l.nomi} · {som(l.ijara_narxi)}</span>)}
-            {aksJami > 0 && <span className="malumot">Aksessuar: {som(aksJami)}</span>}
-            {ustama.foiz > 0 && <span className="malumot">Ustama {ustama.foiz}% ({ustama.nomi || 'mavsumiy'}): {som(ustamaSumma)}</span>}
-            <span>Jami: <b>{som(jami)}</b></span>
-            <div className="zakaz-tugmalar">
+          </>)}
+
+          {qadam === 3 && (
+            <section className="blok">
+              <h3>Mijoz</h3>
+              <label>Mijoz telefoni
+                <input value={telefon} inputMode="tel" placeholder="+998 90 123 45 67"
+                  onChange={(e) => setTelefon(e.target.value)} onBlur={mijozniTekshir} />
+              </label>
+              {telefon && telefonRaqamlari(telefon) < 9 && <p className="malumot">Raqam to'liq emas: masalan, +998 90 123 45 67.</p>}
+              {mijoz?.yangi && (
+                <label>Yangi mijoz — F.I.O.<input value={fio} onChange={(e) => setFio(e.target.value)} /></label>
+              )}
+              {mijoz && !mijoz.yangi && (
+                <div className={mijoz.qora_royxat ? 'ogohlantirish' : 'malumot'}>
+                  {mijoz.qora_royxat && <b>Qora ro'yxat: {mijoz.qora_royxat_sabab}. </b>}
+                  {mijoz.fio}, oldingi zakazlar: {mijoz.tarix.length}
+                  {mijoz.olchamlar && Object.values(mijoz.olchamlar).some((v) => v != null) && (
+                    <>. O'lchamlar: {[mijoz.olchamlar.kokrak, mijoz.olchamlar.bel, mijoz.olchamlar.son].map((v) => v ?? '—').join('/')}{mijoz.olchamlar.boy ? `, bo'y ${mijoz.olchamlar.boy}` : ''}</>
+                  )}
+                </div>
+              )}
+              {mijoz?.yangi && !salonchi && (
+                <label>Mijoz qayerdan keldi
+                  <select value={manba} onChange={(e) => setManba(e.target.value)}>
+                    <option value="instagram">Instagram</option><option value="tavsiya">Tavsiya</option><option value="boshqa">Boshqa</option>
+                  </select>
+                </label>
+              )}
+              <label>Salonchi (makiyaj ustasi)
+                <select value={salonchi} onChange={(e) => setSalonchi(e.target.value)}>
+                  <option value="">— yo'q —</option>
+                  {salonchiRoyxat.map((s) => <option key={s.id} value={s.id}>{s.ism}{s.salon_nomi ? `, ${s.salon_nomi}` : ''}</option>)}
+                </select>
+                <Info nom="Salonchi">Mijozni olib kelgan yoki tavsiya qilgan makiyaj ustasi. Unga komissiya hisoblanmaydi — faqat «Salonchilar» hisobotida kim qancha mijoz olib kelgani ko'rinadi.</Info>
+              </label>
+              {tanlanganSalonchi?.instagram && (
+                <a className="tugma-havola" href={tanlanganSalonchi.instagram} target="_blank" rel="noreferrer">
+                  {tanlanganSalonchi.ism} ishlarini Instagramda ko'rish
+                </a>
+              )}
+              <SalonchiForma onYuborish={async (b) => {
+                const yangiS = await salonchiQosh(b)  // xato bo'lsa forma o'zi ko'rsatadi
+                setSalonchiRoyxat(await salonchilar()); setSalonchi(String(yangiS.id)); setXabar('')
+                return true
+              }} />
+            </section>
+          )}
+          {manekin && (
+            <Manekin sarlavha={manekin.nomi} faylNomi={manekin.artikul} onYopish={() => setManekin(null)}
+              qatlamlar={[
+                { kalit: 'libos', nomi: 'Libos', standart: { x: 0, y: 0.08, k: 0.8 }, ...manekin.manekin, saqla: (b) => manekinSaqla(manekin.id, b) },
+                // FT-5.2: zakazga tanlangan (soni > 0) va manekin rasmi bor aksessuarlar libos ustidan qo'yiladi
+                ...aksessuarlar.filter((a) => a.manekin && aksSoni[a.id] > 0)
+                  .map((a) => ({ kalit: `a${a.id}`, nomi: a.nomi, ...a.manekin, saqla: (b) => aksessuarManekinSaqla(a.id, b) })),
+              ]}
+              onSaqlandi={(q) => {
+                const yangi = (eski, kalit) => { const v = q.find((x) => x.kalit === kalit); return v ? { ...eski, x: v.x, y: v.y, kattalik: v.kattalik } : eski }
+                setLiboslar(liboslar.map((x) => (x.id === manekin.id ? { ...x, manekin: yangi(x.manekin, 'libos') } : x)))
+                setAksessuarlar(aksessuarlar.map((a) => (a.manekin ? { ...a, manekin: yangi(a.manekin, `a${a.id}`) } : a)))
+                setManekin({ ...manekin, manekin: yangi(manekin.manekin, 'libos') })
+              }} />
+          )}
+        </div>
+        <aside className="zakaz-jami varaq" aria-label="Zakaz varaqasi">
+          {mijozNomi && qadam === 3 && <p className="varaq-kimga">{mijozNomi}</p>}
+          <VaraqSana dan={dan} gacha={gacha} />
+          {qadam >= 2 && (<>
+            <Bezak />
+            {royxat || <p className="varaq-izoh">Libos hali tanlanmagan.</p>}
+            <div className="varaq-jami"><span>Jami{tanlangan.length > 0 ? `, ${tanlangan.length} ta libos` : ''}</span><b>{som(jami)}</b></div>
+          </>)}
+          <div className="zakaz-tugmalar">
+            {qadam === 1 ? (
+              <button disabled={!sanaTayyor} onClick={() => { setXabar(''); setQadam(2) }}>Davom etish — liboslarni tanlash</button>
+            ) : (<>
               <button className="ikkinchi" onClick={() => setQadam(qadam - 1)}>Orqaga</button>
               <button onClick={davom} disabled={saqlanmoqda || tanlangan.length === 0 || (qadam === 3 && (!telefon || mijoz?.qora_royxat))}>
                 {qadam === 2 ? 'Davom etish' : saqlanmoqda ? 'Saqlanmoqda…' : 'Zakazni saqlash'}
               </button>
-            </div>
-          </aside>
-        </div>
-      )}
+            </>)}
+          </div>
+        </aside>
+      </div>
     </div>
   )
 }

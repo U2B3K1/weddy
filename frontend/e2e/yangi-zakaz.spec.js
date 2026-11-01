@@ -1,0 +1,59 @@
+// «Yangi zakaz» sahifasi: sana → libos → mijoz → saqlandi. Har qadam keng ekranda va telefonda suratga olinadi
+// (test-results/yangi-zakaz/*.png), telefonda sahifa gorizontal surilmasligi tekshiriladi.
+// zakaz-oqimi.spec.js dan oldin ishlaydi: boshqa sanalar (40–41 kun) va E2E-1 dan boshqa libos — u testga tegmaydi.
+import { expect, test } from '@playwright/test'
+import { kirish, xatolarniKuzat } from './yordam.js'
+
+const nav = (page) => page.getByRole('navigation', { name: "Bo'limlar" })
+const iso = (kun) => { const t = new Date(); t.setDate(t.getDate() + kun); return t.toLocaleDateString('sv-SE') }
+const TELEFON = { width: 390, height: 844 }
+const KENG = { width: 1280, height: 860 }
+
+async function suratlar(page, nom) {
+  await page.waitForLoadState('networkidle')
+  // to'liq sahifa suratida Chrome animatsiyali qatlamning eski kadrini oladi — animatsiyalar oxiriga o'tkaziladi
+  await page.screenshot({ path: `test-results/yangi-zakaz/${nom}-keng.png`, fullPage: true, animations: 'disabled' })
+  await page.setViewportSize(TELEFON)
+  await page.waitForTimeout(400)
+  await page.screenshot({ path: `test-results/yangi-zakaz/${nom}-telefon.png`, fullPage: true, animations: 'disabled' })
+  const [kenglik, ekran] = await page.evaluate(() => [document.documentElement.scrollWidth, window.innerWidth])
+  expect(kenglik, `${nom}: telefonda sahifa gorizontal surilmasin`).toBeLessThanOrEqual(ekran)
+  await page.setViewportSize(KENG)
+}
+
+async function kunniBos(page, sana) {
+  const kun = page.locator(`.kuz-kun[data-kun="${sana}"]`)
+  for (let i = 0; i < 3 && await kun.count() === 0; i++) await page.getByRole('button', { name: 'Keyingi oy' }).click()
+  await kun.click()
+}
+
+test('yangi zakaz: har qadam ikki kenglikda', async ({ page }) => {
+  const xatolar = xatolarniKuzat(page)
+  await kirish(page, 'Sotuvchi', '2222')
+  await nav(page).getByRole('button', { name: 'Kassa', exact: true }).click()  // «Yangi zakaz» — Kassa menyusida
+  await nav(page).getByRole('button', { name: 'Yangi zakaz', exact: true }).click()
+  await suratlar(page, '1-sana-bosh')
+  await kunniBos(page, iso(40))
+  await kunniBos(page, iso(41))
+  await suratlar(page, '1-sana-tanlandi')
+
+  await page.getByRole('button', { name: 'Davom etish — liboslarni tanlash' }).click()
+  // oldingi testlar ba'zi liboslarni band qilgan bo'lishi mumkin — E2E-1 dan boshqa birinchi bo'sh libos olinadi
+  const libos = page.locator('ul.liboslar li').filter({ hasNotText: 'E2E-1' }).filter({ has: page.getByRole('button', { name: "Qo'shish" }) }).first()
+  await expect(libos).toBeVisible()
+  await suratlar(page, '2-libos')
+  await libos.getByRole('button', { name: "Qo'shish" }).click()
+  await expect(page.locator('.varaq-royxat li')).toHaveCount(1)
+  await suratlar(page, '2-libos-tanlandi')
+
+  await page.getByRole('button', { name: 'Davom etish', exact: true }).click()
+  await page.getByLabel('Mijoz telefoni').fill('+998 91 555 40 41')
+  await page.getByLabel('Mijoz telefoni').blur()
+  await page.getByLabel('Yangi mijoz — F.I.O.').fill('Dizayn Kelin')
+  await suratlar(page, '3-mijoz')
+
+  await page.getByRole('button', { name: 'Zakazni saqlash' }).click()
+  await expect(page.getByRole('heading', { name: /Zakaz #\d+ saqlandi/ })).toBeVisible()
+  await suratlar(page, '4-saqlandi')
+  expect(xatolar).toEqual([])
+})
