@@ -985,3 +985,11 @@ main .boshlash-panel .qator-btn { text-align: left; }
 .karta-tolovlar div.qator-matn { margin: 0 0 var(--o-3); }
 .tolov-tuzatish { margin-top: var(--o-1); }
 .tolov-tuzatish > .stack { margin-top: var(--o-2); padding: var(--o-3); border: 1px solid var(--chegara); border-radius: var(--r-1); }
+/* Yetkazib beruvchilar: qator bosilganda ostida tafsilot (to'lov, liboslar) to'liq kenglikda ochiladi */
+.yetkazib-qator { flex-wrap: wrap; }
+.yetkazib-tafsilot { flex-basis: 100%; padding-top: var(--o-2); }
+.yetkazib-tafsilot h4 { margin: var(--o-2) 0 0; font-size: 14px; }
+.yetkazib-tolov { justify-content: space-between; }
+.yetkazib-tafsilot > .qator { flex-wrap: wrap; }
+.yetkazib-tafsilot > .qator > :not(button) { flex: 1 1 200px; min-width: 0; }
+@media (max-width: 767px) { .yetkazib-tafsilot > .qator > :not(button), .yetkazib-tafsilot > .qator > button { flex: 1 1 100%; } }

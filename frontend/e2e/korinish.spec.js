@@ -168,3 +168,42 @@ test('rahbar xato yozilgan to\'lovni tuzatadi (Terminal → Naqd)', async ({ pag
   }
   expect(xatolar).toEqual([])
 })
+
+test('yetkazib beruvchi: libos qisman to\'lab olinadi, qarz to\'lanadi', async ({ page }) => {
+  const xatolar = xatolarniKuzat(page)
+  await kirish(page, 'Rahbar', '1111')
+  await nav(page).getByRole('button', { name: 'Katalog', exact: true }).click()
+  await page.getByRole('tab', { name: 'Yetkazib beruvchilar' }).click()
+  await page.getByText("Yetkazib beruvchi qo'shish").click()
+  await page.getByLabel('Nomi').fill('Istanbul Bridal')
+  await page.getByRole('button', { name: "Qo'shish", exact: true }).click()
+  await expect(page.getByText("Yetkazib beruvchi qo'shildi.")).toBeVisible()
+
+  await test.step('libos qo\'shishda: qayerdan olingan va hozir qancha to\'landi', async () => {
+    await page.getByRole('tab', { name: 'Liboslar' }).click()
+    await page.getByRole('button', { name: 'Libos qo\'shish' }).click()
+    const oyna = page.getByRole('dialog')
+    await oyna.getByLabel('Artikul').fill('YB-1')
+    await oyna.getByLabel('Nomi').fill('Turk libosi')
+    await oyna.getByLabel('Tannarx').fill('10000000')
+    await oyna.getByLabel('Qayerdan olingan').selectOption({ label: 'Istanbul Bridal' })
+    await oyna.getByLabel("Hozir to'landi").fill('4000000')
+    await expect(oyna).toContainText("Yetkazib beruvchiga qarz: 6 000 000 so'm")
+    await ikkiKenglik(page, '10-libos-yetkazib-beruvchi')
+    await oyna.getByRole('button', { name: "Qo'shish", exact: true }).click()
+    await expect(page.getByText("Libos katalogga qo'shildi.")).toBeVisible()
+  })
+
+  await test.step('qarz ko\'rinadi va to\'lanadi', async () => {
+    await page.getByRole('tab', { name: 'Yetkazib beruvchilar' }).click()
+    const qator = page.locator('.yetkazib-qator', { hasText: 'Istanbul Bridal' })
+    await expect(qator).toContainText("qarz 6 000 000 so'm")
+    await qator.getByRole('button', { name: /Istanbul Bridal/ }).click()
+    await expect(qator).toContainText('YB-1')
+    await ikkiKenglik(page, '11-yetkazib-qarz')
+    await qator.getByLabel("To'lov summasi").fill('6000000')
+    await qator.getByRole('button', { name: "To'lov qilish" }).click()
+    await expect(qator).toContainText("qarz yo'q")
+  })
+  expect(xatolar).toEqual([])
+})

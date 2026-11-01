@@ -193,6 +193,7 @@ def foyda_zarar(salon, yil, oy, filial=None):
         **foyda(salon, boshi, oxiri, filial),
         **libos_investitsiyasi(salon, filial),
         **libos_xaridi(salon, boshi, oxiri, filial),
+        'yetkazib_qarz': yetkazib_qarz(salon),
         'kelgusi_avanslar': kelgusi_avanslar(salon, filial),
         'tannarxsiz_liboslar': Libos.objects.filter(
             salon=salon, tannarx__isnull=True, holat__in=FAOL_LIBOS_HOLATLARI).count(),
@@ -221,19 +222,30 @@ def libos_investitsiyasi(salon, filial=None):
 BOSHLANGICH_KATALOG_KUN = 30
 
 
+def yetkazib_qarz(salon):
+    from apps.catalog.yetkazib import jami_qarz
+    return jami_qarz(salon)
+
+
 def libos_xaridi(salon, boshi, oxiri, filial=None):
-    """Davrda katalogga qo'shilgan liboslar tannarxi — egasining «foyda bor, pul qani?» savoliga javob.
+    """Davrda liboslarga ketgan pul — egasining «foyda bor, pul qani?» savoliga javob.
 
     Foyda libos xaridini xarajat deb hisoblamaydi (u investitsiya), lekin pul baribir ketgan: «qo'lda qolgan pul» =
-    sof foyda − libos xaridi. Salon ochilgandan keyingi birinchi 30 kunda kiritilgan liboslar — mavjud zaxirani
-    tizimga kiritish (boshlang'ich katalog), xarid emas: ular hisoblanmaydi.
+    sof foyda − libos xaridi. Yetkazib beruvchisi yozilgan libos uchun — unga davrda to'langan pul (qarzga olingani
+    to'langanda ketadi), yozilmagani uchun — qo'shilgan kuni tannarxi. Salon ochilgandan keyingi birinchi 30 kun —
+    mavjud zaxirani tizimga kiritish (boshlang'ich katalog), xarid emas: hisoblanmaydi.
     """
-    chegara = timezone.localdate(salon.yaratilgan) + timedelta(days=BOSHLANGICH_KATALOG_KUN)
-    q = Libos.objects.filter(salon=salon, tannarx__isnull=False, yaratilgan__date__range=(max(boshi, chegara), oxiri))
+    from apps.catalog.models import YetkazibBeruvchiTolov
+    dan = max(boshi, timezone.localdate(salon.yaratilgan) + timedelta(days=BOSHLANGICH_KATALOG_KUN))
+    q = Libos.objects.filter(salon=salon, tannarx__isnull=False, yaratilgan__date__range=(dan, oxiri))
     if filial:
         q = q.filter(filial_id=filial)
-    r = q.aggregate(s=Sum('tannarx'), n=Count('id'))
-    return {'libos_xaridi': r['s'] or 0, 'libos_xaridi_soni': r['n']}
+    soni = q.count()
+    ozi = q.filter(yetkazib_beruvchi__isnull=True).aggregate(s=Sum('tannarx'))['s'] or 0
+    # yetkazib beruvchi to'lovlari filialga bog'lanmagan — filial ko'rinishida faqat yozilmaganlar
+    tolangan = 0 if filial else (YetkazibBeruvchiTolov.objects.filter(salon=salon, sana__range=(dan, oxiri))
+                                 .aggregate(s=Sum('summa'))['s'] or 0)
+    return {'libos_xaridi': ozi + tolangan, 'libos_xaridi_soni': soni}
 
 
 PNL_QATORLARI = {'kirim': 'Kirgan pul (avans va qoldiq)', 'qaytarilgan': 'Mijozlarga qaytarilgan',

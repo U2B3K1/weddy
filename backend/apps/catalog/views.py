@@ -11,11 +11,12 @@ from apps.tenants.permissions import IsRahbar, IsStaff, SalonYozishRuxsati
 from apps.cash.services import KassaXatosi, xato_tanasi
 from apps.finance.services import XarajatXatosi
 
-from .models import AksessuarDona, Kategoriya, Libos, Rasm, Sanoq, TamirYozuvi
+from .models import AksessuarDona, Kategoriya, Libos, Rasm, Sanoq, TamirYozuvi, YetkazibBeruvchi
 from .manekin import joylashuvni_saqlash, manekin_json, qatlam_yaratish
 from .rasm import rasm_yuklash, rasmni_ochirish
 from .sanoq import belgilash, ochiq_sanoq, qator_json, sanoq_boshlash, sanoq_json, sanoq_yakunlash
 from .tamir import tamirga_berish, tamirni_tugatish
+from .yetkazib import YetkazibXatosi, libos_xaridi_yoz
 from .services import (KatalogXatosi, QOLDA_HOLATLAR, tozalashni_yakunla, libos_qoshish, libosni_ozgartirish,
                        libosni_tasdiqlash)
 
@@ -42,7 +43,7 @@ def libos_json(l, rahbar, request=None, rasmlar=False):
         if rahbar:
             d['standart_emas'] = sum(1 for x in r if not x.standart)
     if rahbar:
-        d.update(tannarx=l.tannarx, bufer_kun=l.bufer_kun)
+        d.update(tannarx=l.tannarx, bufer_kun=l.bufer_kun, yetkazib_beruvchi=l.yetkazib_beruvchi_id)
     return d
 
 
@@ -61,7 +62,7 @@ def _libos(request, pk):
 def _bajar(fn, **kw):
     try:
         return fn(**kw), None
-    except (KatalogXatosi, KassaXatosi, XarajatXatosi) as e:
+    except (KatalogXatosi, KassaXatosi, XarajatXatosi, YetkazibXatosi) as e:
         return None, Response(xato_tanasi(e), status=409)
 
 
@@ -74,6 +75,9 @@ class LibosYaratSerializer(serializers.Serializer):
     ijara_narxi = serializers.IntegerField(min_value=0, default=0)
     zalog = serializers.IntegerField(min_value=0, default=0)
     tannarx = serializers.IntegerField(min_value=0, required=False)
+    # faqat rahbar: qayerdan olingan va hozir qancha to'langan (berilmasa — tannarx to'liq to'langan; qolgani qarz)
+    yetkazib_beruvchi = serializers.IntegerField(required=False, allow_null=True)
+    tolandi = serializers.IntegerField(min_value=0, required=False, allow_null=True)
 
 
 class LiboslarView(APIView):
@@ -106,7 +110,18 @@ class LiboslarView(APIView):
         kat = Kategoriya.objects.filter(salon=request.salon, id=d.pop('kategoriya')).first()
         if not kat:
             return Response({'kategoriya': ['Topilmadi.']}, status=400)
-        libos, err = _bajar(libos_qoshish, salon=request.salon, xodim=request.user, kategoriya=kat, **d)
+        yb_id, tolandi = d.pop('yetkazib_beruvchi', None), d.pop('tolandi', None)
+        yb = None
+        if yb_id and _rahbar(request):  # sotuvchi tannarx kabi yetkazib beruvchini ham kiritmaydi
+            yb = YetkazibBeruvchi.objects.filter(salon=request.salon, id=yb_id).first()
+            if not yb:
+                return Response({'yetkazib_beruvchi': ['Topilmadi.']}, status=400)
+            if tolandi is not None and tolandi > (d.get('tannarx') or 0):
+                return Response({'tolandi': ["Tannarxdan ko'p bo'lishi mumkin emas."]}, status=400)
+        with transaction.atomic():
+            libos, err = _bajar(libos_qoshish, salon=request.salon, xodim=request.user, kategoriya=kat, **d)
+            if yb and libos is not None:
+                libos_xaridi_yoz(salon=request.salon, rahbar=request.user, libos=libos, yb=yb, tolandi=tolandi)
         if libos is not None:
             from apps.tenants.views_filial import joriy_filial
             filial = joriy_filial(request)
@@ -135,6 +150,11 @@ class LibosTafsilotView(APIView):
 
         ser = S(data=request.data)
         ser.is_valid(raise_exception=True)
+        yb_ozgaradi, yb = 'yetkazib_beruvchi' in request.data, None
+        if yb_ozgaradi and request.data['yetkazib_beruvchi']:
+            yb = YetkazibBeruvchi.objects.filter(salon=request.salon, id=request.data['yetkazib_beruvchi']).first()
+            if not yb:
+                return Response({'yetkazib_beruvchi': ['Topilmadi.']}, status=400)
         filial_ozgaradi, filial = 'filial' in request.data, None
         if filial_ozgaradi:  # libosni filialga ko'chirish (null — biriktirilmagan)
             from apps.tenants.views_filial import sorovdagi_filial
@@ -148,6 +168,12 @@ class LibosTafsilotView(APIView):
                              filial.id if filial else '')
                 libos.filial = filial
                 libos.save(update_fields=['filial'])
+            if not err and yb_ozgaradi and libos.yetkazib_beruvchi_id != (yb.id if yb else None):
+                # keyin biriktirilsa to'lov yozilmaydi — tannarx qarzga qo'shiladi, to'lov yetkazib beruvchi sahifasida
+                jurnalga_yoz(request.salon, request.user, 'libos_yetkazib_beruvchisi', libos.artikul,
+                             libos.yetkazib_beruvchi_id or '', yb.id if yb else '')
+                libos.yetkazib_beruvchi = yb
+                libos.save(update_fields=['yetkazib_beruvchi'])
         return err or Response(libos_json(libos, True, request))
 
 

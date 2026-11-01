@@ -23,6 +23,36 @@ class Kategoriya(SalonModel):
         return self.nomi
 
 
+class YetkazibBeruvchi(SalonModel):
+    """Libos qayerdan olingani. Qarz = undan olingan liboslar tannarxi − unga to'langan pul (`yetkazib.holati`)."""
+    nomi = models.CharField(max_length=120)
+    telefon = models.CharField(max_length=30, blank=True)
+    izoh = models.CharField(max_length=300, blank=True)
+    yaratilgan = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['nomi']
+        constraints = [
+            models.UniqueConstraint(fields=['salon', 'nomi'], name='yetkazib_beruvchi_salonda_noyob'),
+        ]
+
+    def __str__(self):
+        return self.nomi
+
+
+class YetkazibBeruvchiTolov(SalonModel):
+    """Yetkazib beruvchiga to'langan pul (kassadan emas — rahbar o'zi to'laydi). Foydaga kirmaydi: libos — investitsiya."""
+    yetkazib_beruvchi = models.ForeignKey(YetkazibBeruvchi, on_delete=models.CASCADE, related_name='tolovlar')
+    sana = models.DateField()
+    summa = models.PositiveIntegerField()
+    izoh = models.CharField(max_length=300, blank=True)
+    kiritgan = models.ForeignKey('tenants.Xodim', null=True, on_delete=models.SET_NULL, related_name='+')
+    yaratilgan = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-sana', '-id']
+
+
 class Libos(SalonModel):
     class Holat(models.TextChoices):
         TASDIQ_KUTILMOQDA = 'tasdiq_kutilmoqda', 'Tasdiq kutilmoqda'
@@ -47,6 +77,8 @@ class Libos(SalonModel):
     qoshgan = models.ForeignKey('tenants.Xodim', null=True, on_delete=models.SET_NULL, related_name='+')
     yaratilgan = models.DateTimeField(auto_now_add=True)
     filial = models.ForeignKey('tenants.Filial', null=True, blank=True, on_delete=models.SET_NULL, related_name='+')  # libos turgan joy
+    yetkazib_beruvchi = models.ForeignKey(YetkazibBeruvchi, null=True, blank=True, on_delete=models.SET_NULL,
+                                          related_name='liboslar')  # qayerdan olingan (faqat rahbarga ko'rinadi)
     # Raqamli manekin (4.5): fonsiz qatlam olingan rasm va sotuvchi to'g'rilagan joylashuv (FT-5.3).
     # x, y — kanvas eniga/bo'yiga nisbatan siljish (−1…1), kattalik — masshtab (1 = standart).
     manekin_rasm = models.ForeignKey('Rasm', null=True, blank=True, on_delete=models.SET_NULL, related_name='+')

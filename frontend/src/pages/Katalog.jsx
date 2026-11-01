@@ -5,8 +5,9 @@ import RasmBlok from '../components/RasmBlok'
 import TamirBlok from '../components/TamirBlok'
 import AksessuarBolimi from './AksessuarBolimi'
 import LibosSanogi from './LibosSanogi'
+import YetkazibBeruvchilar from './YetkazibBeruvchilar'
 import {
-  filiallar, kategoriyalar, kategoriyaOchir, kategoriyaOzgartir, kategoriyaYarat, libosOzgartir, libosTasdiq, libosYarat, liboslar, som, xatoMatni,
+  filiallar, kategoriyalar, kategoriyaOchir, kategoriyaOzgartir, kategoriyaYarat, libosOzgartir, libosTasdiq, libosYarat, liboslar, som, xatoMatni, yetkazibBeruvchilar,
 } from '../api'
 import SummaInput from '../components/SummaInput'
 import LibosSiluet from '../components/LibosSiluet'
@@ -25,7 +26,8 @@ const HOLAT = {
 export default function Katalog({ rahbar, bolim }) {
   return (
     <div className="stack">
-      {bolim === 'liboslar' ? <Liboslar rahbar={rahbar} /> : bolim === 'sanoq' ? <LibosSanogi /> : <AksessuarBolimi rahbar={rahbar} />}
+      {bolim === 'liboslar' ? <Liboslar rahbar={rahbar} /> : bolim === 'sanoq' ? <LibosSanogi />
+        : bolim === 'yetkazib' && rahbar ? <YetkazibBeruvchilar /> : <AksessuarBolimi rahbar={rahbar} />}
     </div>
   )
 }
@@ -41,6 +43,8 @@ function Liboslar({ rahbar }) {
   const [holat, setHolat] = useState('')
   const [oyna, setOyna] = useState(null) // 'yangi' | 'kategoriya' | null
   useEffect(() => { filiallar().then((r) => setFil(r.filiallar)).catch(() => {}) }, [])
+  const [ybs, setYbs] = useState([])  // yetkazib beruvchilar (faqat rahbar)
+  useEffect(() => { if (rahbar) yetkazibBeruvchilar().then(setYbs).catch(() => {}) }, [rahbar])
   const [xabar, setXabar] = useState({ turi: '', matn: '' })
 
   const yukla = useCallback(async () => {
@@ -95,7 +99,7 @@ function Liboslar({ rahbar }) {
 
       {oyna === 'yangi' && (
         <Oyna sarlavha="Libos qo'shish" onYop={() => setOyna(null)}>
-          <LibosForma kats={libosKats} rahbar={rahbar}
+          <LibosForma kats={libosKats} rahbar={rahbar} ybs={ybs}
             onYuborish={async (b) => {
               const ok = await bajar(() => libosYarat(b), rahbar ? "Libos katalogga qo'shildi." : "Libos rahbar tasdig'iga yuborildi.")
               if (ok) setOyna(null)
@@ -167,7 +171,7 @@ function Liboslar({ rahbar }) {
                   <h3>{l.artikul} {l.nomi}</h3>
                   <button type="button" className="ikkinchi kichik" onClick={() => setTanlangan(null)}>Yopish</button>
                 </div>
-                <Tafsilot l={l} rahbar={rahbar} fil={fil} onRasm={yukla}
+                <Tafsilot l={l} rahbar={rahbar} fil={fil} ybs={ybs} onRasm={yukla}
                   onSaqla={(b) => bajar(() => libosOzgartir(l.id, b), "O'zgartirildi.")} />
               </div>
             )}
@@ -179,7 +183,7 @@ function Liboslar({ rahbar }) {
   )
 }
 
-function Tafsilot({ l, rahbar, onSaqla, onRasm, fil = [] }) {
+function Tafsilot({ l, rahbar, onSaqla, onRasm, fil = [], ybs = [] }) {
   const [f, setF] = useState({ ijara_narxi: l.ijara_narxi, zalog: l.zalog, tannarx: l.tannarx ?? '' })
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value })
   return (
@@ -207,6 +211,14 @@ function Tafsilot({ l, rahbar, onSaqla, onRasm, fil = [] }) {
             ijara_narxi: Number(f.ijara_narxi), zalog: Number(f.zalog),
             ...(f.tannarx !== '' ? { tannarx: Number(f.tannarx) } : {}),
           })}>Narxlarni saqlash</button>
+          {ybs.length > 0 && (
+            <label>Qayerdan olingan (darhol saqlanadi)
+              <select value={l.yetkazib_beruvchi || ''} onChange={(e) => onSaqla({ yetkazib_beruvchi: e.target.value ? Number(e.target.value) : null })}>
+                <option value="">Ko'rsatilmagan</option>
+                {ybs.map((y) => <option key={y.id} value={y.id}>{y.nomi}</option>)}
+              </select>
+            </label>
+          )}
           <label>Holati (darhol saqlanadi)
           <select value={l.holat} onChange={(e) => onSaqla({ holat: e.target.value })}>
             {['bosh', 'sotildi', 'hisobdan_chiqarildi', 'arxiv'].map((h) => (
@@ -242,7 +254,7 @@ function TasdiqForma({ libos, onYuborish, rahbar, onRasm }) {
   )
 }
 
-function LibosForma({ kats, rahbar, onYuborish }) {
+function LibosForma({ kats, rahbar, ybs = [], onYuborish }) {
   const [f, setF] = useState({ kategoriya: '' })
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value })
   const tayyor = f.artikul && f.nomi && (f.kategoriya || kats[0])
@@ -251,6 +263,8 @@ function LibosForma({ kats, rahbar, onYuborish }) {
       artikul: f.artikul, nomi: f.nomi, kategoriya: Number(f.kategoriya || kats[0].id), olcham: f.olcham || '',
       rang: f.rang || '', ijara_narxi: Number(f.ijara_narxi || 0), zalog: Number(f.zalog || 0),
       ...(rahbar && f.tannarx ? { tannarx: Number(f.tannarx) } : {}),
+      // bo'sh qoldirilsa — tannarx to'liq to'langan; kami — yetkazib beruvchiga qarz
+      ...(rahbar && f.yetkazib_beruvchi ? { yetkazib_beruvchi: Number(f.yetkazib_beruvchi), ...(f.tolandi !== undefined && f.tolandi !== '' ? { tolandi: Number(f.tolandi) } : {}) } : {}),
     }
     if (await onYuborish(body)) setF({ kategoriya: '' })
   }
@@ -272,6 +286,22 @@ function LibosForma({ kats, rahbar, onYuborish }) {
           <label>Tavsiya etilgan zalog<SummaInput value={f.zalog || ''} onChange={set('zalog')} /></label>
           {rahbar && <label>Tannarx<SummaInput value={f.tannarx || ''} onChange={set('tannarx')} /></label>}
         </div>
+        {rahbar && ybs.length > 0 && (
+          <div className="libos-narxlar">
+            <label>Qayerdan olingan
+              <select value={f.yetkazib_beruvchi || ''} onChange={set('yetkazib_beruvchi')}>
+                <option value="">Ko'rsatilmagan</option>
+                {ybs.map((y) => <option key={y.id} value={y.id}>{y.nomi}</option>)}
+              </select>
+            </label>
+            {f.yetkazib_beruvchi && (
+              <label>Hozir to'landi<SummaInput placeholder={f.tannarx ? `to'liq: ${som(Number(f.tannarx))}` : ''} value={f.tolandi ?? ''} onChange={set('tolandi')} /></label>
+            )}
+          </div>
+        )}
+        {rahbar && f.yetkazib_beruvchi && f.tolandi !== undefined && f.tolandi !== '' && Number(f.tolandi) < Number(f.tannarx || 0) && (
+          <p className="malumot">Yetkazib beruvchiga qarz: <b>{som(Number(f.tannarx) - Number(f.tolandi))}</b></p>
+        )}
         {!rahbar && <p className="malumot">Libos rahbar narx va tannarxni tasdiqlagach katalogga chiqadi.</p>}
         <button disabled={!tayyor} onClick={yubor}>Qo'shish</button>
     </div>

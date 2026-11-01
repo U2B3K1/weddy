@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import views, views_aksessuar
+from . import views, views_aksessuar, views_yetkazib
 
 urlpatterns = [
     path('liboslar/', views.LiboslarView.as_view()),
@@ -23,6 +23,10 @@ urlpatterns = [
     path('kategoriyalar/', views.KategoriyalarView.as_view()),
     path('kategoriyalar/<int:pk>/', views.KategoriyaView.as_view()),
     path('jurnal/', views.JurnalView.as_view()),
+    path('yetkazib-beruvchilar/', views_yetkazib.YetkazibBeruvchilarView.as_view()),
+    path('yetkazib-beruvchilar/<int:pk>/', views_yetkazib.YetkazibBeruvchiView.as_view()),
+    path('yetkazib-beruvchilar/<int:pk>/tolovlar/', views_yetkazib.YbTolovlarView.as_view()),
+    path('yetkazib-tolovlari/<int:pk>/', views_yetkazib.YbTolovView.as_view()),
     path('sanoq/', views.SanoqView.as_view()),
     path('sanoq/belgilash/', views.SanoqBelgilashView.as_view()),
     path('sanoq/yakunlash/', views.SanoqYakunlashView.as_view()),
