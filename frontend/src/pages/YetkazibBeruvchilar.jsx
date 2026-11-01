@@ -5,8 +5,8 @@ import {
   yetkazibYarat,
 } from '../api'
 
-// Libos qayerdan olingani va yetkazib beruvchiga qolgan qarz (faqat rahbar).
-// Qarz = undan olingan liboslar tannarxi − unga to'langan pul. To'lov kassadan emas va foydaga kirmaydi (libos — investitsiya).
+// Libos va aksessuar qayerdan olingani va yetkazib beruvchiga qolgan qarz (faqat rahbar).
+// Qarz = undan olingan liboslar tannarxi + aksessuarlar (dona tannarxi × soni) − unga to'langan pul. To'lov kassadan emas va foydaga kirmaydi (libos — investitsiya).
 export default function YetkazibBeruvchilar() {
   const [royxat, setRoyxat] = useState(null)
   const [ochiq, setOchiq] = useState(null)  // tanlangan yetkazib beruvchi id
@@ -34,13 +34,13 @@ export default function YetkazibBeruvchilar() {
       <section className="blok jadval-panel">
         <div className="jadval-asboblar"><h3 className="panel-nom">Yetkazib beruvchilar</h3></div>
         {royxat && royxat.length === 0 && (
-          <p className="malumot jadval-bosh">Hali yo'q. Qo'shgach, libos qo'shishda «Qayerdan olingan» va «Hozir to'landi» maydonlari chiqadi.</p>
+          <p className="malumot jadval-bosh">Hali yo'q. Qo'shgach, libos va aksessuar qo'shishda «Qayerdan olingan» va «Hozir to'landi» maydonlari chiqadi.</p>
         )}
         {royxat?.map((y) => (
           <div key={y.id} className="tasdiq-qator yetkazib-qator">
             <button type="button" className="havola qator-matn" aria-expanded={ochiq === y.id} onClick={() => setOchiq(ochiq === y.id ? null : y.id)}>
               <b>{y.nomi}</b>{y.telefon ? ` · ${y.telefon}` : ''}
-              <small className="malumot"> · {y.liboslar_soni} ta libos · olingan {som(y.xarid)} · to'langan {som(y.tolangan)}</small>
+              <small className="malumot"> · {y.liboslar_soni} ta libos{y.aksessuar_donalar > 0 ? `, ${y.aksessuar_donalar} dona aksessuar` : ''} · olingan {som(y.xarid)} · to'langan {som(y.tolangan)}</small>
             </button>
             <b className={y.qarz > 0 ? 'qizil' : ''}>{y.qarz > 0 ? `qarz ${som(y.qarz)}` : y.qarz < 0 ? `oldindan ${som(-y.qarz)}` : "qarz yo'q"}</b>
             {ochiq === y.id && <Tafsilot id={y.id} bajar={bajar} />}
@@ -74,6 +74,10 @@ function Tafsilot({ id, bajar }) {
       {d.liboslar.map((l) => (
         <p key={l.id} className="qator-matn">{sanaMatni(l.sana)} · <b>{l.artikul}</b> {l.nomi} · {l.tannarx == null ? 'tannarx kiritilmagan' : som(l.tannarx)}
           {l.holat !== 'bosh' && <span className="malumot"> · {l.holat_nomi}</span>}</p>
+      ))}
+      {d.aksessuarlar.length > 0 && <h4>Olingan aksessuarlar</h4>}
+      {d.aksessuarlar.map((a) => (
+        <p key={a.id} className="qator-matn"><b>{a.kod}</b> {a.nomi} · {a.donalar_soni} dona × {a.tannarx == null ? 'tannarx kiritilmagan' : `${som(a.tannarx)} = ${som(a.jami)}`}</p>
       ))}
       <h4>To'lovlar ({d.tolovlar.length})</h4>
       {d.tolovlar.map((t) => (

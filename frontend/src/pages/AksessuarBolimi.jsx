@@ -4,7 +4,7 @@ import NavIkona from '../components/NavIkona'
 import Oyna from '../components/Oyna'
 import {
   aksessuarManekinOchir, aksessuarManekinSaqla, aksessuarManekinYukla, aksessuarOzgartir, aksessuarTafsilot, aksessuarTasdiq, aksessuarYarat, aksessuarlar, donaFilial, donaHolati, filiallar, donaTamirTugat, donaTamirga, donalarQosh,
-  kategoriyalar, som, xatoMatni,
+  kategoriyalar, som, xatoMatni, yetkazibBeruvchilar,
 } from '../api'
 import SummaInput from '../components/SummaInput'
 
@@ -28,6 +28,8 @@ export default function AksessuarBolimi({ rahbar }) {
     setRoyxat(a); setKats(k.filter((x) => x.turi === 'aksessuar'))
   }, [])
   useEffect(() => { yukla().catch((e) => setXabar({ turi: 'xato', matn: xatoMatni(e) })) }, [yukla])
+  const [ybs, setYbs] = useState([])  // yetkazib beruvchilar (faqat rahbar)
+  useEffect(() => { if (rahbar) yetkazibBeruvchilar().then(setYbs).catch(() => {}) }, [rahbar])
 
   const bajar = async (fn, ok) => {
     setXabar({ turi: '', matn: '' })
@@ -73,7 +75,7 @@ export default function AksessuarBolimi({ rahbar }) {
 
       {oyna && kats.length > 0 && (
         <Oyna sarlavha="Aksessuar qo'shish" onYop={() => setOyna(false)}>
-          <Forma kats={kats} rahbar={rahbar}
+          <Forma kats={kats} rahbar={rahbar} ybs={ybs}
             onYuborish={async (b) => {
               const ok = await bajar(() => aksessuarYarat(b), rahbar ? "Aksessuar qo'shildi." : "Aksessuar rahbar tasdig'iga yuborildi.")
               if (ok) setOyna(false)
@@ -131,7 +133,7 @@ export default function AksessuarBolimi({ rahbar }) {
                         <td className="ong"><b>{som(a.ijara_narxi)}</b></td>
                       </tr>
                       {ochiq === a.id && (
-                        <tr className="tafsilot-qator"><td colSpan={4}><Tafsilot id={a.id} rahbar={rahbar} bajar={bajar} /></td></tr>
+                        <tr className="tafsilot-qator"><td colSpan={4}><Tafsilot id={a.id} rahbar={rahbar} bajar={bajar} ybs={ybs} /></td></tr>
                       )}
                     </Fragment>
                   )
@@ -145,7 +147,7 @@ export default function AksessuarBolimi({ rahbar }) {
   )
 }
 
-function Tafsilot({ id, rahbar, bajar }) {
+function Tafsilot({ id, rahbar, bajar, ybs = [] }) {
   const [a, setA] = useState(null)
   const [narx, setNarx] = useState('')
   const [soni, setSoni] = useState('1')
@@ -217,8 +219,16 @@ function Tafsilot({ id, rahbar, bajar }) {
             <button className="ikkinchi kichik" onClick={() => amal(() => aksessuarOzgartir(id, { holat: a.holat === 'arxiv' ? 'faol' : 'arxiv' }), 'Holat o\'zgardi.')}>
               {a.holat === 'arxiv' ? 'Arxivdan chiqarish' : 'Arxivga'}
             </button>
-            {a.tannarx != null && <span className="malumot">Tannarx: {som(a.tannarx)}</span>}
+            {a.tannarx != null && <span className="malumot">Tannarx: {som(a.tannarx)} (1 dona)</span>}
           </div>
+          {ybs.length > 0 && (
+            <label>Qayerdan olingan (darhol saqlanadi)
+              <select value={a.yetkazib_beruvchi || ''} onChange={(e) => amal(() => aksessuarOzgartir(id, { yetkazib_beruvchi: e.target.value ? Number(e.target.value) : null }), 'Saqlandi.')}>
+                <option value="">Ko'rsatilmagan</option>
+                {ybs.map((y) => <option key={y.id} value={y.id}>{y.nomi}</option>)}
+              </select>
+            </label>
+          )}
         </>
       )}
       </div>
@@ -285,13 +295,15 @@ function Tasdiq({ a, onYuborish }) {
   )
 }
 
-function Forma({ kats, rahbar, onYuborish }) {
+function Forma({ kats, rahbar, ybs = [], onYuborish }) {
   const [f, setF] = useState({ soni: '1' })
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value })
   const yubor = async () => {
     const body = {
       nomi: f.nomi, kod: f.kod, kategoriya: Number(f.kategoriya || kats[0].id), soni: Number(f.soni || 1),
       ijara_narxi: Number(f.ijara_narxi || 0), ...(rahbar && f.tannarx ? { tannarx: Number(f.tannarx) } : {}),
+      // bo'sh qoldirilsa — tannarx × soni to'liq to'langan; kami — yetkazib beruvchiga qarz
+      ...(rahbar && f.yetkazib_beruvchi ? { yetkazib_beruvchi: Number(f.yetkazib_beruvchi), ...(f.tolandi ? { tolandi: Number(f.tolandi) } : {}) } : {}),
     }
     if (await onYuborish(body)) setF({ soni: '1' })
   }
@@ -307,8 +319,24 @@ function Forma({ kats, rahbar, onYuborish }) {
         <div className="libos-narxlar">
           <label>Ijara narxi<SummaInput value={f.ijara_narxi || ''} onChange={set('ijara_narxi')} /></label>
           <label>Dona soni<input type="number" min="1" max="200" value={f.soni} onChange={set('soni')} /></label>
-          {rahbar && <label>Tannarx<SummaInput value={f.tannarx || ''} onChange={set('tannarx')} /></label>}
+          {rahbar && <label>Tannarx (1 dona)<SummaInput value={f.tannarx || ''} onChange={set('tannarx')} /></label>}
         </div>
+        {rahbar && ybs.length > 0 && (
+          <div className="libos-narxlar">
+            <label>Qayerdan olingan
+              <select value={f.yetkazib_beruvchi || ''} onChange={set('yetkazib_beruvchi')}>
+                <option value="">Ko'rsatilmagan</option>
+                {ybs.map((y) => <option key={y.id} value={y.id}>{y.nomi}</option>)}
+              </select>
+            </label>
+            {f.yetkazib_beruvchi && (
+              <label>Hozir to'landi<SummaInput placeholder={f.tannarx ? `to'liq: ${som(Number(f.tannarx) * Number(f.soni || 1))}` : ''} value={f.tolandi || ''} onChange={set('tolandi')} /></label>
+            )}
+          </div>
+        )}
+        {rahbar && f.yetkazib_beruvchi && f.tolandi && Number(f.tolandi) < Number(f.tannarx || 0) * Number(f.soni || 1) && (
+          <p className="malumot">Yetkazib beruvchiga qarz: <b>{som(Number(f.tannarx) * Number(f.soni || 1) - Number(f.tolandi))}</b></p>
+        )}
         <button disabled={!f.nomi || !f.kod} onClick={yubor}>Qo'shish</button>
     </div>
   )

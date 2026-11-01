@@ -1,18 +1,21 @@
+from django.db import transaction
 from rest_framework import serializers
 from rest_framework.exceptions import NotFound, ValidationError
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from apps.tenants.models import jurnalga_yoz
 from apps.tenants.permissions import IsRahbar, IsStaff, SalonYozishRuxsati
 
 from .dona_tamir import dona_tamir_json, dona_tamirini_tugatish, donani_tamirga_berish
 from .manekin import (aksessuar_joylashuvi, aksessuar_manekin_json, aksessuar_qatlami,
                       aksessuar_qatlamini_ochirish)
-from .models import Aksessuar, AksessuarDona, DonaTamiri, Kategoriya
+from .models import Aksessuar, AksessuarDona, DonaTamiri, Kategoriya, YetkazibBeruvchi
 from .services import (KatalogXatosi, aksessuar_qoshish, aksessuarni_ozgartirish,
                        aksessuarni_tasdiqlash, donalar_qoshish)
 from .views import _bajar, _rahbar
+from .yetkazib import aksessuar_xaridi_yoz
 
 
 def aksessuar_json(request, a, rahbar, donalar=False):
@@ -29,6 +32,7 @@ def aksessuar_json(request, a, rahbar, donalar=False):
                          'tamir': dona_tamir_json(ochiq[x.id]) if x.id in ochiq else None} for x in d]
     if rahbar:
         j['tannarx'] = a.tannarx
+        j['yetkazib_beruvchi'] = a.yetkazib_beruvchi_id
     return j
 
 
@@ -47,6 +51,9 @@ class AksessuarYaratSerializer(serializers.Serializer):
     ijara_narxi = serializers.IntegerField(min_value=0, default=0)
     tannarx = serializers.IntegerField(min_value=0, required=False)
     soni = serializers.IntegerField(min_value=1, max_value=200, default=1)
+    # faqat rahbar: qayerdan olingan va hozir qancha to'langan (berilmasa — tannarx × soni to'liq; qolgani qarz)
+    yetkazib_beruvchi = serializers.IntegerField(required=False, allow_null=True)
+    tolandi = serializers.IntegerField(min_value=0, required=False, allow_null=True)
 
 
 class AksessuarlarView(APIView):
@@ -69,7 +76,18 @@ class AksessuarlarView(APIView):
         kat = Kategoriya.objects.filter(salon=request.salon, id=d.pop('kategoriya')).first()
         if not kat:
             return Response({'kategoriya': ['Topilmadi.']}, status=400)
-        a, err = _bajar(aksessuar_qoshish, salon=request.salon, xodim=request.user, kategoriya=kat, **d)
+        yb_id, tolandi = d.pop('yetkazib_beruvchi', None), d.pop('tolandi', None)
+        yb = None
+        if yb_id and _rahbar(request):  # sotuvchi tannarx kabi yetkazib beruvchini ham kiritmaydi
+            yb = YetkazibBeruvchi.objects.filter(salon=request.salon, id=yb_id).first()
+            if not yb:
+                return Response({'yetkazib_beruvchi': ['Topilmadi.']}, status=400)
+            if tolandi is not None and tolandi > (d.get('tannarx') or 0) * d['soni']:
+                return Response({'tolandi': ["Tannarx × donalar sonidan ko'p bo'lishi mumkin emas."]}, status=400)
+        with transaction.atomic():
+            a, err = _bajar(aksessuar_qoshish, salon=request.salon, xodim=request.user, kategoriya=kat, **d)
+            if yb and a is not None:
+                aksessuar_xaridi_yoz(salon=request.salon, rahbar=request.user, aksessuar=a, yb=yb, soni=d['soni'], tolandi=tolandi)
         return err or Response(aksessuar_json(request, _aksessuar(request, a.id), _rahbar(request)), status=201)
 
 
@@ -90,8 +108,20 @@ class AksessuarTafsilotView(APIView):
 
         ser = S(data=request.data)
         ser.is_valid(raise_exception=True)
-        a, err = _bajar(aksessuarni_ozgartirish, salon=request.salon, rahbar=request.user,
-                        aksessuar=_aksessuar(request, pk), **ser.validated_data)
+        yb_ozgaradi, yb = 'yetkazib_beruvchi' in request.data, None
+        if yb_ozgaradi and request.data['yetkazib_beruvchi']:
+            yb = YetkazibBeruvchi.objects.filter(salon=request.salon, id=request.data['yetkazib_beruvchi']).first()
+            if not yb:
+                return Response({'yetkazib_beruvchi': ['Topilmadi.']}, status=400)
+        with transaction.atomic():
+            a, err = _bajar(aksessuarni_ozgartirish, salon=request.salon, rahbar=request.user,
+                            aksessuar=_aksessuar(request, pk), **ser.validated_data)
+            if not err and yb_ozgaradi and a.yetkazib_beruvchi_id != (yb.id if yb else None):
+                # keyin biriktirilsa to'lov yozilmaydi — tannarx × donalar qarzga qo'shiladi
+                jurnalga_yoz(request.salon, request.user, 'aksessuar_yetkazib_beruvchisi', a.kod,
+                             a.yetkazib_beruvchi_id or '', yb.id if yb else '')
+                a.yetkazib_beruvchi = yb
+                a.save(update_fields=['yetkazib_beruvchi'])
         return err or Response(aksessuar_json(request, _aksessuar(request, a.id), True, donalar=True))
 
 

@@ -82,3 +82,39 @@ class YetkazibBeruvchiTests(TestCase):
                                                   'yetkazib_beruvchi': self.yb['id']}, format='json')
         self.assertEqual(r.status_code, 400)  # boshqa salon yetkazib beruvchisi topilmaydi
         self.assertFalse(YetkazibBeruvchi.objects.filter(salon=boshqa).exists())
+
+
+class AksessuarYetkazibTests(TestCase):
+    """Aksessuar ham yetkazib beruvchidan olinadi: xarid = bir dona tannarxi × donalar soni."""
+
+    def setUp(self):
+        from .models import Kategoriya
+        self.salon, _, _ = salon_yarat()
+        self.rahbar = Xodim.objects.create(salon=self.salon, ism='Rahbar', rol=Xodim.Rol.RAHBAR)
+        self.c = api(self.rahbar)
+        self.kat = Kategoriya.objects.create(salon=self.salon, nomi='Fata', turi=Kategoriya.Turi.AKSESSUAR)
+        self.yb = self.c.post('/api/yetkazib-beruvchilar/', {'nomi': 'Fata Optom'}).data
+
+    def holat(self):
+        return self.c.get('/api/yetkazib-beruvchilar/').data[0]
+
+    def test_aksessuar_qisman_tolangan_va_dona_qoshilsa_qarz_oshadi(self):
+        r = self.c.post('/api/aksessuarlar/', {'nomi': 'Fata Klassik', 'kod': 'FT', 'kategoriya': self.kat.id, 'tannarx': 200_000,
+                                               'soni': 5, 'yetkazib_beruvchi': self.yb['id'], 'tolandi': 600_000}, format='json')
+        self.assertEqual((r.status_code, r.data['yetkazib_beruvchi']), (201, self.yb['id']))
+        h = self.holat()
+        self.assertEqual((h['aksessuar_donalar'], h['xarid'], h['tolangan'], h['qarz']), (5, 1_000_000, 600_000, 400_000))
+        self.c.post(f"/api/aksessuarlar/{r.data['id']}/donalar/", {'soni': 2})  # yana 2 dona shu yetkazib beruvchidan
+        self.assertEqual(self.holat()['qarz'], 800_000)
+        d = self.c.get(f"/api/yetkazib-beruvchilar/{self.yb['id']}/").data
+        self.assertEqual(d['aksessuarlar'], [{'id': r.data['id'], 'kod': 'FT', 'nomi': 'Fata Klassik', 'tannarx': 200_000,
+                                               'donalar_soni': 7, 'jami': 1_400_000}])
+
+    def test_keyin_biriktirish_va_cheklov(self):
+        r = self.c.post('/api/aksessuarlar/', {'nomi': 'Toj', 'kod': 'TJ', 'kategoriya': self.kat.id, 'tannarx': 100_000, 'soni': 3})
+        self.assertEqual(self.c.patch(f"/api/aksessuarlar/{r.data['id']}/", {'yetkazib_beruvchi': self.yb['id']},
+                                      format='json').data['yetkazib_beruvchi'], self.yb['id'])
+        self.assertEqual(self.holat()['qarz'], 300_000)  # keyin biriktirilgan — hammasi qarz
+        x = self.c.post('/api/aksessuarlar/', {'nomi': 'Toj 2', 'kod': 'TJ2', 'kategoriya': self.kat.id, 'tannarx': 100_000,
+                                               'soni': 2, 'yetkazib_beruvchi': self.yb['id'], 'tolandi': 300_000}, format='json')
+        self.assertEqual(x.status_code, 400)  # 2 × 100 000 dan ko'p to'lanmaydi

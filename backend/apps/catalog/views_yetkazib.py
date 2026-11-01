@@ -1,4 +1,5 @@
 """Yetkazib beruvchilar API (faqat rahbar — tannarx va qarz rahbarga ko'rinadi)."""
+from django.db.models import Count
 from rest_framework import serializers
 from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
@@ -6,7 +7,7 @@ from rest_framework.views import APIView
 
 from apps.tenants.permissions import IsRahbar, SalonYozishRuxsati
 
-from .models import Libos, YetkazibBeruvchi, YetkazibBeruvchiTolov
+from .models import Aksessuar, Libos, YetkazibBeruvchi, YetkazibBeruvchiTolov
 from .yetkazib import YetkazibXatosi, holati, saqlash, tolov_qilish, tolovni_ochirish, yetkazib_beruvchi_json
 
 
@@ -51,6 +52,10 @@ class YetkazibBeruvchiView(_Ruxsat, APIView):
         d['liboslar'] = [{'id': l.id, 'artikul': l.artikul, 'nomi': l.nomi, 'tannarx': l.tannarx, 'holat': l.holat,
                           'holat_nomi': l.get_holat_display(), 'sana': l.yaratilgan.date()}
                          for l in Libos.objects.filter(salon=request.salon, yetkazib_beruvchi=yb).order_by('-yaratilgan')]
+        d['aksessuarlar'] = [{'id': a.id, 'kod': a.kod, 'nomi': a.nomi, 'tannarx': a.tannarx, 'donalar_soni': a.n,
+                              'jami': (a.tannarx or 0) * a.n}
+                             for a in Aksessuar.objects.filter(salon=request.salon, yetkazib_beruvchi=yb)
+                             .annotate(n=Count('donalar')).order_by('kod')]
         d['tolovlar'] = [{'id': t.id, 'sana': t.sana, 'summa': t.summa, 'izoh': t.izoh,
                           'kiritgan': t.kiritgan.ism if t.kiritgan_id else None}
                          for t in yb.tolovlar.select_related('kiritgan')]
