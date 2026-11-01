@@ -6,6 +6,7 @@ import Tasdiq from '../components/Tasdiq'
 import SmenaTugma from '../components/SmenaTugma'
 import LibosSiluet from '../components/LibosSiluet'
 import NavIkona from '../components/NavIkona'
+import { Bezak, Muhr, VaraqSana } from '../components/Varaq'
 import {
   bekorQilish, berish, chegirmaSora, mijozOzgartir, tolovHavola, primerkaBelgila, primerkaOzgartir, promokodOlibTashla, promokodQolla, qarzTolash, qaytarish, sanaKochirish, som, sozlamalar, tayyorChegirmalar,
   saqlangan, tolovQabul, tolovTuzat, xatoMatni, zakazAksessuarOchir, zakazAksessuarQosh, zakazTafsilot, zakazTarixi, zakazlarRoyxat,
@@ -36,7 +37,9 @@ function asosiyTugma(z) {
   if (h === 'qaytarildi' && z.qarz > 0) return 'Qarzni yopish'
   return null
 }
-const holatSinfi = (h) => ({ vaqtinchalik: 'vaqtinchalik', chegirma_kutilmoqda: 'vaqtinchalik', bron: 'bron', berildi: 'berildi', qaytarildi: 'qarz', yopildi: 'qaytarildi', bekor: 'qarz' }[h] || 'bron')
+// Avans olingach (bron tasdiqlangach) zakaz varaqasiga muhr bosiladi; vaqtinchalik bronda — bo'sh joy
+const MUHRLI = ['bron', 'berildi', 'qaytarildi', 'yopildi']
+const holatSinfi = (h) =>({ vaqtinchalik: 'vaqtinchalik', chegirma_kutilmoqda: 'vaqtinchalik', bron: 'bron', berildi: 'berildi', qaytarildi: 'qarz', yopildi: 'qaytarildi', bekor: 'qarz' }[h] || 'bron')
 
 // Tezkor holat tablari — eng ko'p qidiriladiganlari; qolganlari (chegirma tasdig'i) «Hammasi» ichida ko'rinadi
 const HOLAT_TABLARI = [['', 'Hammasi'], ['vaqtinchalik', 'Vaqtinchalik'], ['bron', 'Bron'], ['berildi', 'Berildi'],
@@ -126,17 +129,20 @@ function Karta({ id, onOrqaga, onKassa }) {
   const kassirda = soz?.kassa_rejimi === 'kassir' && saqlangan.xodim()?.rol === 'sotuvchi'
   const rahbar = saqlangan.xodim()?.rol === 'rahbar'
 
-  const yukla = useCallback(() => zakazTafsilot(id).then(setZ), [id])
+  const yukla = useCallback(() => zakazTafsilot(id).then((d) => { setZ(d); return d }), [id])
   useEffect(() => { yukla() }, [yukla])
+  const [muhrBosildi, setMuhrBosildi] = useState(false)  // shu kartada avans olinib bron tasdiqlandi — muhr ko'z oldida bosiladi
 
   // Har bir amal: muvaffaqiyatda kartani yangilaydi, xatoni ko'rsatadi.
   const bajar = async (fn, ok = 'Bajarildi.') => {
     setXabar({ turi: '', matn: '' })
+    const oldingiHolat = z?.holat
     try {
       await fn()
       setXabar({ turi: 'ok', matn: ok })
       setTarix(null)
-      await yukla()
+      const yangi = await yukla()
+      if (!MUHRLI.includes(oldingiHolat) && MUHRLI.includes(yangi?.holat)) setMuhrBosildi(true)
       return true
     } catch (e) {
       setXabar({ turi: 'xato', matn: xatoMatni(e), kod: e.response?.data?.kod })
@@ -156,8 +162,15 @@ function Karta({ id, onOrqaga, onKassa }) {
         <span className={`holat ${holatSinfi(h)}`}>{ZAKAZ_HOLATLARI[h]}</span>
       </div>
       {h !== 'bekor' && (
-        <ol className="holat-chizigi" aria-label="Zakaz bosqichlari">
-          {QADAMLAR.map((n, i) => <li key={n} className={i < qadamIndeksi(z) ? 'otdi' : i === qadamIndeksi(z) ? 'joriy' : ''}><i />{n}</li>)}
+        <ol className="zakaz-ip holat-ip" aria-label="Zakaz bosqichlari">
+          {QADAMLAR.map((n, i) => {
+            const q = qadamIndeksi(z)
+            return (
+              <li key={n} className={i < q ? 'otdi' : i === q ? 'joriy' : ''} aria-current={i === q ? 'step' : undefined}>
+                <span><span className="ip-tugun" aria-hidden="true">{i < q ? '✓' : i + 1}</span><span className="ip-nom">{n}</span></span>
+              </li>
+            )
+          })}
         </ol>
       )}
       {asosiyTugma(z) && (
@@ -166,39 +179,45 @@ function Karta({ id, onOrqaga, onKassa }) {
           if (d) { d.open = true; d.scrollIntoView({ behavior: 'smooth', block: 'center' }) }
         }}>{asosiyTugma(z)}</button>
       )}
-      <section className="blok karta-asosiy">
-        {/* Libos fotosi birinchi: sotuvchi mijoz bilan qaysi libos haqida gaplashayotganini bir qarashda ko'radi */}
+      {/* Zakaz varaqasi — «Yangi zakaz» dagi bilan bir xil qog'oz: mijoz, sanalar, liboslar, hisob.
+          Muhr: bron tasdiqlangan (avans olingan) zakazda; vaqtinchalikda bo'sh joy; bekorda — shtamp */}
+      <section className={`varaq karta-asosiy${h === 'bekor' ? ' varaq-bekor' : ''}`} aria-label="Zakaz ma'lumotlari">
+        {MUHRLI.includes(h) ? <Muhr raqam={z.raqam} bosildi={muhrBosildi} className="muhr-karta" />
+          : h === 'bekor' ? <span className="shtamp" aria-hidden="true">Bekor qilindi</span>
+          : <span className="muhr-joy" aria-hidden="true" />}
+        {z.mijoz !== z.telefon && <p className="varaq-kimga">{z.mijoz}</p>}
+        <a className="varaq-telefon" href={`tel:${z.telefon}`}>{z.telefon}</a>
+        <Bezak />
+        <VaraqSana dan={z.olib_ketish} gacha={z.qaytarish} />
+        {/* Libos fotosi: sotuvchi mijoz bilan qaysi libos haqida gaplashayotganini bir qarashda ko'radi */}
         <div className="karta-liboslar">
           {z.libos_qatorlari.map((p) => (
             <figure key={p.id} className="karta-libos">
               <span className="karta-libos-foto">{p.rasm ? <img src={p.rasm} alt="" /> : <LibosSiluet />}</span>
-              <figcaption><b>{p.artikul}</b> {p.nomi}{p.olcham ? <span className="malumot">o'lcham {p.olcham}</span> : null}</figcaption>
+              <figcaption><b>{p.artikul}</b> {p.nomi}{p.olcham ? <small>o'lcham {p.olcham}</small> : null}</figcaption>
             </figure>
           ))}
         </div>
-        <dl className="karta-malumot">
-          {z.mijoz !== z.telefon && <div><dt>Mijoz</dt><dd>{z.mijoz}</dd></div>}
-          <div><dt>Telefon</dt><dd><a href={`tel:${z.telefon}`}>{z.telefon}</a></dd></div>
-          <div><dt>Ijara</dt><dd>{sanaMatni(z.olib_ketish)} – {sanaMatni(z.qaytarish)}</dd></div>
-          {z.aksessuarlar.length > 0 && <div><dt>Aksessuarlar</dt><dd>{z.aksessuarlar.join(', ')}</dd></div>}
+        <dl className="varaq-hisob">
+          {z.aksessuarlar.length > 0 && <div className="varaq-hisob-matn"><dt>Aksessuarlar</dt><dd>{z.aksessuarlar.join(', ')}</dd></div>}
           {z.salonchi && (
-            <div><dt>Salonchi</dt><dd>{z.salonchi.ism}
-              {z.salonchi.instagram && <> · <a href={z.salonchi.instagram} target="_blank" rel="noreferrer">Instagram</a></>}
+            <div className="varaq-hisob-matn"><dt>Salonchi</dt><dd>{z.salonchi.ism}
+              {z.salonchi.instagram && <>, <a href={z.salonchi.instagram} target="_blank" rel="noreferrer">Instagram</a></>}
             </dd></div>
           )}
+          <div><dt>Asosiy narx</dt><dd>{som(z.asosiy_narx - z.xizmatlar)}</dd></div>
+          {z.xizmatlar > 0 && <div><dt>Moslash xizmati</dt><dd>{som(z.xizmatlar)}</dd></div>}
+          {z.ustama > 0 && <div><dt>Mavsumiy ustama ({Number(z.ustama_foiz)}%)</dt><dd>{som(z.ustama)}</dd></div>}
+          {z.chegirma - z.promokod_chegirma > 0 && <div><dt>Chegirma</dt><dd>−{som(z.chegirma - z.promokod_chegirma)}</dd></div>}
+          {z.promokod && <div><dt>Promokod {z.promokod}</dt><dd>−{som(z.promokod_chegirma)}</dd></div>}
         </dl>
-        <table className="jadval"><tbody>
-          <tr><td>Asosiy narx</td><td>{som(z.asosiy_narx - z.xizmatlar)}</td></tr>
-          {z.xizmatlar > 0 && <tr><td>Moslash xizmati</td><td>{som(z.xizmatlar)}</td></tr>}
-          {z.ustama > 0 && <tr><td>Mavsumiy ustama ({Number(z.ustama_foiz)}%)</td><td>{som(z.ustama)}</td></tr>}
-          {z.chegirma - z.promokod_chegirma > 0 && <tr><td>Chegirma</td><td>−{som(z.chegirma - z.promokod_chegirma)}</td></tr>}
-          {z.promokod && <tr><td>Promokod {z.promokod}</td><td>−{som(z.promokod_chegirma)}</td></tr>}
-          <tr><td><b>Jami</b></td><td><b>{som(z.jami)}</b></td></tr>
-          <tr><td>To'langan</td><td>{som(z.tolangan)}</td></tr>
-          <tr><td>Qoldiq</td><td>{som(z.qoldiq)}</td></tr>
-          {z.qarz > 0 && <tr className="qizil"><td>Jarima qarzi</td><td>{som(z.qarz)}</td></tr>}
-        </tbody></table>
-        {z.bekor_sabab && <p className="malumot">Bekor sababi: {z.bekor_sabab}</p>}
+        <div className="varaq-jami"><span>Jami</span><b>{som(z.jami)}</b></div>
+        <dl className="varaq-hisob">
+          <div><dt>To'langan</dt><dd>{som(z.tolangan)}</dd></div>
+          {h !== 'bekor' && <div className={z.qoldiq > 0 ? 'varaq-qoldiq' : ''}><dt>Qoldiq</dt><dd>{som(z.qoldiq)}</dd></div>}
+          {z.qarz > 0 && <div className="varaq-qarz"><dt>Jarima qarzi</dt><dd>{som(z.qarz)}</dd></div>}
+        </dl>
+        {z.bekor_sabab && <p className="varaq-izoh">Bekor sababi: {z.bekor_sabab}</p>}
         <div className="qator hujjat-havolalar">
           {!['chegirma_kutilmoqda', 'bekor'].includes(h) && (
             <button className="ikkinchi kichik" onClick={() => setChop('shartnoma')}>Shartnoma</button>
@@ -210,7 +229,7 @@ function Karta({ id, onOrqaga, onKassa }) {
             <button className="ikkinchi kichik" onClick={() => setChop('dalolatnoma')}>Zalog dalolatnomasi</button>
           )}
         </div>
-        {h === 'chegirma_kutilmoqda' && <p className="malumot">Chegirma tasdiqlanmaguncha shartnoma chop etilmaydi.</p>}
+        {h === 'chegirma_kutilmoqda' && <p className="varaq-izoh">Chegirma tasdiqlanmaguncha shartnoma chop etilmaydi.</p>}
       </section>
       <div className="karta-ong">
       {xabar.matn && (
@@ -271,15 +290,24 @@ function Karta({ id, onOrqaga, onKassa }) {
       </div>
       <section className="blok karta-tolovlar">
         <h3>To'lovlar</h3>
-        {z.tolovlar.length === 0 && <p className="malumot">Hali yo'q</p>}
+        {z.tolovlar.length === 0 && <p className="malumot">Hali to'lov yo'q.</p>}
         {z.tolovlar.map((t, i) => (
-          <div key={i} className="qator-matn">{t.tur_nomi} · {som(t.summa)} · {t.usul_nomi} · {t.xodim}
-            {t.tasdiq === 'kutilmoqda' && <span className="malumot"> · rahbar tasdig'i kutilmoqda</span>}
-            {t.tasdiq === 'kelmadi' && <b className="qizil"> · KELMADI — hisobga olinmagan</b>}
-            {rahbar && t.tuzatsa_boladi && <TolovTuzatish t={t} onYuborish={(tana) => bajar(() => tolovTuzat(t.id, tana), "To'lov tuzatildi.")} />}</div>
+          <div key={i} className={`tolov-qator${t.tasdiq === 'kelmadi' ? ' kelmadi' : ''}`}>
+            <span className="tolov-nom">
+              <b>{t.tur_nomi}</b>
+              <small>{t.usul_nomi}, {t.xodim}</small>
+              {t.tasdiq === 'kutilmoqda' && <small className="tolov-kutish">Rahbar tasdig'i kutilmoqda</small>}
+              {t.tasdiq === 'kelmadi' && <small className="qizil">Kelmadi — hisobga olinmagan</small>}
+            </span>
+            <b className="tolov-summa">{som(t.summa)}</b>
+            {rahbar && t.tuzatsa_boladi && <TolovTuzatish t={t} onYuborish={(tana) => bajar(() => tolovTuzat(t.id, tana), "To'lov tuzatildi.")} />}
+          </div>
         ))}
         {z.zaloglar.map((g) => (
-          <p key={g.id} className="qator-matn">Zalog {g.yorliq}: {g.turi_nomi} · {g.holat_nomi}</p>
+          <div key={g.id} className="tolov-qator">
+            <span className="tolov-nom"><b>Zalog {g.yorliq}</b><small>{g.turi_nomi}{g.tavsif ? `, ${g.tavsif}` : ''}</small></span>
+            <span className="tolov-summa zalog-holat">{g.turi === 'pul' && g.summa ? `${som(g.summa)}, ` : ''}{g.holat_nomi.toLowerCase()}</span>
+          </div>
         ))}
         <button className="ikkinchi kichik" onClick={() => zakazTarixi(id).then(setTarix)}>O'zgarishlar tarixi</button>
         {tarix && tarix.map((t, i) => (

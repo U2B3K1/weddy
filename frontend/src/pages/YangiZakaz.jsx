@@ -5,7 +5,7 @@ import LibosSiluet from '../components/LibosSiluet'
 import { SalonchiForma } from './Salonchilar'
 import Manekin from '../components/Manekin'
 import CalendarPage from '../components/kalendar/CalendarPage'
-import { HAFTA, OYLAR, isoOch, ustun } from '../components/kalendar/sana'
+import { Bezak, Muhr, VaraqSana } from '../components/Varaq'
 import { aksessuarManekinSaqla, boshAksessuarlar, filiallar, boshLiboslar, mijozQidir, qulf, qulfOchir, manekinSaqla, salonchiQosh, salonchilar, som, ustamaFoiz, zakazYarat } from '../api'
 import SummaInput from '../components/SummaInput'
 
@@ -32,8 +32,6 @@ const vaqtMatni = (s) => {
 }
 const kunlar = (a, b) => Math.round((Date.parse(b) - Date.parse(a)) / 86400000) + 1
 const QADAMLAR = ['Sana', 'Libos', 'Mijoz']
-// Varaqdagi sana: «11», «dekabr», «payshanba»
-const sanaQismlari = (s) => { const { y, m, d } = isoOch(s); return { kun: d, oy: OYLAR[m].toLowerCase(), hafta: HAFTA[ustun(y, m, d)][1].toLowerCase() } }
 // Bron muddati: «bugun 21:06», «ertaga 21:06» yoki «03.11.2026 21:06»
 const muddatMatni = (s) => {
   const t = new Date(s), n = (x) => String(x).padStart(2, '0'), soat = `${n(t.getHours())}:${n(t.getMinutes())}`
@@ -43,20 +41,6 @@ const muddatMatni = (s) => {
 
 // Zakaz varaqasi: to'y taklifnomasidek — sana, kimga, liboslar va jami tanlangan sari yozilib boradi.
 // Saqlangach (muhr bilan) shu varaq zakazning yakuniy ko'rinishi bo'ladi.
-function VaraqSana({ dan, gacha }) {
-  if (!dan || !gacha || gacha < dan) {
-    return <p className="varaq-izoh">Olib ketish va qaytarish kunini kalendarda belgilang.</p>
-  }
-  const a = sanaQismlari(dan), b = sanaQismlari(gacha)
-  return (
-    <div className="varaq-sana">
-      <div><small>olib ketish</small><b>{a.kun}</b><span>{a.oy}</span><em>{a.hafta}</em></div>
-      <i aria-label={`${kunlar(dan, gacha)} kun`}>{kunlar(dan, gacha)} kun</i>
-      <div><small>qaytarish</small><b>{b.kun}</b><span>{b.oy}</span><em>{b.hafta}</em></div>
-    </div>
-  )
-}
-
 function VaraqRoyxat({ liboslar, aksessuarlar, aksSoni, ustama, ustamaSumma }) {
   const aks = aksessuarlar.filter((a) => aksSoni[a.id] > 0)
   if (liboslar.length === 0 && aks.length === 0) return null
@@ -84,12 +68,6 @@ function VaraqRoyxat({ liboslar, aksessuarlar, aksSoni, ustama, ustamaSumma }) {
     </ul>
   )
 }
-
-const Bezak = () => (
-  <svg className="varaq-bezak" viewBox="0 0 120 12" aria-hidden="true">
-    <path d="M0 6h48M72 6h48" /><path d="M60 1.5 64.5 6 60 10.5 55.5 6Z" /><circle cx="51" cy="6" r="1.2" /><circle cx="69" cy="6" r="1.2" />
-  </svg>
-)
 
 export default function YangiZakaz({ onTayyor, onTolov }) {
   const q0 = useState(qoralamaOl)[0]
@@ -269,7 +247,7 @@ export default function YangiZakaz({ onTayyor, onTolov }) {
     return (
       <section className="muhr-sahna" aria-labelledby="muhr-sarlavha">
         <div className="varaq varaq-yakun">
-          <div className="muhr" aria-hidden="true"><span>№</span>{zakaz.raqam}</div>
+          <Muhr raqam={zakaz.raqam} />
           <h2 id="muhr-sarlavha" ref={sarlavha} tabIndex={-1}>Zakaz #{zakaz.raqam} saqlandi</h2>
           {mijozNomi && <p className="varaq-kimga">{mijozNomi}</p>}
           <Bezak />

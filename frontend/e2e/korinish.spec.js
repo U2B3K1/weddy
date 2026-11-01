@@ -198,14 +198,16 @@ test('rahbar xato yozilgan to\'lovni tuzatadi (Terminal → Naqd)', async ({ pag
     await page.locator('input.jadval-qidiruv').fill('Tuzatish Sinov')
     await page.locator('.zakaz-jadval tbody tr', { hasText: 'Tuzatish Sinov' }).first().click()
     const tolovlar = page.locator('.karta-tolovlar')
-    await expect(tolovlar).toContainText("Avans · 400 000 so'm · Terminal")
+    const avans = tolovlar.locator('.tolov-qator', { hasText: 'Avans' })
+    await expect(avans).toContainText("400 000 so'm")
+    await expect(avans).toContainText('Terminal')
     await tolovlar.getByText('Tuzatish', { exact: true }).click()
     await tolovlar.getByLabel("To'lov usuli").selectOption('naqd')
     await tolovlar.getByLabel('Sabab').fill('naqd edi, terminal deb yozilgan')
     await ikkiKenglik(page, '9-tolov-tuzatish')
     await tolovlar.getByRole('button', { name: 'Tuzatishni saqlash' }).click()
     await expect(page.getByText("To'lov tuzatildi.")).toBeVisible()
-    await expect(tolovlar).toContainText("Avans · 400 000 so'm · Naqd")
+    await expect(avans).toContainText('Naqd')
   } finally {
     await apiSorov(page, 'POST', '/kassa/smena/yopish/', { summa: 400_000, izoh: '' })
   }
