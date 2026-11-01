@@ -93,7 +93,7 @@ test('pul topshirish: rahbar → sotuvchi → rahbar; kassir rejimi', async ({ p
   await test.step('sotuvchi yopadi va pulni rahbarga beradi', async () => {
     await sotuvchi.locator('.smena-panel').getByRole('button', { name: 'Smenani yopish' }).click()
     const oyna = sotuvchi.getByRole('dialog', { name: 'Smenani yopish' })
-    await oyna.getByLabel('Pul qayerda qoladi').selectOption({ label: 'Rahbarga topshiraman: Rahbar' })
+    await oyna.getByLabel('Pul qayerda qoladi').selectOption({ label: 'Rahbarga: Rahbar' })
     await summaTer(oyna, ['1', '9', '9', '0', '000'])
     await expect(oyna).toContainText("Farq yo'q")
     await expect(oyna.getByRole('button', { name: 'Smenani yopish' })).toBeDisabled()  // terminal sverkasi kiritilmagan

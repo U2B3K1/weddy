@@ -107,7 +107,7 @@ function OchiqSanoq({ s, onYangila, onYakun }) {
         <div className="stat"><span>Mijozda / ta'mirda / tozalashda</span><b>{s.qatorlar.length - salonda.length}</b></div>
       </div>
       <section className="blok">
-        <form className="qator" onSubmit={skaner}>
+        <form className="sanoq-kiritish" onSubmit={skaner}>
           <input ref={kiritish} autoFocus value={artikul} onChange={(e) => setArtikul(e.target.value)}
             placeholder="Artikulni kiriting yoki skanerlang" aria-label="Artikul" maxLength={50} />
           <button type="submit">Topildi</button>

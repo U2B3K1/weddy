@@ -320,9 +320,10 @@ function SmenaYopish({ hisobda, tekshirilmagan, rahbarlar, terminalda, onYuboris
       <p className="malumot">Sizda (tizim bo'yicha): <b>{som(hisobda)}</b>. Qo'lingizdagi naqd pulni sanab kiriting.</p>
       <label>Pul qayerda qoladi
         <select value={rahbar} onChange={(e) => setRahbar(e.target.value)}>
-          <option value="">Seyfda — ertaga ochgan xodim sanab qabul qiladi</option>
-          {rahbarlar.map((r) => <option key={r.id} value={r.id}>Rahbarga topshiraman: {r.ism}</option>)}
+          <option value="">Seyfda</option>
+          {rahbarlar.map((r) => <option key={r.id} value={r.id}>Rahbarga: {r.ism}</option>)}
         </select>
+        <small className="malumot">{rahbar ? 'Rahbar Telegramda (yoki ilovada) qabul qilganini tasdiqlaydi.' : 'Ertaga smenani ochgan xodim sanab qabul qiladi.'}</small>
       </label>
       {tekshirilmagan > 0 && <p className="ogohlantirish">{tekshirilmagan} ta zalog tekshirilmagan — yopishdan oldin «Zaloglar» bo'limida belgilang.</p>}
       <Summa qiymat={summa} izoh={farq === null ? null : farq === 0 ? 'Farq yo\'q' : `Farq: ${som(farq)}`} />
