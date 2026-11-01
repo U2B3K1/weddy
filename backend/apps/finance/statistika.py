@@ -302,12 +302,13 @@ def kassa(salon, dan, gacha, filial=None, **_):
         chiqqanlar_farqi = sum(i.farq or 0 for i in s.ishtirokchilar.all())
         izoh.append(s.izoh if s.yopilgan else 'smena ochiq')
         kutilgan = s.hisobdagi_qoldiq if s.yopilgan else kassa_hisobot(s)['hisobdagi_qoldiq']
-        qatorlar.append([s.sana, ', '.join(dict.fromkeys(ishchilar)), p.get('naqd') or 0, p.get('naqdsiz') or 0,
-                         p.get('qaytarilgan') or 0, p.get('xarajat') or 0, kutilgan, s.fakt_qoldiq,
-                         (s.farq or 0) + chiqqanlar_farqi if s.yopilgan or chiqqanlar_farqi else None,
-                         s.terminal_farq, ' · '.join(x for x in izoh if x)])
-    jami = (['Jami', ''] + [sum(q[i] for q in qatorlar) for i in range(2, 6)]
-            + [None, None, sum(q[8] or 0 for q in qatorlar), sum(q[9] or 0 for q in qatorlar), ''])
+        # Farq ustunlari Xodimdan keyin: egasi birinchi «kamomad bormi?» deb qaraydi (keng jadvalda o'ng chet ko'rinmaydi)
+        qatorlar.append([s.sana, ', '.join(dict.fromkeys(ishchilar)),
+                         (s.farq or 0) + chiqqanlar_farqi if s.yopilgan or chiqqanlar_farqi else None, s.terminal_farq,
+                         p.get('naqd') or 0, p.get('naqdsiz') or 0, p.get('qaytarilgan') or 0, p.get('xarajat') or 0,
+                         kutilgan, s.fakt_qoldiq, ' · '.join(x for x in izoh if x)])
+    jami = (['Jami', '', sum(q[2] or 0 for q in qatorlar), sum(q[3] or 0 for q in qatorlar)]
+            + [sum(q[i] for q in qatorlar) for i in range(4, 8)] + [None, None, ''])
     return {'sarlavha': 'Kunlik kassa',
             'izoh': "Har smena alohida. «Kassada bo'lishi kerak» — smenani yopgan xodim qo'lida bo'lishi kerak bo'lgan naqd "
                     "(o'zi olgani va unga topshirilgani). «Farq» — kun bo'yicha jami: yopgan xodim va kun o'rtasida pulini "
@@ -315,9 +316,9 @@ def kassa(salon, dan, gacha, filial=None, **_):
                     "«Terminal farqi» — terminal sverkasi minus tizimdagi terminal to'lovlari (manfiy — naqd «karta» deb "
                     "yozilgan bo'lishi mumkin). Rahbar «kelmadi» degan o'tkazmalar kirmaydi. "
                     "Ijara, oylik kabi kassadan tashqari xarajatlar bu yerga kirmaydi.",
-            'ustunlar': _u(('Sana', 'sana'), ('Xodim', 'matn'), ('Naqd kirdi', 'pul'), ("Terminal va o'tkazma", 'pul'),
-                           ('Mijozga qaytarildi', 'pul'), ('Kassadan xarajat', 'pul'), ("Kassada bo'lishi kerak", 'pul'),
-                           ('Sanaldi', 'pul'), ('Farq', 'pul'), ('Terminal farqi', 'pul'), ('Izoh', 'matn')),
+            'ustunlar': _u(('Sana', 'sana'), ('Xodim', 'matn'), ('Farq', 'pul'), ('Terminal farqi', 'pul'),
+                           ('Naqd kirdi', 'pul'), ("Terminal va o'tkazma", 'pul'), ('Mijozga qaytarildi', 'pul'),
+                           ('Kassadan xarajat', 'pul'), ("Kassada bo'lishi kerak", 'pul'), ('Sanaldi', 'pul'), ('Izoh', 'matn')),
             'qatorlar': qatorlar, 'jami': jami}
 
 
@@ -415,18 +416,18 @@ def xodimlar_nazorati(salon, dan, gacha, **_):
         b, y = bekor.get(x.id, 0), yangi.get(x.id, 0)
         if b >= 2 and b * 5 >= max(y, 1):  # bekor qilganlari yangi zakazlarining 20% idan ko'p
             diqqat.append("bekor qilish ko'p")
-        qatorlar.append([x.ism, smena[x.id], farq[x.id], y, tushum.get(x.id, 0), b, qaytargan.get(x.id, 0),
-                         cheg.get(x.id, 0), ', '.join(diqqat)])
+        qatorlar.append([x.ism, ', '.join(diqqat), farq[x.id], smena[x.id], y, tushum.get(x.id, 0), b,
+                         qaytargan.get(x.id, 0), cheg.get(x.id, 0)])
     return {'sarlavha': 'Xodimlar nazorati',
             'izoh': "Kassa farqi manfiy — kamomad: xodim o'z qo'lidagi naqdni topshirganda (smenadan chiqish yoki yopishda) "
                     "kerakligidan kam bo'lgan; har kim faqat o'z hisobiga javob beradi. «Zakazlaridan tushum» — sotuvchi "
                     "olgan zakazlarga shu davrda kirgan pul (kassir qabul qilgan bo'lsa ham). «Diqqat» ustuni kamomad, "
                     "pul topshirishdagi kelishmovchilik va odatdan ko'p bekor qilishni belgilaydi.",
-            'ustunlar': _u(('Xodim', 'matn'), ('Smenalar', 'son'), ('Kassa farqi', 'pul'), ('Yangi zakazlar', 'son'),
-                           ('Zakazlaridan tushum', 'pul'), ('Bekor qilgan', 'son'), ('Mijozga qaytargan pul', 'pul'),
-                           ("Chegirma so'ragan", 'son'), ('Diqqat', 'matn')),
+            'ustunlar': _u(('Xodim', 'matn'), ('Diqqat', 'matn'), ('Kassa farqi', 'pul'), ('Smenalar', 'son'),
+                           ('Yangi zakazlar', 'son'), ('Zakazlaridan tushum', 'pul'), ('Bekor qilgan', 'son'),
+                           ('Mijozga qaytargan pul', 'pul'), ("Chegirma so'ragan", 'son')),
             'qatorlar': qatorlar,
-            'jami': ['Jami'] + [sum(q[i] for q in qatorlar) for i in range(1, 8)] + ['']}
+            'jami': ['Jami', ''] + [sum(q[i] for q in qatorlar) for i in range(2, 9)]}
 
 
 HISOBOTLAR = {

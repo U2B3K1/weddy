@@ -121,8 +121,8 @@ class StatistikaTests(TestCase):
     def test_kassa_bandlik_kelgusi_chegirma(self):
         smena_yopish(salon=self.salon, xodim=self.malika, fakt_qoldiq=4_940_000, izoh='10 ming yetmadi')
         k = self.h('kassa')
-        self.assertEqual(k['qatorlar'][0][6:9], [4_950_000, 4_940_000, -10_000])  # kerak edi, sanaldi, kamomad
-        self.assertEqual(k['jami'][8], -10_000)
+        self.assertEqual(k['qatorlar'][0][8:10], [4_950_000, 4_940_000])  # kerak edi, sanaldi
+        self.assertEqual((k['qatorlar'][0][2], k['jami'][2]), (-10_000, -10_000))  # kamomad
         b = statistika.bandlik(self.salon, kun(0), kun(9))
         self.assertEqual(self.qator(b, 'B Libos B')[1:], [5, 50.0])  # 0..3 kun + 1 bufer = 5 kun / 10
         kel = self.h('kelgusi')
@@ -134,10 +134,10 @@ class StatistikaTests(TestCase):
         smena_yopish(salon=self.salon, xodim=self.malika, fakt_qoldiq=4_940_000, izoh='10 ming yetmadi')
         n = self.h('nazorat')
         # 1 smena, kamomad 10 000, 4 yangi zakaz (tushum 3,9 mln), 1 bekor qilgan (50% — 500 000 qaytargan), 1 chegirma so'ragan
-        self.assertEqual(self.qator(n, 'Malika')[1:], [1, -10_000, 4, 3_900_000, 1, 500_000, 1, 'kamomad 1 marta'])
+        self.assertEqual(self.qator(n, 'Malika')[1:], ['kamomad 1 marta', -10_000, 1, 4, 3_900_000, 1, 500_000, 1])
         self.assertEqual([q[0] for q in n['qatorlar']], ['Malika'])  # amali yo'q rahbar ro'yxatda yo'q
         k = self.h('kassa')
-        self.assertEqual(k['qatorlar'][0][1:6], ['Malika', 4_500_000, 0, 500_000, 50_000])  # naqd kirdi, naqdsiz, qaytarildi, kassadan xarajat
+        self.assertEqual(k['qatorlar'][0][4:8], [4_500_000, 0, 500_000, 50_000])  # naqd kirdi, naqdsiz, qaytarildi, kassadan xarajat
 
     def test_bosh_liboslar(self):
         from apps.catalog.models import Libos

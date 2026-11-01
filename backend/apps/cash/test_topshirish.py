@@ -164,7 +164,7 @@ class KassirRejimiTests(Base):
         self.tolov(self.kassir, T.AVANS, 500_000, zakaz=z)  # kassir sotuvchining zakazini «yopadi»
         # Statistikada tushum sotuvchiga yoziladi
         n = xodimlar_nazorati(self.salon, date(2026, 1, 1), date(2026, 12, 31))
-        self.assertEqual({q[0]: q[4] for q in n['qatorlar']}['Malika'], 500_000)
+        self.assertEqual({q[0]: q[5] for q in n['qatorlar']}['Malika'], 500_000)
 
     def test_rahbar_ham_pul_oladi(self):
         smena_ochish(salon=self.salon, xodim=self.rahbar, boshlangich_qoldiq=0)

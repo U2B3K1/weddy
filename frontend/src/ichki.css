@@ -307,7 +307,8 @@ label > input, label > select { color: var(--oq); }
 .hisobot td.ong, .jadval td:last-child { font-variant-numeric: tabular-nums; }
 
 /* ---------- P&L schyotlari: raqam xira indeks, oraliq/yakuniy qator ustki chiziq bilan ajraladi ---------- */
-.pnl td { padding: 7px 0; }
+.pnl td { padding: 7px 0; vertical-align: baseline; }
+.pnl td:last-child { white-space: nowrap; padding-left: var(--o-3); vertical-align: baseline; }  /* summa bo'linmasin (telefon) */
 .pnl-raqam { display: inline-block; min-width: 22px; margin-right: 10px; color: var(--matn-3); font-variant-numeric: tabular-nums; text-align: right; }
 .pnl-izoh { color: var(--matn-3); font-size: var(--t-meta); margin-left: 8px; }
 .pnl tr.pnl-oralik td, .pnl tr.pnl-yakuniy td { border-top: 1px solid var(--chegara); padding-top: 11px; }
@@ -575,6 +576,7 @@ main .boshlash-panel .qator-btn { text-align: left; }
   .jadval-asboblar > button { display: none; }  /* yangi zakaz — pastki paneldagi «+» */
   :where(.ilova) .jadval-qidiruv { flex: 1 1 100%; }
   .tezkor-tablar { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; width: 100%; }
+  .tezkor-tablar button { flex: none; white-space: nowrap; }  /* siqilib bir necha qatorga bo'linmasin — tablar suriladi */
   .zakaz-jadval thead { display: none; }
   .zakaz-jadval tbody tr { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--o-2) var(--o-3);
     padding: var(--o-3); border-bottom: 1px solid var(--chegara); }

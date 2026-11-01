@@ -70,7 +70,7 @@ class OtkazmaTests(Base):
         self.assertEqual(reports.foyda_zarar(self.salon, b.year, b.month)['tushum'], 0)
         self.tolov(2_000_000, U.NAQD, tur=T.QOLDIQ)  # endi naqd to'lanadi (oshib ketish xatosi yo'q)
         n = xodimlar_nazorati(self.salon, b.replace(day=1), b)
-        self.assertIn("o'tkazma kelmadi 1 marta", {q[0]: q[-1] for q in n['qatorlar']}['Malika'])
+        self.assertIn("o'tkazma kelmadi 1 marta", {q[0]: q[1] for q in n['qatorlar']}['Malika'])
 
     def test_api(self):
         t = self.tolov(1_000_000, U.OTKAZMA)
@@ -97,7 +97,7 @@ class TerminalTests(Base):
         self.assertIn('Terminal sverkasi farqi', Xabar.objects.get(xodim=self.rahbar, tur='terminal_farqi').matn)
         b = timezone.localdate()
         k = kassa(self.salon, b, b)
-        self.assertEqual(k['qatorlar'][0][9], -10_000)
+        self.assertEqual(k['qatorlar'][0][3], -10_000)
         self.assertEqual(len(k['qatorlar'][0]), len(k['ustunlar']))
 
     def test_terminalsiz_smena_sverkasiz_yopiladi(self):
