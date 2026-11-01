@@ -40,6 +40,15 @@ async function kunniBos(page, sana) {
 test('yangi zakaz: har qadam ikki kenglikda', async ({ page }) => {
   const xatolar = xatolarniKuzat(page)
   await kirish(page, 'Sotuvchi', '2222')
+  // aksessuarga rasm (Katalog → Aksessuarlar → Rasm) — yangi zakazda ko'ylaklar kabi rasmli kartochka bo'lib chiqadi
+  await nav(page).getByRole('button', { name: 'Katalog', exact: true }).click()
+  await page.getByRole('tab', { name: 'Aksessuarlar' }).click()
+  await page.locator('.zakaz-katak', { hasText: 'Fata Klassik' }).click()
+  await page.locator('.aks-tafsilot input[type=file]').first().setInputFiles('public/kelinlar/2.jpg')
+  await expect(page.getByText('Rasm saqlandi.')).toBeVisible()
+  await expect(page.locator('.aks-tafsilot img.aks-rasm')).toBeVisible()
+  await suratlar(page, '0-aksessuar-rasm')
+
   await nav(page).getByRole('button', { name: 'Kassa', exact: true }).click()  // «Yangi zakaz» — Kassa menyusida
   await nav(page).getByRole('button', { name: 'Yangi zakaz', exact: true }).click()
   await suratlar(page, '1-sana-bosh')
@@ -55,7 +64,7 @@ test('yangi zakaz: har qadam ikki kenglikda', async ({ page }) => {
   await libos.getByRole('button', { name: "Qo'shish" }).click()
   await expect(page.locator('.varaq-royxat li')).toHaveCount(1)
   // aksessuar: kartochkada «Qo'shish» → soni va hisob, varaqqa ham yoziladi
-  const aks = page.locator('.aks-grid li').first()
+  const aks = page.locator('.aks-kartalar li').first()
   await aks.getByRole('button', { name: "Qo'shish" }).click()
   await expect(aks.locator('.aks-jami')).toContainText('1 ×')
   await expect(page.locator('.varaq-royxat li')).toHaveCount(2)

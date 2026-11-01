@@ -1167,19 +1167,19 @@ label > .info .info-matn, th .info .info-matn { left: auto; right: 0; }
 .tolov-qator.kelmadi .tolov-summa { color: var(--matn-3); text-decoration: line-through; }
 .tolov-qator .tolov-tuzatish { grid-column: 1 / -1; }
 
-/* Yangi zakaz: aksessuar kartochkalari — nomi, bir donasi narxi, shu sanalarga nechtasi bor; tanlansa soni va hisob */
-.aks-grid { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
-.aks-grid li { display: grid; grid-template-columns: 48px minmax(0, 1fr); align-items: center; gap: 10px 12px; padding: 12px;
-  border-radius: var(--r-2); background: var(--yuza-2); border: 1px solid var(--chegara); transition: border-color .2s ease, box-shadow .2s ease; }
-.aks-grid li.tanlandi { border-color: var(--tilla); box-shadow: 0 0 0 1px var(--tilla), 0 0 0 5px var(--tilla-xira); }
-.aks-belgi { width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; overflow: hidden;
-  border: 1px solid rgba(228, 193, 150, .5); background: var(--tilla-xira); color: var(--tilla); font: 400 16px/1 var(--serif); letter-spacing: .04em; }
-.aks-belgi img { width: 100%; height: 100%; object-fit: contain; }
-.aks-matn { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.aks-matn small { font-weight: 400; color: var(--matn-3); }
-.aks-grid li > button, .aks-son, .aks-jami { grid-column: 1 / -1; }
+/* Yangi zakaz: aksessuarlar — ko'ylaklar bilan bir xil kartochka (.libos-grid); rasmsiz bo'lsa kodi, tanlansa soni */
+.aks-bolim h3 { margin: var(--o-3) 0 0; }
+.aks-kartalar .bosh-eskiz { font: 400 34px/1 var(--serif); letter-spacing: .06em; color: rgba(228, 193, 150, .75); }
+.aks-kartalar .libos-narx { white-space: nowrap; }
+.aks-kartalar .libos-narx small { font-weight: 400; color: var(--matn-3); }
 .aks-son { display: flex; align-items: center; gap: 8px; }
-.aks-son button { flex: 1; font-size: 18px; }
-.aks-son output { min-width: 64px; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; }
+.libos-grid .aks-son button { width: auto; flex: 1; font-size: 18px; }
+.aks-son output { min-width: 56px; text-align: center; font-weight: 700; font-variant-numeric: tabular-nums; }
 .aks-jami { text-align: right; font-size: 13px; color: var(--matn-2); font-variant-numeric: tabular-nums; }
 .aks-jami b { color: var(--oq); }
+
+/* Katalog → Aksessuarlar: ro'yxatda kichik rasm, tafsilotda rasm bloki */
+.aks-eskiz { flex: none; width: 46px; height: 46px; object-fit: cover; border-radius: 6px; background: #fff; }
+.aks-rasm-qator { display: flex; align-items: flex-start; gap: var(--o-3); }
+.aks-rasm { flex: none; width: 120px; aspect-ratio: 2 / 3; object-fit: cover; border-radius: var(--r-1); background: #fff; }
+.aks-rasm-bosh { display: grid; place-items: center; background: var(--yuza-2); border: 1px dashed var(--chegara-kuchli); color: var(--tilla); font: 400 26px/1 var(--serif); }

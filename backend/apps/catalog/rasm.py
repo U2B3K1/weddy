@@ -6,7 +6,7 @@ from django.core.files.base import ContentFile
 from django.db import transaction
 from PIL import Image, ImageOps, UnidentifiedImageError
 
-from .models import Libos, Rasm
+from .models import Aksessuar, Libos, Rasm
 from .services import KatalogXatosi
 
 KATTA = (800, 1200)    # libos kartasi
@@ -102,6 +102,31 @@ def rasm_yuklash(*, salon, xodim, libos, fayl):
     rasm.kichik.save('kichik.webp', ContentFile(kichik), save=False)
     rasm.save()
     return rasm
+
+
+@transaction.atomic
+def aksessuar_rasmi(*, salon, aksessuar, fayl):
+    """Aksessuarning kartochka rasmi (libos rasmi kabi ishlov). Bitta rasm: yangisi eskisini almashtiradi."""
+    a = Aksessuar.objects.select_for_update().get(id=aksessuar.id, salon=salon)
+    katta, kichik, _ = qayta_ishla(fayl)
+    eski = [f.name for f in (a.rasm, a.rasm_kichik) if f]
+    a.rasm.save('katta.webp', ContentFile(katta), save=False)
+    a.rasm_kichik.save('kichik.webp', ContentFile(kichik), save=False)
+    a.save(update_fields=['rasm', 'rasm_kichik'])
+    storage = a.rasm.storage
+    transaction.on_commit(lambda: [storage.delete(n) for n in eski])  # faqat saqlangach eski fayllar o'chadi
+    return a
+
+
+@transaction.atomic
+def aksessuar_rasmini_ochirish(*, salon, aksessuar):
+    a = Aksessuar.objects.select_for_update().get(id=aksessuar.id, salon=salon)
+    eski = [f.name for f in (a.rasm, a.rasm_kichik) if f]
+    a.rasm, a.rasm_kichik = '', ''
+    a.save(update_fields=['rasm', 'rasm_kichik'])
+    storage = Aksessuar._meta.get_field('rasm').storage
+    transaction.on_commit(lambda: [storage.delete(n) for n in eski])
+    return a
 
 
 def rasmni_ochirish(rasm):

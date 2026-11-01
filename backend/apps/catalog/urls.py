@@ -16,6 +16,7 @@ urlpatterns = [
     path('aksessuarlar/', views_aksessuar.AksessuarlarView.as_view()),
     path('aksessuarlar/<int:pk>/', views_aksessuar.AksessuarTafsilotView.as_view()),
     path('aksessuarlar/<int:pk>/manekin/', views_aksessuar.AksessuarManekinView.as_view()),
+    path('aksessuarlar/<int:pk>/rasm/', views_aksessuar.AksessuarRasmView.as_view()),
     path('aksessuarlar/<int:pk>/tasdiq/', views_aksessuar.AksessuarTasdiqView.as_view()),
     path('aksessuarlar/<int:pk>/donalar/', views_aksessuar.DonalarView.as_view()),
     path('aksessuar-partiyalari/<int:pk>/', views_aksessuar.PartiyaView.as_view()),

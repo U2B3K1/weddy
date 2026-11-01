@@ -289,6 +289,13 @@ export const aksessuarManekinYukla = (id, fayl) => {
 }
 export const aksessuarManekinSaqla = (id, body) => patch(`/aksessuarlar/${id}/manekin/`, body)
 export const aksessuarManekinOchir = (id) => api.delete(`/aksessuarlar/${id}/manekin/`).then((r) => r.data)
+// Aksessuarning kartochka rasmi (libos rasmi kabi): yuklash/almashtirish va olib tashlash (rahbar)
+export const aksessuarRasmYukla = (id, fayl) => {
+  const fd = new FormData()
+  fd.append('rasm', fayl)
+  return api.post(`/aksessuarlar/${id}/rasm/`, fd).then((r) => r.data)
+}
+export const aksessuarRasmOchir = (id) => api.delete(`/aksessuarlar/${id}/rasm/`).then((r) => r.data)
 export const manekinSaqla = (libosId, body) => patch(`/liboslar/${libosId}/manekin/`, body)
 export const promokodlar = () => get('/promokodlar/')
 export const promokodYarat = (body) => post('/promokodlar/', body)

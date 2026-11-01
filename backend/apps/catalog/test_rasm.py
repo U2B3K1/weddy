@@ -207,3 +207,46 @@ class RasmOchirishTests(RasmBase):
         self.yukla(self.malika, rasm_fayl((400, 600)))
         _, xodim_b, _ = salon_yarat('b')
         self.assertEqual(self.api(xodim_b).delete(f'/api/rasmlar/{Rasm.objects.get().id}/').status_code, 404)
+
+
+class AksessuarRasmTests(RasmBase):
+    """Aksessuar kartochkasi rasmi: libos rasmi kabi ishlov, bitta rasm, yangi zakazda ko'rinadi."""
+
+    def setUp(self):
+        super().setUp()
+        from .models import Kategoriya
+        from .services import aksessuar_qoshish
+        akat = Kategoriya.objects.create(salon=self.salon, nomi='Fata', turi='aksessuar')
+        self.fata = aksessuar_qoshish(salon=self.salon, xodim=self.rahbar, nomi='Fata', kod='ft', kategoriya=akat,
+                                      ijara_narxi=300_000, tannarx=900_000, soni=2)
+        self.u = f'/api/aksessuarlar/{self.fata.id}/rasm/'
+
+    def test_yuklash_almashtirish_va_yangi_zakazda(self):
+        c = self.api(self.malika)  # sotuvchi ham yuklaydi (libos rasmi kabi)
+        r = c.post(self.u, {'rasm': rasm_fayl((1200, 1200), nom='toj.png', format='PNG')}, format='multipart')
+        self.assertEqual(r.status_code, 201, r.content)
+        self.fata.refresh_from_db()
+        with Image.open(self.fata.rasm.path) as katta, Image.open(self.fata.rasm_kichik.path) as kichik:
+            self.assertEqual((katta.format, katta.size, kichik.size), ('WEBP', (800, 1200), (300, 450)))
+        eski = self.fata.rasm.path
+        with self.captureOnCommitCallbacks(execute=True):  # eski fayl faqat tranzaksiya tugagach o'chadi
+            c.post(self.u, {'rasm': rasm_fayl((900, 1350))}, format='multipart')
+        self.fata.refresh_from_db()
+        self.assertFalse(os.path.exists(eski))  # almashtirilgan rasm diskda qolmaydi
+        self.assertTrue(c.get(f'/api/aksessuarlar/{self.fata.id}/').data['rasm'].endswith('.webp'))
+        bosh = c.get('/api/bronlar/bosh-aksessuarlar/', {'dan': '2027-05-01', 'gacha': '2027-05-02'}).data
+        self.assertEqual(bosh[0]['rasm'], c.get('/api/aksessuarlar/').data[0]['rasm'])
+
+    def test_notogri_fayl_va_ochirish_faqat_rahbar(self):
+        notogri = SimpleUploadedFile('a.jpg', b'rasm emas', content_type='image/jpeg')
+        self.assertEqual(self.api(self.malika).post(self.u, {'rasm': notogri}, format='multipart').status_code, 409)
+        self.api(self.malika).post(self.u, {'rasm': rasm_fayl((600, 900))}, format='multipart')
+        self.fata.refresh_from_db()
+        fayl = self.fata.rasm_kichik.path
+        self.assertEqual(self.api(self.malika).delete(self.u).status_code, 403)
+        with self.captureOnCommitCallbacks(execute=True):
+            self.assertEqual(self.api(self.rahbar).delete(self.u).status_code, 204)
+        self.fata.refresh_from_db()
+        self.assertFalse(self.fata.rasm)
+        self.assertFalse(os.path.exists(fayl))
+        self.assertIsNone(self.api(self.rahbar).get(f'/api/aksessuarlar/{self.fata.id}/').data['rasm'])

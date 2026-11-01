@@ -4,7 +4,7 @@ import Manekin from '../components/Manekin'
 import NavIkona from '../components/NavIkona'
 import Oyna from '../components/Oyna'
 import {
-  aksessuarManekinOchir, aksessuarManekinSaqla, aksessuarManekinYukla, aksessuarOzgartir, aksessuarTafsilot, aksessuarTasdiq, aksessuarYarat, aksessuarlar, donaFilial, donaHolati, filiallar, donaTamirTugat, donaTamirga, donalarQosh, partiyaOzgartir,
+  aksessuarManekinOchir, aksessuarManekinSaqla, aksessuarManekinYukla, aksessuarOzgartir, aksessuarRasmOchir, aksessuarRasmYukla, aksessuarTafsilot, aksessuarTasdiq, aksessuarYarat, aksessuarlar, donaFilial, donaHolati, filiallar, donaTamirTugat, donaTamirga, donalarQosh, partiyaOzgartir,
   kategoriyalar, sanaMatni, som, xatoMatni, yetkazibBeruvchilar,
 } from '../api'
 import SummaInput from '../components/SummaInput'
@@ -123,7 +123,7 @@ export default function AksessuarBolimi({ rahbar }) {
                       <tr className={ochiq === a.id ? 'ochiq' : ''} onClick={() => setOchiq(ochiq === a.id ? null : a.id)}>
                         <td>
                           <button type="button" className="zakaz-katak" aria-expanded={ochiq === a.id}>
-                            <span className="kod-belgi">{a.kod}</span>
+                            {a.rasm ? <img className="aks-eskiz" src={a.rasm} alt="" /> : <span className="kod-belgi">{a.kod}</span>}
                             <span className="zakaz-nom"><b>{a.nomi}</b>{a.holat === 'arxiv' && <small>Arxivda</small>}</span>
                           </button>
                         </td>
@@ -158,6 +158,7 @@ function Tafsilot({ id, rahbar, bajar, ybs = [] }) {
   useEffect(() => { yukla() }, [yukla])
   const amal = async (fn, ok) => { const r = await bajar(fn, ok); if (r) await yukla(); return r }
   const fayl = useRef(null)
+  const rasmFayl = useRef(null)
   const [fil, setFil] = useState([])
   useEffect(() => { filiallar().then((r) => setFil(r.filiallar)).catch(() => {}) }, [])
   const [manekinOyna, setManekinOyna] = useState(false)
@@ -191,6 +192,24 @@ function Tafsilot({ id, rahbar, bajar, ybs = [] }) {
       <DonaTamir a={a} rahbar={rahbar} amal={amal} />
       </div>
       <div className="stack">
+      <h4>Rasm</h4>
+      {/* Yangi zakazda aksessuar shu rasm bilan ko'ylaklar qatori kartochka bo'lib chiqadi */}
+      <div className="aks-rasm-qator">
+        {a.rasm_katta
+          ? <img className="aks-rasm" src={a.rasm_katta} alt={a.nomi} />
+          : <span className="aks-rasm aks-rasm-bosh" aria-hidden="true">{a.kod}</span>}
+        <div className="stack">
+          <input ref={rasmFayl} type="file" accept="image/jpeg,image/png,image/webp" hidden
+            onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) amal(() => aksessuarRasmYukla(id, f), 'Rasm saqlandi.') }} />
+          <button type="button" className="ikkinchi kichik" onClick={() => rasmFayl.current.click()}>
+            {a.rasm ? 'Rasmni almashtirish' : 'Rasm yuklash'}
+          </button>
+          {a.rasm && rahbar && (
+            <button type="button" className="ikkinchi kichik" onClick={() => amal(() => aksessuarRasmOchir(id), 'Rasm olib tashlandi.')}>Rasmni olib tashlash</button>
+          )}
+          {!a.rasm && <p className="malumot">Yangi zakazda aksessuar ko'ylaklar kabi rasm bilan ko'rinadi. Oq yoki och fonda, tik holatda suratga oling.</p>}
+        </div>
+      </div>
       <h4>Manekin va sozlamalar</h4>
       {/* FT-5.2: aksessuarning fonsiz rasmi manekinda libos ustidan qo'yiladi */}
       <div className="qator">

@@ -376,20 +376,23 @@ export default function YangiZakaz({ onTayyor, onTolov }) {
               })}
             </ul>
             {aksessuarlar.length > 0 && (
-              <section className="blok">
+              <section className="stack aks-bolim">
                 <h3>Aksessuarlar</h3>
-                {/* Libos kartalaridek: nima, necha pul, shu sanalarga nechta bor. Tanlanmagan — «Qo'shish»,
-                    tanlangan — soni va hisob (2 × 300 000 = 600 000) */}
-                <ul className="aks-grid">
+                {/* Ko'ylaklar bilan bir xil kartochka: rasm (Katalog → Aksessuarlar → Rasm), nomi, narxi, shu sanalarga
+                    nechta bor. Tanlanmagan — «Qo'shish», tanlangan — soni va hisob (2 × 300 000 = 600 000) */}
+                <ul className="liboslar libos-grid aks-kartalar">
                   {aksessuarlar.map((a) => {
                     const n = aksSoni[a.id] || 0
                     const o = (d) => setAksSoni({ ...aksSoni, [a.id]: Math.max(0, Math.min(a.bosh_soni, n + d)) })
                     return (
                       <li key={a.id} className={n > 0 ? 'tanlandi' : ''}>
-                        <span className="aks-belgi" aria-hidden="true">{a.rasm ? <img src={a.rasm} alt="" /> : a.kod}</span>
-                        <span className="aks-matn">
-                          <b>{a.nomi}</b>
-                          <span className="libos-narx">{som(a.ijara_narxi)} <small>bir donasi</small></span>
+                        <span className="libos-rasm">
+                          {a.rasm ? <img className="eskiz" src={a.rasm} alt="" /> : <span className="eskiz bosh-eskiz" aria-hidden="true">{a.kod}</span>}
+                          {n > 0 && <span className="tanlov-belgi" aria-hidden="true">{n}</span>}
+                        </span>
+                        <span className="matn-ustun">
+                          <span className="libos-nom"><b>{a.kod}</b> {a.nomi}</span>
+                          <span className="libos-narx">{som(a.ijara_narxi)} <small>/ dona</small></span>
                           <span className="malumot">Shu sanalarga {a.bosh_soni} dona bor</span>
                         </span>
                         {n === 0 ? (

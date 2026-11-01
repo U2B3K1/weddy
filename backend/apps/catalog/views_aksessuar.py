@@ -11,10 +11,18 @@ from .dona_tamir import dona_tamir_json, dona_tamirini_tugatish, donani_tamirga_
 from .manekin import (aksessuar_joylashuvi, aksessuar_manekin_json, aksessuar_qatlami,
                       aksessuar_qatlamini_ochirish)
 from .models import Aksessuar, AksessuarDona, AksessuarPartiya, DonaTamiri, Kategoriya, YetkazibBeruvchi
+from .rasm import aksessuar_rasmi, aksessuar_rasmini_ochirish
 from .services import (KatalogXatosi, aksessuar_qoshish, aksessuarni_ozgartirish,
                        aksessuarni_tasdiqlash, donalar_qoshish)
 from .views import _bajar, _rahbar
 from .yetkazib import YetkazibXatosi, aksessuar_xaridi_yoz, partiya_json, partiyani_ozgartirish
+
+
+def aksessuar_rasm_json(a, request):
+    """Kartochka rasmi: kichik — ro'yxat va yangi zakaz, katta — mijozga ko'rsatish."""
+    def url(f):
+        return request.build_absolute_uri(f.url) if f else None
+    return {'rasm': url(a.rasm_kichik), 'rasm_katta': url(a.rasm)}
 
 
 def aksessuar_json(request, a, rahbar, donalar=False):
@@ -24,6 +32,7 @@ def aksessuar_json(request, a, rahbar, donalar=False):
          'kategoriya_id': a.kategoriya_id, 'ijara_narxi': a.ijara_narxi, 'holat': a.holat,
          'donalar_soni': len(d), 'yaroqli_donalar': sum(1 for x in d if x.holat == AksessuarDona.Holat.BOSH),
          'qoshgan': a.qoshgan.ism if a.qoshgan else None,
+         **aksessuar_rasm_json(a, request),
          'manekin': aksessuar_manekin_json(a, request)}
     if donalar:
         ochiq = {t.dona_id: t for t in DonaTamiri.objects.filter(dona__in=d, tugagan__isnull=True)}
@@ -163,6 +172,26 @@ class AksessuarManekinView(APIView):
 
     def delete(self, request, pk):
         aksessuar_qatlamini_ochirish(salon=request.salon, aksessuar=_aksessuar(request, pk))
+        return Response(status=204)
+
+
+class AksessuarRasmView(APIView):
+    """Kartochka rasmi: POST — yuklash yoki almashtirish (multipart «rasm», har bir xodim, libos rasmi kabi),
+    DELETE — olib tashlash (faqat rahbar)."""
+    parser_classes = [MultiPartParser, FormParser]
+    permission_classes = [IsStaff, SalonYozishRuxsati]
+
+    def post(self, request, pk):
+        fayl = request.FILES.get('rasm')
+        if not fayl:
+            raise ValidationError({'rasm': ['Rasm faylini yuboring.']})
+        a, err = _bajar(aksessuar_rasmi, salon=request.salon, aksessuar=_aksessuar(request, pk), fayl=fayl)
+        return err or Response(aksessuar_rasm_json(a, request), status=201)
+
+    def delete(self, request, pk):
+        if not _rahbar(request):
+            return Response({'detail': "Rasmni faqat rahbar olib tashlaydi."}, status=403)
+        aksessuar_rasmini_ochirish(salon=request.salon, aksessuar=_aksessuar(request, pk))
         return Response(status=204)
 
 

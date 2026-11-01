@@ -151,6 +151,9 @@ class Aksessuar(SalonModel):
     manekin_x = models.FloatField(default=0)
     manekin_y = models.FloatField(default=0)
     manekin_kattalik = models.FloatField(default=1)
+    # Katalog va yangi zakazdagi kartochka rasmi — libos rasmi kabi (oq fon, 2:3, WebP); bitta rasm yetadi
+    rasm = models.FileField(upload_to=rasm_yoli, blank=True)         # 800 × 1200
+    rasm_kichik = models.FileField(upload_to=rasm_yoli, blank=True)  # 300 × 450
 
     class Meta:
         ordering = ['nomi']
