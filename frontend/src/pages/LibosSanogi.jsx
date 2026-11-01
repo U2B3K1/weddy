@@ -121,7 +121,7 @@ function OchiqSanoq({ s, onYangila, onYakun }) {
       <section className="blok jadval-panel">
         <div className="jadval-asboblar">
           <h3 className="panel-nom">{hammasi ? 'Barcha liboslar' : 'Hali topilmaganlar'}</h3>
-          <label className="malumot"><input type="checkbox" checked={hammasi} onChange={(e) => setHammasi(e.target.checked)} /> topilganlarni ham ko'rsatish</label>
+          <label className="qator malumot"><input type="checkbox" checked={hammasi} onChange={(e) => setHammasi(e.target.checked)} /> topilganlarni ham ko'rsatish</label>
         </div>
         {korinadi.length === 0 && <p className="malumot jadval-bosh">Hammasi belgilandi.</p>}
         {korinadi.map((q) => (

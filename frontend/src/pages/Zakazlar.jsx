@@ -261,7 +261,7 @@ function Karta({ id, onOrqaga, onKassa }) {
           <KochirishForma key={`${z.olib_ketish}-${z.qaytarish}`} z={z}
             onYuborish={(b) => bajar(() => sanaKochirish(z.id, b), 'Sana ko\'chirildi.')} />
           {kassirda && z.tolangan > 0
-            ? <p className="malumot">To'lov qilingan zakazni kassir bekor qiladi — mijozga pul qaytarish kassada.</p>
+            ? <div className="blok"><p className="malumot">To'lov qilingan zakazni kassir bekor qiladi — mijozga pul qaytarish kassada.</p></div>
             : <BekorForma soz={soz} onYuborish={(b) => bajar(() => bekorQilish(z.id, b), 'Zakaz bekor qilindi.')} />}
         </>
       )}
