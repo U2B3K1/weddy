@@ -35,7 +35,7 @@ test('rahbar sahifalari keng ekranda va telefonda', async ({ page }) => {
   for (const [i, nom] of [[2, 'Kunlik kassa'], [3, 'Xodimlar nazorati']]) {
     await test.step(nom, async () => {
       await page.getByLabel('Hisobot turi').selectOption({ label: nom })
-      await expect(page.getByRole('heading', { name: nom })).toBeVisible()
+      await expect(page.getByRole('region', { name: nom })).toBeVisible()  // sarlavha — hisobot tanlovining o'zi
       await ikkiKenglik(page, `${i}-${nom.replace(' ', '-').toLowerCase()}`)
     })
   }
@@ -104,7 +104,7 @@ const apiSorov = (page, usul, yol, tana) => page.evaluate(async ([usul, yol, tan
 test('libos sanog\'i: boshlash, skaner, yakun', async ({ page }) => {
   const xatolar = xatolarniKuzat(page)
   await kirish(page, 'Rahbar', '1111')
-  await nav(page).getByRole('button', { name: 'Katalog', exact: true }).click()
+  await nav(page).getByRole('button', { name: 'Liboslar', exact: true }).click()
   await page.getByRole('tab', { name: 'Sanoq', exact: true }).click()
   await page.getByRole('button', { name: 'Sanoqni boshlash' }).click()
 
@@ -120,13 +120,23 @@ test('libos sanog\'i: boshlash, skaner, yakun', async ({ page }) => {
     await k.fill('YOQ-999')
     await k.press('Enter')
     await expect(page.locator('p.xato')).toBeVisible()
+    // raqamning bir qismi terilsa mos buyumlar chiqadi: bosish yoki ↓ + Enter — darhol «topildi»
+    await k.fill('02')
+    const takliflar = page.getByRole('listbox', { name: 'Mos buyumlar' })
+    await expect(takliflar.getByRole('option')).toHaveCount(1)
+    await expect(takliflar).toContainText('FT-02')
+    await k.press('ArrowDown')
+    await k.press('Enter')
+    await expect(page.getByText('✓ FT-02 Fata Klassik')).toBeVisible()
+    await expect(k).toHaveValue('')
+    await expect(k).toBeFocused()
     await ikkiKenglik(page, '5-sanoq-ochiq')
   })
 
   await test.step('yakun: topilmagan libos «yo\'q» bo\'lib chiqadi', async () => {
     await page.getByRole('button', { name: 'Yakunlash' }).click()
     const natija = page.locator('.blok', { hasText: 'Sanoq yakunlandi' })
-    await expect(natija).toContainText("Yo'q (2): E2E-2 Libos E2E-2, FT-02 Fata Klassik")
+    await expect(natija).toContainText("Yo'q (1): E2E-2 Libos E2E-2")
     await ikkiKenglik(page, '6-sanoq-natija')
   })
   expect(xatolar).toEqual([])
@@ -217,7 +227,7 @@ test('rahbar xato yozilgan to\'lovni tuzatadi (Terminal → Naqd)', async ({ pag
 test('yetkazib beruvchi: libos qisman to\'lab olinadi, qarz to\'lanadi', async ({ page }) => {
   const xatolar = xatolarniKuzat(page)
   await kirish(page, 'Rahbar', '1111')
-  await nav(page).getByRole('button', { name: 'Katalog', exact: true }).click()
+  await nav(page).getByRole('button', { name: 'Liboslar', exact: true }).click()
   await page.getByRole('tab', { name: 'Yetkazib beruvchilar' }).click()
   await page.getByText("Yetkazib beruvchi qo'shish").click()
   await page.getByLabel('Nomi').fill('Istanbul Bridal')
@@ -225,7 +235,7 @@ test('yetkazib beruvchi: libos qisman to\'lab olinadi, qarz to\'lanadi', async (
   await expect(page.getByText("Yetkazib beruvchi qo'shildi.")).toBeVisible()
 
   await test.step('libos qo\'shishda: qayerdan olingan va hozir qancha to\'landi', async () => {
-    await page.getByRole('tab', { name: 'Liboslar' }).click()
+    await page.getByRole('tab', { name: "Ro'yxat" }).click()
     await page.getByRole('button', { name: 'Libos qo\'shish' }).click()
     const oyna = page.getByRole('dialog')
     await oyna.getByLabel('Artikul').fill('YB-1')
@@ -254,9 +264,9 @@ test('yetkazib beruvchi: libos qisman to\'lab olinadi, qarz to\'lanadi', async (
       await expect(page.getByText('Sozlamalar saqlandi.')).toBeVisible()
       await ikkiKenglik(page, '13-artikul-sozlama')
 
-      await nav(page).getByRole('button', { name: 'Asosiy', exact: true }).click()  // Sozlama menyusida ham «Katalog» bo'limi bor
-      await nav(page).getByRole('button', { name: 'Katalog', exact: true }).click()
-      await page.getByRole('tab', { name: 'Liboslar' }).click()
+      await nav(page).getByRole('button', { name: 'Asosiy', exact: true }).click()  // Sozlama menyusida ham «Liboslar» bo'limi bor
+      await nav(page).getByRole('button', { name: 'Liboslar', exact: true }).click()
+      await page.getByRole('tab', { name: "Ro'yxat" }).click()
       await page.getByRole('button', { name: 'Libos qo\'shish' }).click()
       const oyna = page.getByRole('dialog')
       await expect(oyna.getByLabel('Artikul')).toHaveAttribute('placeholder', 'avtomatik: E-005')

@@ -40,8 +40,8 @@ async function kunniBos(page, sana) {
 test('yangi zakaz: har qadam ikki kenglikda', async ({ page }) => {
   const xatolar = xatolarniKuzat(page)
   await kirish(page, 'Sotuvchi', '2222')
-  // aksessuarga rasm (Katalog → Aksessuarlar → Rasm) — yangi zakazda ko'ylaklar kabi rasmli kartochka bo'lib chiqadi
-  await nav(page).getByRole('button', { name: 'Katalog', exact: true }).click()
+  // aksessuarga rasm (Liboslar → Aksessuarlar → Rasm) — yangi zakazda ko'ylaklar kabi rasmli kartochka bo'lib chiqadi
+  await nav(page).getByRole('button', { name: 'Liboslar', exact: true }).click()
   await page.getByRole('tab', { name: 'Aksessuarlar' }).click()
   await page.locator('.zakaz-katak', { hasText: 'Fata Klassik' }).click()
   await page.locator('.aks-tafsilot input[type=file]').first().setInputFiles('public/kelinlar/2.jpg')
@@ -51,6 +51,8 @@ test('yangi zakaz: har qadam ikki kenglikda', async ({ page }) => {
 
   await nav(page).getByRole('button', { name: 'Kassa', exact: true }).click()  // «Yangi zakaz» — Kassa menyusida
   await nav(page).getByRole('button', { name: 'Yangi zakaz', exact: true }).click()
+  // qadamlar (Sana — Libos — Mijoz) zakaz varaqasi kartochkasi ichida, tepada
+  await expect(page.locator('aside.varaq > ol.zakaz-ip').first()).toBeVisible()
   await suratlar(page, '1-sana-bosh')
   await kunniBos(page, iso(40))
   await kunniBos(page, iso(41))

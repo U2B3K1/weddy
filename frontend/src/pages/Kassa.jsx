@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import Info from '../components/Info'
 import Hujjat from '../components/Hujjat'
 import LibosSiluet from '../components/LibosSiluet'
+import NavIkona from '../components/NavIkona'
+import { Bezak, IjaraSana, Muhr } from '../components/Varaq'
 import Oyna from '../components/Oyna'
 import Tasdiq from '../components/Tasdiq'
 import SmenaTugma from '../components/SmenaTugma'
@@ -89,9 +91,10 @@ export default function Kassa({ rahbar, bolim, onBolim, onHolatOzgardi, yangiZak
       )}
 
       {smenaYoq ? (
-        <section className="blok pos-bosh">
+        <section className="blok pos-bosh varaq">
           <h3>Smena yopiq</h3>
-          <p className="malumot">To'lov, xarajat va inkassatsiya uchun avval smenani oching — kassadagi naqd pul sanaladi.</p>
+          <Bezak />
+          <p className="varaq-izoh">To'lov, xarajat va inkassatsiya uchun avval smenani oching — kassadagi naqd pul sanaladi.</p>
           <button onClick={() => setOyna('ochish')}>Smenani ochish</button>
         </section>
       ) : (
@@ -102,7 +105,7 @@ export default function Kassa({ rahbar, bolim, onBolim, onHolatOzgardi, yangiZak
             <XarajatPOS onYuborish={(b) => bajar(() => xarajatYarat({ ...b, kassadan: true }), rahbar ? 'Xarajat kassadan yozildi.' : "Xarajat kassadan yozildi (rahbar tasdig'ini kutadi).")} />
           )}
           {bolim === 'inkassatsiya' && (
-            <InkassatsiyaPOS rahbarlar={s.rahbarlar} hamkasblar={s.xodimlar || []}
+            <InkassatsiyaPOS rahbarlar={s.rahbarlar} hamkasblar={s.hamkasblar || []} smenada={(s.xodimlar || []).map((x) => x.id)}
               onYuborish={(summa, izoh, k) => bajar(() => inkassatsiyaQil(k.rahbar ? { summa, izoh, rahbar: k.id } : { summa, izoh, kimga: k.id }),
                 k.rahbar ? 'Inkassatsiya yozildi — rahbar Telegramda tasdiqlaydi.' : `Pul ${k.ism}ga topshirildi — u sanab, «Qabul qildim»ni bosadi.`)} />
           )}
@@ -390,28 +393,35 @@ function TolovPOS({ boshZakaz, onTolandi, onSmenaOchish }) {
 
   return (
     <div className="pos-ish">
-      <section className="blok pos-royxat">
-        <div className="pos-royxat-bosh">
-          <h3>To'lov kutayotgan zakazlar</h3>
-          <input type="search" placeholder="Raqam, telefon yoki ism" aria-label="Zakaz qidirish" value={q} onChange={(e) => setQ(e.target.value)} />
+      <section className="blok jadval-panel pos-royxat">
+        <div className="jadval-asboblar">
+          <h3 className="panel-nom">To'lov kutayotgan zakazlar{royxat?.length > 0 && <span className="tab-son">{royxat.length}</span>}</h3>
+          <label className="qidiruv-maydon">
+            <NavIkona nom="qidiruv" className="tugma-ikon" />
+            <input type="search" className="jadval-qidiruv" placeholder="Raqam, telefon yoki ism" aria-label="Zakaz qidirish" value={q} onChange={(e) => setQ(e.target.value)} />
+          </label>
         </div>
-        {royxat === null && <p className="malumot">Yuklanmoqda…</p>}
-        {royxat && royxat.length === 0 && <p className="malumot">{q ? 'Topilmadi.' : "To'lov kutayotgan zakaz yo'q."}</p>}
-        <div className="pos-zakazlar">
-          {royxat?.map((x) => (
-            <button key={x.id} type="button" className={`pos-zakaz${x.id === tanlangan ? ' tanlandi' : ''}`} aria-pressed={x.id === tanlangan} onClick={() => tanla(x.id)}>
-              <span className="zakaz-eskiz">{x.rasm ? <img src={x.rasm} alt="" loading="lazy" /> : <LibosSiluet />}</span>
-              <span className="zakaz-nom"><b>#{x.raqam} {x.mijoz}</b><small>{x.liboslar.join(', ')} · {sanaMatni(x.olib_ketish)}{x.sotuvchi && ` · sotuvchi: ${x.sotuvchi}`}</small></span>
-              <span className="pos-zakaz-summa"><b>{som(x.jami - x.tolangan)}</b><small>{x.holat === 'vaqtinchalik' ? 'avans' : 'qoldiq'}</small></span>
-            </button>
-          ))}
-        </div>
+        {royxat === null && <p className="malumot jadval-bosh">Yuklanmoqda…</p>}
+        {royxat && royxat.length === 0 && <p className="malumot jadval-bosh">{q ? `«${q}» bo'yicha zakaz topilmadi.` : "To'lov kutayotgan zakaz yo'q."}</p>}
+        {royxat?.length > 0 && (
+          <div className="pos-zakazlar">
+            {royxat.map((x) => (
+              <button key={x.id} type="button" className={`pos-zakaz${x.id === tanlangan ? ' tanlandi' : ''}`} aria-pressed={x.id === tanlangan} onClick={() => tanla(x.id)}>
+                <span className="zakaz-eskiz">{x.rasm ? <img src={x.rasm} alt="" loading="lazy" /> : <LibosSiluet />}</span>
+                <span className="zakaz-nom"><b>#{x.raqam} {x.mijoz}</b><small>{x.liboslar.join(', ')}{x.sotuvchi && ` · sotuvchi: ${x.sotuvchi}`}</small></span>
+                <span className="pos-zakaz-sana"><IjaraSana dan={x.olib_ketish} gacha={x.qaytarish} /></span>
+                <span className="pos-zakaz-summa"><b>{som(x.jami - x.tolangan)}</b><small>{x.holat === 'vaqtinchalik' ? 'avans' : 'qoldiq'}</small></span>
+              </button>
+            ))}
+          </div>
+        )}
       </section>
 
-      <section className="blok pos-chek" aria-label="To'lov">
+      {/* Chek — zakaz varaqasi uslubida: mijoz ismi qo'lyozmada, hisob va summa serif raqamlarda; to'langach muhr bosiladi */}
+      <section className="blok pos-chek varaq" aria-label="To'lov">
         {tolandi && !z && (
           <div className="pos-tayyor">
-            <span className="pos-tayyor-belgi" aria-hidden="true">✓</span>
+            <Muhr raqam={tolandi.zakaz.raqam} />
             <h3>To'lov qabul qilindi</h3>
             <p>#{tolandi.zakaz.raqam} {tolandi.zakaz.mijoz} · <b>{som(tolandi.summa)}</b> · {USUL_NOMI[tolandi.usul]}</p>
             {soz?.fiskal_eslatma && <p className="ogohlantirish">{soz.fiskal_izoh || 'Fiskal chekni urishni unutmang.'}</p>}
@@ -421,14 +431,20 @@ function TolovPOS({ boshZakaz, onTolandi, onSmenaOchish }) {
             </div>
           </div>
         )}
-        {!z && !tolandi && <p className="malumot pos-bosh-matn">Chapdagi ro'yxatdan zakazni tanlang — to'lov shu yerda qabul qilinadi.</p>}
+        {!z && !tolandi && (
+          <div className="pos-bosh-matn">
+            <Bezak />
+            <p className="varaq-izoh">Chapdagi ro'yxatdan zakazni tanlang — to'lov shu yerda qabul qilinadi.</p>
+          </div>
+        )}
         {z && (
           <>
             <div className="pos-chek-bosh">
-              <b>#{z.raqam} {z.mijoz}</b>
-              <span className="malumot">{z.liboslar.join(', ')} · {sanaMatni(z.olib_ketish)} – {sanaMatni(z.qaytarish)}</span>
+              <small>#{z.raqam} · {avans ? 'avans' : "qoldiq to'lovi"}</small>
+              <p className="varaq-kimga">{z.mijoz}</p>
+              <span>{z.liboslar.join(', ')} · <IjaraSana dan={z.olib_ketish} gacha={z.qaytarish} /></span>
             </div>
-            <table className="jadval pos-hisob"><tbody>
+            <table className="pos-hisob"><tbody>
               <tr><td>Jami</td><td>{som(z.jami)}</td></tr>
               <tr><td>To'langan</td><td>{som(z.tolangan)}</td></tr>
               <tr><td><b>{avans ? 'Avans (qoldiq)' : 'Qoldiq'}</b></td><td><b>{som(qoldiq)}</b></td></tr>
@@ -480,14 +496,14 @@ function Hisobot({ h }) {
     ['Xarajatlar', -h.xarajatlar], ['Pulni qaytarish va inkassatsiya', -h.vozvrat_va_inkassatsiya],
   ]
   return (
-    <section className="blok pos-tor">
-      <h3>Naqd pul hisobi</h3>
-      <table className="jadval"><tbody>
-        {qatorlar.map(([n, v]) => <tr key={n}><td>{n}</td><td>{som(v)}</td></tr>)}
-        <tr><td><b>Hisobdagi qoldiq</b></td><td><b>{som(h.hisobdagi_qoldiq)}</b></td></tr>
+    <section className="blok jadval-panel pos-tor">
+      <div className="jadval-asboblar"><h3 className="panel-nom">Naqd pul hisobi</h3><span className="malumot">kassadagi naqd — tizim bo'yicha</span></div>
+      <table className="kassa-hisob"><tbody>
+        {qatorlar.map(([n, v]) => <tr key={n} className={v < 0 ? 'chiqim' : v === 0 ? 'nol' : ''}><td>{n}</td><td>{som(v)}</td></tr>)}
       </tbody></table>
+      <div className="kassa-hisob-jami"><span>Hisobdagi qoldiq</span><b>{som(h.hisobdagi_qoldiq)}</b></div>
       {Object.keys(h.sotuvchilar).length > 0 && (
-        <p className="malumot">Kirimlar: {Object.entries(h.sotuvchilar).map(([k, v]) => `${k} — ${som(v)}`).join('; ')}</p>
+        <p className="kassa-kirimlar">Kirimlar: {Object.entries(h.sotuvchilar).map(([k, v]) => <span key={k}>{k} <b>{som(v)}</b></span>)}</p>
       )}
     </section>
   )
@@ -504,17 +520,22 @@ function XarajatPOS({ onYuborish }) {
   const [izoh, setIzoh] = useState('')
   return (
     <div className="pos-ish">
-      <section className="blok">
-        <h3>Xarajat moddasi</h3>
-        <div className="pos-plitkalar" role="radiogroup" aria-label="Xarajat moddasi">
-          {moddalar.map((m) => (
-            <button key={m.kod} type="button" role="radio" aria-checked={modda === m.kod} className={modda === m.kod ? 'tanlandi' : ''} onClick={() => setModda(m.kod)}>{m.nomi}</button>
-          ))}
+      <section className="blok jadval-panel">
+        <div className="jadval-asboblar"><h3 className="panel-nom">Xarajat moddasi</h3><span className="malumot">nimaga to'landi?</span></div>
+        <div className="pos-ich">
+          <div className="pos-plitkalar" role="radiogroup" aria-label="Xarajat moddasi">
+            {moddalar.map((m) => (
+              <button key={m.kod} type="button" role="radio" aria-checked={modda === m.kod} className={modda === m.kod ? 'tanlandi' : ''} onClick={() => setModda(m.kod)}>{m.nomi}</button>
+            ))}
+          </div>
+          <label>Izoh<input value={izoh} maxLength={300} onChange={(e) => setIzoh(e.target.value)} /></label>
         </div>
-        <label>Izoh<input value={izoh} maxLength={300} onChange={(e) => setIzoh(e.target.value)} /></label>
       </section>
-      <section className="blok pos-chek">
-        <span className="malumot">Kassadan chiqim</span>
+      <section className="blok pos-chek varaq" aria-label="Xarajat">
+        <div className="pos-chek-bosh">
+          <small>kassadan chiqim</small>
+          <p className="chek-nom">{moddalar.find((m) => m.kod === modda)?.nomi || 'Xarajat'}</p>
+        </div>
         <Summa qiymat={summa} />
         <Klaviatura qiymat={summa} onOzgar={setSumma} />
         <button className="pos-tugma" disabled={!(Number(summa) > 0)}
@@ -528,40 +549,50 @@ function XarajatPOS({ onYuborish }) {
 
 // FT-12.6: rahbarga topshirilgan naqd pul — alohida chiqim, tushum va xarajatga kirmaydi. Rahbar Telegramda tasdiqlaydi.
 // Smenadagi hamkasbga ham berish mumkin: pul kassada qoladi, faqat uning hisobiga o'tadi (u sanab qabul qiladi).
-function InkassatsiyaPOS({ rahbarlar, hamkasblar, onYuborish }) {
+function InkassatsiyaPOS({ rahbarlar, hamkasblar, smenada, onYuborish }) {
   const rahbarIdlar = new Set(rahbarlar.map((r) => r.id))
   const tanlov = [...rahbarlar.map((r) => ({ ...r, rahbar: true, kalit: `r:${r.id}` })),
     ...hamkasblar.filter((x) => !rahbarIdlar.has(x.id)).map((x) => ({ ...x, rahbar: false, kalit: `x:${x.id}` }))]
   // bitta rahbar bo'lsa — odatdagidek o'zi tanlangan (inkassatsiya)
   const [kalit, setKalit] = useState(rahbarlar.length === 1 ? `r:${rahbarlar[0].id}` : tanlov.length === 1 ? tanlov[0].kalit : '')
+  const [summa, setSumma] = useState('')
+  const [izoh, setIzoh] = useState('')
   const kimga = tanlov.find((t) => t.kalit === kalit)
   if (!tanlov.length) return <section className="blok pos-tor"><p className="malumot">Pul topshiradigan rahbar yoki smenadagi hamkasb yo'q.</p></section>
   return (
-    <section className="blok pos-tor">
-      <h3>Inkassatsiya — naqd pulni topshirish</h3>
-      <label>Kimga
-        <select value={kalit} onChange={(e) => setKalit(e.target.value)}>
-          <option value="">— tanlang —</option>
-          {rahbarlar.length > 0 && (
-            <optgroup label="Rahbarga — kassadan chiqadi">
-              {tanlov.filter((t) => t.rahbar).map((t) => <option key={t.kalit} value={t.kalit}>{t.ism}</option>)}
-            </optgroup>
+    <div className="pos-ish">
+      <section className="blok jadval-panel">
+        <div className="jadval-asboblar"><h3 className="panel-nom">Kimga topshirasiz?</h3></div>
+        <div className="pos-ich">
+          <div className="pos-plitkalar kimga-plitkalar" role="radiogroup" aria-label="Kimga">
+            {tanlov.map((t) => (
+              <button key={t.kalit} type="button" role="radio" aria-checked={kalit === t.kalit} className={kalit === t.kalit ? 'tanlandi' : ''}
+                onClick={() => setKalit(t.kalit)}>
+                <b>{t.ism}</b><small>{t.rahbar ? 'rahbar · kassadan chiqadi' : smenada.includes(t.id) ? 'smenada · kassada qoladi' : "kassada qoladi · smenaga qo'shiladi"}</small>
+              </button>
+            ))}
+          </div>
+          {kimga && (
+            <p className="malumot">{kimga.rahbar
+              ? "Pul kassadan chiqadi — rahbar sanab, Telegramda tasdiqlaydi."
+              : `Pul kassada qoladi: sizning hisobingizdan ${kimga.ism}ning hisobiga o'tadi${smenada.includes(kimga.id) ? '' : ` (${kimga.ism} smenaga qo'shiladi)`}. ${kimga.ism} sanab, «Qabul qildim»ni bosadi.`}</p>
           )}
-          {tanlov.some((t) => !t.rahbar) && (
-            <optgroup label="Smenadagi hamkasbga — kassada qoladi">
-              {tanlov.filter((t) => !t.rahbar).map((t) => <option key={t.kalit} value={t.kalit}>{t.ism}</option>)}
-            </optgroup>
-          )}
-        </select>
-      </label>
-      {kimga && (
-        <p className="malumot">{kimga.rahbar
-          ? "Pul kassadan chiqadi — rahbar sanab, Telegramda tasdiqlaydi."
-          : `Pul kassada qoladi: sizning hisobingizdan ${kimga.ism}ning hisobiga o'tadi. ${kimga.ism} sanab, «Qabul qildim»ni bosadi.`}</p>
-      )}
-      <SummaForma yorliq="Topshiriladigan summa" tugma="Inkassatsiyani yozish" izohYorliq="Izoh"
-        onYuborish={(summa, izoh) => (kimga ? onYuborish(summa, izoh, kimga) : Promise.resolve(false))} />
-    </section>
+          <label>Izoh<input value={izoh} maxLength={300} onChange={(e) => setIzoh(e.target.value)} /></label>
+        </div>
+      </section>
+      <section className="blok pos-chek varaq" aria-label="Inkassatsiya">
+        <div className="pos-chek-bosh">
+          <small>{kimga ? (kimga.rahbar ? 'inkassatsiya' : 'hamkasbga') : 'kimga — tanlang'}</small>
+          <p className="chek-nom">{kimga?.ism || '—'}</p>
+        </div>
+        <Summa qiymat={summa} />
+        <Klaviatura qiymat={summa} onOzgar={setSumma} />
+        <button className="pos-tugma" disabled={!kimga || !(Number(summa) > 0)}
+          onClick={() => onYuborish(Number(summa), izoh, kimga).then((ok) => ok && (setSumma(''), setIzoh('')))}>
+          Inkassatsiyani yozish
+        </button>
+      </section>
+    </div>
   )
 }
 

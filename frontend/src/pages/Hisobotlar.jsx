@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useState } from 'react'
 import Info from '../components/Info'
+import NavIkona from '../components/NavIkona'
 import Xarajatlar from '../components/Xarajatlar'
 import OylikGrafik from '../components/OylikGrafik'
 import Tasdiq from '../components/Tasdiq'
@@ -78,50 +79,55 @@ function HisobotBolim() {
   }, [kalit, dan, gacha, filtr])
 
   return (
-    <div className="stack hisobot-sahifa">
-      <select value={kalit} aria-label="Hisobot turi" onChange={(e) => setKalit(e.target.value)}>
-        {royxat.map((r) => <option key={r.kalit} value={r.kalit}>{r.sarlavha}</option>)}
-      </select>
-      <div className="asboblar">
-        <div className="segment davr-tugmalar" role="group" aria-label="Davr">
+    <section className="blok jadval-panel hisobot-sahifa">
+      {/* Sarlavhaning o'zi — hisobot tanlovi; ostida bitta ixcham filtr qatori: davr, sanalar, kerak bo'lsa kategoriya/sotuvchi/filial */}
+      <div className="hisobot-bosh">
+        <label className="hisobot-turi">
+          <select value={kalit} aria-label="Hisobot turi" onChange={(e) => setKalit(e.target.value)}>
+            {royxat.map((r) => <option key={r.kalit} value={r.kalit}>{r.sarlavha}</option>)}
+          </select>
+          <NavIkona nom="ong" className="tugma-ikon" />
+        </label>
+        {h?.izoh && <p className="malumot">{h.izoh}</p>}
+      </div>
+      <div className="jadval-asboblar hisobot-filtr">
+        <div className="tezkor-tablar" role="group" aria-label="Davr">
           {DAVRLAR.map(([nom, fn], i) => {
             const [a, b] = fn(new Date())
             // Faqat birinchi mos davr belgilanadi (chorak boshida «Shu oy» va «Shu chorak» bir xil oraliq);
             // qo'lda kiritilgan oraliqda hech biri tanlanmaydi
             const faol = i === DAVRLAR.findIndex(([, f]) => f(new Date()).map(iso).join() === `${dan},${gacha}`)
-            return <button key={nom} type="button" className={faol ? 'kichik' : 'ikkinchi kichik'} aria-pressed={faol}
+            return <button key={nom} type="button" className={faol ? 'faol' : ''} aria-pressed={faol}
               onClick={() => { setDan(iso(a)); setGacha(iso(b)) }}>{nom}</button>
           })}
         </div>
-        <div className="qator sana-oraliq">
+        <div className="davr-sanalar" role="group" aria-label="Sanalar">
           <input type="date" aria-label="Boshlanish sanasi" value={dan} max={gacha} onChange={(e) => e.target.value && setDan(e.target.value)} />
-          <span aria-hidden="true">—</span>
+          <span aria-hidden="true">–</span>
           <input type="date" aria-label="Tugash sanasi" value={gacha} min={dan} onChange={(e) => e.target.value && setGacha(e.target.value)} />
         </div>
+        {h?.filtrlar?.includes('kategoriya') && (
+          <select className="kichik-tanlov" value={filtr.kategoriya} aria-label="Kategoriya" onChange={(e) => setFiltr({ ...filtr, kategoriya: e.target.value })}>
+            <option value="">Barcha kategoriyalar</option>
+            {kats.map((k) => <option key={k.id} value={k.id}>{k.nomi}</option>)}
+          </select>
+        )}
+        {h?.filtrlar?.includes('sotuvchi') && (
+          <select className="kichik-tanlov" value={filtr.sotuvchi} aria-label="Sotuvchi" onChange={(e) => setFiltr({ ...filtr, sotuvchi: e.target.value })}>
+            <option value="">Barcha sotuvchilar</option>
+            {xodimlar.map((x) => <option key={x.id} value={x.id}>{x.ism}</option>)}
+          </select>
+        )}
+        {fil.length > 0 && h?.filtrlar?.includes('filial') && (
+          <select className="kichik-tanlov" value={filtr.filial} aria-label="Filial" onChange={(e) => setFiltr({ ...filtr, filial: e.target.value })}>
+            <option value="">Barcha filiallar</option>
+            {fil.map((f) => <option key={f.id} value={f.id}>{f.nomi}</option>)}
+          </select>
+        )}
       </div>
-      {h?.filtrlar?.includes('kategoriya') && (
-        <select value={filtr.kategoriya} aria-label="Kategoriya" onChange={(e) => setFiltr({ ...filtr, kategoriya: e.target.value })}>
-          <option value="">Barcha kategoriyalar</option>
-          {kats.map((k) => <option key={k.id} value={k.id}>{k.nomi}</option>)}
-        </select>
-      )}
-      {h?.filtrlar?.includes('sotuvchi') && (
-        <select value={filtr.sotuvchi} aria-label="Sotuvchi" onChange={(e) => setFiltr({ ...filtr, sotuvchi: e.target.value })}>
-          <option value="">Barcha sotuvchilar</option>
-          {xodimlar.map((x) => <option key={x.id} value={x.id}>{x.ism}</option>)}
-        </select>
-      )}
-      {fil.length > 0 && h?.filtrlar?.includes('filial') && (
-        <select value={filtr.filial} aria-label="Filial" onChange={(e) => setFiltr({ ...filtr, filial: e.target.value })}>
-          <option value="">Barcha filiallar</option>
-          {fil.map((f) => <option key={f.id} value={f.id}>{f.nomi}</option>)}
-        </select>
-      )}
-      {xato && <p className="xato">{xato}</p>}
+      {xato && <p className="xato jadval-bosh">{xato}</p>}
       {h && (
-        <section className="blok">
-          <h3>{h.sarlavha}</h3>
-          {h.izoh && <p className="malumot">{h.izoh}</p>}
+        <div className="hisobot-ich" role="region" aria-label={h.sarlavha}>
           {h.qatorlar.length === 0 ? <p className="malumot">Bu davrda ma'lumot yo'q.</p> : (
             <div className="hisobot-ora">
               <table className="hisobot">
@@ -170,9 +176,9 @@ function HisobotBolim() {
               <p className="malumot">Zakaz jami chegirma va ustama bilan; jadvaldagi tushum libos ijara narxi bo'yicha bo'lsa, farq qilishi mumkin.</p>
             </div>
           )}
-        </section>
+        </div>
       )}
-    </div>
+    </section>
   )
 }
 
@@ -335,7 +341,7 @@ function Pnl({ r, filial }) {
         </p>
       )}
       {r.yetkazib_qarz > 0 && (
-        <p className="malumot">Yetkazib beruvchilarga qarz (bugungi holat): <b className="qizil">{som(r.yetkazib_qarz)}</b> — Katalog → «Yetkazib beruvchilar».</p>
+        <p className="malumot">Yetkazib beruvchilarga qarz (bugungi holat): <b className="qizil">{som(r.yetkazib_qarz)}</b> — Liboslar → «Yetkazib beruvchilar».</p>
       )}
       {r.investitsiya > 0 && (
         <p className="malumot">

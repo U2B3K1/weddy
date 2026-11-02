@@ -10,7 +10,7 @@ export const SOZLAMA_BOLIMLAR = [
   { id: 'promokod', ikon: 'yorliq', nomi: 'Promokodlar', guruh: 'Narx va chegirma' },
   { id: 'chegirmalar', ikon: 'foiz', nomi: 'Tayyor chegirmalar', guruh: 'Narx va chegirma' },
   { id: 'bonus', ikon: 'sovga', nomi: 'Sotuvchi bonusi', guruh: 'Narx va chegirma' },
-  { id: 'katalog', ikon: 'katalog', nomi: 'Katalog', guruh: "Ko'rinish va xabarlar" },
+  { id: 'katalog', ikon: 'katalog', nomi: 'Liboslar', guruh: "Ko'rinish va xabarlar" },
   { id: 'artikul', ikon: 'raqam', nomi: 'Libos artikuli', guruh: "Ko'rinish va xabarlar" },
   { id: 'dashbord', ikon: 'bosh', nomi: 'Dashboard va hisobot', guruh: "Ko'rinish va xabarlar" },
   { id: 'sms', ikon: 'xabar', nomi: 'SMS eslatma', guruh: "Ko'rinish va xabarlar" },

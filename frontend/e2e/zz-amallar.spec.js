@@ -239,10 +239,10 @@ test('hisobot → xarajatlar: modda, kiritish, tuzatish, bekor qilish, doimiy xa
 test("katalog: kategoriyalar, libos ta'miri, aksessuar donasi ta'miri", async ({ page }) => {
   const xatolar = xatolarniKuzat(page)
   await kirish(page, 'Rahbar', '1111')
-  await bolim(page, 'Katalog')
+  await bolim(page, 'Liboslar')
 
   await test.step("kategoriya: qo'shish, nomini o'zgartirish, o'chirish", async () => {
-    await page.getByRole('tab', { name: 'Liboslar' }).click()
+    await page.getByRole('tab', { name: "Ro'yxat" }).click()
     await page.getByRole('button', { name: 'Kategoriyalar' }).click()
     const oyna = page.getByRole('dialog')
     await oyna.getByPlaceholder(/^Yangi kategoriya/).fill('Kuyov kostyumi')
@@ -347,7 +347,7 @@ test("kassa: zalog tekshiruvi, inkassatsiya; rahbar: smena tuzatish, dashboard f
 
   await test.step('inkassatsiya: naqd pulni rahbarga', async () => {
     await nav(page).getByRole('button', { name: 'Inkassatsiya', exact: true }).click()
-    await expect(page.getByLabel('Kimga')).toHaveValue(/\d+/)  // salonda bitta rahbar — o'zi tanlanadi
+    await expect(page.getByRole('radiogroup', { name: 'Kimga' }).getByRole('radio', { checked: true })).toContainText('Rahbar')  // bitta rahbar — o'zi tanlanadi
     const klav = page.getByRole('group', { name: 'Raqamli klaviatura' })
     for (const k of ['1', '000', '0', '0']) await klav.getByRole('button', { name: k, exact: true }).click()
     await expect(page.locator('.pos-summa')).toContainText('100 000')

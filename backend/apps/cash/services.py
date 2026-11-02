@@ -502,8 +502,9 @@ def inkassatsiya(*, salon, xodim, rahbar, summa, izoh=''):
 
 @transaction.atomic
 def hamkasbga_berish(*, salon, xodim, kimga, summa, izoh=''):
-    """Naqdning bir qismini smenadagi hamkasbga berish (masalan, ketishdan oldin): pul kassada qoladi, faqat
-    bir xodim hisobidan ikkinchisiga o'tadi. Hamkasb sanab «qabul qildim» bosadi; shungacha u smenani yopa olmaydi."""
+    """Naqdning bir qismini hamkasbga berish (masalan, ketishdan oldin): pul kassada qoladi, faqat bir xodim
+    hisobidan ikkinchisiga o'tadi. Hamkasb smenada bo'lmasa — shu smenaga qo'shiladi (pulni olgan kassada ishlaydi).
+    U sanab «qabul qildim» bosadi; shungacha smenadan chiqa yoki uni yopa olmaydi."""
     if kimga.id == xodim.id:
         raise KassaXatosi("Pulni o'zingizga topshirib bo'lmaydi.")
     if summa <= 0:
@@ -512,9 +513,14 @@ def hamkasbga_berish(*, salon, xodim, kimga, summa, izoh=''):
     if not smena:
         raise KassaXatosi('Avval smenaga qo\'shiling.', kod='smena_qoshilish')
     smena = _qulfla(smena)
-    if not SmenaIshtirokchi.objects.filter(smena=smena, xodim=kimga, chiqqan=None).exists():
-        raise KassaXatosi(f'{kimga.ism} smenada emas — pulni smenadagi xodimga yoki rahbarga topshirish mumkin.')
+    if kimga.salon_id != salon.id or not kimga.faol:
+        raise KassaXatosi('Xodim topilmadi.')
     _pul_olishi_shart(salon, kimga)
+    if not _faol_ishtirokchi(smena, kimga):
+        boshqa = xodim_smenasi(salon, kimga)
+        if boshqa and boshqa.id != smena.id:
+            raise KassaXatosi(f'{kimga.ism} boshqa kassaning smenasida — avval u yerdan chiqsin.')
+        SmenaIshtirokchi.objects.get_or_create(salon=salon, smena=smena, xodim=kimga, chiqqan=None)
     if summa > xodim_qoldigi(smena, xodim):
         raise KassaXatosi("Hisobingizda buncha naqd yo'q.")
     return _topshirish(salon=salon, smena=smena, kimdan=xodim, kimga=kimga, rahbarga=False, summa=summa,

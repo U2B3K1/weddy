@@ -48,6 +48,10 @@ class SmenaHolatiView(APIView):
                 salon=request.salon, kimga=men, holat=KassaTopshirish.Holat.KUTILMOQDA).select_related('kimdan', 'kimga')],
             'rahbarlar': [{'id': x.id, 'ism': x.ism} for x in Xodim.objects.filter(
                 salon=request.salon, rol=Xodim.Rol.RAHBAR, faol=True).exclude(id=men.id).order_by('ism')],
+            # inkassatsiya: pul berish mumkin bo'lgan hamkasblar (smenada bo'lmasa — berilganda qo'shiladi)
+            'hamkasblar': [{'id': x.id, 'ism': x.ism} for x in Xodim.objects.filter(salon=request.salon, faol=True)
+                           .exclude(rol=Xodim.Rol.RAHBAR).exclude(id=men.id).order_by('ism')
+                           if services.pul_oladimi(request.salon, x)],
             # rahbarga: hisobiga kelganini tasdiqlashi kerak bo'lgan o'tkazma, Click, Payme to'lovlari
             'otkazmalar': [otkazma_json(t) for t in Tolov.objects.filter(
                 salon=request.salon, tasdiq=Tolov.Tasdiq.KUTILMOQDA).select_related('xodim', 'zakaz__mijoz').order_by('vaqt')]

@@ -130,7 +130,7 @@ export default function Kalendar({ onZakaz }) {
           onYop={korinish === 'kun' ? null : () => setTanlangan(null)} />
       )}
       {qatorlar !== null && korinadi.length === 0 ? (
-        <p className="malumot jadval-bosh">{qidiruv ? `«${q}» bo'yicha libos topilmadi.` : "Katalogda libos yo'q."}</p>
+        <p className="malumot jadval-bosh">{qidiruv ? `«${q}» bo'yicha libos topilmadi.` : "Hali libos yo'q."}</p>
       ) : (
         <div className="bandlik-ora">
           <table className={`bandlik bandlik-${korinish}`} style={{ '--kun-son': kunlar.length }}>

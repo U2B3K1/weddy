@@ -140,10 +140,10 @@ export default function Sozlamalar({ menId, bolim, onBolim }) {
       ),
     },
     {
-      id: 'katalog', nomi: 'Katalog',
+      id: 'katalog', nomi: 'Liboslar',
       render: () => (
         <section className="blok stack">
-          <h3>Katalog</h3>
+          <h3>Liboslar</h3>
           <label className="qator">
             <input type="checkbox" checked={s.libos_tasdigi} onChange={(e) => set('libos_tasdigi', e.target.checked)} />
             Sotuvchi qo'shgan libos va aksessuarni rahbar tasdiqlaydi

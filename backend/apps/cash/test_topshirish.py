@@ -140,17 +140,21 @@ class OzHisobTests(Base):
         self.ikkovi()
         with self.assertRaisesMessage(KassaXatosi, "buncha naqd yo'q"):
             hamkasbga_berish(salon=self.salon, xodim=self.dilnoza, kimga=self.malika, summa=800_000)
-        with self.assertRaisesMessage(KassaXatosi, 'smenada emas'):
-            hamkasbga_berish(salon=self.salon, xodim=self.malika, kimga=self.rahbar, summa=100_000)
+        # smenada bo'lmagan hamkasb — pul berilganda shu smenaga qo'shiladi
+        zuhra = Xodim.objects.create(salon=self.salon, ism='Zuhra')
+        z = hamkasbga_berish(salon=self.salon, xodim=self.dilnoza, kimga=zuhra, summa=100_000)
+        self.assertTrue(self.smena.ishtirokchilar.filter(xodim=zuhra, chiqqan=None).exists())
+        topshiriqni_qabul(salon=self.salon, xodim=zuhra, topshirish=z)
+        self.assertEqual((xodim_qoldigi(self.smena, zuhra), xodim_qoldigi(self.smena, self.dilnoza)), (100_000, 600_000))
         t = hamkasbga_berish(salon=self.salon, xodim=self.malika, kimga=self.dilnoza, summa=1_000_000, izoh='ketyapman')
         self.assertEqual((t.rahbarga, t.toliq, t.tolov), (False, False, None))  # kassadan chiqmaydi
         self.assertEqual(xodim_qoldigi(self.smena, self.malika), 500_000)
-        self.assertEqual(xodim_qoldigi(self.smena, self.dilnoza), 700_000)  # hali sanab qabul qilmagan
+        self.assertEqual(xodim_qoldigi(self.smena, self.dilnoza), 600_000)  # hali sanab qabul qilmagan
         with self.assertRaises(KassaXatosi) as e:
             smena_chiqish(salon=self.salon, xodim=self.dilnoza, sanalgan_summa=700_000, kimga=self.malika)
         self.assertEqual(e.exception.kod, 'topshiriq_kutilmoqda')
         topshiriqni_qabul(salon=self.salon, xodim=self.dilnoza, topshirish=t, summa=990_000)
-        self.assertEqual(xodim_qoldigi(self.smena, self.dilnoza), 1_690_000)
+        self.assertEqual(xodim_qoldigi(self.smena, self.dilnoza), 1_590_000)
         self.assertEqual(xodim_qoldigi(self.smena, self.malika), 510_000)  # 10 ming yetmagan — Malikada qoladi
         self.assertFalse(Tolov.objects.filter(tur=T.INKASSATSIYA).exists())
 
@@ -231,6 +235,7 @@ class TopshirishAPITests(Base):
         self.assertEqual(r.status_code, 409)  # sotuvchiga inkassatsiya yo'q
         r = m.post('/api/kassa/inkassatsiya/', {'summa': 300_000, 'kimga': self.dilnoza.id}, format='json')
         self.assertEqual((r.status_code, r.data['kimga'], r.data['rahbarga']), (201, 'Dilnoza', False))
+        self.assertEqual([x['ism'] for x in m.get('/api/kassa/smena/').data['hamkasblar']], ['Dilnoza'])  # rahbar alohida ro'yxatda
         self.assertEqual(m.get('/api/kassa/smena/').data['mening_hisobim'], 800_000)
 
 

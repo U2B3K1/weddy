@@ -152,7 +152,7 @@ function Liboslar({ rahbar }) {
           {rahbar && <button type="button" className="ikkinchi kichik" onClick={() => setOyna('kategoriya')}>Kategoriyalar</button>}
           <button type="button" className="kichik" onClick={() => setOyna('yangi')}><NavIkona nom="qosh" className="tugma-ikon" />Libos qo'shish</button>
         </div>
-        {korinadi.length === 0 && <p className="malumot jadval-bosh">{q || kat || holat ? 'Bu filtr bo\'yicha libos yo\'q.' : "Katalog bo'sh — birinchi libosni qo'shing."}</p>}
+        {korinadi.length === 0 && <p className="malumot jadval-bosh">{q || kat || holat ? 'Bu filtr bo\'yicha libos yo\'q.' : "Hali libos yo'q — birinchi libosni qo'shing."}</p>}
       {/* Butik javoni: libos fotosi tabiatan vertikal — kartochka 2:3. Tanlangan libos tafsiloti o'z qatoridan keyin butun kenglikda */}
       <div className="libos-tor panel-ichi">
         {korinadi.map((l) => (

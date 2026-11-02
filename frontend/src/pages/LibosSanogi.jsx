@@ -7,6 +7,22 @@ const qatorKaliti = (q) => `${q.tur}-${q.libos ?? q.dona}`
 const qatorId = (q) => (q.libos ? { libos: q.libos } : { dona: q.dona })
 const joySinfi = (j) => ({ mijozda: 'qarz', tamirda: 'vaqtinchalik', tozalashda: 'vaqtinchalik' }[j] || 'bron')
 
+// Terilgan qismga mos buyumlar: artikul boshidan mos kelgani oldin, keyin ichida uchragani, keyin nomi bo'yicha;
+// hali topilmaganlari oldinda. Raqamning bir qismini terib, ro'yxatdan bosish — to'liq artikulni yozishdan tez.
+function takliflar(qatorlar, matn, soni = 6) {
+  const t = matn.trim().toLowerCase()
+  if (!t) return []
+  const daraja = (q) => {
+    const a = q.artikul.toLowerCase()
+    if (a.startsWith(t)) return 0
+    if (a.includes(t)) return 1
+    return (q.nomi || '').toLowerCase().includes(t) ? 2 : -1
+  }
+  return qatorlar.map((q) => [daraja(q), q]).filter(([d]) => d >= 0)
+    .sort(([d1, a], [d2, b]) => (a.topildi - b.topildi) || (d1 - d2) || a.artikul.localeCompare(b.artikul, undefined, { numeric: true }))
+    .slice(0, soni).map(([, q]) => q)
+}
+
 // Libos sanog'i: javondagi liboslar artikul (skaner) yoki ro'yxatdan belgilanadi; yakunda «salonda bo'lishi
 // kerak edi, lekin yo'q» liboslar chiqadi — zakazsiz ijarani yoki yo'qolgan libosni ushlaydi. Natija rahbarga Telegramda.
 export default function LibosSanogi() {
@@ -75,6 +91,7 @@ function OchiqSanoq({ s, onYangila, onYakun }) {
   const [hammasi, setHammasi] = useState(false)
   const [izoh, setIzoh] = useState('')
   const [band, setBand] = useState(false)
+  const [aktiv, setAktiv] = useState(-1)  // klaviatura (↑/↓) bilan tanlangan taklif; -1 — Enter terilganini yuboradi (skaner)
   const kiritish = useRef(null)
 
   const qatorniYangila = (r) => onYangila({ ...s, qatorlar: s.qatorlar.map((q) => (qatorKaliti(q) === qatorKaliti(r) ? { ...q, topildi: r.topildi } : q)) })
@@ -87,11 +104,28 @@ function OchiqSanoq({ s, onYangila, onYakun }) {
       return true
     } catch (e) { setXabar({ turi: 'xato', matn: xatoMatni(e) }); return false }
   }
+  const taklif = takliflar(s.qatorlar, artikul)
+  const tanla = async (q) => {
+    if (q.topildi) {
+      setXabar({ turi: 'ok', matn: `${q.artikul} ${q.nomi} allaqachon belgilangan.` })
+    } else if (await belgila({ ...qatorId(q), topildi: true })) {
+      setXabar({ turi: 'ok', matn: `✓ ${q.artikul} ${q.nomi}${q.joy === 'mijozda' ? ' — tizimda mijozda turibdi!' : ''}` })
+    }
+    setArtikul(''); setAktiv(-1)
+    kiritish.current?.focus()
+  }
   const skaner = async (e) => {
     e.preventDefault()
+    if (aktiv >= 0 && taklif[aktiv]) return tanla(taklif[aktiv])
     if (!artikul.trim()) return
     if (await belgila({ artikul })) setArtikul('')
     kiritish.current?.focus()
+  }
+  const strelka = (e) => {
+    if (!taklif.length) return
+    if (e.key === 'ArrowDown') { e.preventDefault(); setAktiv((a) => (a + 1) % taklif.length) }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); setAktiv((a) => (a <= 0 ? taklif.length - 1 : a - 1)) }
+    else if (e.key === 'Escape') { setArtikul(''); setAktiv(-1) }
   }
   const yakunla = async () => {
     setBand(true)
@@ -111,8 +145,25 @@ function OchiqSanoq({ s, onYangila, onYakun }) {
       </div>
       <section className="blok">
         <form className="sanoq-kiritish" onSubmit={skaner}>
-          <input ref={kiritish} autoFocus value={artikul} onChange={(e) => setArtikul(e.target.value)}
-            placeholder="Artikul yoki yorliq (FT-01) — kiriting yoki skanerlang" aria-label="Artikul" maxLength={50} />
+          <div className="sanoq-maydon">
+            <input ref={kiritish} autoFocus value={artikul} onChange={(e) => { setArtikul(e.target.value); setAktiv(-1) }} onKeyDown={strelka}
+              placeholder="Artikul yoki yorliq (FT-01) — raqamini tering yoki skanerlang" aria-label="Artikul" maxLength={50} autoComplete="off"
+              role="combobox" aria-expanded={taklif.length > 0} aria-controls="sanoq-takliflar" aria-autocomplete="list"
+              aria-activedescendant={aktiv >= 0 ? `taklif-${aktiv}` : undefined} />
+            {taklif.length > 0 && (
+              <ul id="sanoq-takliflar" className="sanoq-takliflar" role="listbox" aria-label="Mos buyumlar">
+                {taklif.map((q, i) => (
+                  <li key={qatorKaliti(q)} id={`taklif-${i}`} role="option" aria-selected={i === aktiv}
+                    className={`${i === aktiv ? 'aktiv' : ''} ${q.topildi ? 'topilgan' : ''}`}
+                    onMouseDown={(e) => e.preventDefault()} onClick={() => tanla(q)}>
+                    <b>{q.artikul}</b>
+                    <span>{q.nomi}{q.olcham && ` · ${q.olcham}`}</span>
+                    <small>{q.topildi ? '✓ belgilangan' : JOY[q.joy] || 'salonda'}</small>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
           <button type="submit">Topildi</button>
         </form>
         {xabar.matn && <p className={xabar.turi === 'xato' ? 'xato' : 'malumot'}>{xabar.matn}</p>}
@@ -124,7 +175,13 @@ function OchiqSanoq({ s, onYangila, onYakun }) {
           <label className="qator malumot"><input type="checkbox" checked={hammasi} onChange={(e) => setHammasi(e.target.checked)} /> topilganlarni ham ko'rsatish</label>
         </div>
         {korinadi.length === 0 && <p className="malumot jadval-bosh">Hammasi belgilandi.</p>}
-        {korinadi.map((q) => (
+        {/* Avval salonda turishi kerak bo'lganlar; keyin alohida — ta'mirda, tozalashda, mijozda (topilmasa ham xato emas) */}
+        {[korinadi.filter((q) => q.joy === 'salonda'), korinadi.filter((q) => q.joy !== 'salonda')].map((guruh, gi) => guruh.length > 0 && (
+          <div key={gi} className="sanoq-guruh">
+            <h4 className="sanoq-guruh-nom">{gi === 0
+              ? <>Salonda bo'lishi kerak <span className="tab-son">{guruh.length}</span></>
+              : <>Ta'mirda, tozalashda, mijozda <span className="tab-son">{guruh.length}</span><small>javonda bo'lsa belgilang — bo'lmasa ham xato emas</small></>}</h4>
+            {guruh.map((q) => (
           <div key={qatorKaliti(q)} className={`tasdiq-qator${q.topildi ? ' bajarilgan' : ''}`}>
             <div className="tasdiq-matn">
               <b>{q.artikul} · {q.nomi}</b>
@@ -137,6 +194,8 @@ function OchiqSanoq({ s, onYangila, onYakun }) {
                 ? <button className="ikkinchi kichik" onClick={() => belgila({ ...qatorId(q), topildi: false })}>Bekor</button>
                 : <button className="kichik" onClick={() => belgila({ ...qatorId(q), topildi: true })}>Topildi</button>}
             </div>
+          </div>
+            ))}
           </div>
         ))}
       </section>

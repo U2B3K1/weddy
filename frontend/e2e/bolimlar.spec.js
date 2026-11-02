@@ -19,7 +19,13 @@ async function och(page, nomi) {
 test('rahbar: barcha bo\'limlar va ichki bo\'limlar ochiladi', async ({ page }) => {
   const xatolar = xatolarniKuzat(page)
   await kirish(page, 'Rahbar', '1111')
-  for (const nom of ['Dashboard', 'Katalog', 'Zakazlar', 'Mijozlar', 'Kassa', 'Hisobot']) {
+  // bosh sahifa «Bugungi ishlar»: har tab ostida nima ekani va nima qilish kerakligi yoziladi
+  const ishlar = page.getByRole('tablist', { name: 'Bugungi ishlar' })
+  await ishlar.getByRole('tab', { name: /^Bugun olib ketadi/ }).click()
+  await expect(page.locator('.ish-izoh')).toContainText('Mijoz kelganda zakazni oching')
+  await ishlar.getByRole('tab', { name: /^Qoldiq to'lanmagan/ }).click()
+  await expect(page.locator('.ish-izoh')).toContainText('Bu qarz emas')
+  for (const nom of ['Dashboard', 'Liboslar', 'Zakazlar', 'Mijozlar', 'Kassa', 'Hisobot']) {
     await test.step(nom, async () => {
       await och(page, nom)
       for (const ichki of ICHKI[nom] || []) await test.step(ichki, () => och(page, ichki))
@@ -44,12 +50,13 @@ test('sotuvchi: rahbar bo\'limlari ko\'rinmaydi, o\'zinikilari ochiladi', async 
   await kirish(page, 'Sotuvchi', '2222')
   await expect(bolim(page, 'Hisobot')).toHaveCount(0)
   await expect(bolim(page, 'Sozlama')).toHaveCount(0)
-  for (const nom of ['Dashboard', 'Katalog', 'Zakazlar', 'Mijozlar']) await och(page, nom)
+  for (const nom of ['Dashboard', 'Liboslar', 'Zakazlar', 'Mijozlar']) await och(page, nom)
   await och(page, 'Kassa')
   for (const ichki of ICHKI.Kassa.filter((x) => x !== 'Smenalar tarixi')) await och(page, ichki)
   await expect(nav(page).getByRole('button', { name: 'Smenalar tarixi' })).toHaveCount(0)
-  // shapkada ismga bosish — chiqish: PIN ekraniga qaytadi
-  await page.getByRole('button', { name: 'Sotuvchi, chiqish' }).click()
+  // shapkada ismga bosish — menyu ochiladi, undagi «Chiqish» PIN ekraniga qaytaradi
+  await page.locator('.ustki-xodim').click()
+  await page.getByRole('menu').getByRole('menuitem', { name: 'Chiqish' }).click()
   await expect(page.locator('.pin-klaviatura, .kirish').first()).toBeVisible()
   await expect(nav(page)).toHaveCount(0)
   expect(xatolar).toEqual([])
