@@ -5,7 +5,7 @@ import NavIkona from './NavIkona'
 // bildirishnomalar (rahbarga: qaror kutayotganlar va ogohlantirishlar) va xodim menyusi.
 export default function UstkiPanel({ sarlavha, izoh, xodim, rahbar, xabarlar, onQidir, onBolim, onChiqish }) {
   const [q, setQ] = useState('')
-  const [ochiq, setOchiq] = useState(null) // 'xabar' | 'xodim' | null
+  const [ochiq, setOchiq] = useState(null) // 'xabar' | null
   const joy = useRef(null)
   useEffect(() => {
     if (!ochiq) return undefined
@@ -54,19 +54,11 @@ export default function UstkiPanel({ sarlavha, izoh, xodim, rahbar, xabarlar, on
           )}
         </div>
       )}
-      <div className="ustki-joy">
-        <button type="button" className="ustki-xodim" aria-expanded={ochiq === 'xodim'} onClick={() => setOchiq(ochiq === 'xodim' ? null : 'xodim')}>
-          <span className="xodim-chip"><i aria-hidden="true">{harf}</i><span><b>{xodim.ism}</b>{xodim.ism?.trim() !== rol && <small>{rol}</small>}</span></span>
-          <NavIkona nom="ong" className="tugma-ikon pastga" />
-        </button>
-        {ochiq === 'xodim' && (
-          <div className="ustki-menyu" role="menu">
-            <p className="malumot">{xodim.salon}</p>
-            {/* xodim ilovadan chiqadi (PIN ekrani); salon logini qurilmada qoladi — keyingi xodim o'z PIN'i bilan kiradi */}
-            <button type="button" role="menuitem" onClick={onChiqish}><NavIkona nom="chiqish" className="tugma-ikon" />Chiqish</button>
-          </div>
-        )}
-      </div>
+      {/* Ismga bosish — chiqish (PIN ekrani); salon logini qurilmada qoladi, keyingi xodim o'z PIN'i bilan kiradi */}
+      <button type="button" className="ustki-xodim" onClick={onChiqish} title={`${xodim.ism} — chiqish`} aria-label={`${xodim.ism}, chiqish`}>
+        <span className="xodim-chip"><i aria-hidden="true">{harf}</i><span><b>{xodim.ism}</b>{xodim.ism?.trim() !== rol && <small>{rol}</small>}</span></span>
+        <span className="ustki-chiqish"><NavIkona nom="chiqish" className="tugma-ikon" />Chiqish</span>
+      </button>
     </header>
   )
 }

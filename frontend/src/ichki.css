@@ -839,7 +839,9 @@ main .boshlash-panel .qator-btn { text-align: left; }
   background: var(--h-qarz); color: #2a0b08; font-size: 11px; font-weight: 700; line-height: 18px; text-align: center; }
 :where(.ilova) .ustki-xodim { min-height: 38px; padding: 0 8px 0 4px; gap: 8px; background: transparent; color: var(--oq); border: 0; }
 :where(.ilova) .ustki-xodim:hover:not(:disabled) { background: var(--yuza-2); filter: none; }
-.ustki-xodim .pastga { transform: rotate(90deg); color: var(--matn-3); }
+.ustki-chiqish { display: inline-flex; align-items: center; gap: 6px; margin-left: 4px; padding-left: 10px; border-left: 1px solid var(--chegara-kuchli);
+  color: var(--matn-2); font-size: 13.5px; font-weight: 600; }
+.ustki-xodim:hover .ustki-chiqish { color: var(--tilla); }
 .ustki-xodim .xodim-chip > span { display: flex; flex-direction: column; text-align: left; }
 .ustki-menyu { position: absolute; right: 0; top: calc(100% + 8px); z-index: 20; min-width: 240px; display: flex; flex-direction: column; gap: 2px; padding: 8px;
   background: var(--yuza-2); border: 1px solid var(--chegara-kuchli); border-radius: var(--r-2); box-shadow: 0 18px 40px -16px rgba(0, 0, 0, .7); }

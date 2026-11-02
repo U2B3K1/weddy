@@ -48,5 +48,9 @@ test('sotuvchi: rahbar bo\'limlari ko\'rinmaydi, o\'zinikilari ochiladi', async 
   await och(page, 'Kassa')
   for (const ichki of ICHKI.Kassa.filter((x) => x !== 'Smenalar tarixi')) await och(page, ichki)
   await expect(nav(page).getByRole('button', { name: 'Smenalar tarixi' })).toHaveCount(0)
+  // shapkada ismga bosish — chiqish: PIN ekraniga qaytadi
+  await page.getByRole('button', { name: 'Sotuvchi, chiqish' }).click()
+  await expect(page.locator('.pin-klaviatura, .kirish').first()).toBeVisible()
+  await expect(nav(page)).toHaveCount(0)
   expect(xatolar).toEqual([])
 })
