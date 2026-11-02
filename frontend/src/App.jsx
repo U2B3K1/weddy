@@ -230,7 +230,7 @@ export default function App() {
   const soat = hozir.getHours()
   const panelNomi = sahifa === 'bosh' ? `${soat < 11 ? 'Xayrli tong' : soat < 18 ? 'Xayrli kun' : 'Xayrli kech'}, ${xodim.ism}`
     : Object.fromEntries(bolimlar)[sahifa]
-  const panelIzoh = sahifa === 'bosh' ? `${KUN[hozir.getDay()]}, ${hozir.getDate()}-${OY[hozir.getMonth()]}` : null
+  const panelIzoh = sahifa === 'bosh' && !rahbar ? `${KUN[hozir.getDay()]}, ${hozir.getDate()}-${OY[hozir.getMonth()]}` : null
   // Boshlash ro'yxati: ixcham progress karta — bajarilganlar soni va faqat qolgan qadamlar
   const bajarilgan = bosh?.qadamlar?.filter((q) => q.bajarildi).length || 0
   const boshlashPanel = rahbar && bosh?.korsatilsin && bosh.qadamlar && (

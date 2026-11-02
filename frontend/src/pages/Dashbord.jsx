@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from 'react'
 import Olchagich from '../components/Olchagich'
 import OylikGrafik from '../components/OylikGrafik'
 import { dashbord, filiallar, oylikQator, som, xatoMatni } from '../api'
+import { Bezak } from '../components/Varaq'
+import { HAFTA, OYLAR, bugunIso, isoOch, ustun } from '../components/kalendar/sana'
 
 // KPI karta belgilari — ixcham stroke SVG (Lucide uslubi), yangi bog'liqlik talab qilmaydi.
 const BELGILAR = {
@@ -32,29 +34,27 @@ function Nazorat({ n }) {
   ].filter(Boolean)
   const s = n.sanoq
   const libosMuammo = !!s && (s.yoq > 0 || s.ortiqcha > 0)
+  const savollar = [
+    { nom: 'Kassada kamomad', ikon: 'qalqon', muammo: !!n.kamomad, javob: n.kamomad ? som(n.kamomad) : "Yo'q",
+      izoh: n.kamomad_xodimlar.length ? n.kamomad_xodimlar.map((x) => `${x.ism} ${som(x.summa)}`).join(', ') : `oxirgi ${n.kun} kunda hammasi to'g'ri topshirilgan`,
+      title: `Oxirgi ${n.kun} kunda xodimlar pulni topshirganda yoki smenani yopganda kam chiqqan naqd. Batafsil: Hisobot → «Kunlik kassa».` },
+    { nom: 'Diqqat', ikon: 'diqqat', muammo: diqqat.length > 0, javob: diqqat.length ? `${diqqat.length} ta` : 'Hammasi joyida',
+      izoh: diqqat.length ? diqqat.join('; ') : "tasdiqlanmagan pul va farq yo'q",
+      title: "Rahbar qarori yoki tekshiruvi kerak bo'lgan pul harakatlari. Tasdiqlar — Kassa bo'limida va Telegramda." },
+    { nom: 'Liboslar joyidami', ikon: 'yorliq', muammo: libosMuammo, javob: !s ? 'Sanalmagan' : s.yoq > 0 ? `${s.yoq} ta yo'q` : 'Joyida',
+      izoh: !s ? 'Liboslar → «Sanoq»da istalgan vaqtda tekshiring' : `oxirgi sanoq ${s.kun_oldin ? `${s.kun_oldin} kun oldin` : 'bugun'}${s.ortiqcha ? `, ${s.ortiqcha} ta qaytgani kiritilmagan` : ''}`,
+      title: "Oxirgi libos sanog'i natijasi: javonda bo'lishi kerak bo'lgan, lekin topilmagan liboslar — zakazsiz ijara yoki yo'qolgan." },
+  ]
+  // Egasining uch savoli — varaq ostida ixcham qator: muammo bo'lsa nuqta va javob qizil
   return (
-    <div className="kpi-qator" role="region" aria-label={`Nazorat, oxirgi ${n.kun} kun`}>
-      <div className="kpi" title={`Oxirgi ${n.kun} kunda xodimlar pulni topshirganda yoki smenani yopganda kam chiqqan naqd. Batafsil: Hisobot → «Kunlik kassa».`}>
-        <div className="kpi-bosh"><Ikona nom="qalqon" /><span className="kpi-nom">Kassada kamomad</span></div>
-        <span className={`kpi-qiymat${n.kamomad ? ' qizil' : ''}`}>{n.kamomad ? som(n.kamomad) : "Yo'q"}</span>
-        <span className="kpi-izoh">
-          {n.kamomad_xodimlar.length ? n.kamomad_xodimlar.map((x) => `${x.ism} ${som(x.summa)}`).join(' · ') : `oxirgi ${n.kun} kunda hammasi to'g'ri topshirilgan`}
-        </span>
-      </div>
-      <div className="kpi" title="Rahbar qarori yoki tekshiruvi kerak bo'lgan pul harakatlari. Tasdiqlar — Kassa bo'limida va Telegramda.">
-        <div className="kpi-bosh"><Ikona nom="diqqat" /><span className="kpi-nom">Diqqat</span></div>
-        <span className={`kpi-qiymat${diqqat.length ? ' qizil' : ''}`}>{diqqat.length ? `${diqqat.length} ta` : 'Hammasi joyida'}</span>
-        <span className="kpi-izoh">{diqqat.length ? diqqat.join(' · ') : "tasdiqlanmagan pul va farq yo'q"}</span>
-      </div>
-      <div className="kpi" title="Oxirgi libos sanog'i natijasi: javonda bo'lishi kerak bo'lgan, lekin topilmagan liboslar — zakazsiz ijara yoki yo'qolgan. Sanoqni istalgan vaqtda o'tkazasiz: Liboslar → «Sanoq».">
-        <div className="kpi-bosh"><Ikona nom="yorliq" /><span className="kpi-nom">Liboslar joyidami</span></div>
-        <span className={`kpi-qiymat${libosMuammo ? ' qizil' : ''}`}>
-          {!s ? 'Sanalmagan' : s.yoq > 0 ? `${s.yoq} ta yo'q` : 'Joyida'}
-        </span>
-        <span className="kpi-izoh">
-          {!s ? "Liboslar → «Sanoq» — istalgan vaqtda tekshiring" : `oxirgi sanoq ${s.kun_oldin ? `${s.kun_oldin} kun oldin` : 'bugun'}${s.ortiqcha ? ` · ${s.ortiqcha} ta qaytgani kiritilmagan` : ''}`}
-        </span>
-      </div>
+    <div className="dash-nazorat" role="region" aria-label={`Nazorat, oxirgi ${n.kun} kun`}>
+      {savollar.map((q) => (
+        <div key={q.nom} className={`dash-savol${q.muammo ? ' muammo' : ''}`} title={q.title}>
+          <span className="dash-savol-nom"><Ikona nom={q.ikon} />{q.nom}</span>
+          <b>{q.javob}</b>
+          <small>{q.izoh}</small>
+        </div>
+      ))}
     </div>
   )
 }
@@ -84,12 +84,11 @@ export default function Dashbord() {
   if (!d) {
     if (xato) return <p className="xato">{xato}</p>
     return (
-      <div className="kpi-qator" aria-busy="true">
-        {[0, 1, 2].map((i) => <div key={i} className="kpi dashbord-skelet skelet-kpi" />)}
-      </div>
+      <div className="blok dash-varaq dashbord-skelet skelet-kpi" aria-busy="true" />
     )
   }
   const { bugun, shu_oy: oyb } = d
+  const sana = isoOch(bugunIso())
 
   return (
     <>
@@ -101,38 +100,49 @@ export default function Dashbord() {
           </select>
         </div>
       )}
-      <div className="kpi-qator">
-        <div className="kpi" title="Bugun qabul qilingan barcha to'lovlar: avans, qoldiq va jarima. Daromaddan farqi — hali to'liq to'lanmagan zakazlarning avanslari ham kiradi.">
-          <div className="kpi-bosh"><Ikona nom="tushum" /><span className="kpi-nom">Bugun kassaga kirdi</span></div>
-          <span className="kpi-qiymat">{som(bugun.tushum_jami)}</span>
-          <span className="kpi-izoh">
-            {bugun.smena_ochiq ? 'Kassa ochiq' : 'Kassa yopiq'}
-            {bugun.qaytarilgan > 0 && <> · shundan <b className="qizil">{som(bugun.qaytarilgan)}</b> qaytarildi</>}
-          </span>
-        </div>
-        <div className="kpi" title="Davrda kirgan pul (avans va qoldiq), bekor qilingan zakazlarga qaytarilgani ayirilgan. Sof foyda — shundan tasdiqlangan xarajatlar (ijara, oylik va boshqalar) ayirilib, jarimalar qo'shilgan.">
-          <div className="kpi-bosh">
-            <Ikona nom="daromad" /><span className="kpi-nom">Tushum</span>
-            {/* Filtr o'zi ta'sir qiladigan kartada (Point uslubi) */}
-            <select className="kichik-tanlov karta-tanlov" value={davr} aria-label="Daromad davri" onChange={(e) => setDavr(e.target.value)}>
-              {Object.entries(DAVR).map(([k, nom]) => <option key={k} value={k}>{nom}</option>)}
-            </select>
+      {/* Kun varaqasi — dashboardning bitta asosiy elementi (zakaz varaqasi uslubida): chapda bugungi sana,
+          o'ngda uch summa daftar ustunlarida, bezak ostida egasining uch savoli */}
+      <section className="blok varaq dash-varaq" aria-label="Bugungi holat">
+        <div className="dash-bosh">
+          <div className="dash-sana">
+            <small>bugun</small>
+            <b>{sana.d}</b>
+            <span>{OYLAR[sana.m].toLowerCase()}</span>
+            <em>{HAFTA[ustun(sana.y, sana.m, sana.d)][1].toLowerCase()}</em>
           </div>
-          <span className="kpi-qiymat">{som(oyb.hozirgi_daromad)}</span>
-          <span className="kpi-izoh">
-            xarajat {som(oyb.xarajatlar)} · sof foyda <b className={oyb.taxminiy_sof_foyda < 0 ? 'qizil' : ''}>{som(oyb.taxminiy_sof_foyda)}</b>
-            {oyb.zakazlar_soni > 0 && <> · {oyb.zakazlar_soni} ta yangi zakaz</>}
-            {oyb.tasdiqlanmagan_xarajat > 0 && <> · <span className="qizil">{som(oyb.tasdiqlanmagan_xarajat)} xarajat tasdiq kutmoqda (foydaga kirmagan)</span></>}
-          </span>
+          <div className="dash-hisob">
+            <div className="dash-qiymat" title="Bugun qabul qilingan barcha to'lovlar: avans, qoldiq va jarima. Daromaddan farqi — hali to'liq to'lanmagan zakazlarning avanslari ham kiradi.">
+              <small>kassaga kirdi</small>
+              <b>{som(bugun.tushum_jami)}</b>
+              <span>
+                {bugun.smena_ochiq ? 'Kassa ochiq' : 'Kassa yopiq'}
+                {bugun.qaytarilgan > 0 && <>, shundan <b className="qizil">{som(bugun.qaytarilgan)}</b> qaytarildi</>}
+              </span>
+            </div>
+            <div className="dash-qiymat" title="Davrda kirgan pul (avans va qoldiq), bekor qilingan zakazlarga qaytarilgani ayirilgan. Sof foyda — shundan tasdiqlangan xarajatlar ayirilib, jarimalar qo'shilgan.">
+              <small>
+                tushum
+                {/* davr — o'zi ta'sir qiladigan summa yonida */}
+                <select className="dash-davr" value={davr} aria-label="Daromad davri" onChange={(e) => setDavr(e.target.value)}>
+                  {Object.entries(DAVR).map(([k, nom]) => <option key={k} value={k}>{nom.toLowerCase()}</option>)}
+                </select>
+              </small>
+              <b>{som(oyb.hozirgi_daromad)}</b>
+              <span>
+                sof foyda <b className={oyb.taxminiy_sof_foyda < 0 ? 'qizil' : ''}>{som(oyb.taxminiy_sof_foyda)}</b>, xarajat {som(oyb.xarajatlar)}
+                {oyb.zakazlar_soni > 0 && <>, {oyb.zakazlar_soni} ta yangi zakaz</>}
+                {oyb.tasdiqlanmagan_xarajat > 0 && <>; <span className="qizil">{som(oyb.tasdiqlanmagan_xarajat)} xarajat tasdiq kutmoqda</span></>}
+              </span>
+            </div>
+            <div className="dash-qiymat" title="Bron qilingan zakazlarning hali to'lanmagan qoldig'i. Pastda — libosi hali berilmagan zakazlardan olingan pul: tushumga kirgan, lekin zakaz bekor bo'lsa qaytarilishi mumkin.">
+              <small>hali olinadigan pul</small>
+              <b>{som(oyb.qolgan_summa)}</b>
+              <span>bronlar qoldig'i{oyb.kelgusi_avanslar > 0 && <>; olingan avans {som(oyb.kelgusi_avanslar)}, to'y hali o'tmagan</>}</span>
+            </div>
+          </div>
         </div>
-        <div className="kpi" title="Bron qilingan zakazlarning hali to'lanmagan qoldig'i. Pastda — libosi hali berilmagan zakazlardan olingan pul: tushumga kirgan, lekin zakaz bekor bo'lsa qaytarilishi mumkin.">
-          <div className="kpi-bosh"><Ikona nom="soat" /><span className="kpi-nom">Hali olinadigan pul</span></div>
-          <span className="kpi-qiymat">{som(oyb.qolgan_summa)}</span>
-          <span className="kpi-izoh">Bronlar qoldig'i{oyb.kelgusi_avanslar > 0 && <> · olingan avanslar {som(oyb.kelgusi_avanslar)} (to'y hali o'tmagan)</>}</span>
-        </div>
-      </div>
-
-      {d.nazorat && <Nazorat n={d.nazorat} />}
+        {d.nazorat && <><Bezak /><Nazorat n={d.nazorat} /></>}
+      </section>
 
       <div className="grafik-qator">
         <section className="blok grafik-karta">

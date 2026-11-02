@@ -172,9 +172,9 @@ function Liboslar({ rahbar }) {
               </span>
             </button>
             {tanlangan === l.id && (
-              <div className="blok libos-tafsilot">
+              <div className="blok libos-tafsilot varaq">
                 <div className="libos-tafsilot-bosh">
-                  <h3>{l.artikul} {l.nomi}</h3>
+                  <h3><b>{l.artikul}</b> {l.nomi}</h3>
                   <button type="button" className="ikkinchi kichik" onClick={() => setTanlangan(null)}>Yopish</button>
                 </div>
                 {xabar.matn && <p className={xabar.turi === 'xato' ? 'xato' : 'malumot'} role="status">{xabar.matn}</p>}

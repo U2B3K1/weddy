@@ -1438,3 +1438,78 @@ label > .info .info-matn, th .info .info-matn { left: auto; right: 0; }
 /* Jadvallarning jami qatori va summa ustuni — serif raqam */
 :where(.ilova) .hisobot tfoot td { font-family: var(--serif); font-weight: 400; font-size: 15px; }
 :where(.ilova) .zakaz-jadval .jami-katak b, :where(.ilova) .zakaz-jadval td.ong b { font-family: var(--serif); font-weight: 400; font-size: 16px; }
+
+/* =================== Dashboard — kun varaqasi ===================
+   Sahifaning bitta asosiy elementi zakaz varaqasi tilida: chapda bugungi sana (taklifnomadagi kabi yirik serif),
+   o'ngda uch summa — daftar ustunlari tilla chiziq bilan ajralgan, bezak ostida egasining uch savoli. */
+.dash-varaq.varaq { position: relative; top: auto; padding: 28px 30px 22px; gap: 0; }
+.dash-bosh { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; gap: var(--o-5); }
+.dash-sana { display: flex; flex-direction: column; align-items: center; min-width: 120px; padding-right: var(--o-5);
+  border-right: 1px solid var(--zar-chiziq); text-align: center; line-height: 1.1; }
+.dash-sana small { margin-bottom: 4px; font: italic 500 15px/1.2 var(--kursiv); color: var(--siyoh-2); }
+.dash-sana b { font: 400 64px/1 var(--serif); color: var(--zar); font-variant-numeric: lining-nums; }
+.dash-sana span { margin-top: 4px; font: 400 18px/1.25 var(--serif); letter-spacing: .03em; }
+.dash-sana em { font: italic 500 16px/1.3 var(--kursiv); color: var(--siyoh-2); }
+.dash-hisob { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.dash-qiymat { display: flex; flex-direction: column; gap: 4px; min-width: 0; padding: 4px var(--o-4); }
+.dash-qiymat + .dash-qiymat { border-left: 1px solid var(--zar-chiziq); }
+.dash-qiymat > small { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px; font: italic 500 16px/1.2 var(--kursiv); color: var(--siyoh-2); }
+.dash-qiymat > b { font: 400 30px/1.1 var(--serif); color: var(--siyoh-q); font-variant-numeric: tabular-nums lining-nums; white-space: nowrap; }
+.dash-qiymat > span { font-size: 13px; line-height: 1.45; color: var(--matn-3); }
+.dash-qiymat > span b { font-weight: 600; color: var(--matn-2); }
+.dash-qiymat > span b.qizil { color: var(--h-qarz); }
+/* davr tanlovi — summa yorlig'ining davomi: kursiv tilla, ostida uzuq chiziq */
+:where(.ilova) select.dash-davr { appearance: none; -webkit-appearance: none; field-sizing: content; min-height: 0; padding: 0 2px; border: 0;
+  border-bottom: 1px dashed var(--zar-chiziq); border-radius: 0; background: transparent; box-shadow: none;
+  font: italic 500 16px/1.2 var(--kursiv); color: var(--zar); cursor: pointer; }
+:where(.ilova) select.dash-davr:focus-visible { outline: 2px solid var(--zar); outline-offset: 2px; }
+.dash-varaq .varaq-bezak { margin: var(--o-4) 0 var(--o-3); }
+.dash-nazorat { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--o-4); }
+.dash-savol { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.dash-savol-nom { display: inline-flex; align-items: center; gap: 6px; font: italic 500 16px/1.2 var(--kursiv); color: var(--siyoh-2); }
+.dash-savol-nom .kpi-ikon { width: 15px; height: 15px; flex: none; color: var(--h-bron); }
+.dash-savol.muammo .dash-savol-nom .kpi-ikon { color: var(--h-qarz); }
+.dash-savol > b { font: 400 19px/1.25 var(--serif); color: var(--siyoh-q); }
+.dash-savol.muammo > b { color: var(--h-qarz); }
+.dash-savol > small { font-size: 13px; line-height: 1.4; color: var(--matn-3); }
+@media (max-width: 899px) {
+  .dash-hisob { grid-template-columns: 1fr; }
+  .dash-qiymat { padding: var(--o-3) 0; }
+  .dash-qiymat + .dash-qiymat { border-left: 0; border-top: 1px solid var(--zar-chiziq); }
+}
+@media (max-width: 767px) {
+  .dash-varaq.varaq { padding: 22px 18px 18px; }
+  .dash-bosh { grid-template-columns: 1fr; gap: var(--o-2); }
+  .dash-sana { flex-direction: row; flex-wrap: wrap; align-items: baseline; justify-content: center; gap: 0 8px; padding: 0 0 var(--o-3);
+    border-right: 0; border-bottom: 1px solid var(--zar-chiziq); }
+  .dash-sana small { flex-basis: 100%; }
+  .dash-sana b { font-size: 46px; }
+  .dash-nazorat { grid-template-columns: 1fr; gap: var(--o-3); }
+}
+
+/* =================== Varaq tili boshqa bo'limlarda ===================
+   Liboslar: ochilgan libos — «libos pasporti» (varaq ramkasi, artikul tilla serif); kartochkada narx serif.
+   Hisobot: foyda-zarar — daftar, oxirgi qator (sof foyda) varaqdagi «Jami» kabi. Bandlik: kun varaqasining sanasi yirik.
+   Oynalar: sarlavha serif. */
+.libos-tafsilot.varaq { position: relative; top: auto; gap: var(--o-3); }
+.libos-tafsilot-bosh h3 { font: 400 22px/1.2 var(--serif); letter-spacing: .01em; }
+.libos-tafsilot-bosh h3 b { margin-right: 4px; font-weight: 400; color: var(--zar); }
+.libos-nom b { font-family: var(--serif); font-weight: 400; color: var(--tilla); letter-spacing: .02em; }
+.libos-narx { font-family: var(--serif); font-weight: 400; font-variant-numeric: tabular-nums lining-nums; }
+:where(.ilova) .oyna-bosh h3 { font: 400 24px/1.2 var(--serif); letter-spacing: .01em; }
+.pnl td:last-child { font: 400 16px/1.3 var(--serif); font-variant-numeric: tabular-nums lining-nums; }
+.pnl tr.pnl-oralik td:last-child { font-size: 19px; }
+.pnl tr.pnl-yakuniy td { border-top-color: rgba(228, 193, 150, .32); }
+.pnl tr.pnl-yakuniy td:first-child { font: italic 500 19px/1.3 var(--kursiv); color: var(--matn-2); }
+.pnl tr.pnl-yakuniy td:last-child { font-size: 30px; line-height: 1.1; color: var(--tilla); }
+.pnl tr.pnl-yakuniy td:last-child b { font-weight: 400; }
+.kun-varaq-bosh h4 { font-size: 24px; }
+.kun-varaq-bosh h4 b { font-size: 40px; line-height: 1; vertical-align: -4px; margin-right: 2px; }
+.pnl td:last-child b { font-weight: 400; }  /* Forum faqat 400 — qalin so'ralsa brauzer soxta qalin chizadi */
+@media (max-width: 767px) { :where(.ilova) .jadval-asboblar .panel-nom { font-size: 21px; } }
+/* Ko'rsatkichlar (Liboslar, Sanoq): nomi kursiv, son serif — kun varaqasidagi summalar kabi; panel ramkasi umumiy */
+:where(.ilova) .stat { border-color: rgba(228, 193, 150, .22); outline: 1px solid rgba(228, 193, 150, .09); outline-offset: -6px; }
+:where(.ilova) .stat span { font: italic 500 16px/1.2 var(--kursiv); color: var(--matn-2); }
+:where(.ilova) .stat b { font: 400 28px/1.1 var(--serif); letter-spacing: .01em; font-variant-numeric: tabular-nums lining-nums; }
+.libos-nom b { font-size: 1.12em; }
+@media (max-width: 767px) { :where(.ilova) .stat b { font-size: 22px; } }
