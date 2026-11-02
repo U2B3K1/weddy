@@ -19,7 +19,7 @@ const DONA_HOLAT = { bosh: "Bo'sh", tamirda: "Ta'mirda", yoqolgan: "Yo'qolgan", 
 // qator bosilganda tafsilot shu joyda ochiladi; qo'shish — oynada.
 export default function AksessuarBolimi({ rahbar }) {
   const [royxat, setRoyxat] = useState([])
-  const [kats, setKats] = useState([])
+  const [kats, setKats] = useState(null)  // null — hali yuklanmagan (ogohlantirish yuklanayotganda chiqmasin)
   const [ochiq, setOchiq] = useState(null)
   const [xabar, setXabar] = useState({ turi: '', matn: '' })
   const [kat, setKat] = useState('')
@@ -57,7 +57,7 @@ export default function AksessuarBolimi({ rahbar }) {
     <div className="stack">
       {/* aksessuar ochiq bo'lsa xabar uning ichida chiqadi — tugma pastda, tepadagi xabar ko'rinmay qolardi */}
       {xabar.matn && ochiq === null && <p className={xabar.turi === 'xato' ? 'xato' : 'malumot'}>{xabar.matn}</p>}
-      {kats.length === 0 && (
+      {kats?.length === 0 && (
         <p className="ogohlantirish">Aksessuar kategoriyasi yo'q{rahbar ? ": «Liboslar» bo'limidagi «Kategoriyalar» tugmasi orqali turi «Aksessuar» bo'lgan kategoriya yarating." : '. Rahbar kategoriya yaratishi kerak.'}</p>
       )}
 
@@ -78,7 +78,7 @@ export default function AksessuarBolimi({ rahbar }) {
         </section>
       )}
 
-      {oyna && kats.length > 0 && (
+      {oyna && kats?.length > 0 && (
         <Oyna sarlavha="Aksessuar qo'shish" onYop={() => setOyna(false)}>
           <Forma kats={kats} rahbar={rahbar} ybs={ybs}
             onYuborish={async (b) => {
@@ -104,7 +104,7 @@ export default function AksessuarBolimi({ rahbar }) {
             <NavIkona nom="qidiruv" className="tugma-ikon" />
             <input type="search" className="jadval-qidiruv" placeholder="Nom yoki kod" aria-label="Aksessuar qidirish" value={q} onChange={(e) => setQ(e.target.value)} />
           </label>
-          <button type="button" className="kichik" disabled={kats.length === 0} onClick={() => setOyna(true)}>
+          <button type="button" className="kichik" disabled={!kats?.length} onClick={() => setOyna(true)}>
             <NavIkona nom="qosh" className="tugma-ikon" />Aksessuar qo'shish
           </button>
         </div>

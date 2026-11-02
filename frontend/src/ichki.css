@@ -682,10 +682,28 @@ main .boshlash-panel .qator-btn { text-align: left; }
 /* tablar sonlar bilan uzaygach qidiruv o'z qatoriga tushadi — shu qatorni to'ldiradi, «Yangi zakaz» o'ngda */
 .qidiruv-maydon.zakaz-qidiruv { flex: 1 1 260px; }
 :where(.ilova) .zakaz-qidiruv .jadval-qidiruv { width: 100%; }
-.tezkor-tablar .tab-kech .tab-son { background: rgba(255, 155, 146, .16); color: var(--h-qarz); }
+/* «Bugun» tasmasi: shu kungi ish — son tilla serif raqamda, kechikkan qizil; bosilgani to'ldirilgan */
+.bugun-tasma { display: flex; flex-wrap: wrap; align-items: center; gap: var(--o-2); padding: var(--o-2) var(--o-4); border-bottom: 1px solid var(--chegara);
+  background: linear-gradient(90deg, var(--tilla-xira), transparent 60%); }
+.bugun-nom { margin-right: var(--o-1); font: italic 500 16px/1 var(--kursiv); color: var(--tilla); }
+:where(.ilova) .bugun-chip { min-height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--chegara-kuchli); background: var(--yuza-1);
+  color: var(--matn-2); font-size: 13.5px; font-weight: 500; }
+.bugun-chip b { font: 400 18px/1 var(--serif); color: var(--tilla); font-variant-numeric: lining-nums; }
+:where(.ilova) .bugun-chip[aria-pressed='true'] { background: var(--tilla-xira); border-color: var(--tilla); color: var(--oq); }
+.bugun-chip.kech b { color: var(--h-qarz); }
+:where(.ilova) .bugun-chip.kech[aria-pressed='true'] { background: rgba(255, 155, 146, .12); border-color: var(--h-qarz); }
+@media (pointer: coarse) { :where(.ilova) .bugun-chip { min-height: 40px; } }
+/* Zakaz katagi va qo'ng'iroq tugmasi bir qatorda */
+.zakaz-bosh { display: flex; align-items: center; gap: var(--o-3); }
+.qongiroq { flex: none; margin-left: auto; width: 32px; height: 32px; display: grid; place-items: center; border-radius: 50%;
+  border: 1px solid var(--chegara-kuchli); color: var(--tilla); }
+.qongiroq svg { width: 16px; height: 16px; }
+.qongiroq:hover { background: var(--tilla-xira); }
+.qongiroq:focus-visible { outline: 2px solid var(--tilla); outline-offset: 2px; }
+@media (pointer: coarse) { .qongiroq { width: 40px; height: 40px; } }
 /* Telefon: jadval qatori ikki qatorli kartochka — tepada zakaz, ostida holat va summa (gorizontal aylantirishsiz) */
 @media (max-width: 767px) {
-  .jadval-asboblar > button { display: none; }  /* yangi zakaz — pastki paneldagi «+» */
+  :where(.ilova) .jadval-asboblar > button.yangi-zakaz-tugma { display: none; }  /* pastki paneldagi «+» bor; boshqa bo'limlar tugmalari qoladi */
   :where(.ilova) .jadval-qidiruv { flex: 1 1 100%; }
   .tezkor-tablar { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; width: 100%; }
   .tezkor-tablar button { flex: none; white-space: nowrap; }  /* siqilib bir necha qatorga bo'linmasin — tablar suriladi */

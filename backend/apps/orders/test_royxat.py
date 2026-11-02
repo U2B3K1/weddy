@@ -38,7 +38,7 @@ class RoyxatTests(TestCase):
         self.assertEqual(c.get('/api/zakazlar/royxat/?q=999').json(), [])
         self.assertEqual(c.get('/api/zakazlar/royxat/?holat=bekor').json(), [])
 
-    def test_tab_sonlari_va_kechikkan(self):
+    def test_tab_sonlari_kechikkan_va_bugun(self):
         from .models import Zakaz
         bugun = timezone.localdate()
         b = libos_yarat(self.salon, self.kat, 'B')
@@ -46,11 +46,16 @@ class RoyxatTests(TestCase):
                            qaytarish=bugun + timedelta(days=6), libos_idlari=[b.id])
         Zakaz.objects.filter(id=k.id).update(holat=Zakaz.Holat.BERILDI, qaytarish=bugun - timedelta(days=2))
         c = self.api(self.malika)
-        self.assertEqual(c.get('/api/zakazlar/sonlar/').json(), {'': 2, 'bron': 1, 'berildi': 1, 'kechikkan': 1})
-        self.assertEqual(c.get('/api/zakazlar/sonlar/?q=5566').json(), {'': 1, 'berildi': 1, 'kechikkan': 1})
+        bugun_yoq = {'bugun_olib': 0, 'bugun_qaytar': 0}
+        # setUp zakazi (bron) bugun olib ketiladi
+        self.assertEqual(c.get('/api/zakazlar/sonlar/').json(), {'': 2, 'bron': 1, 'berildi': 1, 'kechikkan': 1, 'bugun_olib': 1, 'bugun_qaytar': 0})
+        self.assertEqual(c.get('/api/zakazlar/sonlar/?q=5566').json(), {'': 1, 'berildi': 1, 'kechikkan': 1, **bugun_yoq})
         self.assertEqual([z['id'] for z in c.get('/api/zakazlar/royxat/?holat=kechikkan').json()], [k.id])
+        self.assertEqual([z['id'] for z in c.get('/api/zakazlar/royxat/?holat=bugun_olib').json()], [self.z.id])
+        Zakaz.objects.filter(id=k.id).update(qaytarish=bugun)
+        self.assertEqual([z['id'] for z in c.get('/api/zakazlar/royxat/?holat=bugun_qaytar').json()], [k.id])
         _, xodim_b, _ = salon_yarat('b')
-        self.assertEqual(self.api(xodim_b).get('/api/zakazlar/sonlar/').json(), {'': 0, 'kechikkan': 0})
+        self.assertEqual(self.api(xodim_b).get('/api/zakazlar/sonlar/').json(), {'': 0, 'kechikkan': 0, **bugun_yoq})
 
     def test_tafsilot(self):
         d = self.api(self.malika).get(f'/api/zakazlar/{self.z.id}/').json()

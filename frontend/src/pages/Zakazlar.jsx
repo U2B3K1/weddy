@@ -42,10 +42,13 @@ function asosiyTugma(z) {
 const MUHRLI = ['bron', 'berildi', 'qaytarildi', 'yopildi']
 const holatSinfi = (h) =>({ vaqtinchalik: 'vaqtinchalik', chegirma_kutilmoqda: 'vaqtinchalik', bron: 'bron', berildi: 'berildi', qaytarildi: 'qarz', yopildi: 'qaytarildi', bekor: 'qarz' }[h] || 'bron')
 
-// Tezkor holat tablari — eng ko'p qidiriladiganlari; qolganlari (chegirma tasdig'i) «Hammasi» ichida ko'rinadi.
-// «Kechikkan» — holat emas (berildi + qaytarish o'tgan): faqat shunday zakaz bo'lsa chiqadi
-const HOLAT_TABLARI = [['', 'Hammasi'], ['vaqtinchalik', 'Vaqtinchalik'], ['bron', 'Bron'], ['berildi', 'Berildi'], ['kechikkan', 'Kechikkan'],
+// Tezkor holat tablari — eng ko'p qidiriladiganlari; qolganlari (chegirma tasdig'i) «Hammasi» ichida ko'rinadi
+const HOLAT_TABLARI = [['', 'Hammasi'], ['vaqtinchalik', 'Vaqtinchalik'], ['bron', 'Bron'], ['berildi', 'Berildi'],
   ['qaytarildi', 'Qarz bor'], ['yopildi', 'Yopilgan'], ['bekor', 'Bekor']]
+// «Bugun» tasmasi — holat emas, sanaga bog'liq ish ro'yxati; faqat soni bor bo'lsa chiqadi, bosilsa ro'yxat shu bo'yicha
+const BUGUN = [['bugun_olib', 'bugun olib ketadi'], ['bugun_qaytar', 'bugun qaytaradi'], ['kechikkan', 'kechikkan']]
+// Mijoz bilan gaplashish kerak bo'ladigan holatlar — qatorda qo'ng'iroq tugmasi
+const QONGIROQ = ['vaqtinchalik', 'chegirma_kutilmoqda', 'bron', 'berildi', 'qaytarildi']
 const mln = (n) => `${(n / 1e6).toLocaleString('ru-RU', { maximumFractionDigits: 2 })} mln`
 const kunFarqi = (a, b) => Math.round((Date.parse(b) - Date.parse(a)) / 86400000)
 // Sotuvchi uchun eng muhim savol — «qachon?»: olib ketishgacha yoki qaytarishgacha qancha qoldi, kechikdimi
@@ -92,9 +95,9 @@ export default function Zakazlar({ tanlangan, onTanla, onYangi, onKassa, boshQ }
       <div className="jadval-asboblar">
         <h3 className="panel-nom">Zakazlar</h3>
         <div className="tezkor-tablar" role="tablist" aria-label="Holat bo'yicha">
-          {HOLAT_TABLARI.filter(([k]) => k !== 'kechikkan' || sonlar.kechikkan || holat === k).map(([k, nom]) => (
+          {HOLAT_TABLARI.map(([k, nom]) => (
             <button key={k || 'hammasi'} type="button" role="tab" aria-selected={holat === k}
-              className={`${holat === k ? 'faol' : ''} ${k === 'kechikkan' ? 'tab-kech' : ''}`} onClick={() => setHolat(k)}>
+              className={holat === k ? 'faol' : ''} onClick={() => setHolat(k)}>
               {nom}{sonlar[k] > 0 && <span className="tab-son">{sonlar[k]}</span>}
             </button>
           ))}
@@ -104,8 +107,19 @@ export default function Zakazlar({ tanlangan, onTanla, onYangi, onKassa, boshQ }
           <input type="search" className="jadval-qidiruv" placeholder="Raqam, telefon yoki ism" aria-label="Zakaz qidirish"
             value={q} onChange={(e) => setQ(e.target.value)} />
         </label>
-        {onYangi && <button type="button" className="kichik" onClick={onYangi}><NavIkona nom="qosh" className="tugma-ikon" />Yangi zakaz</button>}
+        {onYangi && <button type="button" className="kichik yangi-zakaz-tugma" onClick={onYangi}><NavIkona nom="qosh" className="tugma-ikon" />Yangi zakaz</button>}
       </div>
+      {BUGUN.some(([k]) => sonlar[k] > 0 || holat === k) && (
+        <div className="bugun-tasma" role="group" aria-label="Bugungi ishlar">
+          <span className="bugun-nom">Bugun</span>
+          {BUGUN.filter(([k]) => sonlar[k] > 0 || holat === k).map(([k, nom]) => (
+            <button key={k} type="button" className={`bugun-chip ${k === 'kechikkan' ? 'kech' : ''}`} aria-pressed={holat === k}
+              onClick={() => setHolat(holat === k ? '' : k)}>
+              <b>{sonlar[k] || 0}</b> {nom}
+            </button>
+          ))}
+        </div>
+      )}
       {xato && <p className="xato jadval-bosh">{xato}</p>}
       {royxat === null ? null : royxat.length === 0 ? (
         <p className="malumot jadval-bosh">{q ? `«${q}» bo'yicha zakaz topilmadi.` : "Bu filtr bo'yicha zakaz yo'q."}</p>
@@ -123,10 +137,17 @@ export default function Zakazlar({ tanlangan, onTanla, onYangi, onKassa, boshQ }
                   <tr key={z.id} onClick={() => onTanla(z.id)} className={m?.[1] === 'kech' ? 'kechikkan' : ''}>
                     <td>
                       {/* tugma — klaviatura uchun; bosish hodisasi qatorga ko'tariladi */}
-                      <button type="button" className="zakaz-katak">
-                        <span className="zakaz-eskiz">{z.rasm ? <img src={z.rasm} alt="" loading="lazy" /> : <LibosSiluet />}</span>
-                        <span className="zakaz-nom"><b>#{z.raqam} {z.mijoz}</b><small>{z.liboslar.join(', ')}</small></span>
-                      </button>
+                      <span className="zakaz-bosh">
+                        <button type="button" className="zakaz-katak">
+                          <span className="zakaz-eskiz">{z.rasm ? <img src={z.rasm} alt="" loading="lazy" /> : <LibosSiluet />}</span>
+                          <span className="zakaz-nom"><b>#{z.raqam} {z.mijoz}</b><small>{z.liboslar.join(', ')}</small></span>
+                        </button>
+                        {/* qatorni bosish kartani ochadi; qo'ng'iroq — alohida, telefon ilovasiga */}
+                        {QONGIROQ.includes(z.holat) && z.telefon && (
+                          <a className="qongiroq" href={`tel:${z.telefon}`} title={z.telefon} aria-label={`${z.mijoz} — qo'ng'iroq qilish`}
+                            onClick={(e) => e.stopPropagation()}><NavIkona nom="telefon" /></a>
+                        )}
+                      </span>
                     </td>
                     <td className="ijara-katak">
                       <IjaraSana dan={z.olib_ketish} gacha={z.qaytarish} />

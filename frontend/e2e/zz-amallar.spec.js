@@ -316,6 +316,24 @@ test("kassa: zalog tekshiruvi, inkassatsiya; rahbar: smena tuzatish, dashboard f
   expect(z.id, JSON.stringify(z)).toBeTruthy()
   const t = await apiSorov(page, 'POST', '/kassa/tolovlar/', { zakaz: z.id, tur: 'avans', summa: z.jami })
   expect(t.detail, JSON.stringify(t)).toBeUndefined()
+
+  await test.step("zakazlar: «Bugun» tasmasi va qo'ng'iroq tugmasi", async () => {
+    await bolim(page, 'Zakazlar')
+    const chip = page.locator('.bugun-tasma').getByRole('button', { name: /bugun olib ketadi/ })
+    await expect(chip).toContainText(/\d+ bugun olib ketadi/)
+    await chip.click()
+    await expect(chip).toHaveAttribute('aria-pressed', 'true')
+    const qator = page.locator('.zakaz-jadval tbody tr', { hasText: 'Zalog Sinov' })
+    await expect(qator).toBeVisible()
+    await expect(page.locator('.zakaz-jadval tbody tr', { hasText: 'Storno Mijoz' })).toHaveCount(0)
+    await expect(qator.getByRole('link', { name: "Zalog Sinov — qo'ng'iroq qilish" })).toHaveAttribute('href', 'tel:+998907770022')
+    await page.screenshot({ path: 'test-results/zakazlar/2-bugun-tasmasi-keng.png', animations: 'disabled' })
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.screenshot({ path: 'test-results/zakazlar/2-bugun-tasmasi-telefon.png', animations: 'disabled' })
+    await page.setViewportSize({ width: 1280, height: 860 })
+    await chip.click()  // qayta bosilsa filtr olinadi
+    await expect(chip).toHaveAttribute('aria-pressed', 'false')
+  })
   const b = await apiSorov(page, 'POST', `/zakazlar/${z.id}/berish/`, { zaloglar: [{ turi: 'hujjat', hujjat_turi: 'Haydovchilik guvohnomasi', hujjat_raqami: 'TEST-0001' }] })
   expect(b.holat, JSON.stringify(b)).toBe('berildi')
 

@@ -97,8 +97,17 @@ def _kechikkan(qs):
     return qs.filter(holat=Zakaz.Holat.BERILDI, qaytarish__lt=timezone.localdate())
 
 
+# «Bugun» tasmasi: holat emas, sanaga bog'liq tezkor filtrlar (ro'yxat ?holat= va tab sonlari bilan bir xil kalitlar)
+BUGUN_FILTRLARI = {
+    'kechikkan': _kechikkan,
+    'bugun_olib': lambda qs: qs.filter(olib_ketish=timezone.localdate(), holat__in=[
+        Zakaz.Holat.VAQTINCHALIK, Zakaz.Holat.CHEGIRMA_KUTILMOQDA, Zakaz.Holat.BRON]),
+    'bugun_qaytar': lambda qs: qs.filter(qaytarish=timezone.localdate(), holat=Zakaz.Holat.BERILDI),
+}
+
+
 class ZakazlarRoyxatiView(APIView):
-    """GET /api/zakazlar/royxat/?holat=&q=  (q: raqam yoki telefon/F.I.O.; holat=kechikkan — qaytarish o'tgan)"""
+    """GET /api/zakazlar/royxat/?holat=&q=  (q: raqam yoki telefon/F.I.O.; holat: zakaz holati yoki BUGUN_FILTRLARI kaliti)"""
     permission_classes = [IsStaff]
 
     def get(self, request):
@@ -106,8 +115,8 @@ class ZakazlarRoyxatiView(APIView):
             muddati_otganlarni_bekor_qil(request.salon)
         qs = _qidiruv(request, _zakazlar(request.salon))
         holat = request.query_params.get('holat')
-        if holat == 'kechikkan':
-            qs = _kechikkan(qs)
+        if holat in BUGUN_FILTRLARI:
+            qs = BUGUN_FILTRLARI[holat](qs)
         elif holat:
             qs = qs.filter(holat=holat)
         # Jadval uchun: to'lov progressi (to'langan / jami) va birinchi libos rasmi — bitta so'rovda, zakaz boshiga emas
@@ -128,7 +137,7 @@ class ZakazSonlariView(APIView):
     def get(self, request):
         qs = _qidiruv(request, Zakaz.objects.filter(salon=request.salon))
         sonlar = dict(qs.values_list('holat').annotate(n=Count('id')).order_by())
-        return Response({**sonlar, '': sum(sonlar.values()), 'kechikkan': _kechikkan(qs).count()})
+        return Response({**sonlar, '': sum(sonlar.values()), **{k: fn(qs).count() for k, fn in BUGUN_FILTRLARI.items()}})
 
 
 def _libos_rasmi(request, libos):
