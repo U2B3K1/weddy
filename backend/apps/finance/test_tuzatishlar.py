@@ -78,6 +78,18 @@ class MoliyaTests(Base):
             bank_solishtirish(salon=self.salon, rahbar=self.rahbar, yil=kelgusi.year, oy=kelgusi.month,
                               usul='karta', kochirma_summa=0, komissiya=100)
 
+    def test_bank_holatida_tolovlar_tarixi(self):
+        from apps.finance.services import bank_holati
+        b = timezone.localdate()
+        Tolov.objects.create(salon=self.salon, tur=Tolov.Tur.AVANS, usul='karta', summa=300_000, xodim=self.rahbar,
+                             smena=self.smena)
+        Tolov.objects.create(salon=self.salon, tur=Tolov.Tur.AVANS, usul='karta', summa=50_000, xodim=self.rahbar, smena=self.smena,
+                             tasdiq='kelmadi')
+        karta = next(u for u in bank_holati(self.salon, b.year, b.month) if u['usul'] == 'karta')
+        self.assertEqual(karta['tizimda'], 300_000)  # «kelmadi» hisobga kirmaydi, lekin tarixda bor
+        self.assertEqual([(t['summa'], t['tasdiq'], t['xodim']) for t in karta['tolovlar']],
+                         [(300_000, '', self.rahbar.ism), (50_000, 'kelmadi', self.rahbar.ism)])
+
     def test_komissiya_nolga_tushsa_xarajat_ochirilmaydi_rad_etiladi(self):
         b = timezone.localdate()
         bank_solishtirish(salon=self.salon, rahbar=self.rahbar, yil=b.year, oy=b.month, usul='karta',

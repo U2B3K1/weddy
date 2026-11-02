@@ -301,7 +301,7 @@ export default function App() {
             yangiZakaz={<YangiZakaz onTayyor={zakaz}
               onTolov={(id) => { setTolovZakaz({ id, n: Date.now() }); setKassaBolim('tolov'); window.scrollTo(0, 0) }} />} />
         )}
-        {sahifa === 'hisobotlar' && rahbar && <Hisobotlar bolim={hisobotlarBolim} />}
+        {sahifa === 'hisobotlar' && rahbar && <Hisobotlar bolim={hisobotlarBolim} onZakaz={zakaz} />}
         {sahifa === 'sozlamalar' && rahbar && <Sozlamalar menId={xodim.id} bolim={sozlamaBolim} onBolim={setSozlamaBolim} />}
       </main>
       {/* Telefon: pastki panel — eng ko'p ishlatiladigan bo'limlar, qolgani «Ko'proq» menyusida */}

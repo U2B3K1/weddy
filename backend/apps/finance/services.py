@@ -200,6 +200,23 @@ def bank_holati(salon, yil, oy):
             'kochirma': b.kochirma_summa if b else None, 'komissiya': b.komissiya if b else None,
             # bank komissiyani ushlab qolgani uchun: kutilgan tushum = tizimdagi - komissiya
             'farq': (b.kochirma_summa - (tizim - b.komissiya)) if b else None,
+            'tolovlar': _bank_tolovlari(salon, usul, boshi, oxiri),
+        })
+    return natija
+
+
+def _bank_tolovlari(salon, usul, boshi, oxiri):
+    """Farq chiqsa qidirish uchun: shu usulda kim, qachon, qaysi zakazga qancha yozgan. Rahbar «kelmadi» deganlari
+    ham ko'rinadi (hisobga kirmaydi); qaytarilgan pul manfiy."""
+    natija = []
+    for t in (Tolov.objects.filter(salon=salon, usul=usul, vaqt__date__range=(boshi, oxiri))
+              .select_related('xodim', 'zakaz__mijoz').order_by('vaqt')):
+        natija.append({
+            'id': t.id, 'vaqt': t.vaqt, 'xodim': t.xodim.ism, 'tur': t.get_tur_display(),
+            'summa': -t.summa if t.tur in Tolov.CHIQIM else t.summa,
+            'zakaz_id': t.zakaz_id, 'zakaz_raqami': t.zakaz.raqam if t.zakaz_id else None,
+            'mijoz': (t.zakaz.mijoz.fio or t.zakaz.mijoz.telefon) if t.zakaz_id else None,
+            'tasdiq': t.tasdiq, 'izoh': t.izoh,
         })
     return natija
 

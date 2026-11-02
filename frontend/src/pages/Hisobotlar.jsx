@@ -32,11 +32,11 @@ const DAVRLAR = [
 // Bo'limlar sahifa tepasidagi segment bilan almashtiriladi: umumiy hisobot, foyda/zarar, xarajatlar, sotuvchi bonusi,
 // bank solishtirish, grafik (avval oxirgi uchtasi umumiy hisobot ostida yashiringan edi).
 // Bildirishnomalar (chora ko'rish kerak bo'lganlar) — bosh sahifadagi «Diqqat talab qiladi» blokida.
-export default function Hisobotlar({ bolim }) {
+export default function Hisobotlar({ bolim, onZakaz }) {
   if (bolim === 'pnl') return <PnlBolim />
   if (bolim === 'xarajat') return <div className="stack hisobot-sahifa"><Xarajatlar /></div>
   if (bolim === 'bonus') return <div className="stack hisobot-sahifa"><Bonus /></div>
-  if (bolim === 'bank') return <div className="stack hisobot-sahifa"><Bank /></div>
+  if (bolim === 'bank') return <div className="stack hisobot-sahifa"><Bank onZakaz={onZakaz} /></div>
   if (bolim === 'grafik') return <GrafikBolim />
   return <HisobotBolim />
 }
@@ -359,7 +359,7 @@ function Pnl({ r, filial }) {
 const USUL = { karta: 'Terminal', otkazma: "O'tkazma", click: 'Click', payme: 'Payme' }
 
 // FT-12.12: rahbar oyiga bir marta bank ko'chirmasidagi summani kiritadi; tizim farqni ko'rsatadi, komissiya xarajatga yoziladi.
-function Bank() {
+function Bank({ onZakaz }) {
   const [oy, setOy] = useState(() => iso(new Date()).slice(0, 7))
   const [d, setD] = useState(null)
   const [f, setF] = useState({})
@@ -417,9 +417,42 @@ function Bank() {
                 onChange={(e) => setF({ ...f, [`${u.usul}_m`]: e.target.value })} />
               <button className="ikkinchi kichik" onClick={() => saqla(u.usul)}>Saqlash</button>
             </div>
+            <TolovTarixi tolovlar={u.tolovlar || []} onZakaz={onZakaz} />
           </div>
         ))}
         <p className="malumot">Hisob: ko'chirmadagi summa − (tizimda yozilgan to'lovlar − komissiya).</p>
+      </div>
+    </details>
+  )
+}
+
+// Shu usulda yozilgan to'lovlar: kim, qachon, qaysi zakazga — farq chiqsa qaysi to'lov shubhali ekanini topish uchun
+const vaqtMatni = (v) => { const t = new Date(v); return `${sanaMatni(iso(t))} ${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}` }
+function TolovTarixi({ tolovlar, onZakaz }) {
+  if (tolovlar.length === 0) return <p className="malumot">Bu oyda shu usulda to'lov yozilmagan.</p>
+  const xodimlar = {}
+  for (const t of tolovlar) if (t.tasdiq !== 'kelmadi') xodimlar[t.xodim] = (xodimlar[t.xodim] || 0) + t.summa
+  return (
+    <details className="bank-tarix">
+      <summary>To'lovlar tarixi ({tolovlar.length}) — kim, qachon, qaysi zakazga</summary>
+      <p className="malumot">{Object.entries(xodimlar).map(([ism, s]) => `${ism}: ${som(s)}`).join(' · ')}</p>
+      <div className="hisobot-ora">
+        <table className="hisobot">
+          <thead><tr><th>Vaqt</th><th>Kim yozgan</th><th>Zakaz</th><th>Turi</th><th className="ong">Summa</th></tr></thead>
+          <tbody>
+            {tolovlar.map((t) => (
+              <tr key={t.id} className={t.tasdiq === 'kelmadi' ? 'bank-kelmadi' : ''}>
+                <td>{vaqtMatni(t.vaqt)}</td>
+                <td>{t.xodim}</td>
+                <td>{t.zakaz_id
+                  ? <button type="button" className="havola" onClick={() => onZakaz?.(t.zakaz_id)}>#{t.zakaz_raqami} {t.mijoz}</button>
+                  : (t.izoh || '—')}</td>
+                <td>{t.tur}{t.tasdiq === 'kelmadi' ? ' · rahbar: kelmadi' : t.tasdiq === 'kutilmoqda' ? ' · tasdiq kutilmoqda' : ''}</td>
+                <td className="ong">{som(t.summa)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </details>
   )

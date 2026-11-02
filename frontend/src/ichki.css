@@ -889,6 +889,11 @@ main .boshlash-panel .qator-btn { text-align: left; }
 .bank-izoh p { margin: 0; }
 .bank-izoh b { color: var(--oq); }
 .bank-oy { max-width: 220px; }
+.bank-tarix { flex-basis: 100%; margin-top: var(--o-2); }
+.bank-tarix summary { cursor: pointer; color: var(--tilla); font-size: 14px; font-weight: 600; }
+.bank-tarix[open] summary { margin-bottom: var(--o-2); }
+.bank-kelmadi td { color: var(--matn-3); text-decoration: line-through; }
+.bank-kelmadi td:nth-child(4) { text-decoration: none; color: var(--h-qarz); }
 .yashil { color: var(--h-bron); }
 .ish-izoh { margin: 0; padding: var(--o-2) var(--o-4); border-bottom: 1px solid var(--chegara); color: var(--matn-2); font-size: 13.5px; line-height: 1.45; }
 .tezkor-tablar button.faol .tab-son { background: var(--tilla-xira); color: var(--tilla); }
