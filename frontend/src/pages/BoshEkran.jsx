@@ -25,13 +25,24 @@ export default function BoshEkran({ onZakaz, onKassa, rahbar, boshlash, yuqori, 
   }, [rahbar])
   useEffect(() => { yukla() }, [yukla])
 
+  // Har tab — nima ekani va nima qilish kerakligi (tab ostida bir qator izoh)
   const tablar = d ? [
-    ...(rahbar ? [['tasdiq', 'Tasdiq kutmoqda', sorovlar.length + (tasdiqSoni?.liboslar || 0) + (tasdiqSoni?.xarajatlar || 0)]] : []),
-    ['olib', 'Bugun olib ketish', d.olib_ketiladi.length],
-    ['qaytar', 'Bugun qaytarish', d.qaytariladi.length],
-    ['kech', 'Kechikkan', d.kechikkan.length],
-    ['eslatma', 'Eslatmalar', d.eslatmalar.filter((e) => !e.boglangan).length],
-    ...(rahbar ? [['qoldiq', 'Qoldiq kutilmoqda', qarz?.qoldiq_kutilmoqda.length || 0], ['qarz', 'Qarzdorlar', qarz?.qarzdorlar.length || 0]] : []),
+    ...(rahbar ? [['tasdiq', 'Qaroringiz kerak', sorovlar.length + (tasdiqSoni?.liboslar || 0) + (tasdiqSoni?.xarajatlar || 0),
+      "Sotuvchi so'ragan chegirmalar, katalogga qo'shilgan yangi liboslar va xarajatlar — tasdiqlang yoki rad eting."]] : []),
+    ['olib', 'Bugun olib ketadi', d.olib_ketiladi.length,
+      "Bugun libosni olib ketadigan mijozlar. Mijoz kelganda zakazni oching: qoldiqni oling, zalog yozing va libosni bering."],
+    ['qaytar', 'Bugun qaytaradi', d.qaytariladi.length,
+      "Bugun libosni qaytarishi kerak bo'lgan mijozlar. Libos kelganda zakazni ochib, qaytarishni yozing."],
+    ['kech', 'Kechikkan', d.kechikkan.length,
+      "Qaytarish kuni o'tgan, libos hali mijozda. Mijozga qo'ng'iroq qiling."],
+    ['eslatma', "Qo'ng'iroq qilish", d.eslatmalar.filter((e) => !e.boglangan).length,
+      "Mijozga eslatish kerak: ertaga olib ketadiganlar (qoldiq to'lovi), bugun qaytaradiganlar va kechikkanlar. Gaplashgach «Bog'landim»ni bosing."],
+    ...(rahbar ? [
+      ['qoldiq', "Qoldiq to'lanmagan", qarz?.qoldiq_kutilmoqda.length || 0,
+        "Avans olingan, libos hali berilmagan zakazlar — qolgan summa libos berilayotganda olinadi. Bu qarz emas."],
+      ['qarz', 'Qarzdorlar', qarz?.qarzdorlar.length || 0,
+        "Libosni qaytargan, lekin jarima yoki zarar summasini to'lamagan mijozlar."],
+    ] : []),
   ] : []
   // Tanlanmagan bo'lsa — birinchi bo'sh bo'lmagan tab (rahbarga odatda qaror kutayotganlar)
   const joriy = tab || tablar.find(([, , n]) => n > 0)?.[0] || 'olib'
@@ -48,15 +59,17 @@ export default function BoshEkran({ onZakaz, onKassa, rahbar, boshlash, yuqori, 
       )}
       <section className="blok jadval-panel">
         <div className="jadval-asboblar">
-          <h3 className="panel-nom">Ishlar</h3>
-          <div className="tezkor-tablar" role="tablist" aria-label="Ishlar">
-            {tablar.map(([k, nom, n]) => (
-              <button key={k} type="button" role="tab" aria-selected={joriy === k} className={joriy === k ? 'faol' : ''} onClick={() => setTab(k)}>
+          <h3 className="panel-nom">Bugungi ishlar</h3>
+          <div className="tezkor-tablar" role="tablist" aria-label="Bugungi ishlar">
+            {tablar.map(([k, nom, n, izoh]) => (
+              <button key={k} type="button" role="tab" aria-selected={joriy === k} title={izoh}
+                className={`${joriy === k ? 'faol' : ''} ${n > 0 ? '' : 'tab-bosh'}`} onClick={() => setTab(k)}>
                 {nom}{n > 0 && <span className="tab-son">{n}</span>}
               </button>
             ))}
           </div>
         </div>
+        {tablar.find(([k]) => k === joriy)?.[3] && <p className="ish-izoh">{tablar.find(([k]) => k === joriy)[3]}</p>}
         {xato && <p className="xato jadval-bosh">{xato}</p>}
         {!d && !xato && <p className="malumot jadval-bosh">Yuklanmoqda…</p>}
         {d && joriy === 'olib' && <ZakazJadval royxat={d.olib_ketiladi} onZakaz={onZakaz} bosh="Bugun olib ketiladigan libos yo'q." />}

@@ -285,6 +285,8 @@ label > input, label > select { color: var(--oq); }
 
 /* Qadamlar: tilla ip ustidagi uchta tugun (haqiqiy ketma-ketlik — raqam o'rinli). O'tilgani — tugma (qaytish) */
 .zakaz-ip { list-style: none; margin: 0; padding: 0; display: flex; align-items: center; max-width: 560px; }
+/* varaq ichida: sanalar ustida, ostidan ingichka tilla chiziq bilan ajralgan */
+.varaq > .zakaz-ip { position: relative; z-index: 1; max-width: none; padding-bottom: var(--o-3); border-bottom: 1px solid var(--zar-chiziq); }
 .zakaz-ip li { display: flex; align-items: center; flex: 1; min-width: 0; }
 .zakaz-ip li:last-child { flex: none; }
 .zakaz-ip li:not(:last-child)::after { content: ''; flex: 1; height: 1px; margin: 0 10px; background: var(--chegara-kuchli); }
@@ -357,6 +359,7 @@ label > input, label > select { color: var(--oq); }
   .zakaz-joy > .varaq .varaq-sana i { padding: 0 4px; font-size: 15px; }
   .zakaz-joy > .varaq .varaq-jami { padding-top: 8px; }
   .zakaz-joy > .varaq .varaq-jami b { font-size: 22px; }
+  .zakaz-joy > .varaq > .zakaz-ip { padding-bottom: 8px; }
   .varaq-yakun { padding: 62px 20px 22px; }
   .varaq-yakun .varaq-sana b { font-size: 44px; }
 }
@@ -879,6 +882,15 @@ main .boshlash-panel .qator-btn { text-align: left; }
 /* Jadval paneli sarlavhasi va tab sonlari */
 .jadval-asboblar .panel-nom { margin: 0 var(--o-3) 0 0; line-height: 32px; }
 .tab-son { margin-left: 6px; padding: 0 6px; min-width: 20px; border-radius: 10px; background: var(--yuza-3); color: var(--matn-2); font-size: 12px; line-height: 18px; display: inline-block; text-align: center; }
+/* Bosh sahifa «Bugungi ishlar»: ishi yo'q tab xiraroq; tanlangan tab nima ekani — ostida bir qator izoh */
+:where(.ilova) .tezkor-tablar button.tab-bosh:not(.faol) { color: var(--matn-3); font-weight: 500; }
+.bank-izoh { display: grid; gap: var(--o-2); padding: var(--o-3) var(--o-4); border-left: 2px solid var(--tilla); border-radius: var(--r-1);
+  background: var(--tilla-xira); color: var(--matn-2); font-size: 14px; line-height: 1.5; }
+.bank-izoh p { margin: 0; }
+.bank-izoh b { color: var(--oq); }
+.bank-oy { max-width: 220px; }
+.yashil { color: var(--h-bron); }
+.ish-izoh { margin: 0; padding: var(--o-2) var(--o-4); border-bottom: 1px solid var(--chegara); color: var(--matn-2); font-size: 13.5px; line-height: 1.45; }
 .tezkor-tablar button.faol .tab-son { background: var(--tilla-xira); color: var(--tilla); }
 .qator-ogoh { display: flex; align-items: center; justify-content: space-between; gap: var(--o-3); }
 /* Tasdiq va eslatma qatorlari (jadval paneli ichida) */
@@ -1244,7 +1256,8 @@ label > .info .info-matn, th .info .info-matn { left: auto; right: 0; }
 .ilova main:has(.kalendar-sahifa) { max-width: 1180px; }
 .kalendar-nav { display: flex; align-items: center; gap: var(--o-2); }
 .davr-nomi { min-width: 168px; white-space: nowrap; text-align: center; font: 400 20px/1 var(--serif); color: var(--tilla); font-variant-numeric: lining-nums; }
-:where(.ilova) .kalendar-nav input[type='date'] { width: auto; min-height: 34px; padding: 0 var(--o-2); font-size: 13.5px; }
+.davr-sanalar { display: flex; align-items: center; gap: var(--o-1); color: var(--matn-3); }
+:where(.ilova) .davr-sanalar input[type='date'] { width: auto; min-height: 34px; padding: 0 var(--o-2); font-size: 13.5px; }
 .bandlik-ora { --bandlik-fon: #161D29; overflow: auto; max-height: min(72vh, 760px); }
 .bandlik { width: 100%; min-width: calc(168px + var(--kun-son) * var(--kun-min, 40px)); border-collapse: separate; border-spacing: 0; table-layout: fixed; }
 .bandlik-oy { --kun-min: 28px; }
@@ -1319,7 +1332,8 @@ label > .info .info-matn, th .info .info-matn { left: auto; right: 0; }
 @media (max-width: 767px) {
   .kalendar-nav { flex-wrap: wrap; width: 100%; }
   .davr-nomi { flex: 1 0 auto; min-width: 0; font-size: 18px; }
-  :where(.ilova) .kalendar-nav input[type='date'] { flex: 1 1 140px; }
+  .davr-sanalar { width: 100%; }
+  :where(.ilova) .davr-sanalar input[type='date'] { flex: 1 1 0; min-width: 0; }
   .bandlik { min-width: calc(108px + var(--kun-son) * var(--kun-min, 40px)); }
   .bandlik-kun { --kun-min: 200px; }
   .bandlik .libos-katak { width: 108px; padding: 6px var(--o-2); }

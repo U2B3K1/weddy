@@ -3,7 +3,7 @@ import NavIkona from './NavIkona'
 
 // Kontent ustidagi yuqori panel (barcha sahifalarda): chapda sahifa nomi, o'ngda zakaz qidiruvi,
 // bildirishnomalar (rahbarga: qaror kutayotganlar va ogohlantirishlar) va xodim menyusi.
-export default function UstkiPanel({ sarlavha, izoh, xodim, rahbar, xabarlar, onQidir, onBolim, onAlmashtir }) {
+export default function UstkiPanel({ sarlavha, izoh, xodim, rahbar, xabarlar, onQidir, onBolim, onChiqish }) {
   const [q, setQ] = useState('')
   const [ochiq, setOchiq] = useState(null) // 'xabar' | 'xodim' | null
   const joy = useRef(null)
@@ -62,7 +62,8 @@ export default function UstkiPanel({ sarlavha, izoh, xodim, rahbar, xabarlar, on
         {ochiq === 'xodim' && (
           <div className="ustki-menyu" role="menu">
             <p className="malumot">{xodim.salon}</p>
-            <button type="button" role="menuitem" onClick={onAlmashtir}><NavIkona nom="almashtir" className="tugma-ikon" />Xodimni almashtirish</button>
+            {/* xodim ilovadan chiqadi (PIN ekrani); salon logini qurilmada qoladi — keyingi xodim o'z PIN'i bilan kiradi */}
+            <button type="button" role="menuitem" onClick={onChiqish}><NavIkona nom="chiqish" className="tugma-ikon" />Chiqish</button>
           </div>
         )}
       </div>

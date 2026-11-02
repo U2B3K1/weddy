@@ -231,15 +231,19 @@ export default function YangiZakaz({ onTayyor, onTolov }) {
   }, [filtr.q])
 
   const noyob = (kalit) => [...new Set((liboslar || []).map((l) => l[kalit]).filter(Boolean))].sort()
-  // Kategoriya tablari: «Hammasi» — liboslar va aksessuarlar, libos kategoriyasi — faqat o'sha liboslar,
-  // «Aksessuarlar» — faqat aksessuarlar (qidiruv va narx ularga ham qo'llanadi)
+  // Kategoriya tablari: libos kategoriyasi — faqat o'sha liboslar, «Aksessuarlar» — faqat aksessuarlar.
+  // «Hammasi» yo'q: boshida birinchi kategoriya ochiq. Qidiruv esa hamma kategoriya va aksessuarlar bo'ylab
+  // (artikul terilganda u qaysi tabda ekanini bilish shart emas)
   const AKS = '__aksessuar'
-  const libosKorinadi = filtr.kat !== AKS
-  const aksKorinadi = !filtr.kat || filtr.kat === AKS
+  const tablar = [...noyob('kategoriya').map((k) => [k, k]), ...(aksessuarlar.length > 0 ? [[AKS, 'Aksessuarlar']] : [])]
+  const qidirilmoqda = filtr.q.trim() !== ''
+  const kat = qidirilmoqda ? '' : tablar.some(([k]) => k === filtr.kat) ? filtr.kat : tablar[0]?.[0] ?? ''
+  const libosKorinadi = kat !== AKS
+  const aksKorinadi = !kat || kat === AKS
   const qAks = filtr.q.trim().toLowerCase()
   const aksKorinadigan = aksessuarlar.filter((a) => (!qAks || a.nomi.toLowerCase().includes(qAks) || a.kod.toLowerCase().includes(qAks))
     && (!filtr.narx || a.ijara_narxi <= Number(filtr.narx)))
-  const korinadi = (liboslar || []).filter((l) => (!filtr.kat || l.kategoriya === filtr.kat)
+  const korinadi = (liboslar || []).filter((l) => (!kat || l.kategoriya === kat)
     && (!filtr.olcham || l.olcham === filtr.olcham) && (!filtr.rang || l.rang === filtr.rang)
     && (!filtr.narx || l.ijara_narxi <= Number(filtr.narx))
     && (!filtr.filial || l.filial == null || l.filial === Number(filtr.filial)))
@@ -280,18 +284,6 @@ export default function YangiZakaz({ onTayyor, onTolov }) {
   const davom = qadam === 2 ? () => { setXabar(''); setQadam(3) } : saqlash
   return (
     <div className="stack">
-      {/* Qadamlar — tilla ip ustidagi tugunlar; o'tilgan qadamga bosib qaytiladi */}
-      <ol className="zakaz-ip" aria-label="Qadamlar">
-        {QADAMLAR.map((n, i) => {
-          const q = i + 1
-          const ichi = <><span className="ip-tugun" aria-hidden="true">{q < qadam ? '✓' : q}</span>{n}</>
-          return (
-            <li key={n} className={q === qadam ? 'joriy' : q < qadam ? 'otdi' : ''} aria-current={q === qadam ? 'step' : undefined}>
-              {q < qadam ? <button type="button" onClick={() => { setXabar(''); setQadam(q) }}>{ichi}</button> : <span>{ichi}</span>}
-            </li>
-          )
-        })}
-      </ol>
       {xabar && <p className="xato">{xabar}</p>}
 
       <div className="zakaz-joy">
@@ -314,9 +306,9 @@ export default function YangiZakaz({ onTayyor, onTolov }) {
             <section className="blok jadval-panel libos-filtr" aria-label="Libos filtrlari">
               <div className="jadval-asboblar">
                 <div className="tezkor-tablar" role="tablist" aria-label="Kategoriya">
-                  {[['', 'Hammasi'], ...noyob('kategoriya').map((k) => [k, k]), ...(aksessuarlar.length > 0 ? [[AKS, 'Aksessuarlar']] : [])].map(([k, nom]) => (
-                    <button key={k || 'hammasi'} type="button" role="tab" aria-selected={filtr.kat === k}
-                      className={filtr.kat === k ? 'faol' : ''} onClick={() => setFiltr({ ...filtr, kat: k })}>
+                  {tablar.map(([k, nom]) => (
+                    <button key={k} type="button" role="tab" aria-selected={kat === k}
+                      className={kat === k ? 'faol' : ''} onClick={() => setFiltr({ ...filtr, kat: k, q: '' })}>
                       {nom}{k === AKS && <span className="tab-son">{aksessuarlar.length}</span>}
                     </button>
                   ))}
@@ -497,6 +489,18 @@ export default function YangiZakaz({ onTayyor, onTolov }) {
           )}
         </div>
         <aside className="zakaz-jami varaq" aria-label="Zakaz varaqasi">
+          {/* Qadamlar — varaq tepasida, tilla ip ustidagi tugunlar; o'tilgan qadamga bosib qaytiladi */}
+          <ol className="zakaz-ip" aria-label="Qadamlar">
+            {QADAMLAR.map((n, i) => {
+              const q = i + 1
+              const ichi = <><span className="ip-tugun" aria-hidden="true">{q < qadam ? '✓' : q}</span>{n}</>
+              return (
+                <li key={n} className={q === qadam ? 'joriy' : q < qadam ? 'otdi' : ''} aria-current={q === qadam ? 'step' : undefined}>
+                  {q < qadam ? <button type="button" onClick={() => { setXabar(''); setQadam(q) }}>{ichi}</button> : <span>{ichi}</span>}
+                </li>
+              )
+            })}
+          </ol>
           {mijozNomi && qadam === 3 && <p className="varaq-kimga">{mijozNomi}</p>}
           <VaraqSana dan={dan} gacha={gacha} />
           {qadam >= 2 && (<>

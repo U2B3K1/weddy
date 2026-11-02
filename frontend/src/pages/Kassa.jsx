@@ -102,8 +102,9 @@ export default function Kassa({ rahbar, bolim, onBolim, onHolatOzgardi, yangiZak
             <XarajatPOS onYuborish={(b) => bajar(() => xarajatYarat({ ...b, kassadan: true }), rahbar ? 'Xarajat kassadan yozildi.' : "Xarajat kassadan yozildi (rahbar tasdig'ini kutadi).")} />
           )}
           {bolim === 'inkassatsiya' && (
-            <InkassatsiyaPOS rahbarlar={s.rahbarlar}
-              onYuborish={(summa, izoh, rahbar) => bajar(() => inkassatsiyaQil({ summa, izoh, rahbar }), "Inkassatsiya yozildi — rahbar Telegramda tasdiqlaydi.")} />
+            <InkassatsiyaPOS rahbarlar={s.rahbarlar} hamkasblar={s.xodimlar || []}
+              onYuborish={(summa, izoh, k) => bajar(() => inkassatsiyaQil(k.rahbar ? { summa, izoh, rahbar: k.id } : { summa, izoh, kimga: k.id }),
+                k.rahbar ? 'Inkassatsiya yozildi — rahbar Telegramda tasdiqlaydi.' : `Pul ${k.ism}ga topshirildi — u sanab, «Qabul qildim»ni bosadi.`)} />
           )}
           {bolim === 'zalog' && <ZalogTekshiruvi onOzgardi={yukla} />}
           {bolim === 'hisobot' && <Hisobot h={s.hisobot} />}
@@ -526,20 +527,40 @@ function XarajatPOS({ onYuborish }) {
 }
 
 // FT-12.6: rahbarga topshirilgan naqd pul — alohida chiqim, tushum va xarajatga kirmaydi. Rahbar Telegramda tasdiqlaydi.
-function InkassatsiyaPOS({ rahbarlar, onYuborish }) {
-  const [rahbar, setRahbar] = useState(rahbarlar.length === 1 ? String(rahbarlar[0].id) : '')
-  if (!rahbarlar.length) return <section className="blok pos-tor"><p className="malumot">Salonda boshqa faol rahbar yo'q.</p></section>
+// Smenadagi hamkasbga ham berish mumkin: pul kassada qoladi, faqat uning hisobiga o'tadi (u sanab qabul qiladi).
+function InkassatsiyaPOS({ rahbarlar, hamkasblar, onYuborish }) {
+  const rahbarIdlar = new Set(rahbarlar.map((r) => r.id))
+  const tanlov = [...rahbarlar.map((r) => ({ ...r, rahbar: true, kalit: `r:${r.id}` })),
+    ...hamkasblar.filter((x) => !rahbarIdlar.has(x.id)).map((x) => ({ ...x, rahbar: false, kalit: `x:${x.id}` }))]
+  // bitta rahbar bo'lsa — odatdagidek o'zi tanlangan (inkassatsiya)
+  const [kalit, setKalit] = useState(rahbarlar.length === 1 ? `r:${rahbarlar[0].id}` : tanlov.length === 1 ? tanlov[0].kalit : '')
+  const kimga = tanlov.find((t) => t.kalit === kalit)
+  if (!tanlov.length) return <section className="blok pos-tor"><p className="malumot">Pul topshiradigan rahbar yoki smenadagi hamkasb yo'q.</p></section>
   return (
     <section className="blok pos-tor">
-      <h3>Inkassatsiya — naqd pulni rahbarga topshirish</h3>
+      <h3>Inkassatsiya — naqd pulni topshirish</h3>
       <label>Kimga
-        <select value={rahbar} onChange={(e) => setRahbar(e.target.value)}>
+        <select value={kalit} onChange={(e) => setKalit(e.target.value)}>
           <option value="">— tanlang —</option>
-          {rahbarlar.map((r) => <option key={r.id} value={r.id}>{r.ism}</option>)}
+          {rahbarlar.length > 0 && (
+            <optgroup label="Rahbarga — kassadan chiqadi">
+              {tanlov.filter((t) => t.rahbar).map((t) => <option key={t.kalit} value={t.kalit}>{t.ism}</option>)}
+            </optgroup>
+          )}
+          {tanlov.some((t) => !t.rahbar) && (
+            <optgroup label="Smenadagi hamkasbga — kassada qoladi">
+              {tanlov.filter((t) => !t.rahbar).map((t) => <option key={t.kalit} value={t.kalit}>{t.ism}</option>)}
+            </optgroup>
+          )}
         </select>
       </label>
+      {kimga && (
+        <p className="malumot">{kimga.rahbar
+          ? "Pul kassadan chiqadi — rahbar sanab, Telegramda tasdiqlaydi."
+          : `Pul kassada qoladi: sizning hisobingizdan ${kimga.ism}ning hisobiga o'tadi. ${kimga.ism} sanab, «Qabul qildim»ni bosadi.`}</p>
+      )}
       <SummaForma yorliq="Topshiriladigan summa" tugma="Inkassatsiyani yozish" izohYorliq="Izoh"
-        onYuborish={(summa, izoh) => (rahbar ? onYuborish(summa, izoh, Number(rahbar)) : Promise.resolve(false))} />
+        onYuborish={(summa, izoh) => (kimga ? onYuborish(summa, izoh, kimga) : Promise.resolve(false))} />
     </section>
   )
 }

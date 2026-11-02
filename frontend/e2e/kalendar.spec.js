@@ -40,7 +40,7 @@ test('bandlik kalendari: bron tasmasi, kun soni va kun varaqasi', async ({ page 
   await nav(page).getByRole('button', { name: 'Zakazlar', exact: true }).click()
   await page.getByRole('tab', { name: 'Bandlik kalendari' }).click()
   await expect(page.getByRole('heading', { name: 'Bandlik' })).toBeVisible()
-  await page.getByLabel("Sanaga o'tish").fill(iso(199))
+  await page.getByLabel('Davr boshi').fill(iso(199))
 
   // uch kunlik bron — bitta tasma (3 ustunni egallaydi), vaqtinchalik
   const tasma = page.locator('.bron-tasma', { hasText: `#${z.raqam} Kalendar Sinov` })
@@ -66,12 +66,18 @@ test('bandlik kalendari: bron tasmasi, kun soni va kun varaqasi', async ({ page 
 
   await page.getByRole('tab', { name: 'Oy', exact: true }).click()
   await expect(page.locator('.bandlik thead th')).toHaveCount(32)
-  await page.getByLabel("Sanaga o'tish").fill(iso(199))
+  await page.getByLabel('Davr boshi').fill(iso(199))
   await expect(tasma).toBeVisible()
   await suratlar(page, '2-oy')
 
+  // erkin davr: «gacha» sanasi davr uzunligini o'zgartiradi — tayyor tablardan hech biri tanlanmagan bo'ladi
+  await page.getByLabel('Davr oxiri').fill(iso(208))
+  await expect(page.locator('.bandlik thead th')).toHaveCount(11)
+  await expect(page.locator('.tezkor-tablar [aria-selected="true"]')).toHaveCount(0)
+  await expect(page.locator('.davr-nomi')).toContainText('–')
+
   await page.getByRole('tab', { name: 'Kun', exact: true }).click()
-  await page.getByLabel("Sanaga o'tish").fill(dan)
+  await page.getByLabel('Davr boshi').fill(dan)
   await expect(varaq.locator('.kun-olib')).toContainText('Kalendar Sinov')  // «Kun» ko'rinishida varaq doim ochiq
   await page.getByLabel('Libos qidirish').fill('yoqlibos')
   await expect(page.getByText("«yoqlibos» bo'yicha libos topilmadi.")).toBeVisible()

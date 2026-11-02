@@ -190,18 +190,23 @@ class TolovTuzatishView(APIView):
 
 
 class InkassatsiyaView(APIView):
-    """POST {summa, rahbar, izoh?} — naqdning bir qismini rahbarga berish; rahbar Telegramda tasdiqlaydi."""
+    """POST {summa, rahbar | kimga, izoh?} — naqdning bir qismini topshirish: rahbarga (kassadan chiqadi) yoki
+    smenadagi hamkasbga (`kimga`, pul kassada qoladi). Qabul qiluvchi Telegramda yoki ilovada tasdiqlaydi."""
     permission_classes = [SalonYozishRuxsati]
 
     def post(self, request):
         ser = SanashSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
         d = ser.validated_data
-        if 'rahbar' not in d:
+        if 'rahbar' not in d and 'kimga' not in d:
             raise ValidationError({'rahbar': ['Kimga topshirilishini tanlang.']})
         try:
-            t = services.inkassatsiya(salon=request.salon, xodim=request.user, rahbar=_xodim(request, d['rahbar'], 'rahbar'),
-                                      summa=d['summa'], izoh=d['izoh'])
+            if 'rahbar' in d:
+                t = services.inkassatsiya(salon=request.salon, xodim=request.user, rahbar=_xodim(request, d['rahbar'], 'rahbar'),
+                                          summa=d['summa'], izoh=d['izoh'])
+            else:
+                t = services.hamkasbga_berish(salon=request.salon, xodim=request.user, kimga=_xodim(request, d['kimga'], 'kimga'),
+                                              summa=d['summa'], izoh=d['izoh'])
         except KassaXatosi as e:
             return xato(e)
         return Response(services.topshiriq_json(t), status=201)

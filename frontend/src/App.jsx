@@ -254,7 +254,7 @@ export default function App() {
       </ul>
     </section>
   )
-  const almashtir = () => { saqlangan.chiqish(); window.location.hash = '#kirish'; setKirish(true); setXodim(null) }
+  const chiqish = () => { saqlangan.chiqish(); window.location.hash = '#kirish'; setKirish(true); setXodim(null) }
   const harf = (xodim.ism || '?').trim().charAt(0).toUpperCase()
 
   return (
@@ -263,7 +263,7 @@ export default function App() {
       <Shapka ochiq={menyu} onMenyu={() => setMenyu(!menyu)}>
         {/* Telefon shapkasi; keng ekranda xodim chap panel pastida */}
         <span className="xodim-chip"><i aria-hidden="true">{harf}</i></span>
-        <button className="ikkinchi kichik" onClick={almashtir}>Almashtirish</button>
+        <button className="ikkinchi kichik" onClick={chiqish}><NavIkona nom="chiqish" className="tugma-ikon" />Chiqish</button>
       </Shapka>
       {xodim.salon_holati === 'faqat_korish' && (
         <p className="ogohlantirish obuna-banner">Obuna muddati tugagan: salon «faqat ko'rish» rejimida, yangi zakaz yaratilmaydi.</p>
@@ -277,7 +277,7 @@ export default function App() {
       {!onlayn ? <main><Oflayn /></main> : (<>
       <main>
         <UstkiPanel sarlavha={panelNomi} izoh={panelIzoh} xodim={xodim} rahbar={rahbar} xabarlar={xabarlar}
-          onBolim={setSahifa} onAlmashtir={almashtir}
+          onBolim={setSahifa} onChiqish={chiqish}
           onQidir={(q) => { setQidiruv({ q, n: Date.now() }); setZakazlarBolim('royxat'); setSahifa('zakazlar') }} />
         {ichki && ichki.royxat.length > 1 && !(sahifa === 'zakazlar' && zakazId) && (
           <div className={`ichki-segment${navTekis && navRejim === sahifa ? ' faqat-telefon' : ''}`} role="tablist" ref={segmentRef}>

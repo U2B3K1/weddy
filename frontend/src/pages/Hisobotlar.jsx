@@ -389,13 +389,26 @@ function Bank() {
     <details className="blok amal" open>
       <summary>Bank ko'chirmasi bilan solishtirish</summary>
       <div className="stack">
-        <input type="month" value={oy} onChange={(e) => e.target.value && setOy(e.target.value)} />
+        {/* Nima uchun kerak — egasi tushunishi uchun oddiy tilda */}
+        <div className="bank-izoh">
+          <p><b>Nima uchun:</b> karta, Click va Payme orqali to'langan pul kassaga emas, bank hisobingizga tushadi.
+            Sotuvchi «karta bilan to'ladi» deb yozgan pul haqiqatan kelganini faqat bank ko'chirmasi ko'rsatadi.</p>
+          <p><b>Qanday:</b> oyni tanlang, bank ilovasidan shu oy uchun har bir usul bo'yicha kelgan summani va bank olgan
+            komissiyani yozib, «Saqlash»ni bosing. Tizim sotuvchilar yozgan to'lovlar bilan solishtiradi.</p>
+          <p><b>Farq chiqsa:</b> to'lov noto'g'ri usulda yozilgan (masalan, naqd o'rniga karta) yoki pul kelmagan —
+            shu oyning to'lovlarini tekshiring. Komissiya avtomatik «Bank komissiyasi» xarajati bo'lib yoziladi.</p>
+        </div>
+        <label className="bank-oy">Oy
+          <input type="month" value={oy} onChange={(e) => e.target.value && setOy(e.target.value)} />
+        </label>
         {xabar.matn && <p className={xabar.turi === 'xato' ? 'xato' : 'malumot'}>{xabar.matn}</p>}
         {d && d.usullar.map((u) => (
           <div key={u.usul} className="tasdiq">
             <span>
               <b>{USUL[u.usul]}</b> · tizimda: {som(u.tizimda)}
-              {u.farq !== null && <> · farq: <b className={u.farq === 0 ? '' : 'qizil'}>{som(u.farq)}</b></>}
+              {u.farq !== null && (u.farq === 0
+                ? <> · <b className="yashil">mos keldi ✓</b></>
+                : <> · <b className="qizil">{u.farq < 0 ? `bankka ${som(-u.farq)} kam tushgan` : `bankka ${som(u.farq)} ortiq tushgan`}</b></>)}
             </span>
             <div className="qator">
               <SummaInput placeholder="Ko'chirmadagi summa" value={f[`${u.usul}_k`] ?? u.kochirma ?? ''}
@@ -406,7 +419,7 @@ function Bank() {
             </div>
           </div>
         ))}
-        <p className="malumot">Farq = ko'chirmadagi summa − (tizimdagi tushum − komissiya). Komissiya «Bank komissiyasi» xarajati bo'lib yoziladi.</p>
+        <p className="malumot">Hisob: ko'chirmadagi summa − (tizimda yozilgan to'lovlar − komissiya).</p>
       </div>
     </details>
   )

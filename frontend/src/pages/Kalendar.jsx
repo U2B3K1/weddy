@@ -1,10 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import { kalendar, xatoMatni } from '../api'
 import NavIkona from '../components/NavIkona'
-import { HAFTA, OYLAR, bugunIso, isoOch, kunQosh, ustun } from '../components/kalendar/sana'
+import { HAFTA, OYLAR, bugunIso, isoOch, kunQosh, kunlarSoni, ustun } from '../components/kalendar/sana'
 
+// Tayyor davrlar; «dan» va «gacha» sanalari bilan istalgan davr (3 oygacha — server chegarasi) tanlanadi
 const KORINISH = [['kun', 'Kun', 1], ['hafta', 'Hafta', 7], ['oy', 'Oy', 31]]
-const KUNLAR = Object.fromEntries(KORINISH.map(([k, , n]) => [k, n]))
+const ENG_UZUN = 93
+// Ustun kengligi davr uzunligiga qarab: bir kun — keng, ikki haftagacha — o'rta, undan uzun — ixcham
+const korinishi = (n) => (n === 1 ? 'kun' : n <= 14 ? 'hafta' : 'oy')
+const tolaSana = (v) => v >= '2000-01-01' && v <= '2100-12-31'
 const oy = (m) => OYLAR[m].toLowerCase()
 const hafta = (s) => { const { y, m, d } = isoOch(s); return HAFTA[ustun(y, m, d)] }
 
@@ -41,23 +45,29 @@ function bolaklar(l, kunlar) {
 // FT-2.6: bandlik kalendari — kun, hafta, oy; libos qatorlarida bron tasmasi, kun sarlavhasida nechta libos band.
 // Kun bosilsa — shu kun varaqasi: kim olib ketadi, kim qaytaradi, nima ijarada, nima tozalashda.
 export default function Kalendar({ onZakaz }) {
-  const [korinish, setKorinish] = useState('hafta')
+  const [uzunlik, setUzunlik] = useState(7)
   const [bosh, setBosh] = useState(bugunIso)
+  const korinish = korinishi(uzunlik)
   const [qatorlar, setQatorlar] = useState(null)
   const [xato, setXato] = useState('')
   const [q, setQ] = useState('')
   const [tanlangan, setTanlangan] = useState(null)
   const bugun = bugunIso()
 
-  const kunlar = useMemo(() => Array.from({ length: KUNLAR[korinish] }, (_, i) => kunQosh(bosh, i)), [bosh, korinish])
+  const kunlar = useMemo(() => Array.from({ length: uzunlik }, (_, i) => kunQosh(bosh, i)), [bosh, uzunlik])
   const dan = kunlar[0], gacha = kunlar[kunlar.length - 1]
   // Sana klaviaturadan terilganda yil oraliq qiymatlardan o'tadi (0002, 0020…): maydon matni alohida saqlanadi,
   // kalendar esa faqat to'liq sana kiritilgach siljiydi.
-  const [sanaMatn, setSanaMatn] = useState(dan)
-  const siljit = (s) => { setBosh(s); setSanaMatn(s) }
-  const sanaTer = (v) => {
-    setSanaMatn(v)
-    if (v >= '2000-01-01' && v <= '2100-12-31') setBosh(v)
+  const [danMatn, setDanMatn] = useState(dan)
+  const [gachaMatn, setGachaMatn] = useState(gacha)
+  const davr = (s, n) => { setBosh(s); setUzunlik(n); setDanMatn(s); setGachaMatn(kunQosh(s, n - 1)) }
+  const siljit = (s) => davr(s, uzunlik)
+  const danTer = (v) => { setDanMatn(v); if (tolaSana(v)) { setBosh(v); setGachaMatn(kunQosh(v, uzunlik - 1)) } }
+  // «gacha» — davr uzunligini o'zgartiradi (boshidan oldin yoki 3 oydan uzun bo'lsa qabul qilinmaydi)
+  const gachaTer = (v) => {
+    setGachaMatn(v)
+    const n = tolaSana(v) ? kunlarSoni(dan, v) + 1 : 0
+    if (n >= 1 && n <= ENG_UZUN) setUzunlik(n)
   }
 
   useEffect(() => {
@@ -92,17 +102,21 @@ export default function Kalendar({ onZakaz }) {
       <div className="jadval-asboblar">
         <h3 className="panel-nom">Bandlik</h3>
         <div className="tezkor-tablar" role="tablist" aria-label="Ko'rinish">
-          {KORINISH.map(([k, nom]) => (
-            <button key={k} type="button" role="tab" aria-selected={korinish === k} className={korinish === k ? 'faol' : ''}
-              onClick={() => setKorinish(k)}>{nom}</button>
+          {KORINISH.map(([k, nom, n]) => (
+            <button key={k} type="button" role="tab" aria-selected={uzunlik === n} className={uzunlik === n ? 'faol' : ''}
+              onClick={() => davr(bosh, n)}>{nom}</button>
           ))}
         </div>
         <div className="kalendar-nav">
-          <button type="button" className="ikkinchi kichik" aria-label="Oldingi davr" onClick={() => siljit(kunQosh(bosh, -KUNLAR[korinish]))}>‹</button>
+          <button type="button" className="ikkinchi kichik" aria-label="Oldingi davr" onClick={() => siljit(kunQosh(bosh, -uzunlik))}>‹</button>
           <span className="davr-nomi" aria-live="polite">{davrNomi(dan, gacha)}</span>
-          <button type="button" className="ikkinchi kichik" aria-label="Keyingi davr" onClick={() => siljit(kunQosh(bosh, KUNLAR[korinish]))}>›</button>
-          <input type="date" aria-label="Sanaga o'tish" value={sanaMatn} min="2000-01-01" max="2100-12-31" onChange={(e) => sanaTer(e.target.value)} />
+          <button type="button" className="ikkinchi kichik" aria-label="Keyingi davr" onClick={() => siljit(kunQosh(bosh, uzunlik))}>›</button>
           {bosh !== bugun && <button type="button" className="ikkinchi kichik" onClick={() => siljit(bugun)}>Bugun</button>}
+        </div>
+        <div className="davr-sanalar" role="group" aria-label="Davr">
+          <input type="date" aria-label="Davr boshi" value={danMatn} min="2000-01-01" max="2100-12-31" onChange={(e) => danTer(e.target.value)} />
+          <span aria-hidden="true">–</span>
+          <input type="date" aria-label="Davr oxiri" value={gachaMatn} min={dan} max={kunQosh(dan, ENG_UZUN - 1)} onChange={(e) => gachaTer(e.target.value)} />
         </div>
         <label className="qidiruv-maydon">
           <NavIkona nom="qidiruv" className="tugma-ikon" />
@@ -130,7 +144,7 @@ export default function Kalendar({ onZakaz }) {
                     <th key={k} className={`${k === bugun ? 'bugun' : ''} ${k === varaqKuni ? 'tanlangan' : ''} ${d === 1 && i > 0 ? 'oy-boshi' : ''}`}>
                       <button type="button" className="kun-bosh" aria-pressed={k === varaqKuni}
                         aria-label={`${d} ${oy(m)}, ${hafta(k)[1].toLowerCase()}: ${son} libos band`}
-                        onClick={() => korinish !== 'kun' && setTanlangan(k === tanlangan ? null : k)}>
+                        onClick={() => uzunlik > 1 && setTanlangan(k === tanlangan ? null : k)}>
                         {(i === 0 || d === 1) && korinish === 'oy' && <i>{oy(m).slice(0, 3)}</i>}
                         <small>{hafta(k)[0]}</small>
                         <b>{d}</b>

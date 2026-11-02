@@ -339,8 +339,14 @@ def xodim_qoldigi(smena, xodim):
     # Qisman inkassatsiya: chiqim aytilgan summada yozilgan; rahbar kamroq sanagan bo'lsa, farq hali xodimda
     qisman = (smena.topshiriqlar.filter(kimdan=xodim, toliq=False, rahbarga=True, holat=KassaTopshirish.Holat.QABUL)
               .aggregate(s=Sum(F('summa') - F('qabul_summa')))['s'] or 0)
+    # Hamkasbga berilgan qism: berilgan zahoti ayiriladi; hamkasb kamroq sanasa — farq hali topshiruvchida
+    hamkasb = smena.topshiriqlar.filter(kimdan=xodim, toliq=False, rahbarga=False).aggregate(
+        kut=Sum('summa', filter=Q(holat=KassaTopshirish.Holat.KUTILMOQDA)),
+        qabul=Sum('qabul_summa', filter=Q(holat=KassaTopshirish.Holat.QABUL)))
+    berdi = (hamkasb['kut'] or 0) + (hamkasb['qabul'] or 0)
     boshlangich = smena.boshlangich_qoldiq if smena.ochgan_id == xodim.id else 0
-    return boshlangich + (r['kirim'] or 0) - (r['chiqim'] or 0) + olgan - ((b['h'] or 0) - (b['s'] or 0)) + qisman
+    return (boshlangich + (r['kirim'] or 0) - (r['chiqim'] or 0) + olgan - ((b['h'] or 0) - (b['s'] or 0)) + qisman
+            - berdi)
 
 
 def _kutayotgani_yoq(smena, xodim):
@@ -491,6 +497,27 @@ def inkassatsiya(*, salon, xodim, rahbar, summa, izoh=''):
     if summa > xodim_qoldigi(smena, xodim):
         raise KassaXatosi("Hisobingizda buncha naqd yo'q.")
     return _topshirish(salon=salon, smena=smena, kimdan=xodim, kimga=rahbar, rahbarga=True, summa=summa,
+                       hisobdagi=summa, toliq=False, izoh=izoh)
+
+
+@transaction.atomic
+def hamkasbga_berish(*, salon, xodim, kimga, summa, izoh=''):
+    """Naqdning bir qismini smenadagi hamkasbga berish (masalan, ketishdan oldin): pul kassada qoladi, faqat
+    bir xodim hisobidan ikkinchisiga o'tadi. Hamkasb sanab «qabul qildim» bosadi; shungacha u smenani yopa olmaydi."""
+    if kimga.id == xodim.id:
+        raise KassaXatosi("Pulni o'zingizga topshirib bo'lmaydi.")
+    if summa <= 0:
+        raise KassaXatosi('Summa musbat bo\'lishi kerak.')
+    smena = xodim_smenasi(salon, xodim)
+    if not smena:
+        raise KassaXatosi('Avval smenaga qo\'shiling.', kod='smena_qoshilish')
+    smena = _qulfla(smena)
+    if not SmenaIshtirokchi.objects.filter(smena=smena, xodim=kimga, chiqqan=None).exists():
+        raise KassaXatosi(f'{kimga.ism} smenada emas — pulni smenadagi xodimga yoki rahbarga topshirish mumkin.')
+    _pul_olishi_shart(salon, kimga)
+    if summa > xodim_qoldigi(smena, xodim):
+        raise KassaXatosi("Hisobingizda buncha naqd yo'q.")
+    return _topshirish(salon=salon, smena=smena, kimdan=xodim, kimga=kimga, rahbarga=False, summa=summa,
                        hisobdagi=summa, toliq=False, izoh=izoh)
 
 
