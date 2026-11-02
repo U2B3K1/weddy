@@ -1416,3 +1416,25 @@ label > .info .info-matn, th .info .info-matn { left: auto; right: 0; }
   .libos-katak b { font-size: 14.5px; }
   .bandlik-ora { max-height: none; }  /* telefonda sahifaning o'zi suriladi — ichma-ich aylantirish noqulay */
 }
+
+/* =================== Varaq uslubi butun ilovada ===================
+   Zakaz varaqasining belgilari barcha asosiy panellarda: tilla qo'sh hoshiya (chegara + 6px ichkarida ingichka chiziq),
+   tepada iliq tilla nur, sarlavha va katta raqamlar serifda, kichik yorliqlar kursivda. Ichki chiziq — `outline`
+   (manfiy offset): psevdo-elementlarga tegmaydi. Ichma-ich panelda hoshiya takrorlanmaydi; varaqning o'zi o'z hoshiyasida. */
+:where(.ilova) :is(.blok, .kpi, .trend, .dashbord-bosh, .smena-panel):not(.varaq) {
+  border-color: rgba(228, 193, 150, .22);
+  outline: 1px solid rgba(228, 193, 150, .09); outline-offset: -6px;
+  background-image: radial-gradient(120% 50% at 50% 0%, rgba(228, 193, 150, .06), transparent 70%);
+}
+:where(.ilova) :is(.blok, .kpi, .trend) :is(.blok, .kpi, .trend) { outline: none; background-image: none; }
+/* Sarlavhalar — serif (varaqdagi «olib ketish» sanasi va jami kabi) */
+:where(.ilova) .panel-nom { font: 400 19px/32px var(--serif); letter-spacing: .01em; }
+:where(.ilova) .blok > h3:first-child, :where(.ilova) .blok > h3:first-of-type { font: 400 20px/1.25 var(--serif); letter-spacing: .01em; }
+:where(.ilova) .karta-sarlavha h3 { font: 400 19px/1.25 var(--serif); letter-spacing: .01em; }
+:where(.ilova) details.blok > summary { font-family: var(--serif); font-weight: 400; font-size: 17px; letter-spacing: .01em; }
+/* Ko'rsatkich kartalari: nomi kursivda, qiymati serifda */
+:where(.ilova) .kpi-nom, :where(.ilova) .kpi-qator .kpi-nom { font-family: var(--kursiv); font-style: italic; font-weight: 500; font-size: 17px; letter-spacing: 0; color: var(--matn-2); }
+:where(.ilova) .kpi-qiymat { font-family: var(--serif); font-weight: 400; letter-spacing: .01em; font-variant-numeric: tabular-nums lining-nums; }
+/* Jadvallarning jami qatori va summa ustuni — serif raqam */
+:where(.ilova) .hisobot tfoot td { font-family: var(--serif); font-weight: 400; font-size: 15px; }
+:where(.ilova) .zakaz-jadval .jami-katak b, :where(.ilova) .zakaz-jadval td.ong b { font-family: var(--serif); font-weight: 400; font-size: 16px; }
