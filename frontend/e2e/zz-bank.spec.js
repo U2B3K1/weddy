@@ -43,6 +43,20 @@ test("bank solishtirish: karta to'lovlari tarixi — kim, qachon, qaysi zakazga"
   // zakazga o'tish
   await qator.getByRole('button', { name: `#${z.raqam} Bank Sinov` }).click()
   await expect(rahbar.locator('.karta-asosiy')).toContainText('Bank Sinov')
+
+  // Dashboard: shapka menyusidagi «Chiqish» panellar ostida qolmaydi (trial — ustini boshqa element yopsa yiqiladi);
+  // «Salonni sozlash» → «Yashirish» butun ilovani qora ekranga aylantirmaydi
+  await nav(rahbar).getByRole('button', { name: 'Asosiy', exact: true }).click()  // chap panel hali Hisobot menyusida
+  await nav(rahbar).getByRole('button', { name: 'Dashboard', exact: true }).click()
+  await rahbar.locator('.ustki-xodim').click()
+  await rahbar.getByRole('menu').getByRole('menuitem', { name: 'Chiqish' }).click({ trial: true, timeout: 5000 })
+  await rahbar.keyboard.press('Escape')
+  const sozlash = rahbar.locator('.boshlash')
+  if (await sozlash.isVisible()) {
+    await sozlash.getByRole('button', { name: 'Yashirish' }).click()
+    await expect(sozlash).toHaveCount(0)
+    await expect(nav(rahbar)).toBeVisible()
+  }
   expect(xatolar).toEqual([])
   await ctx.close()
 })

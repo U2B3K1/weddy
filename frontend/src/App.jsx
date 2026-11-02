@@ -232,8 +232,8 @@ export default function App() {
     : Object.fromEntries(bolimlar)[sahifa]
   const panelIzoh = sahifa === 'bosh' ? `${KUN[hozir.getDay()]}, ${hozir.getDate()}-${OY[hozir.getMonth()]}` : null
   // Boshlash ro'yxati: ixcham progress karta — bajarilganlar soni va faqat qolgan qadamlar
-  const bajarilgan = bosh?.qadamlar.filter((q) => q.bajarildi).length || 0
-  const boshlashPanel = rahbar && bosh?.korsatilsin && (
+  const bajarilgan = bosh?.qadamlar?.filter((q) => q.bajarildi).length || 0
+  const boshlashPanel = rahbar && bosh?.korsatilsin && bosh.qadamlar && (
     <section className="blok boshlash">
       <div className="boshlash-bosh">
         <b>Salonni sozlash</b>
