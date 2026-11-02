@@ -82,7 +82,8 @@ function Liboslar({ rahbar }) {
 
   return (
     <div className="stack">
-      {xabar.matn && <p className={xabar.turi === 'xato' ? 'xato' : 'malumot'}>{xabar.matn}</p>}
+      {/* libos ochiq bo'lsa xabar uning ichida chiqadi — tugmalar pastda, tepadagi xabar ko'rinmay qolardi */}
+      {xabar.matn && tanlangan === null && <p className={xabar.turi === 'xato' ? 'xato' : 'malumot'}>{xabar.matn}</p>}
 
       {/* Katalog holati bir qarashda (Point uslubidagi kichik ko'rsatkichlar) */}
       <div className="stat-qator">
@@ -157,7 +158,7 @@ function Liboslar({ rahbar }) {
         {korinadi.map((l) => (
           <Fragment key={l.id}>
             <button type="button" className={`libos-karta ${tanlangan === l.id ? 'tanlandi' : ''}`} aria-expanded={tanlangan === l.id}
-              onClick={() => setTanlangan(tanlangan === l.id ? null : l.id)}>
+              onClick={() => { setTanlangan(tanlangan === l.id ? null : l.id); setXabar({ turi: '', matn: '' }) }}>
               <span className="libos-foto">
                 {l.rasm ? <img src={l.rasm} alt="" loading="lazy" /> : <LibosSiluet />}
                 {/* «Bo'sh» — odatiy holat, har kartochkada yozilmaydi; faqat ijaraga chiqmaydigan holat ko'rsatiladi */}
@@ -176,6 +177,7 @@ function Liboslar({ rahbar }) {
                   <h3>{l.artikul} {l.nomi}</h3>
                   <button type="button" className="ikkinchi kichik" onClick={() => setTanlangan(null)}>Yopish</button>
                 </div>
+                {xabar.matn && <p className={xabar.turi === 'xato' ? 'xato' : 'malumot'} role="status">{xabar.matn}</p>}
                 <Tafsilot l={l} rahbar={rahbar} fil={fil} ybs={ybs} onRasm={yukla}
                   onSaqla={(b) => bajar(() => libosOzgartir(l.id, b), "O'zgartirildi.")} />
               </div>

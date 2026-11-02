@@ -55,7 +55,8 @@ export default function AksessuarBolimi({ rahbar }) {
 
   return (
     <div className="stack">
-      {xabar.matn && <p className={xabar.turi === 'xato' ? 'xato' : 'malumot'}>{xabar.matn}</p>}
+      {/* aksessuar ochiq bo'lsa xabar uning ichida chiqadi — tugma pastda, tepadagi xabar ko'rinmay qolardi */}
+      {xabar.matn && ochiq === null && <p className={xabar.turi === 'xato' ? 'xato' : 'malumot'}>{xabar.matn}</p>}
       {kats.length === 0 && (
         <p className="ogohlantirish">Aksessuar kategoriyasi yo'q{rahbar ? ": «Liboslar» bo'limidagi «Kategoriyalar» tugmasi orqali turi «Aksessuar» bo'lgan kategoriya yarating." : '. Rahbar kategoriya yaratishi kerak.'}</p>
       )}
@@ -120,7 +121,7 @@ export default function AksessuarBolimi({ rahbar }) {
                   const foiz = a.donalar_soni ? Math.round((a.yaroqli_donalar / a.donalar_soni) * 100) : 0
                   return (
                     <Fragment key={a.id}>
-                      <tr className={ochiq === a.id ? 'ochiq' : ''} onClick={() => setOchiq(ochiq === a.id ? null : a.id)}>
+                      <tr className={ochiq === a.id ? 'ochiq' : ''} onClick={() => { setOchiq(ochiq === a.id ? null : a.id); setXabar({ turi: '', matn: '' }) }}>
                         <td>
                           <button type="button" className="zakaz-katak" aria-expanded={ochiq === a.id}>
                             {a.rasm ? <img className="aks-eskiz" src={a.rasm} alt="" /> : <span className="kod-belgi">{a.kod}</span>}
@@ -137,7 +138,7 @@ export default function AksessuarBolimi({ rahbar }) {
                         <td className="ong"><b>{som(a.ijara_narxi)}</b></td>
                       </tr>
                       {ochiq === a.id && (
-                        <tr className="tafsilot-qator"><td colSpan={4}><Tafsilot id={a.id} rahbar={rahbar} bajar={bajar} ybs={ybs} /></td></tr>
+                        <tr className="tafsilot-qator"><td colSpan={4}><Tafsilot id={a.id} rahbar={rahbar} bajar={bajar} ybs={ybs} xabar={xabar} /></td></tr>
                       )}
                     </Fragment>
                   )
@@ -151,7 +152,7 @@ export default function AksessuarBolimi({ rahbar }) {
   )
 }
 
-function Tafsilot({ id, rahbar, bajar, ybs = [] }) {
+function Tafsilot({ id, rahbar, bajar, ybs = [], xabar }) {
   const [a, setA] = useState(null)
   const [narx, setNarx] = useState('')
   const yukla = useCallback(() => aksessuarTafsilot(id).then((d) => { setA(d); setNarx(d.ijara_narxi) }), [id])
@@ -165,6 +166,7 @@ function Tafsilot({ id, rahbar, bajar, ybs = [] }) {
   if (!a) return <p className="malumot">Yuklanmoqda…</p>
   return (
     <div className="aks-tafsilot">
+      {xabar.matn && <p className={`aks-xabar ${xabar.turi === 'xato' ? 'xato' : 'malumot'}`} role="status">{xabar.matn}</p>}
       <div className="stack">
       <h4>Donalar</h4>
       <div className="dona-tor">

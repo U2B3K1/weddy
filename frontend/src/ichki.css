@@ -911,6 +911,7 @@ main .boshlash-panel .qator-btn { text-align: left; }
 .aks-jadval tr.tafsilot-qator:hover { background: transparent; }
 .aks-jadval tr.tafsilot-qator > td { padding: var(--o-4); background: var(--fon-chuqur); white-space: normal; }
 .aks-tafsilot { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: var(--o-5); }
+.aks-xabar { grid-column: 1 / -1; margin: 0; }
 .aks-tafsilot h4 { margin: 0; font-size: 13px; color: var(--matn-3); font-weight: 600; }
 .ixcham-forma { display: flex; align-items: flex-end; gap: var(--o-2); }
 .ixcham-forma label { flex: 1; }
