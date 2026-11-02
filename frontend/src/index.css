@@ -215,20 +215,6 @@ select option { color: #0e1a2b; background: #fff; }
   .ilova > main > *:not(.hujjat-oyna) { display: none; }
 }
 
-/* Bandlik kalendari (FT-2.6) */
-.ilova main:has(.kalendar-sahifa) { max-width: 1100px; }
-.kalendar-nav { justify-content: center; }
-.kalendar-ora { overflow-x: auto; background: rgba(253, 250, 245, .08); border: 1px solid rgba(255, 255, 255, .16); border-radius: 14px; backdrop-filter: blur(12px); }
-.kalendar { border-collapse: collapse; width: 100%; font-size: 12px; }
-.kalendar th, .kalendar td { border: 1px solid var(--chiziq); padding: 4px; text-align: center; min-width: 30px; height: 34px; }
-.kalendar th small { display: block; font-weight: 400; color: rgba(251, 246, 238, .55); }
-.kalendar th.bugun { background: linear-gradient(110deg, var(--tilla-toq), var(--tilla)); color: var(--siyoh); }
-.kalendar th.bugun small { color: var(--siyoh); }
-.kalendar-libos { position: sticky; left: 0; z-index: 1; min-width: 110px !important; text-align: left !important; background: rgba(24, 32, 46, .92); }
-.k-band { background: linear-gradient(110deg, var(--tilla-toq), var(--tilla)); color: var(--siyoh); cursor: pointer; }
-.k-vaqtinchalik { background: rgba(217, 194, 213, .35); color: var(--oq); cursor: pointer; }
-.k-bufer { background: repeating-linear-gradient(45deg, rgba(255,255,255,.08), rgba(255,255,255,.08) 4px, rgba(255,255,255,.02) 4px, rgba(255,255,255,.02) 8px); }
-.kalendar-izoh span { display: inline-block; width: 14px; height: 14px; margin: 0 4px 0 10px; vertical-align: middle; border: 1px solid var(--chiziq); }
 .platforma-havola { text-align: center; margin-top: 24px; }
 .obuna-banner { max-width: 480px; margin: 0 auto 8px; width: calc(100% - 32px); }
 
@@ -269,10 +255,6 @@ select option { color: #0e1a2b; background: #fff; }
 .guruh legend { font-size: 13px; color: rgba(251, 246, 238, .55); padding: 0 4px; }
 .qator.kunlar { flex-wrap: wrap; gap: 12px; }
 .qator.kunlar label { flex-direction: row; align-items: center; gap: 4px; }
-
-/* Primerka belgisi kalendarda */
-.k-primerka { cursor: pointer; box-shadow: inset 0 0 0 2px #c98a1b; }
-.primerka-belgi { display: block; font-size: 10px; font-weight: 600; color: #7a4f00; background: #fbe9c6; border-radius: 3px; padding: 0 2px; }
 
 /* P&L qatoridan tafsilot (FT-18.2) */
 button.havola { background: none; border: 0; padding: 0; font: inherit; color: var(--tilla); text-decoration: underline; text-align: left; cursor: pointer; }
