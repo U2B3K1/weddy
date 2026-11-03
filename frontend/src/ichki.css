@@ -829,7 +829,7 @@ main .boshlash-panel .qator-btn { text-align: left; }
   backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06);
   position: relative; z-index: 30; }  /* backdrop-filter qatlam yaratadi: ochilgan menyu (xodim, xabarlar) ostidagi panellar ustida tursin */
 .ustki-nom { flex: 1 0 auto; min-width: 0; }  /* sarlavha siqilmaydi — tor ekranda qidiruv qisqaradi */
-.ustki-nom h1 { margin: 0; font-size: 18px; line-height: 1.25; text-align: left; color: var(--oq); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ustki-nom h1 { margin: 0; font: 400 22px/1.2 var(--serif); letter-spacing: .01em; text-align: left; color: var(--oq); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .ustki-nom p { margin: 0; font-size: var(--t-meta); color: var(--matn-3); }
 .ustki-qidiruv { flex: 0 1 300px; }
 :where(.ilova) .ustki-qidiruv input { min-height: 36px; background: var(--fon-chuqur); border-radius: 999px; }
@@ -1517,7 +1517,7 @@ label > .info .info-matn, th .info .info-matn { left: auto; right: 0; }
 /* =================== Shrift tizimi butun ilovada ===================
    Bitta qoida hamma bo'limga (har sahifani alohida emas): sarlavhalar va bo'lim nomlari — Forum (serif, 400),
    ustun nomlari va kichik yorliqlar — Cormorant kursiv, pul va son ustunlari — serif raqam; oddiy matn, forma va
-   tugmalar — Manrope (o'qishga qulay). Chop etiladigan hujjatlar (.hujjat) o'z uslubida qoladi.
+   tugmalar — Spectral (--sans, o'qishga qulay serif). Chop etiladigan hujjatlar (.hujjat) o'z uslubida qoladi.
    Past aniqlik (:where/element) — komponentdagi aniq o'lchamlar saqlanadi. */
 :where(.ilova main) :is(h2, h3, h4, h5, legend):not(:where(.hujjat-oyna *)) {
   font-family: var(--serif); font-weight: 400; letter-spacing: .01em; }

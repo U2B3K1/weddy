@@ -17,7 +17,9 @@
   --r-panel: 20px; --r-ichki: 14px; --r-tugma: 999px;
   --serif: 'Casagrande Deco', 'Forum', Georgia, serif;
   --kursiv: 'Cormorant Garamond', Georgia, serif;
-  --sans: 'Manrope', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  /* Asosiy matn (forma, tugma, jadval): Spectral — ekran uchun chizilgan nafis serif, varaq uslubiga mos; reklama sahifasi
+     brendbuk bo'yicha Manrope'da qoladi (reklama.css). O'zgaruvchi nomi tarixiy — hamma joy shu orqali. */
+  --sans: 'Spectral', Georgia, 'Times New Roman', serif;
 
   /* ===== «Atelye» tizimi (ichki ekranlar). Yagona manba: komponentlar faqat shu tokenlardan foydalanadi. =====
      Ierarxiya ramka bilan emas, yuza tusi bilan: fon → yuza-1 (panel) → yuza-2 (panel ichidagi qator) → yuza-3 (faol). */
