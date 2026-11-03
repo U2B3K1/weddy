@@ -9,6 +9,7 @@ urlpatterns = [
     path('pin-login/', views.PinLoginView.as_view()),
     path('pin-tekshir/', views.PinTekshirView.as_view()),
     path('me/', views.MeView.as_view()),
+    path('me/rasm/', views.ProfilRasmView.as_view()),
     path('ariza/', views.ArizaView.as_view()),
 ]
 

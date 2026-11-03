@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { boshlash, boshlashYop, dashbord, me, oflaynKesh, oflaynToplam, saqlangan, som, tarmoqXatosi } from './api'
+import { boshlash, boshlashYop, dashbord, me, oflaynKesh, oflaynToplam, profilRasmOchir, profilRasmYukla, saqlangan, som, tarmoqXatosi, xatoMatni } from './api'
 import BoshEkran from './pages/BoshEkran'
 import Tasdiq from './components/Tasdiq'
 import NavIkona from './components/NavIkona'
 import Shapka from './components/Shapka'
-import UstkiPanel from './components/UstkiPanel'
+import UstkiPanel, { XodimBelgi } from './components/UstkiPanel'
 import Dashbord from './pages/Dashbord'
 import Hisobotlar from './pages/Hisobotlar'
 import Kalendar from './pages/Kalendar'
@@ -256,13 +256,22 @@ export default function App() {
   )
   const chiqish = () => { saqlangan.chiqish(); window.location.hash = '#kirish'; setKirish(true); setXodim(null) }
   const harf = (xodim.ism || '?').trim().charAt(0).toUpperCase()
+  // Profil rasmi: yangi manzil xodim holatiga va oflayn nusxaga yoziladi (shapka va kirish ekrani shu zahoti yangilanadi)
+  const rasmniYangila = (r) => { const x = { ...xodim, rasm: r.rasm }; setXodim(x); saqlangan.xodimSaqla(x) }
+  const rasmYukla = (f) => profilRasmYukla(f).then(rasmniYangila).catch((e) => { throw new Error(xatoMatni(e)) })
+  const rasmOchir = () => profilRasmOchir().then(rasmniYangila).catch((e) => { throw new Error(xatoMatni(e)) })
 
   return (
     <div className="ilova" data-nav={navRejim || undefined}>
       <PlatformaFon nurli />
       <Shapka ochiq={menyu} onMenyu={() => setMenyu(!menyu)}>
         {/* Telefon shapkasi; keng ekranda xodim chap panel pastida */}
-        <span className="xodim-chip"><i aria-hidden="true">{harf}</i></span>
+        {/* telefonda: belgini bosish — profil rasmini tanlash */}
+        <label className="xodim-chip telefon-rasm" title="Profil rasmi">
+          <XodimBelgi xodim={xodim} harf={harf} />
+          <input type="file" accept="image/jpeg,image/png,image/webp" hidden aria-label="Profil rasmini yuklash"
+            onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) rasmYukla(f).catch(() => {}) }} />
+        </label>
         <button className="ikkinchi kichik" onClick={chiqish}><NavIkona nom="chiqish" className="tugma-ikon" />Chiqish</button>
       </Shapka>
       {xodim.salon_holati === 'faqat_korish' && (
@@ -277,7 +286,7 @@ export default function App() {
       {!onlayn ? <main><Oflayn /></main> : (<>
       <main>
         <UstkiPanel sarlavha={panelNomi} izoh={panelIzoh} xodim={xodim} rahbar={rahbar} xabarlar={xabarlar}
-          onBolim={setSahifa} onChiqish={chiqish}
+          onBolim={setSahifa} onChiqish={chiqish} onRasm={rasmYukla} onRasmOchir={rasmOchir}
           onQidir={(q) => { setQidiruv({ q, n: Date.now() }); setZakazlarBolim('royxat'); setSahifa('zakazlar') }} />
         {ichki && ichki.royxat.length > 1 && !(sahifa === 'zakazlar' && zakazId) && (
           <div className={`ichki-segment${navTekis && navRejim === sahifa ? ' faqat-telefon' : ''}`} role="tablist" ref={segmentRef}>

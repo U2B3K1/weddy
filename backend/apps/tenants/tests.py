@@ -1,4 +1,11 @@
-from django.test import TestCase
+import io
+import os
+import shutil
+import tempfile
+
+from django.core.files.uploadedfile import SimpleUploadedFile
+from django.test import TestCase, override_settings
+from PIL import Image
 from rest_framework.test import APIClient
 
 from .models import Salon, Xodim
@@ -84,3 +91,54 @@ class PinTekshirTests(TestCase):
 
     def test_tokensiz_rad(self):
         self.assertEqual(APIClient().post('/api/auth/pin-tekshir/', {'pin': '1234'}, format='json').status_code, 401)
+
+
+MEDIA = tempfile.mkdtemp(prefix='weddy-test-avatar-')
+
+
+@override_settings(MEDIA_ROOT=MEDIA)
+class ProfilRasmTests(TestCase):
+    """Profil rasmi: o'zi yuklaydi (kvadrat 256×256 WebP), kirish ekranidagi ro'yxatda va «men»da ko'rinadi, olib tashlanadi."""
+
+    def setUp(self):
+        from .auth import make_staff_token
+        self.salon = Salon.objects.create(nomi='EZAZ', login='ezaz', holat=Salon.Holat.FAOL)
+        self.salon.set_parol('parol'); self.salon.save()
+        self.xodim = Xodim.objects.create(salon=self.salon, ism='Malika')
+        self.c = APIClient()
+        self.c.credentials(HTTP_AUTHORIZATION='Bearer ' + make_staff_token(self.xodim))
+
+    @classmethod
+    def tearDownClass(cls):
+        super().tearDownClass()
+        shutil.rmtree(MEDIA, ignore_errors=True)
+
+    def rasm(self, olcham=(600, 900), turi='JPEG'):
+        buf = io.BytesIO()
+        Image.new('RGB', olcham, (180, 120, 90)).save(buf, turi)
+        return SimpleUploadedFile(f'men.{turi.lower()}', buf.getvalue(), content_type=f'image/{turi.lower()}')
+
+    def test_yuklash_korinish_va_olib_tashlash(self):
+        r = self.c.post('/api/auth/me/rasm/', {'rasm': self.rasm()}, format='multipart')
+        self.assertEqual(r.status_code, 200)
+        self.assertTrue(r.json()['rasm'].endswith('.webp'))
+        self.xodim.refresh_from_db()
+        with Image.open(self.xodim.rasm.path) as img:
+            self.assertEqual((img.size, img.format), ((256, 256), 'WEBP'))  # tik rasm ham kvadratga qirqiladi
+        self.assertEqual(self.c.get('/api/auth/me/').json()['rasm'], r.json()['rasm'])
+        token = APIClient().post('/api/auth/salon-login/', {'login': 'ezaz', 'parol': 'parol'}, format='json').json()['qurilma_token']
+        royxat = APIClient().get('/api/auth/xodimlar/', HTTP_X_DEVICE_TOKEN=token).json()
+        self.assertEqual(royxat[0]['rasm'], r.json()['rasm'])  # kirish ekranidagi kartochkada
+        # almashtirilsa eski fayl o'chadi
+        eski = self.xodim.rasm.path
+        with self.captureOnCommitCallbacks(execute=True):
+            self.c.post('/api/auth/me/rasm/', {'rasm': self.rasm((800, 800), 'PNG')}, format='multipart')
+        self.assertFalse(os.path.exists(eski))
+        self.assertEqual(self.c.delete('/api/auth/me/rasm/').json(), {'rasm': None})
+        self.assertIsNone(self.c.get('/api/auth/me/').json()['rasm'])
+
+    def test_rasm_emas_va_bosh_sorov(self):
+        self.assertEqual(self.c.post('/api/auth/me/rasm/', {}, format='multipart').status_code, 400)
+        r = self.c.post('/api/auth/me/rasm/', {'rasm': SimpleUploadedFile('x.jpg', b'rasm emas')}, format='multipart')
+        self.assertEqual(r.status_code, 400)
+        self.assertIn('rasm emas', r.json()['detail'])

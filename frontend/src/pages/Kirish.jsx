@@ -96,10 +96,7 @@ function QurilmaKutish({ setXato, onTasdiqlandi, onBekor }) {
           <p className="malumot">Siz rahbarmisiz? Shu yerda PIN kodingiz bilan ruxsat bering:</p>
           <div className="xodim-kartalar">
             {holat.rahbarlar.map((x) => (
-              <button key={x.id} type="button" className="xodim-karta" onClick={() => setRahbar(x)}>
-                <span className="xodim-harf" aria-hidden="true">{(x.ism || '?').trim().charAt(0).toUpperCase()}</span>
-                <span className="xodim-karta-ism">{x.ism}</span>
-              </button>
+              <XodimKarta key={x.id} x={x} onClick={() => setRahbar(x)} />
             ))}
           </div>
         </>
@@ -238,10 +235,7 @@ function XodimTanlash({ setXato, onKirdi, onQurilmaOchirildi }) {
         <p className="kirish-sarlavha">Kim <em>kirmoqda?</em></p>
         <div className="xodim-kartalar">
           {royxat.map((x) => (
-            <button key={x.id} type="button" className="xodim-karta" onClick={() => setTanlangan(x)}>
-              <span className="xodim-harf" aria-hidden="true">{(x.ism || '?').trim().charAt(0).toUpperCase()}</span>
-              <span className="xodim-karta-ism">{x.ism}</span>
-            </button>
+            <XodimKarta key={x.id} x={x} onClick={() => setTanlangan(x)} />
           ))}
         </div>
         <button type="button" className="havola-tugma kirish-chiqish" onClick={onQurilmaOchirildi}>Chiqish</button>
@@ -250,6 +244,7 @@ function XodimTanlash({ setXato, onKirdi, onQurilmaOchirildi }) {
   }
   return (
     <form onSubmit={yuborish} className="pin-forma">
+      {tanlangan.rasm && <img className="pin-foto" src={tanlangan.rasm} alt="" />}
       <p className="kirish-sarlavha"><em>{tanlangan.ism},</em> PIN kodingizni kiriting</p>
       <div className="pin-nuqtalar" role="img" aria-label={`${pin.length} ta raqam kiritildi`}>
         {Array.from({ length: 6 }).map((_, i) => <i key={i} className={i < pin.length ? 'to-liq' : ''} />)}
@@ -269,5 +264,17 @@ function XodimTanlash({ setXato, onKirdi, onQurilmaOchirildi }) {
       </div>
       <button type="submit" disabled={kodKerak ? tgKod.length < 6 : pin.length < 4}>Kirish</button>
     </form>
+  )
+}
+
+// Xodim kartochkasi: profil rasmi bo'lsa — ramkani to'ldiradi, ismi pastida; bo'lmasa — ismning bosh harfi
+function XodimKarta({ x, onClick }) {
+  return (
+    <button type="button" className={`xodim-karta${x.rasm ? ' rasmli' : ''}`} onClick={onClick}>
+      {x.rasm
+        ? <img className="xodim-foto" src={x.rasm} alt="" />
+        : <span className="xodim-harf" aria-hidden="true">{(x.ism || '?').trim().charAt(0).toUpperCase()}</span>}
+      <span className="xodim-karta-ism">{x.ism}</span>
+    </button>
   )
 }

@@ -133,7 +133,8 @@ class QurilmaTasdiqView(OchiqView):
         from apps.notify.services import qurilma_tasdiq_havolasi
         havola, tugaydi = qurilma_tasdiq_havolasi(qurilma)
         return Response({'tasdiqlangan': False, 'tg_havola': havola, 'tg_tugaydi': tugaydi,
-                         'rahbarlar': [{'id': x.id, 'ism': x.ism} for x in self._pin_rahbarlar(salon).order_by('ism')]})
+                         'rahbarlar': [{'id': x.id, 'ism': x.ism, 'rasm': rasm_url(x, request)}
+                                       for x in self._pin_rahbarlar(salon).order_by('ism')]})
 
     def post(self, request):
         holat, salon, qurilma = self._kutayotgan(request)
@@ -167,12 +168,17 @@ class QurilmaTasdiqView(OchiqView):
         return Response({'tasdiqlangan': True})
 
 
+def rasm_url(x, request):
+    """Xodimning profil rasmi (bo'lmasa None — kartochkada ismning bosh harfi chiqadi)."""
+    return request.build_absolute_uri(x.rasm.url) if x.rasm else None
+
+
 class XodimlarRoyxatiView(OchiqView):
     """2-qadam: ro'yxatdan ismni tanlash. Faqat ishonchli qurilmadan."""
     def get(self, request):
         salon, _ = _device(request)
         xodimlar = Xodim.objects.filter(salon=salon, faol=True).order_by('ism')
-        return Response([{'id': x.id, 'ism': x.ism, 'rol': x.rol} for x in xodimlar])
+        return Response([{'id': x.id, 'ism': x.ism, 'rol': x.rol, 'rasm': rasm_url(x, request)} for x in xodimlar])
 
 
 def pin_tekshir(xodim, pin):
@@ -229,12 +235,36 @@ class PinLoginView(OchiqView):
 class MeView(APIView):
     def get(self, request):
         holat, qolgan = request.salon.obuna_holati()
-        return Response({'id': request.user.id, 'ism': request.user.ism,
+        return Response({'id': request.user.id, 'ism': request.user.ism, 'rasm': rasm_url(request.user, request),
                          'rol': request.user.rol, 'salon': request.salon.nomi,
                          'kassa_rejimi': sozlama(request.salon).kassa_rejimi,
                          'salon_holati': holat,
                          # muddat o'tgan: shuncha kundan keyin «faqat ko'rish» (FT-22.8)
                          'obuna_ogohlantirish_kun': qolgan if holat != Salon.Holat.FAQAT_KORISH else None})
+
+
+
+class ProfilRasmView(APIView):
+    """POST (multipart `rasm`) — o'z profil rasmini yuklash/almashtirish; DELETE — olib tashlash. Har bir xodim o'zinikini."""
+    from rest_framework.parsers import FormParser, MultiPartParser
+    parser_classes = [MultiPartParser, FormParser]
+
+    def post(self, request):
+        from apps.catalog.services import KatalogXatosi
+        from .avatar import avatar_yuklash
+        fayl = request.FILES.get('rasm')
+        if not fayl:
+            return Response({'detail': 'Rasm tanlanmagan.'}, status=400)
+        try:
+            x = avatar_yuklash(xodim=request.user, fayl=fayl)
+        except KatalogXatosi as e:
+            return Response({'detail': str(e)}, status=400)
+        return Response({'rasm': rasm_url(x, request)})
+
+    def delete(self, request):
+        from .avatar import avatar_ochirish
+        avatar_ochirish(xodim=request.user)
+        return Response({'rasm': None})
 
 
 class PinTekshirView(APIView):

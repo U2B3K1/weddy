@@ -1,4 +1,6 @@
 import datetime
+import uuid
+
 from django.contrib.auth.hashers import check_password, make_password
 from django.db import models
 from django.utils import timezone
@@ -159,6 +161,10 @@ class SalonModel(models.Model):
         abstract = True
 
 
+def avatar_yoli(instance, filename):
+    return f'avatarlar/{instance.salon_id}/{uuid.uuid4().hex}.webp'
+
+
 class Xodim(SalonModel):
     class Rol(models.TextChoices):
         RAHBAR = 'rahbar', 'Rahbar'
@@ -173,6 +179,7 @@ class Xodim(SalonModel):
     xato_urinish = models.PositiveSmallIntegerField(default=0)
     bloklangan_gacha = models.DateTimeField(null=True, blank=True)
     telegram_id = models.BigIntegerField(null=True, blank=True)  # botga ulangan akkaunt (4.14)
+    rasm = models.FileField(upload_to=avatar_yoli, blank=True)  # profil rasmi: 256×256 WebP (kirish ekrani va shapka)
 
     is_authenticated = True  # DRF uchun
 

@@ -120,6 +120,13 @@ export const pinLogin = async (xodim_id, pin, telegram_kod) =>
 export const pinTekshir = (pin) => api.post('/auth/pin-tekshir/', { pin }).then((r) => r.data)
 export const arizaYubor = (body) => api.post('/auth/ariza/', body).then((r) => r.data)
 export const me = () => api.get('/auth/me/').then((r) => r.data)
+// O'z profil rasmi (kirish ekranidagi kartochka va shapka): yuklash/almashtirish va olib tashlash
+export const profilRasmYukla = (fayl) => {
+  const fd = new FormData()
+  fd.append('rasm', fayl)
+  return api.post('/auth/me/rasm/', fd).then((r) => r.data)
+}
+export const profilRasmOchir = () => api.delete('/auth/me/rasm/').then((r) => r.data)
 export const boshLiboslar = (dan, gacha, bandlarniKorsat = false, q = '') =>
   api
     .get('/bronlar/bosh/', {

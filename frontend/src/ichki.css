@@ -1541,3 +1541,13 @@ label > .info .info-matn, th .info .info-matn { left: auto; right: 0; }
 .varaq-hisob > div:not(.varaq-hisob-matn) dd { font: 400 16px/1.3 var(--serif); font-variant-numeric: tabular-nums lining-nums; }
 .varaq-hisob .varaq-qoldiq dd, .varaq-hisob .varaq-qarz dd { font-weight: 400; font-size: 18px; }
 .tolov-summa { font: 400 17px/1.3 var(--serif); font-variant-numeric: tabular-nums lining-nums; }
+
+/* Profil rasmi: kirish ekranida kartochka ramkasini to'ldiradi (ism pastda, qorong'i nur ustida); shapkada doira */
+.xodim-karta.rasmli { position: relative; overflow: hidden; justify-content: flex-end; aspect-ratio: 4 / 5; min-height: 0; padding: 0; }
+.xodim-foto { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.xodim-karta.rasmli .xodim-karta-ism { position: relative; width: 100%; padding: 28px 8px 10px; background: linear-gradient(180deg, transparent, rgba(10, 14, 22, .88)); }
+.pin-foto { align-self: center; width: 88px; height: 88px; border-radius: 50%; object-fit: cover; border: 1px solid var(--tilla); box-shadow: 0 0 0 4px rgba(228, 193, 150, .14); }
+.xodim-chip > i { overflow: hidden; }
+.xodim-chip > i img { width: 100%; height: 100%; object-fit: cover; }
+.telefon-rasm { cursor: pointer; }
+.ustki-menyu-xato { margin: 0; padding: 4px 8px; font-size: 13px; }
