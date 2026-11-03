@@ -4,7 +4,8 @@ import BoshEkran from './pages/BoshEkran'
 import Tasdiq from './components/Tasdiq'
 import NavIkona from './components/NavIkona'
 import Shapka from './components/Shapka'
-import UstkiPanel, { XodimBelgi } from './components/UstkiPanel'
+import UstkiPanel from './components/UstkiPanel'
+import XodimMenyu from './components/XodimMenyu'
 import Dashbord from './pages/Dashbord'
 import Hisobotlar from './pages/Hisobotlar'
 import Kalendar from './pages/Kalendar'
@@ -209,7 +210,7 @@ export default function App() {
     kassa: { nomi: 'Kassa', royxat: kassaRoyxat, joriy: kassaBolim, tanla: setKassaBolim },
     ...(rahbar ? { hisobotlar: { nomi: 'Hisobot', royxat: HISOBOT_ROYXAT, joriy: hisobotlarBolim, tanla: setHisobotlarBolim } } : {}),
   }[navRejim]
-  const tabBar = [['bosh', 'Dashboard'], ['zakazlar', 'Zakazlar'], ['kassa', 'Kassa']]
+  const tabBar = [['bosh', 'Dashboard'], ['zakazlar', 'Zakazlar'], pulOladi ? ['kassa', 'Kassa'] : ['mijozlar', 'Mijozlar']]
   // Qo'ng'iroqcha ro'yxati: har biri bosilganda aynan kerakli bo'limni ochadi
   const t = xabarD?.tasdiq_kutmoqda, og = xabarD?.ogohlantirishlar
   const xabarlar = !xabarD ? [] : [
@@ -255,7 +256,7 @@ export default function App() {
     </section>
   )
   const chiqish = () => { saqlangan.chiqish(); window.location.hash = '#kirish'; setKirish(true); setXodim(null) }
-  const harf = (xodim.ism || '?').trim().charAt(0).toUpperCase()
+  const rolNomi = rahbar ? 'Rahbar' : xodim.rol === 'kassir' ? 'Kassir' : 'Sotuvchi'
   // Profil rasmi: yangi manzil xodim holatiga va oflayn nusxaga yoziladi (shapka va kirish ekrani shu zahoti yangilanadi)
   const rasmniYangila = (r) => { const x = { ...xodim, rasm: r.rasm }; setXodim(x); saqlangan.xodimSaqla(x) }
   const rasmYukla = (f) => profilRasmYukla(f).then(rasmniYangila).catch((e) => { throw new Error(xatoMatni(e)) })
@@ -266,13 +267,8 @@ export default function App() {
       <PlatformaFon nurli />
       <Shapka ochiq={menyu} onMenyu={() => setMenyu(!menyu)}>
         {/* Telefon shapkasi; keng ekranda xodim chap panel pastida */}
-        {/* telefonda: belgini bosish — profil rasmini tanlash */}
-        <label className="xodim-chip telefon-rasm" title="Profil rasmi">
-          <XodimBelgi xodim={xodim} harf={harf} />
-          <input type="file" accept="image/jpeg,image/png,image/webp" hidden aria-label="Profil rasmini yuklash"
-            onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ''; if (f) rasmYukla(f).catch(() => {}) }} />
-        </label>
-        <button className="ikkinchi kichik" onClick={chiqish}><NavIkona nom="chiqish" className="tugma-ikon" />Chiqish</button>
+        {/* Telefon: belgi bosilsa — xodim menyusi (profil rasmi va «Chiqish»), kompyuterdagi bilan bir xil */}
+        <XodimMenyu xodim={xodim} rol={rolNomi} onChiqish={chiqish} onRasm={rasmYukla} onRasmOchir={rasmOchir} ixcham />
       </Shapka>
       {xodim.salon_holati === 'faqat_korish' && (
         <p className="ogohlantirish obuna-banner">Obuna muddati tugagan: salon «faqat ko'rish» rejimida, yangi zakaz yaratilmaydi.</p>
@@ -318,8 +314,13 @@ export default function App() {
         {tabBar.slice(0, 2).map(([k, nom]) => (
           <button key={k} type="button" className={sahifa === k ? 'faol' : ''} onClick={() => setSahifa(k)}><NavIkona nom={k} /><span>{nom}</span></button>
         ))}
-        <button type="button" className="tab-qoshish" aria-label="Yangi zakaz" onClick={() => setSahifa('yangi')}><NavIkona nom="yangi" /></button>
-        {tabBar.slice(2).map(([k, nom]) => (
+        <button type="button" className={`tab-qoshish${sahifa === 'kassa' && kassaBolim === 'yangi' ? ' faol' : ''}`} aria-label="Yangi zakaz"
+          onClick={() => setSahifa('yangi')}><NavIkona nom="yangi" /></button>
+        {/* «Kassa» — kassa ishlari (to'lov qabul); «Yangi zakaz» uchun «+» bor — ikkalasi bir ekranni ochmaydi */}
+        {tabBar.slice(2).map(([k, nom]) => k === 'kassa' ? (
+          <button key={k} type="button" className={sahifa === 'kassa' && kassaBolim !== 'yangi' ? 'faol' : ''}
+            onClick={() => setSahifa(kassaBolim === 'yangi' ? 'kassa:tolov' : 'kassa')}><NavIkona nom={k} /><span>{nom}</span></button>
+        ) : (
           <button key={k} type="button" className={sahifa === k ? 'faol' : ''} onClick={() => setSahifa(k)}><NavIkona nom={k} /><span>{nom}</span></button>
         ))}
         <button type="button" className={menyu ? 'faol' : ''} aria-expanded={menyu} onClick={() => setMenyu(!menyu)}><NavIkona nom="koproq" /><span>Ko'proq</span></button>
