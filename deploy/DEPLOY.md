@@ -200,6 +200,7 @@ sudo -u libosa crontab -l    # tekshirish
 ```bash
 cd /var/www/libosa
 sudo -u libosa git pull
+sudo -u libosa venv/bin/pip install --upgrade pip          # o'rnatuvchining o'zi ham zaifliksiz bo'lsin
 sudo -u libosa venv/bin/pip install -r backend/requirements.txt
 cd backend
 sudo -u libosa ../venv/bin/python manage.py migrate
