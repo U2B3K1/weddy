@@ -180,15 +180,18 @@ function XodimTanlash({ setXato, onKirdi, onQurilmaOchirildi }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  const kirdi = (r) => {
+    saqlangan.tokenSaqla(r.token)
+    saqlangan.xodimSaqla(r.xodim)
+    onKirdi(r.xodim)
+  }
   const yuborish = async (e, pinQiymat = pin) => {
     e?.preventDefault()
     setXato('')
     try {
       const r = await pinLogin(tanlangan.id, pinQiymat, kodKerak ? tgKod : undefined)
       if (r.telegram_kod_kerak) { setKodKerak(true); return }
-      saqlangan.tokenSaqla(r.token)
-      saqlangan.xodimSaqla(r.xodim)
-      onKirdi(r.xodim)
+      kirdi(r)
     } catch (err) {
       if (tarmoqXatosi(err)) return setXato(INTERNET_YOQ)
       if (kodKerak) { setTgKod(''); return setXato(err.response?.data?.detail || "Telegram kod noto'g'ri.") }
@@ -199,6 +202,26 @@ function XodimTanlash({ setXato, onKirdi, onQurilmaOchirildi }) {
         : "PIN noto'g'ri.")
     }
   }
+
+  // Telegramda «Ruxsat berish» bosilishini kutish: har 2,5 soniyada so'raladi, bosilgach o'zi kiradi.
+  // So'rov 5 daqiqa amal qiladi — keyin PIN qayta so'raladi.
+  useEffect(() => {
+    if (!kodKerak) return undefined
+    let tugadi = false
+    const boshi = Date.now()
+    const t = setInterval(async () => {
+      if (Date.now() - boshi > 5 * 60 * 1000) {
+        clearInterval(t); setKodKerak(false); setPin(''); setTgKod('')
+        return setXato("Telegram so'rovi muddati o'tdi. PIN kodni qayta kiriting.")
+      }
+      try {
+        const r = await pinLogin(tanlangan.id, pin, undefined, true)
+        if (!tugadi && r.token) { clearInterval(t); kirdi(r) }
+      } catch { /* tarmoq uzilishi — keyingi urinishda */ }
+    }, 2500)
+    return () => { tugadi = true; clearInterval(t) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [kodKerak])
 
   // PIN klaviaturasi: 6 raqam terilganda o'zi yuboriladi; 4–5 raqamli PIN uchun «Kirish» tugmasi.
   const raqam = (d) => {
@@ -242,6 +265,28 @@ function XodimTanlash({ setXato, onKirdi, onQurilmaOchirildi }) {
       </div>
     )
   }
+  // Rahbar kirishi: kod terish o'rniga Telegramdagi «Ruxsat berish» tugmasi; kod — zaxira
+  if (kodKerak) {
+    return (
+      <div className="pin-forma tg-kutish">
+        {tanlangan.rasm && <img className="pin-foto" src={tanlangan.rasm} alt="" />}
+        <p className="kirish-sarlavha"><em>{tanlangan.ism},</em> Telegramda ruxsat bering</p>
+        <p className="malumot">Telegramga so'rov yuborildi. Undagi <b>«✅ Ruxsat berish»</b> tugmasini bosing — ilova o'zi kiradi.</p>
+        <p className="tg-kutish-holat" role="status"><i aria-hidden="true" />Ruxsat kutilmoqda…</p>
+        <details className="tg-kod">
+          <summary>Kodni qo'lda kiritish</summary>
+          <form onSubmit={yuborish} className="tg-kod-forma">
+            <label>Xabardagi 6 raqamli kod
+              <input inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={tgKod}
+                onChange={(e) => setTgKod(e.target.value.replace(/\D/g, ''))} />
+            </label>
+            <button type="submit" disabled={tgKod.length < 6}>Kirish</button>
+          </form>
+        </details>
+        <button type="button" className="havola-tugma kirish-chiqish" onClick={orqaga}>Orqaga</button>
+      </div>
+    )
+  }
   return (
     <form onSubmit={yuborish} className="pin-forma">
       {tanlangan.rasm && <img className="pin-foto" src={tanlangan.rasm} alt="" />}
@@ -249,20 +294,15 @@ function XodimTanlash({ setXato, onKirdi, onQurilmaOchirildi }) {
       <div className="pin-nuqtalar" role="img" aria-label={`${pin.length} ta raqam kiritildi`}>
         {Array.from({ length: 6 }).map((_, i) => <i key={i} className={i < pin.length ? 'to-liq' : ''} />)}
       </div>
-      {kodKerak && (
-        <label>Telegramga yuborilgan 6 raqamli kod
-          <input inputMode="numeric" maxLength={6} value={tgKod} onChange={(e) => setTgKod(e.target.value)} autoFocus />
-        </label>
-      )}
       <div className="pin-klaviatura">
         {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map((d) => (
-          <button key={d} type="button" className="ikkinchi pin-tugma" disabled={kodKerak} onClick={() => raqam(d)}>{d}</button>
+          <button key={d} type="button" className="ikkinchi pin-tugma" onClick={() => raqam(d)}>{d}</button>
         ))}
         <button type="button" className="ikkinchi pin-tugma" aria-label="Orqaga" onClick={orqaga}>‹</button>
-        <button type="button" className="ikkinchi pin-tugma" disabled={kodKerak} onClick={() => raqam('0')}>0</button>
-        <button type="button" className="ikkinchi pin-tugma" aria-label="Oxirgi raqamni o'chirish" disabled={kodKerak} onClick={ochir}>⌫</button>
+        <button type="button" className="ikkinchi pin-tugma" onClick={() => raqam('0')}>0</button>
+        <button type="button" className="ikkinchi pin-tugma" aria-label="Oxirgi raqamni o'chirish" onClick={ochir}>⌫</button>
       </div>
-      <button type="submit" disabled={kodKerak ? tgKod.length < 6 : pin.length < 4}>Kirish</button>
+      <button type="submit" disabled={pin.length < 4}>Kirish</button>
     </form>
   )
 }

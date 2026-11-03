@@ -248,6 +248,34 @@ class KirishKodiTests(Base):
         self.assertIn('token', r.json())
         self.assertFalse(KirishKodi.objects.exists())  # kod bir martalik
 
+    def test_telegram_ruxsat_tugmasi(self):
+        """Kod terish o'rniga: Telegramda «Ruxsat berish» — ilova kutish so'rovida kiradi; boshqa qurilmaga amal qilmaydi."""
+        from apps.notify.services import tugma_ishla
+        self.assertEqual(self.pin(self.rahbar, '1111').status_code, 202)
+        tugmalar = telegram.xabar_yubor.call_args.kwargs['tugmalar'][0]
+        self.assertEqual([t['text'] for t in tugmalar], ['✅ Ruxsat berish', '❌ Bu men emas'])
+        r = self.pin(self.rahbar, '1111', telegram_kutish=True)
+        self.assertEqual((r.status_code, r.json()), (202, {'telegram_kod_kerak': True, 'kutilmoqda': True}))
+        self.assertEqual(len(self.yuborilgan), 1)  # kutishda yangi xabar ketmaydi
+        self.assertIn('tegishli emas', tugma_ishla(999, tugmalar[0]['callback_data']))  # boshqa akkaunt bosolmaydi
+        self.assertIn('Ruxsat berildi', tugma_ishla(self.rahbar.telegram_id, tugmalar[0]['callback_data']))
+        boshqa = make_device_token(self.salon, IshonchliQurilma.objects.create(salon=self.salon, nomi='begona'))
+        r = APIClient().post('/api/auth/pin-login/', {'xodim_id': self.rahbar.id, 'pin': '1111', 'telegram_kutish': True},
+                             format='json', HTTP_X_DEVICE_TOKEN=boshqa)
+        self.assertEqual(r.status_code, 202)  # ruxsat faqat so'ralgan qurilmaga
+        r = self.pin(self.rahbar, '1111', telegram_kutish=True)
+        self.assertEqual(r.status_code, 200)
+        self.assertIn('token', r.json())
+        self.assertFalse(KirishKodi.objects.exists())  # bir martalik
+
+    def test_bu_men_emas(self):
+        from apps.notify.services import tugma_ishla
+        self.pin(self.rahbar, '1111')
+        rad = telegram.xabar_yubor.call_args.kwargs['tugmalar'][0][1]['callback_data']
+        self.assertIn('rad etildi', tugma_ishla(self.rahbar.telegram_id, rad))
+        self.assertEqual(self.pin(self.rahbar, '1111', telegram_kutish=True).status_code, 202)
+        self.assertFalse(KirishKodi.objects.exists())
+
     def test_notogri_pin_bilan_kod_yuborilmaydi(self):
         self.assertEqual(self.pin(self.rahbar, '9999').status_code, 401)
         self.assertEqual(self.yuborilgan, [])
@@ -381,7 +409,7 @@ class QurilmaTelegramTasdiqTests(Base):
         Xodim.objects.filter(id=self.rahbar.id).update(telegram_id=None)
         d = self.holat().json()
         self.assertIsNone(d['tg_havola'])  # Telegram ulagan rahbar yo'q — havola hech kimga ishlamasdi
-        self.assertEqual(d['rahbarlar'], [{'id': self.rahbar.id, 'ism': 'Rahbar'}])
+        self.assertEqual(d['rahbarlar'], [{'id': self.rahbar.id, 'ism': 'Rahbar', 'rasm': None}])
         self.assertEqual(self.tasdiq_post(self.malika, '1234').status_code, 404)  # sotuvchi tasdiqlay olmaydi
         self.assertEqual(self.tasdiq_post(self.rahbar, '0000').status_code, 400)  # 401 emas
         self.assertTrue(self.tasdiq_post(self.rahbar, '1111').json()['tasdiqlangan'])
@@ -401,7 +429,7 @@ class QurilmaTelegramTasdiqTests(Base):
     def test_bot_sozlanmagan_bolsa_telegram_ulagan_rahbar_ham_pin_bilan(self):
         d = self.holat().json()
         self.assertIsNone(d['tg_havola'])
-        self.assertEqual(d['rahbarlar'], [{'id': self.rahbar.id, 'ism': 'Rahbar'}])  # aks holda qotib qolardi
+        self.assertEqual(d['rahbarlar'], [{'id': self.rahbar.id, 'ism': 'Rahbar', 'rasm': None}])  # aks holda qotib qolardi
         self.assertTrue(self.tasdiq_post(self.rahbar, '1111').json()['tasdiqlangan'])
 
     def test_faqat_korish_salonida_qurilma_ozgarmaydi(self):

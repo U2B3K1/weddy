@@ -213,6 +213,8 @@ def tugma_ishla(chat_id, data):
     qismlar = (data or '').split(':')
     if len(qismlar) == 3 and qismlar[0] == 'qr' and qismlar[1].isdigit() and qismlar[2] in ('t', 'h', 'r'):
         return qurilma_tugma_ishla(chat_id, int(qismlar[1]), qismlar[2])
+    if len(qismlar) == 3 and qismlar[0] == 'kr' and qismlar[1].isdigit() and qismlar[2] in ('r', 'y'):
+        return kirish_tugma_ishla(chat_id, int(qismlar[1]), qismlar[2])
     if len(qismlar) == 3 and qismlar[0] == 'kt' and qismlar[1].isdigit() and qismlar[2] in ('q', 'b'):
         return kassa_tugma_ishla(chat_id, int(qismlar[1]), qismlar[2])
     if len(qismlar) == 3 and qismlar[0] == 'ot' and qismlar[1].isdigit() and qismlar[2] in ('k', 'y'):
@@ -436,15 +438,47 @@ def kirish_kodi_kerak(xodim):
     return xodim.rol == Xodim.Rol.RAHBAR and bool(xodim.telegram_id) and telegram.sozlangan(xodim.salon_id)
 
 
-def kirish_kodi_yubor(xodim):
+def kirish_kodi_yubor(xodim, qurilma=None):
+    """Telegramga kirish so'rovi: «Ruxsat berish» tugmasi (asosiy yo'l — terish shart emas) va zaxira sifatida kod."""
     kod = f'{secrets.randbelow(10 ** 6):06d}'
-    KirishKodi.objects.update_or_create(xodim=xodim, defaults={
-        'kod': make_password(kod), 'tugaydi': timezone.now() + KIRISH_KODI_MUDDATI, 'urinish': 0})
+    k, _ = KirishKodi.objects.update_or_create(xodim=xodim, defaults={
+        'kod': make_password(kod), 'tugaydi': timezone.now() + KIRISH_KODI_MUDDATI, 'urinish': 0,
+        'qurilma': qurilma, 'tasdiqlandi': None})
+    joy = f" «{qurilma.nomi}» qurilmasidan" if qurilma else ''
+    matn = (f"🔐 Libosa:{joy} {xodim.ism} nomidan kirish so'raldi.\n"
+            f"Siz bo'lsangiz — «Ruxsat berish»ni bosing, ilova o'zi kiradi.\n\n"
+            f"Yoki ilovada kirish kodi: {kod}\n5 daqiqa amal qiladi. Hech kimga bermang.")
+    tugmalar = [[{'text': '✅ Ruxsat berish', 'callback_data': f'kr:{k.id}:r'},
+                 {'text': '❌ Bu men emas', 'callback_data': f'kr:{k.id}:y'}]]
     try:
-        telegram.xabar_yubor(xodim.telegram_id, f"Libosa kirish kodi: {kod}\n5 daqiqa amal qiladi. Hech kimga bermang.")
+        telegram.xabar_yubor(xodim.telegram_id, matn, tugmalar=tugmalar)
     except telegram.TelegramXatosi:
         return False
     return True
+
+
+def kirish_tugma_ishla(chat_id, kid, amal):
+    """«Ruxsat berish» / «Bu men emas». Faqat so'rov egasining o'z Telegrami bosishi mumkin."""
+    k = KirishKodi.objects.select_related('xodim').filter(id=kid).first()
+    if not k:
+        return "So'rov topilmadi: kirish allaqachon bajarilgan yoki bekor qilingan."
+    if k.xodim.telegram_id != chat_id:
+        return "Bu so'rov sizga tegishli emas."
+    if k.tugaydi < timezone.now():
+        return "So'rov muddati o'tgan. Ilovada PIN kodni qayta kiriting."
+    if amal == 'y':
+        k.delete()
+        return "Kirish rad etildi. Agar bu siz bo'lmasangiz, PIN kodingizni almashtiring."
+    if not k.tasdiqlandi:
+        k.tasdiqlandi = timezone.now()
+        k.save(update_fields=['tasdiqlandi'])
+    return "✅ Ruxsat berildi — ilova o'zi kiradi."
+
+
+def kirish_tasdiqlandimi(xodim, qurilma):
+    """Telegramda «Ruxsat berish» bosilgan va so'rov aynan shu qurilmadan bo'lsa — bir martalik ruxsat."""
+    return bool(KirishKodi.objects.filter(xodim=xodim, qurilma=qurilma, tasdiqlandi__isnull=False,
+                                          tugaydi__gte=timezone.now()).delete()[0])
 
 
 def kirish_kodini_tekshir(xodim, kod):

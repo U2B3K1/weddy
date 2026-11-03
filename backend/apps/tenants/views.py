@@ -213,10 +213,14 @@ class PinLoginView(OchiqView):
         from apps.notify import services as notify
         # FT-1.1, FT-22.3: rahbar kirishi Telegram kod bilan tasdiqlanadi. Qurilmani hozirgina Telegramdan
         # o'zi tasdiqlagan bo'lsa — shaxsi Telegram orqali allaqachon tasdiqlangan, ikkinchi kod so'ralmaydi.
-        if notify.kirish_kodi_kerak(xodim) and not notify.tg_tasdiq_kodsiz_kirish(xodim, qurilma):
+        if (notify.kirish_kodi_kerak(xodim) and not notify.tg_tasdiq_kodsiz_kirish(xodim, qurilma)
+                and not notify.kirish_tasdiqlandimi(xodim, qurilma)):  # Telegramda «Ruxsat berish» bosilgan
             kod = str(request.data.get('telegram_kod', '')).strip()
             if not kod:
-                if not notify.kirish_kodi_yubor(xodim):
+                # ilova tugma bosilishini kutayotgan bo'lsa (har 2–3 soniyada so'raydi) — yangi xabar yuborilmaydi
+                if request.data.get('telegram_kutish'):
+                    return Response({'telegram_kod_kerak': True, 'kutilmoqda': True}, status=202)
+                if not notify.kirish_kodi_yubor(xodim, qurilma):
                     return Response({'detail': "Telegram kodni yuborib bo'lmadi. Birozdan keyin urinib ko'ring."},
                                     status=503)
                 return Response({'telegram_kod_kerak': True}, status=202)

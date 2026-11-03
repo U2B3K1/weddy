@@ -115,8 +115,9 @@ export const xodimlar = () => api.get('/auth/xodimlar/').then((r) => r.data)
 export const qurilmaTasdiqHolati = () => api.get('/auth/qurilma-tasdiq/').then((r) => r.data)
 export const qurilmaPinTasdiq = (xodim_id, pin) => api.post('/auth/qurilma-tasdiq/', { xodim_id, pin }).then((r) => r.data)
 // Rahbar Telegram ulagan bo'lsa server 202 {telegram_kod_kerak} qaytaradi; kod bilan qayta yuboriladi (FT-22.3)
-export const pinLogin = async (xodim_id, pin, telegram_kod) =>
-  api.post('/auth/pin-login/', { xodim_id, pin, telegram_kod, qurilma_modeli: await qurilmaModeli() }).then((r) => r.data)
+// telegram_kutish — Telegramdagi «Ruxsat berish» bosilishini kutayotgan takroriy so'rov (yangi xabar yuborilmaydi)
+export const pinLogin = async (xodim_id, pin, telegram_kod, telegram_kutish) =>
+  api.post('/auth/pin-login/', { xodim_id, pin, telegram_kod, telegram_kutish, qurilma_modeli: await qurilmaModeli() }).then((r) => r.data)
 export const pinTekshir = (pin) => api.post('/auth/pin-tekshir/', { pin }).then((r) => r.data)
 export const arizaYubor = (body) => api.post('/auth/ariza/', body).then((r) => r.data)
 export const me = () => api.get('/auth/me/').then((r) => r.data)

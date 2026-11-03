@@ -43,6 +43,9 @@ class KirishKodi(models.Model):
     kod = models.CharField(max_length=128)  # xesh
     tugaydi = models.DateTimeField()
     urinish = models.PositiveSmallIntegerField(default=0)
+    # Telegramdagi «Ruxsat berish» tugmasi: kod terish o'rniga — faqat so'ralgan qurilmadagi kirishga amal qiladi
+    qurilma = models.ForeignKey('tenants.IshonchliQurilma', null=True, blank=True, on_delete=models.CASCADE, related_name='+')
+    tasdiqlandi = models.DateTimeField(null=True, blank=True)
 
 
 class SmsXabar(SalonModel):

@@ -1551,3 +1551,14 @@ label > .info .info-matn, th .info .info-matn { left: auto; right: 0; }
 .xodim-chip > i img { width: 100%; height: 100%; object-fit: cover; }
 .telefon-rasm { cursor: pointer; }
 .ustki-menyu-xato { margin: 0; padding: 4px 8px; font-size: 13px; }
+
+/* Rahbar kirishi — Telegramda «Ruxsat berish»ni kutish: tilla nuqta sekin «nafas oladi»; kod — yig'iladigan zaxira */
+.tg-kutish { align-items: center; text-align: center; }
+.tg-kutish .malumot { align-self: center; max-width: 40ch; margin: 0; text-align: center; font-size: 15px; line-height: 1.5; color: var(--matn-2); }
+.tg-kutish-holat { display: inline-flex; align-items: center; gap: 10px; margin: 0; font: italic 500 17px/1.2 var(--kursiv); color: var(--tilla); }
+.tg-kutish-holat i { width: 10px; height: 10px; border-radius: 50%; background: var(--tilla); animation: tg-nafas 1.6s ease-in-out infinite; }
+@keyframes tg-nafas { 50% { opacity: .25; transform: scale(.7); } }
+@media (prefers-reduced-motion: reduce) { .tg-kutish-holat i { animation: none; } }
+.tg-kod { width: 100%; max-width: 320px; text-align: left; }
+.tg-kod summary { cursor: pointer; text-align: center; color: var(--matn-2); font-size: 14px; }
+.tg-kod-forma { margin-top: var(--o-3); }
