@@ -215,11 +215,21 @@ Bir buyruq bilan (root sifatida):
 
 ```bash
 cd /var/www/libosa && sudo -u libosa git pull && \
+sudo -u libosa venv/bin/pip install --upgrade pip && \
 sudo -u libosa venv/bin/pip install -r backend/requirements.txt && \
 cd backend && sudo -u libosa ../venv/bin/python manage.py migrate && \
 sudo -u libosa ../venv/bin/python manage.py collectstatic --noinput && \
 cd ../frontend && sudo -u libosa npm install && sudo -u libosa npm run build && \
 sudo systemctl restart libosa.service libosa-telegram.service
+```
+
+Deploy'dan **oldin** (mahalliy kompyuterda) kutubxona zaifliklari tekshiriladi. Topilsa — lock/requirements
+mahalliy tuzatilib push qilinadi. Serverda `npm audit fix` ishlatilmaydi: `package-lock.json` o'zgarib,
+keyingi `git pull` to'qnashadi.
+
+```bash
+cd frontend && npm audit                                                 # frontend
+cd ../backend && .venv/Scripts/python -m pip_audit -r requirements.txt   # backend (avval: pip install pip-audit)
 ```
 
 ---
