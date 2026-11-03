@@ -1513,3 +1513,31 @@ label > .info .info-matn, th .info .info-matn { left: auto; right: 0; }
 :where(.ilova) .stat b { font: 400 28px/1.1 var(--serif); letter-spacing: .01em; font-variant-numeric: tabular-nums lining-nums; }
 .libos-nom b { font-size: 1.12em; }
 @media (max-width: 767px) { :where(.ilova) .stat b { font-size: 22px; } }
+
+/* =================== Shrift tizimi butun ilovada ===================
+   Bitta qoida hamma bo'limga (har sahifani alohida emas): sarlavhalar va bo'lim nomlari — Forum (serif, 400),
+   ustun nomlari va kichik yorliqlar — Cormorant kursiv, pul va son ustunlari — serif raqam; oddiy matn, forma va
+   tugmalar — Manrope (o'qishga qulay). Chop etiladigan hujjatlar (.hujjat) o'z uslubida qoladi.
+   Past aniqlik (:where/element) — komponentdagi aniq o'lchamlar saqlanadi. */
+:where(.ilova main) :is(h2, h3, h4, h5, legend):not(:where(.hujjat-oyna *)) {
+  font-family: var(--serif); font-weight: 400; letter-spacing: .01em; }
+:where(.ilova main) h3:not(:where(.hujjat-oyna *)) { font-size: 19px; line-height: 1.25; }
+:where(.ilova main) :is(h4, h5, legend):not(:where(.hujjat-oyna *)) { font-size: 17px; line-height: 1.3; }
+:where(.ilova main) :is(h3, h4, h5) b { font-weight: 400; }
+/* Ochiladigan bo'limlar sarlavhasi (Boshqa amallar ichidagi «Libosni almashtirish», «Dona qo'shish»…) */
+:where(.ilova main) details > summary:not(.havola-tugma):not(:where(.hujjat-oyna *)) {
+  font-family: var(--serif); font-weight: 400; font-size: 17px; letter-spacing: .01em; }
+/* Jadvallar: ustun nomlari kursiv (varaqdagi «olib ketish» kabi), pul/son ustuni serif raqam */
+:where(.ilova main) :is(.zakaz-jadval, .hisobot) th { font: italic 500 15px/1.2 var(--kursiv); letter-spacing: 0; text-transform: none; }
+:where(.ilova main) .hisobot td.ong { font: 400 15px/1.3 var(--serif); font-variant-numeric: tabular-nums lining-nums; }
+:where(.ilova main) .jadval:not(.pnl) td:last-child { font-family: var(--serif); font-variant-numeric: tabular-nums lining-nums; }
+:where(.ilova main) .jadval td:last-child b { font-weight: 400; }
+/* P&L qator nomlari — daftar yozuvi; oraliq va yakuniy qatorlar ajralib turadi */
+.pnl td:first-child { font-size: 15px; }
+.pnl tr.pnl-oralik td:first-child { font: italic 500 18px/1.3 var(--kursiv); color: var(--matn-2); }
+.pnl-raqam { font: italic 500 15px var(--kursiv); color: var(--matn-3); }
+/* Zakaz kartasi: varaq hisobi — yorliq kursiv, summa serif (matnli qatorlar — aksessuar, salonchi — oddiy); to'lovlar summasi serif */
+.varaq-hisob > div:not(.varaq-hisob-matn) dt { font: italic 500 16px/1.3 var(--kursiv); }
+.varaq-hisob > div:not(.varaq-hisob-matn) dd { font: 400 16px/1.3 var(--serif); font-variant-numeric: tabular-nums lining-nums; }
+.varaq-hisob .varaq-qoldiq dd, .varaq-hisob .varaq-qarz dd { font-weight: 400; font-size: 18px; }
+.tolov-summa { font: 400 17px/1.3 var(--serif); font-variant-numeric: tabular-nums lining-nums; }
