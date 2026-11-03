@@ -244,9 +244,15 @@ test('yetkazib beruvchi: libos qisman to\'lab olinadi, qarz to\'lanadi', async (
     await oyna.getByLabel('Qayerdan olingan').selectOption({ label: 'Istanbul Bridal' })
     await oyna.getByLabel("Hozir to'landi").fill('4000000')
     await expect(oyna).toContainText("Yetkazib beruvchiga qarz: 6 000 000 so'm")
+    // rasmlar qo'shish oynasining o'zida tanlanadi (galereyadan; kompyuterda kamera tugmasi yo'q) va libos bilan yuklanadi
+    const rasm = oyna.getByRole('group', { name: "Rasm qo'shish" })
+    await rasm.locator('input[type=file]:not([capture])').setInputFiles(['public/kelinlar/1.jpg', 'public/kelinlar/2.jpg'])
+    await expect(oyna.locator('.rasm-katak img')).toHaveCount(2)
+    await expect(rasm.getByRole('button', { name: 'Kamera bilan' })).toBeHidden()
     await ikkiKenglik(page, '10-libos-yetkazib-beruvchi')
-    await oyna.getByRole('button', { name: "Qo'shish", exact: true }).click()
+    await oyna.getByRole('button', { name: "Qo'shish · 2 ta rasm bilan" }).click()
     await expect(page.getByText("Libos katalogga qo'shildi.")).toBeVisible()
+    await expect(page.locator('.libos-karta', { hasText: 'YB-1' }).locator('img')).toBeVisible()
   })
 
   await test.step('libos artikuli: sozlamada prefiks va avto raqam, formada «i»', async () => {

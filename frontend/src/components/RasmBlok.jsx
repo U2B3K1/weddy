@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Manekin from './Manekin'
+import RasmTanlash from './RasmTanlash'
 import { libosTafsilot, manekinSaqla, rasmFonsiz, rasmOchir, rasmYukla, sozlamalar, xatoMatni } from '../api'
 
 // 7.3: libos rasmlari salonda standart sharoitda olinadi; tizim ularni o'zi 800×1200 va 300×450 WebP ga keltiradi.
@@ -8,7 +9,6 @@ export default function RasmBlok({ libosId, rahbar, onOzgardi }) {
   const [yuklanmoqda, setYuklanmoqda] = useState(false)
   const [xato, setXato] = useState('')
   const [kattaRasm, setKattaRasm] = useState(null)
-  const input = useRef(null)
   // 4.5: raqamli manekin — fonsiz qatlam shu libosning bitta rasmidan tayyorlanadi
   const [libos, setLibos] = useState(null)
   const [manekinYoq, setManekinYoq] = useState(false)
@@ -29,10 +29,7 @@ export default function RasmBlok({ libosId, rahbar, onOzgardi }) {
   }
   useEffect(() => { yukla().catch((e) => setXato(xatoMatni(e))) }, [yukla])
 
-  const tanlandi = async (e) => {
-    const fayllar = Array.from(e.target.files || [])
-    e.target.value = ''
-    if (fayllar.length === 0) return
+  const tanlandi = async (fayllar) => {
     setXato('')
     setYuklanmoqda(true)
     const xatolar = []
@@ -67,10 +64,7 @@ export default function RasmBlok({ libosId, rahbar, onOzgardi }) {
         ))}
         {rasmlar.length === 0 && <p className="malumot">Rasm yo'q</p>}
       </div>
-      <input ref={input} type="file" accept="image/jpeg,image/png,image/webp" multiple hidden onChange={tanlandi} />
-      <button type="button" className="ikkinchi" disabled={yuklanmoqda} onClick={() => input.current.click()}>
-        {yuklanmoqda ? 'Yuklanmoqda…' : "Rasm qo'shish"}
-      </button>
+      <RasmTanlash onTanla={tanlandi} band={yuklanmoqda} />
       <p className="malumot">
         Har bir libos uchun 3–5 ta rasm yuklang (old, yon, orqa, tafsilot). Tik (2:3) rasm eng yaxshi ko'rinadi.
         Telefon rasmini to'g'ridan-to'g'ri yuklash mumkin — tizim o'zi kichraytiradi.

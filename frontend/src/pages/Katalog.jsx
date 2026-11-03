@@ -3,12 +3,13 @@ import Info from '../components/Info'
 import NavIkona from '../components/NavIkona'
 import Oyna from '../components/Oyna'
 import RasmBlok from '../components/RasmBlok'
+import RasmTanlash from '../components/RasmTanlash'
 import TamirBlok from '../components/TamirBlok'
 import AksessuarBolimi from './AksessuarBolimi'
 import LibosSanogi from './LibosSanogi'
 import YetkazibBeruvchilar from './YetkazibBeruvchilar'
 import {
-  filiallar, kategoriyalar, kategoriyaOchir, kategoriyaOzgartir, kategoriyaYarat, keyingiArtikul, libosOzgartir, libosTasdiq, libosYarat, liboslar, som, xatoMatni, yetkazibBeruvchilar,
+  filiallar, kategoriyalar, kategoriyaOchir, kategoriyaOzgartir, kategoriyaYarat, keyingiArtikul, libosOzgartir, libosTasdiq, libosYarat, liboslar, rasmYukla, som, xatoMatni, yetkazibBeruvchilar,
 } from '../api'
 import SummaInput from '../components/SummaInput'
 import LibosSiluet from '../components/LibosSiluet'
@@ -106,8 +107,14 @@ function Liboslar({ rahbar }) {
       {oyna === 'yangi' && (
         <Oyna sarlavha="Libos qo'shish" onYop={() => setOyna(null)}>
           <LibosForma kats={libosKats} rahbar={rahbar} ybs={ybs}
-            onYuborish={async (b) => {
-              const ok = await bajar(() => libosYarat(b), rahbar ? "Libos katalogga qo'shildi." : "Libos rahbar tasdig'iga yuborildi.")
+            onYuborish={async (b, rasmlar) => {
+              // libos saqlangach tanlangan rasmlar ketma-ket yuklanadi; birortasi o'tmasa — libos qoladi, xabarda aytiladi
+              let otmadi = 0
+              const ok = await bajar(async () => {
+                const l = await libosYarat(b)
+                for (const f of rasmlar) { try { await rasmYukla(l.id, f) } catch { otmadi++ } }
+              }, rahbar ? "Libos katalogga qo'shildi." : "Libos rahbar tasdig'iga yuborildi.")
+              if (ok && otmadi) setXabar({ turi: 'xato', matn: `Libos qo'shildi, lekin ${otmadi} ta rasm yuklanmadi — libosni ochib qayta qo'shing.` })
               if (ok) setOyna(null)
               return ok
             }} />
@@ -263,6 +270,10 @@ function TasdiqForma({ libos, onYuborish, rahbar, onRasm }) {
 
 function LibosForma({ kats, rahbar, ybs = [], onYuborish }) {
   const [f, setF] = useState({ kategoriya: '' })
+  // Rasmlar libos saqlangach yuklanadi; oldindan ko'rish uchun brauzer ichidagi vaqtinchalik manzil
+  const [rasmlar, setRasmlar] = useState([])
+  const rasmQosh = (fayllar) => setRasmlar((r) => [...r, ...fayllar.map((fayl) => ({ fayl, url: URL.createObjectURL(fayl) }))])
+  const rasmOl = (i) => setRasmlar((r) => { URL.revokeObjectURL(r[i].url); return r.filter((_, j) => j !== i) })
   // Sozlama → «Libos artikuli»: avto bo'lsa keyingi raqam ko'rsatiladi, bo'lmasa maydon prefiks bilan boshlanadi
   const [art, setArt] = useState({ prefiks: '', artikul: null })
   useEffect(() => {
@@ -282,7 +293,7 @@ function LibosForma({ kats, rahbar, ybs = [], onYuborish }) {
       // bo'sh qoldirilsa — tannarx to'liq to'langan; kami — yetkazib beruvchiga qarz
       ...(rahbar && f.yetkazib_beruvchi ? { yetkazib_beruvchi: Number(f.yetkazib_beruvchi), ...(f.tolandi !== undefined && f.tolandi !== '' ? { tolandi: Number(f.tolandi) } : {}) } : {}),
     }
-    if (await onYuborish(body)) setF({ kategoriya: '' })
+    if (await onYuborish(body, rasmlar.map((r) => r.fayl))) { setF({ kategoriya: '' }); setRasmlar([]) }
   }
   return (
     <div className="stack">
@@ -330,8 +341,23 @@ function LibosForma({ kats, rahbar, ybs = [], onYuborish }) {
         {rahbar && f.yetkazib_beruvchi && f.tolandi !== undefined && f.tolandi !== '' && Number(f.tolandi) < Number(f.tannarx || 0) && (
           <p className="malumot">Yetkazib beruvchiga qarz: <b>{som(Number(f.tannarx) - Number(f.tolandi))}</b></p>
         )}
+        <div className="stack">
+          <span className="forma-yorliq">Rasmlar</span>
+          {rasmlar.length > 0 && (
+            <div className="rasm-tor">
+              {rasmlar.map((r, i) => (
+                <figure key={r.url} className="rasm-katak">
+                  <img src={r.url} alt={`Tanlangan rasm ${i + 1}`} />
+                  <button type="button" className="rasm-ochir" aria-label="Rasmni olib tashlash" onClick={() => rasmOl(i)}>×</button>
+                </figure>
+              ))}
+            </div>
+          )}
+          <RasmTanlash onTanla={rasmQosh} />
+          <p className="malumot">Old, yon, orqa va tafsilot — 3–5 ta rasm. Tik (2:3) rasm eng yaxshi ko'rinadi; tizim o'zi kichraytiradi.</p>
+        </div>
         {!rahbar && <p className="malumot">Libos rahbar narx va tannarxni tasdiqlagach katalogga chiqadi.</p>}
-        <button disabled={!tayyor} onClick={yubor}>Qo'shish</button>
+        <button disabled={!tayyor} onClick={yubor}>Qo'shish{rasmlar.length > 0 && ` · ${rasmlar.length} ta rasm bilan`}</button>
     </div>
   )
 }

@@ -307,12 +307,12 @@ function XodimTanlash({ setXato, onKirdi, onQurilmaOchirildi }) {
   )
 }
 
-// Xodim kartochkasi: profil rasmi bo'lsa — ramkani to'ldiradi, ismi pastida; bo'lmasa — ismning bosh harfi
+// Xodim kartochkasi: doira ramkada profil rasmi (bo'lmasa — ismning bosh harfi), ostida ism
 function XodimKarta({ x, onClick }) {
   return (
     <button type="button" className={`xodim-karta${x.rasm ? ' rasmli' : ''}`} onClick={onClick}>
       {x.rasm
-        ? <img className="xodim-foto" src={x.rasm} alt="" />
+        ? <img className="xodim-harf xodim-foto" src={x.rasm} alt="" />
         : <span className="xodim-harf" aria-hidden="true">{(x.ism || '?').trim().charAt(0).toUpperCase()}</span>}
       <span className="xodim-karta-ism">{x.ism}</span>
     </button>
