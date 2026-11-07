@@ -7,7 +7,7 @@ from django.utils import timezone
 from apps.bookings.services import BandlikXatosi, aksessuar_bron_qilish, bron_qilish, qulfni_olish
 from apps.catalog.models import Aksessuar, Libos
 
-from apps.tenants.models import Salon
+from apps.tenants.models import Salon, sozlama
 
 from .models import Mijoz, Zakaz, ZakazAksessuar, ZakazPozitsiya, telefon_normal
 from .pricing import mavsumiy_foiz, narx_hisobla
@@ -77,11 +77,14 @@ def zakaz_yaratish(*, salon, xodim, telefon, olib_ketish, qaytarish, libos_idlar
     if ustama_foiz is None:  # FT-15.2: mavsumiy ustama olib ketish kuniga qarab avtomatik
         ustama_foiz = mavsumiy_foiz(salon, olib_ketish)
     hisob = narx_hisobla(asosiy, ustama_foiz)
+    soz = sozlama(salon)
     zakaz = Zakaz.objects.create(
         salon=salon, raqam=oxirgi + 1, mijoz=mijoz, sotuvchi=xodim, salonchi=salonchi, filial=filial,
         olib_ketish=olib_ketish, qaytarish=qaytarish, ustama_foiz=ustama_foiz,
         asosiy_narx=hisob['asosiy_narx'], ustama=hisob['ustama'],
-        chegirma=hisob['chegirma'], jami=hisob['jami'])
+        chegirma=hisob['chegirma'], jami=hisob['jami'],
+        # QA-17 (b): bekor qilish qoidasi shu paytdagi sozlamadan qotiriladi (shartnoma shu qoida bilan chop etiladi)
+        qaytarish_qoidasi=soz.qaytarish_qoidasi, qaytarish_asosi=soz.qaytarish_asosi, avans_foizi=soz.avans_foizi)
     for l in liboslar:
         ZakazPozitsiya.objects.create(salon=salon, zakaz=zakaz, libos=l, narx=l.ijara_narxi, zalog=l.zalog)
         bron_qilish(salon=salon, libos=l, olib_ketish=olib_ketish, qaytarish=qaytarish,

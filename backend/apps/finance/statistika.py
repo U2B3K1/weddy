@@ -2,7 +2,8 @@
 
     {'sarlavha', 'izoh', 'ustunlar': [{'nom', 'tur'}], 'qatorlar': [[...]], 'jami': [...] | None}
 
-`tur`: 'matn' | 'son' | 'pul' | 'foiz' | 'sana'. Hisobotlar faqat sahifada ko'rsatiladi, fayl sifatida yuklab olinmaydi (FT-18.3).
+`tur`: 'matn' | 'son' | 'pul' | 'foiz' | 'sana'. Qatori zakaz bo'lgan hisobotlarda `zakazlar` — har qatorning zakaz id si
+(sahifada «#44» zakaz kartasiga havola bo'ladi). Hisobotlar faqat sahifada ko'rsatiladi, fayl sifatida yuklab olinmaydi (FT-18.3).
 Zakazlar tahlili (kategoriya, sotuvchi, salonchi...) da tushum — davrda TO'LIQ TO'LANGAN va davr oxirigacha bekor
 qilinmagan zakazlar (6.1); davrdan keyin bekor qilingani o'tgan davrni o'zgartirmaydi — bekor qilingan davrda storno.
 P&L va dashbord esa kassa usulida (pul kirgan kun, `reports.foyda`) — «Pul oqimi» va «Kunlik kassa» shunga mos.
@@ -25,6 +26,15 @@ from .reports import farq_zakazlari, storno_zakazlari, tushum_zakazlari
 
 BERILGAN = (Zakaz.Holat.BERILDI, Zakaz.Holat.QAYTARILDI, Zakaz.Holat.YOPILDI)
 FAOL_LIBOS = (Libos.Holat.BOSH, Libos.Holat.TOZALASHDA, Libos.Holat.TAMIRDA)
+
+
+OYLAR = ('Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun', 'Iyul', 'Avgust', 'Sentabr', 'Oktabr', 'Noyabr', 'Dekabr')
+
+
+def oy_nomi(oy):
+    """'2026-11' → 'Noyabr 2026' (egasi uchun; «2026-11» ko'rinishi tushunarsiz)."""
+    yil, m = oy.split('-')
+    return f'{OYLAR[int(m) - 1]} {yil}'
 
 
 def _u(*ustunlar):
@@ -89,9 +99,10 @@ def libos_samaradorligi(salon, dan, gacha, kategoriya=None, filial=None, **_):
                          (bugun - oxirgi[l.id]).days if l.id in oxirgi else None])
     kalitlar = [l.id for l in _liboslar(salon, kategoriya, filial).order_by('artikul')]
     return {'kalitlar': kalitlar, 'sarlavha': 'Libos samaradorligi',
-            'izoh': "Tushum — libosning ijara narxi bo'yicha (chegirma va ustamasiz). Qoplash — butun davrdagi tushum / tannarx.",
-            'ustunlar': _u(('Libos', 'matn'), ('Kategoriya', 'matn'), ('Berilgan', 'son'), ('Tushum', 'pul'),
-                           ('Qoplash', 'foiz'), ('Oxirgi marta', 'sana'), ("Bo'sh turgan kun", 'son')),
+            'izoh': ("«Berilgan» va «Ijara narxi bo'yicha» — shu davr: to'liq to'langan zakazlardagi libos ijara narxi "
+                     "(chegirma va ustamasiz). «Qoplash (jami)» — butun vaqtdagi ijara narxi / tannarx."),
+            'ustunlar': _u(('Libos', 'matn'), ('Kategoriya', 'matn'), ('Berilgan', 'son'), ("Ijara narxi bo'yicha", 'pul'),
+                           ('Qoplash (jami)', 'foiz'), ('Oxirgi berilgan', 'sana'), ("Bo'sh turgan kun", 'son')),
             'qatorlar': qatorlar,
             'jami': ['Jami', '', sum(q[2] for q in qatorlar), sum(q[3] for q in qatorlar), None, None, None]}
 
@@ -105,8 +116,8 @@ def kategoriyalar(salon, dan, gacha, sotuvchi=None, filial=None, **_):
     q = sorted(summa, key=lambda k: -summa[k])
     qatorlar = [[nomlar.get(k), soni.get(k, 0), summa[k]] for k in q]
     return {'kalitlar': q, 'sarlavha': 'Kategoriyalar',
-            'izoh': "To'liq to'langan zakazlar; tushum libos ijara narxi bo'yicha, oldingi davrdan bekor qilingani ayirilgan.",
-            'ustunlar': _u(('Kategoriya', 'matn'), ('Zakazlar', 'son'), ('Tushum', 'pul')),
+            'izoh': "To'liq to'langan zakazlar; summa libos ijara narxi bo'yicha, oldingi davrdan bekor qilingani ayirilgan.",
+            'ustunlar': _u(('Kategoriya', 'matn'), ('Zakazlar', 'son'), ("Ijara narxi bo'yicha", 'pul')),
             'qatorlar': qatorlar, 'jami': ['Jami', sum(q[1] for q in qatorlar), sum(q[2] for q in qatorlar)]}
 
 
@@ -131,7 +142,7 @@ def sotuvchilar(salon, dan, gacha, filial=None, **_):
         kalitlar.append(x.id)
         qatorlar.append([x.ism, yangi.get(x.id, 0), t.get('n', 0), summa.get(x.id, 0), cheg[x.id][0], cheg[x.id][1]])
     return {'kalitlar': kalitlar, 'sarlavha': 'Sotuvchilar', 'izoh': '',
-            'ustunlar': _u(('Sotuvchi', 'matn'), ('Yangi zakazlar', 'son'), ("To'langan zakazlar", 'son'), ('Tushum', 'pul'),
+            'ustunlar': _u(('Sotuvchi', 'matn'), ('Yangi zakazlar', 'son'), ("To'langan zakazlar", 'son'), ('Zakazlar summasi', 'pul'),
                            ('Chegirma tasdiqlandi', 'son'), ('Chegirma rad', 'son')),
             'qatorlar': qatorlar,
             'jami': ['Jami', sum(q[1] for q in qatorlar), sum(q[2] for q in qatorlar), sum(q[3] for q in qatorlar), None, None]}
@@ -146,8 +157,8 @@ def salonchilar(salon, dan, gacha, sotuvchi=None, **_):
                .exclude(holat=Zakaz.Holat.BEKOR).values_list('salonchi_id').annotate(n=Count('mijoz', distinct=True)))
     royxat = [s for s in Salonchi.objects.filter(salon=salon).order_by('ism') if s.faol or s.id in mij or s.id in tol]
     qatorlar = [[s.ism, s.salon_nomi, mij.get(s.id, 0), tol.get(s.id, 0)] for s in royxat]
-    return {'kalitlar': [s.id for s in royxat], 'sarlavha': 'Salonchilar', 'izoh': 'Komissiya berilmaydi — faqat statistika (FT-6.5).',
-            'ustunlar': _u(('Salonchi', 'matn'), ('Salon', 'matn'), ('Olib kelgan mijozlar', 'son'), ('Tushum', 'pul')),
+    return {'kalitlar': [s.id for s in royxat], 'sarlavha': 'Salonchilar', 'izoh': 'Komissiya berilmaydi — faqat statistika.',
+            'ustunlar': _u(('Salonchi', 'matn'), ('Salon', 'matn'), ('Olib kelgan mijozlar', 'son'), ('Zakazlar summasi', 'pul')),
             'qatorlar': qatorlar, 'jami': ['Jami', '', sum(q[2] for q in qatorlar), sum(q[3] for q in qatorlar)]}
 
 
@@ -159,22 +170,32 @@ def mijoz_manbalari(salon, dan, gacha, sotuvchi=None, **_):
                .values_list('mijoz__manba').annotate(n=Count('mijoz', distinct=True)))
     qatorlar = [[nom, mij.get(k, 0), tol.get(k) or 0] for k, nom in Mijoz.Manba.choices]
     return {'kalitlar': [k for k, _nom in Mijoz.Manba.choices], 'sarlavha': 'Mijoz manbalari', 'izoh': '',
-            'ustunlar': _u(('Manba', 'matn'), ('Mijozlar', 'son'), ('Tushum', 'pul')),
+            'ustunlar': _u(('Manba', 'matn'), ('Mijozlar', 'son'), ('Zakazlar summasi', 'pul')),
             'qatorlar': qatorlar, 'jami': ['Jami', sum(q[1] for q in qatorlar), sum(q[2] for q in qatorlar)]}
 
 
+SALONDA = (Zalog.Holat.SAQLANMOQDA, Zalog.Holat.USHLAB_QOLINDI)
+
+
 def zaloglar(salon, dan, gacha, **_):
-    qatorlar = []
-    for g in (Zalog.objects.filter(salon=salon, holat__in=[Zalog.Holat.SAQLANMOQDA, Zalog.Holat.USHLAB_QOLINDI])
-              .select_related('zakaz__mijoz').order_by('olingan')):
-        qatorlar.append([g.yorliq, g.get_turi_display(), f'#{g.zakaz.raqam}', g.zakaz.mijoz.fio or g.zakaz.mijoz.telefon,
-                         g.summa if g.turi == Zalog.Turi.PUL else None, timezone.localtime(g.olingan).date(),
-                         g.get_holat_display()])
-    pul = sum(q[4] or 0 for q in qatorlar)
-    return {'sarlavha': 'Zaloglar reestri', 'izoh': 'Hozir salonda saqlanayotgan zaloglar (davrga bog\'liq emas).',
+    """Zaloglar (avvalgi «Zaloglar reestri» va «Zalog statistikasi» birlashgan): tepada hozir salonda turganlari (qachon
+    olinganidan qat'i nazar), keyin davrda olinib qaytarilganlari; `qoshimcha` — davrda olinganlar turi bo'yicha."""
+    royxat = list(Zalog.objects.filter(salon=salon).filter(Q(holat__in=SALONDA) | Q(olingan__date__range=(dan, gacha)))
+                  .select_related('zakaz__mijoz'))
+    royxat.sort(key=lambda g: (g.holat not in SALONDA, g.olingan))
+    qatorlar = [[g.yorliq, g.get_turi_display(), f'#{g.zakaz.raqam}', g.zakaz.mijoz.fio or g.zakaz.mijoz.telefon,
+                 g.summa if g.turi == Zalog.Turi.PUL else None, timezone.localtime(g.olingan).date(), g.get_holat_display()]
+                for g in royxat]
+    salonda = [g for g in royxat if g.holat in SALONDA]
+    pul = sum(g.summa or 0 for g in salonda if g.turi == Zalog.Turi.PUL)
+    st = zalog_statistikasi(salon, dan, gacha)
+    return {'zakazlar': [g.zakaz_id for g in royxat], 'sarlavha': 'Zaloglar',
+            'izoh': "Tepada — hozir salonda turgan zaloglar (qachon olinganidan qat'i nazar), keyin davrda olinib qaytarilganlari. "
+                    "Jami qatordagi pul — faqat salonda turgan pul zaloglari.",
             'ustunlar': _u(('Yorliq', 'matn'), ('Turi', 'matn'), ('Zakaz', 'matn'), ('Mijoz', 'matn'), ('Pul summasi', 'pul'),
                            ('Olingan', 'sana'), ('Holat', 'matn')),
-            'qatorlar': qatorlar, 'jami': [f'{len(qatorlar)} ta zalog', '', '', '', pul, None, '']}
+            'qatorlar': qatorlar, 'jami': [f'Salonda {len(salonda)} ta', '', '', '', pul, None, ''],
+            'qoshimcha': {'sarlavha': "Davrda olinganlar — turi bo'yicha", 'ustunlar': st['ustunlar'], 'qatorlar': st['qatorlar']}}
 
 
 def zalog_statistikasi(salon, dan, gacha, **_):
@@ -184,7 +205,7 @@ def zalog_statistikasi(salon, dan, gacha, **_):
         t = q.filter(turi=k)
         qatorlar.append([nom, t.count(), t.filter(holat=Zalog.Holat.QAYTARILDI).count(),
                          t.filter(holat=Zalog.Holat.USHLAB_QOLINDI).count(), t.filter(holat=Zalog.Holat.SAQLANMOQDA).count()])
-    return {'sarlavha': 'Zalog statistikasi', 'izoh': 'Davrda olingan zaloglar turi bo\'yicha (FT-7.2).',
+    return {'sarlavha': 'Zalog statistikasi', 'izoh': 'Davrda olingan zaloglar turi bo\'yicha.',
             'ustunlar': _u(('Turi', 'matn'), ('Olingan', 'son'), ('Qaytarilgan', 'son'), ('Ushlab qolingan', 'son'),
                            ('Saqlanmoqda', 'son')),
             'qatorlar': qatorlar, 'jami': None}
@@ -211,18 +232,18 @@ def bosh_liboslar(salon, dan, gacha, kun=None, kategoriya=None, filial=None, **_
             qatorlar.append([f'{l.artikul} {l.nomi}', oxirgi.get(l.id), bosh_kun, tushum, l.tannarx])
     qatorlar.sort(key=lambda q: -q[2])
     return {'sarlavha': "Qoplamagan va bo'sh liboslar", 'izoh': f"{kun} kundan beri berilmagan va tannarxini qoplamagan liboslar.",
-            'ustunlar': _u(('Libos', 'matn'), ('Oxirgi marta', 'sana'), ("Bo'sh turgan kun", 'son'), ('Jami tushum', 'pul'),
+            'ustunlar': _u(('Libos', 'matn'), ('Oxirgi berilgan', 'sana'), ("Bo'sh turgan kun", 'son'), ("Ijara narxi bo'yicha (jami)", 'pul'),
                            ('Tannarx', 'pul')),
             'qatorlar': qatorlar, 'jami': None}
 
 
 def bekor_qilinganlar(salon, dan, gacha, sotuvchi=None, **_):
+    royxat = list(Zakaz.objects.filter(salon=salon, holat=Zakaz.Holat.BEKOR, bekor_vaqti__date__range=(dan, gacha),
+                                       **({'sotuvchi_id': sotuvchi} if sotuvchi else {}))
+                  .select_related('mijoz').order_by('bekor_vaqti'))
     qatorlar = [[f'#{z.raqam}', z.mijoz.fio or z.mijoz.telefon, timezone.localtime(z.bekor_vaqti).date(), z.bekor_sabab,
-                 z.qaytarilgan_avans, z.ushlab_qolingan_avans]
-                for z in Zakaz.objects.filter(salon=salon, holat=Zakaz.Holat.BEKOR, bekor_vaqti__date__range=(dan, gacha),
-                                              **({'sotuvchi_id': sotuvchi} if sotuvchi else {}))
-                .select_related('mijoz').order_by('bekor_vaqti')]
-    return {'sarlavha': 'Bekor qilingan zakazlar', 'izoh': "Ushlab qolingan avans «boshqa daromad»ga yoziladi.",
+                 z.qaytarilgan_avans, z.ushlab_qolingan_avans] for z in royxat]
+    return {'zakazlar': [z.id for z in royxat], 'sarlavha': 'Bekor qilingan zakazlar', 'izoh': "Ushlab qolingan avans salonda qoladi — u foydada hisobga olingan.",
             'ustunlar': _u(('Zakaz', 'matn'), ('Mijoz', 'matn'), ('Sana', 'sana'), ('Sabab', 'matn'),
                            ('Qaytarilgan avans', 'pul'), ('Ushlab qolingan', 'pul')),
             'qatorlar': qatorlar, 'jami': [f'{len(qatorlar)} ta', '', None, '', sum(q[4] for q in qatorlar), sum(q[5] for q in qatorlar)]}
@@ -234,7 +255,7 @@ def kechikish_va_jarimalar(salon, dan, gacha, sotuvchi=None, **_):
               .filter(Q(kechikish_kunlari__gt=0) | Q(jarima__gt=0)).select_related('zakaz__mijoz').order_by('sana'))
     qatorlar = [[f'#{a.zakaz.raqam}', a.zakaz.mijoz.fio or a.zakaz.mijoz.telefon, a.sana, a.get_tekshiruv_display(),
                  a.kechikish_kunlari, a.jarima, a.ushlab_qolingan, a.qarz] for a in aktlar]
-    return {'sarlavha': 'Kechikish va jarimalar', 'izoh': '',
+    return {'zakazlar': [a.zakaz_id for a in aktlar], 'sarlavha': 'Kechikish va jarimalar', 'izoh': '',
             'ustunlar': _u(('Zakaz', 'matn'), ('Mijoz', 'matn'), ('Qaytarilgan', 'sana'), ('Holat', 'matn'), ('Kechikish, kun', 'son'),
                            ('Jarima', 'pul'), ('Zalogdan ushlandi', 'pul'), ('Qarz', 'pul')),
             'qatorlar': qatorlar,
@@ -244,15 +265,16 @@ def kechikish_va_jarimalar(salon, dan, gacha, sotuvchi=None, **_):
 
 def xarajatlar(salon, dan, gacha, **_):
     q = Xarajat.objects.filter(salon=salon, sana__range=(dan, gacha))
-    from .moddalar import modda_nomlari, togridan_kodlar
-    nomlar, tk = modda_nomlari(salon), togridan_kodlar(salon)
+    from .moddalar import modda_nomlari
+    nomlar = modda_nomlari(salon)
     tasdiq = dict(q.filter(holat=Xarajat.Holat.TASDIQLANDI).values_list('modda').annotate(s=Sum('summa')))
     kutmoqda = dict(q.filter(holat=Xarajat.Holat.KUTILMOQDA).values_list('modda').annotate(s=Sum('summa')))
-    qatorlar = [[nomlar[m], "To'g'ridan-to'g'ri" if m in tk else 'Operatsion', tasdiq.get(m, 0), kutmoqda.get(m, 0)]
-                for m in nomlar if tasdiq.get(m) or kutmoqda.get(m)]
-    return {'sarlavha': 'Xarajatlar', 'izoh': 'Tasdiq kutayotgan xarajatlar foyda/zarar hisobotiga kirmaydi.',
-            'ustunlar': _u(('Modda', 'matn'), ('Turi', 'matn'), ('Tasdiqlangan', 'pul'), ('Tasdiq kutmoqda', 'pul')),
-            'qatorlar': qatorlar, 'jami': ['Jami', '', sum(q[2] for q in qatorlar), sum(q[3] for q in qatorlar)]}
+    # Xarajat turi bo'yicha (Hisobot → Xarajatlar ostidagi «bu oy / o'tgan oy» jamlanmasi shu hisobotdan)
+    qatorlar = [[nomlar[m], tasdiq.get(m, 0), kutmoqda.get(m, 0)] for m in nomlar if tasdiq.get(m) or kutmoqda.get(m)]
+    return {'turlar': [m for m in nomlar if tasdiq.get(m) or kutmoqda.get(m)],
+            'sarlavha': 'Xarajatlar', 'izoh': 'Tasdiq kutayotgan xarajatlar foydaga kirmaydi.',
+            'ustunlar': _u(('Xarajat turi', 'matn'), ('Tasdiqlangan', 'pul'), ('Tasdiq kutmoqda', 'pul')),
+            'qatorlar': qatorlar, 'jami': ['Jami', sum(q[1] for q in qatorlar), sum(q[2] for q in qatorlar)]}
 
 
 def pul_oqimi(salon, dan, gacha, **_):
@@ -270,9 +292,34 @@ def pul_oqimi(salon, dan, gacha, **_):
                              tushum + zalog_in - zalog_out - xarajat - vozvrat - inkass])
     j = [sum(q[i] for q in qatorlar) for i in range(1, 8)]
     return {'sarlavha': 'Pul oqimi', 'izoh': 'Kassa orqali o\'tgan pul. Kassadan tashqari (rahbar kiritgan) xarajatlar bu yerda yo\'q.',
-            'ustunlar': _u(("To'lov usuli", 'matn'), ('Tushum', 'pul'), ('Zalog olindi', 'pul'), ('Zalog qaytarildi', 'pul'),
-                           ('Xarajat', 'pul'), ('Pul qaytarildi', 'pul'), ('Inkassatsiya', 'pul'), ('Sof oqim', 'pul')),
+            'ustunlar': _u(("To'lov usuli", 'matn'), ('Kirgan pul', 'pul'), ('Zalog olindi', 'pul'), ('Zalog qaytarildi', 'pul'),
+                           ('Xarajat', 'pul'), ('Pul qaytarildi', 'pul'), ('Inkassatsiya', 'pul'), ('Qolgan pul', 'pul')),
             'qatorlar': qatorlar, 'jami': ['Jami', *j]}
+
+
+def seyf_farqlari(salon, smenalar):
+    """C-11: har smena uchun seyf farqi — ochishda sanalgan boshlang'ich qoldiq minus shu kassaning oldingi smenasi yopilganda
+    seyfda qoldirilgan summa. Manfiy — smenalar orasida (kechasi) seyfdan pul kamaygan. Oldingi smena yoki uning seyf
+    summasi ma'lum bo'lmasa — yo'q. Ochishda saqlangan farq bo'lsa (`Smena.seyf_farq`, `seyfda_edi` — D3) o'shasi olinadi;
+    eski (maydonlardan oldingi) smenalar uchun yopilgan smenalardan hisoblanadi.
+    Natija: {smena_id: (farq, oldingi_seyfda)}."""
+    from bisect import bisect_left
+    yopilganlar = defaultdict(list)  # filial_id → [(yopilgan, seyfda)] vaqt bo'yicha
+    for sid, fid, yop, seyf in (Smena.objects.filter(salon=salon, yopilgan__isnull=False)
+                                .values_list('id', 'filial_id', 'yopilgan', 'seyfda').order_by('yopilgan')):
+        yopilganlar[fid].append((yop, seyf, sid))
+    natija = {}
+    for sm in smenalar:
+        royxat = yopilganlar.get(sm.filial_id, [])
+        i = bisect_left([x[0] for x in royxat], sm.ochilgan)
+        oldingi = next((x for x in reversed(royxat[:i]) if x[2] != sm.id), None)
+        saqlangan = getattr(sm, 'seyf_farq', None)
+        if saqlangan is not None:
+            edi = getattr(sm, 'seyfda_edi', None)
+            natija[sm.id] = (saqlangan, edi if edi is not None else (oldingi[1] if oldingi else None))
+        elif oldingi and oldingi[1] is not None:
+            natija[sm.id] = (sm.boshlangich_qoldiq - oldingi[1], oldingi[1])
+    return natija
 
 
 def kassa(salon, dan, gacha, filial=None, **_):
@@ -286,11 +333,18 @@ def kassa(salon, dan, gacha, filial=None, **_):
     pul = {r['smena']: r for r in Tolov.objects.filter(Tolov.HAQIQIY, smena__in=smenalar).values('smena').annotate(
         naqd=Sum('summa', filter=kirim & Q(usul=Tolov.Usul.NAQD)), naqdsiz=Sum('summa', filter=kirim & ~Q(usul=Tolov.Usul.NAQD)),
         qaytarilgan=Sum('summa', filter=Q(tur=T.VOZVRAT)), xarajat=Sum('summa', filter=Q(tur=T.XARAJAT)))}
+    seyf = seyf_farqlari(salon, smenalar)
     qatorlar = []
     for s in smenalar:
         p = pul.get(s.id, {})
         ishchilar = [i.xodim.ism for i in s.ishtirokchilar.all()] or [s.ochgan.ism]
         izoh = [f'{i.xodim.ism} topshirishda {i.farq:+,}'.replace(',', ' ') for i in s.ishtirokchilar.all() if i.farq]
+        seyf_farq, seyfda = seyf.get(s.id, (None, None))
+        if seyf_farq:
+            izoh.insert(0, f'seyf: oldingi smena {seyfda:,} qoldirgan, {s.ochgan.ism} ochishda {s.boshlangich_qoldiq:,} sanadi'
+                        .replace(',', ' '))
+            if getattr(s, 'ochish_izohi', ''):
+                izoh.insert(1, f'ochuvchi izohi: {s.ochish_izohi}')
         chiqqanlar_farqi = sum(i.farq or 0 for i in s.ishtirokchilar.all())
         izoh.append(s.izoh if s.yopilgan else 'smena ochiq')
         kutilgan = s.hisobdagi_qoldiq if s.yopilgan else kassa_hisobot(s)['hisobdagi_qoldiq']
@@ -298,19 +352,22 @@ def kassa(salon, dan, gacha, filial=None, **_):
         qatorlar.append([s.sana, ', '.join(dict.fromkeys(ishchilar)),
                          (s.farq or 0) + chiqqanlar_farqi if s.yopilgan or chiqqanlar_farqi else None, s.terminal_farq,
                          p.get('naqd') or 0, p.get('naqdsiz') or 0, p.get('qaytarilgan') or 0, p.get('xarajat') or 0,
-                         kutilgan, s.fakt_qoldiq, ' · '.join(x for x in izoh if x)])
+                         kutilgan, s.fakt_qoldiq, seyf_farq, ' · '.join(x for x in izoh if x)])
     jami = (['Jami', '', sum(q[2] or 0 for q in qatorlar), sum(q[3] or 0 for q in qatorlar)]
-            + [sum(q[i] for q in qatorlar) for i in range(4, 8)] + [None, None, ''])
+            + [sum(q[i] for q in qatorlar) for i in range(4, 8)] + [None, None, sum(q[10] or 0 for q in qatorlar), ''])
     return {'sarlavha': 'Kunlik kassa',
             'izoh': "Har smena alohida. «Kassada bo'lishi kerak» — smenani yopgan xodim qo'lida bo'lishi kerak bo'lgan naqd "
                     "(o'zi olgani va unga topshirilgani). «Farq» — kun bo'yicha jami: yopgan xodim va kun o'rtasida pulini "
                     "topshirib chiqqanlar (kim qancha — izohda). Manfiy — kamomad, musbat — ortiqcha. "
                     "«Terminal farqi» — terminal sverkasi minus tizimdagi terminal to'lovlari (manfiy — naqd «karta» deb "
                     "yozilgan bo'lishi mumkin). Rahbar «kelmadi» degan o'tkazmalar kirmaydi. "
-                    "Ijara, oylik kabi kassadan tashqari xarajatlar bu yerga kirmaydi.",
+                    "Ijara, oylik kabi kassadan tashqari xarajatlar bu yerga kirmaydi. "
+                    "«Seyf farqi» — smena ochishda sanalgan naqd minus oldingi smena yopilganda seyfda qoldirilgan summa: "
+                    "manfiy bo'lsa, smenalar orasida seyfdan pul kamaygan (kim yopib, kim ochgani — izohda).",
             'ustunlar': _u(('Sana', 'sana'), ('Xodim', 'matn'), ('Farq', 'pul'), ('Terminal farqi', 'pul'),
                            ('Naqd kirdi', 'pul'), ("Terminal va o'tkazma", 'pul'), ('Mijozga qaytarildi', 'pul'),
-                           ('Kassadan xarajat', 'pul'), ("Kassada bo'lishi kerak", 'pul'), ('Sanaldi', 'pul'), ('Izoh', 'matn')),
+                           ('Kassadan xarajat', 'pul'), ("Kassada bo'lishi kerak", 'pul'), ('Sanaldi', 'pul'), ('Seyf farqi', 'pul'),
+                           ('Izoh', 'matn')),
             'qatorlar': qatorlar, 'jami': jami}
 
 
@@ -340,22 +397,23 @@ def kelgusi_bronlar(salon, dan, gacha, **_):
         t = tolangan_summa(z)
         o = oylar[z.olib_ketish.strftime('%Y-%m')]
         o[0] += 1; o[1] += t; o[2] += z.jami - t
-    qatorlar = [[oy, *v] for oy, v in sorted(oylar.items())]
+    qatorlar = [[oy_nomi(oy), *v] for oy, v in sorted(oylar.items())]
     return {'sarlavha': 'Kelgusi bronlar', 'izoh': 'Bugundan keyin olib ketiladigan zakazlar, oyma-oy.',
             'ustunlar': _u(('Oy', 'matn'), ('Zakazlar', 'son'), ('Olingan avans', 'pul'), ('Kutilayotgan (qoldiq)', 'pul')),
             'qatorlar': qatorlar, 'jami': ['Jami', sum(q[1] for q in qatorlar), sum(q[2] for q in qatorlar), sum(q[3] for q in qatorlar)]}
 
 
 def chegirmalar(salon, dan, gacha, sotuvchi=None, **_):
-    qatorlar = []
+    qatorlar, zakazlar = [], []
     for s in (ChegirmaSorovi.objects.filter(salon=salon, yaratilgan__date__range=(dan, gacha),
                                             **({'sotuvchi_id': sotuvchi} if sotuvchi else {}))
               .select_related('zakaz', 'sotuvchi', 'rahbar').order_by('yaratilgan')):
         soralgan = f'{float(s.foiz):g}%' if s.foiz is not None else (f'{s.summa:,}'.replace(',', ' ') if s.summa else '')
+        zakazlar.append(s.zakaz_id)
         qatorlar.append([f'#{s.zakaz.raqam}', s.sotuvchi.ism if s.sotuvchi else '', soralgan,
                          s.izoh if s.holat == ChegirmaSorovi.Holat.TAYYOR else s.get_sabab_display(), s.get_holat_display(),
                          s.tasdiqlangan_summa, s.rahbar.ism if s.rahbar else ''])
-    return {'sarlavha': 'Chegirmalar', 'izoh': '',
+    return {'zakazlar': zakazlar, 'sarlavha': 'Chegirmalar', 'izoh': '',
             'ustunlar': _u(('Zakaz', 'matn'), ('Sotuvchi', 'matn'), ("So'ralgan", 'matn'), ('Sabab', 'matn'), ('Qaror', 'matn'),
                            ('Berilgan chegirma', 'pul'), ('Rahbar', 'matn')),
             'qatorlar': qatorlar, 'jami': ['Jami', '', '', '', '', sum(q[5] or 0 for q in qatorlar), '']}
@@ -395,13 +453,23 @@ def xodimlar_nazorati(salon, dan, gacha, **_):
     rad = rad_xarajatlar(salon, dan, gacha)  # kassadan yozilib rad etilgan xarajat — xodim kamomadi
     for xid, (n, s) in rad.items():
         farq[xid] -= s
+    # C-11: seyf farqi — smenani ochgan (sanagan) xodim qatorida; kim aybdorligi aniq emas, shuning uchun kassa farqiga
+    # qo'shilmaydi, alohida ustun va «Diqqat»da
+    seyf_xodim, seyf_soni = defaultdict(int), defaultdict(int)
+    smenalar = list(Smena.objects.filter(salon=salon, sana__range=(dan, gacha)))
+    sf = seyf_farqlari(salon, smenalar)
+    for sm in smenalar:
+        f = sf.get(sm.id, (None, None))[0]
+        if f:
+            seyf_xodim[sm.ochgan_id] += f
+            seyf_soni[sm.ochgan_id] += 1
     kelishmovchilik = dict(KassaTopshirish.objects.filter(salon=salon, yaratilgan__date__range=(dan, gacha),
                                                           qabul_summa__isnull=False).exclude(qabul_summa=F('summa'))
                            .values_list('kimdan_id').annotate(n=Count('id')))
     qatorlar = []
     for x in Xodim.objects.filter(salon=salon).order_by('ism'):
         if not (smena[x.id] or yangi.get(x.id) or bekor.get(x.id) or qaytargan.get(x.id) or cheg.get(x.id) or tushum.get(x.id)
-                or x.id in rad):
+                or x.id in rad or seyf_soni[x.id]):
             continue
         diqqat = []
         if kamomad[x.id]:
@@ -412,27 +480,30 @@ def xodimlar_nazorati(salon, dan, gacha, **_):
             diqqat.append(f"o'tkazma kelmadi {kelmadi[x.id]} marta")
         if kelishmovchilik.get(x.id):
             diqqat.append(f"pul topshirishda kelishmovchilik {kelishmovchilik[x.id]} marta")
+        if seyf_soni[x.id]:
+            diqqat.append(f"smena ochishda seyfda farq {seyf_soni[x.id]} marta")
         b, y = bekor.get(x.id, 0), yangi.get(x.id, 0)
         if b >= 2 and b * 5 >= max(y, 1):  # bekor qilganlari yangi zakazlarining 20% idan ko'p
             diqqat.append("bekor qilish ko'p")
         qatorlar.append([x.ism, ', '.join(diqqat), farq[x.id], smena[x.id], y, tushum.get(x.id, 0), b,
-                         qaytargan.get(x.id, 0), cheg.get(x.id, 0)])
+                         qaytargan.get(x.id, 0), cheg.get(x.id, 0), seyf_xodim[x.id]])
     return {'sarlavha': 'Xodimlar nazorati',
             'izoh': "Kassa farqi manfiy — kamomad: xodim o'z qo'lidagi naqdni topshirganda (smenadan chiqish yoki yopishda) "
-                    "kerakligidan kam bo'lgan; har kim faqat o'z hisobiga javob beradi. «Zakazlaridan tushum» — sotuvchi "
+                    "kerakligidan kam bo'lgan; har kim faqat o'z hisobiga javob beradi. «Zakazlaridan kirgan pul» — sotuvchi "
                     "olgan zakazlarga shu davrda kirgan pul (kassir qabul qilgan bo'lsa ham). «Diqqat» ustuni kamomad, "
                     "pul topshirishdagi kelishmovchilik va odatdan ko'p bekor qilishni belgilaydi. Kassadan yozilib rahbar "
-                    "rad etgan xarajat ham kamomadga qo'shiladi.",
+                    "rad etgan xarajat ham kamomadga qo'shiladi. «Seyf farqi (ochganda)» — xodim smenani ochib sanaganda seyfda "
+                    "oldingi yopishdagidan farq chiqqani (kim aybdorligi aniq emas — kassa farqiga qo'shilmaydi).",
             'ustunlar': _u(('Xodim', 'matn'), ('Diqqat', 'matn'), ('Kassa farqi', 'pul'), ('Smenalar', 'son'),
-                           ('Yangi zakazlar', 'son'), ('Zakazlaridan tushum', 'pul'), ('Bekor qilgan', 'son'),
-                           ('Mijozga qaytargan pul', 'pul'), ("Chegirma so'ragan", 'son')),
+                           ('Yangi zakazlar', 'son'), ('Zakazlaridan kirgan pul', 'pul'), ('Bekor qilgan', 'son'),
+                           ('Mijozga qaytargan pul', 'pul'), ("Chegirma so'ragan", 'son'), ('Seyf farqi (ochganda)', 'pul')),
             'qatorlar': qatorlar,
-            'jami': ['Jami', ''] + [sum(q[i] for q in qatorlar) for i in range(2, 9)]}
+            'jami': ['Jami', ''] + [sum(q[i] for q in qatorlar) for i in range(2, 10)]}
 
 
 HISOBOTLAR = {
     'libos': libos_samaradorligi, 'kategoriya': kategoriyalar, 'sotuvchi': sotuvchilar, 'salonchi': salonchilar,
-    'manba': mijoz_manbalari, 'zalog': zaloglar, 'zalog-statistika': zalog_statistikasi, 'bosh-liboslar': bosh_liboslar,
+    'manba': mijoz_manbalari, 'zalog': zaloglar, 'bosh-liboslar': bosh_liboslar,
     'bekor': bekor_qilinganlar, 'kechikish': kechikish_va_jarimalar, 'xarajat': xarajatlar, 'pul-oqimi': pul_oqimi,
     'kassa': kassa, 'nazorat': xodimlar_nazorati, 'bandlik': bandlik, 'kelgusi': kelgusi_bronlar, 'chegirma': chegirmalar,
 }
@@ -440,12 +511,18 @@ HISOBOTLAR = {
 # Ro'yxat uchun sarlavhalar — hisobotni hisoblamasdan (har bir funksiya javobidagi 'sarlavha' bilan bir xil)
 SARLAVHALAR = {
     'libos': 'Libos samaradorligi', 'kategoriya': 'Kategoriyalar', 'sotuvchi': 'Sotuvchilar', 'salonchi': 'Salonchilar',
-    'manba': 'Mijoz manbalari', 'zalog': 'Zaloglar reestri', 'zalog-statistika': 'Zalog statistikasi',
+    'manba': 'Mijoz manbalari', 'zalog': 'Zaloglar',
     'bosh-liboslar': "Qoplamagan va bo'sh liboslar", 'bekor': 'Bekor qilingan zakazlar', 'kechikish': 'Kechikish va jarimalar',
     'xarajat': 'Xarajatlar', 'pul-oqimi': 'Pul oqimi', 'kassa': 'Kunlik kassa', 'nazorat': 'Xodimlar nazorati',
     'bandlik': 'Bandlik',
     'kelgusi': 'Kelgusi bronlar', 'chegirma': 'Chegirmalar',
 }
+
+# Davrga bog'liq bo'lmagan hisobotlar: sahifada davr satri ko'rsatilmaydi (natijaga ta'sir qilmaydi)
+DAVRSIZ = {'kelgusi', 'bosh-liboslar'}
+
+# Hisobot ro'yxatidan olib tashlanganlar: «Xarajatlar» — Hisobot → Xarajatlar bo'limi bilan bir xil (API saqlanadi)
+ROYXATDA_YOQ = {'xarajat'}
 
 # Qaysi hisobotda qaysi filtr ishlaydi (FT-20.1); qolganlarida filtr ma'nosiz (masalan, kassa).
 FILTRLAR = {

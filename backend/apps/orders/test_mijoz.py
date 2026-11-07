@@ -93,3 +93,41 @@ class MijozTests(TestCase):
         self.assertEqual(c.patch(f'/api/mijozlar/{self.m.id}/', {'fio': 'x'}, format='json').status_code, 404)
         self.assertEqual(c.post(f'/api/mijozlar/{self.m.id}/qora-royxat/', {'qora_royxat': True, 'sabab': 'x'},
                                 format='json').status_code, 404)
+
+
+class MijozSonlariTests(TestCase):
+    """Mijozlar sahifasidagi rahbar ko'rsatkich kartalari: jami, yangi (30 kun), yaqin to'y, qarzdor — va shu filtrlar ro'yxatda."""
+    setUp = MijozTests.setUp  # meros emas — MijozTests testlari ikki marta yurmasin
+    api = MijozTests.api
+
+    def test_sonlar_va_filtrlar(self):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from .models import QaytarishAkti, Zakaz
+        bugun = timezone.localdate()
+        eski = Mijoz.objects.get(telefon='+998905556677')  # zakazsiz — yangi emas
+        eski.toy_sanasi = bugun + timedelta(days=10)
+        eski.save(update_fields=['toy_sanasi'])
+        Zakaz.objects.filter(id=self.z.id).update(holat=Zakaz.Holat.QAYTARILDI)
+        QaytarishAkti.objects.create(salon=self.salon, zakaz=self.z, xodim=self.malika, sana=bugun, qarz=150_000)
+        r = self.api(self.rahbar).get('/api/mijozlar/sonlar/')
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual({k: r.json()[k] for k in ('jami', 'yangi', 'toy', 'qarzdor', 'qarz_jami', 'qora')},
+                         {'jami': 2, 'yangi': 1, 'toy': 1, 'qarzdor': 1, 'qarz_jami': 150_000, 'qora': 0})
+        royxat = lambda tur: [m['fio'] for m in self.api(self.rahbar).get('/api/mijozlar/', {'tur': tur}).json()]  # noqa: E731
+        self.assertEqual(royxat('yangi'), ['Dilnoza Karimova'])
+        self.assertEqual(royxat('toy'), ['Nodira'])
+        self.assertEqual(royxat('qarzdor'), ['Dilnoza Karimova'])
+        self.assertEqual(len(royxat('')), 2)
+        self.assertEqual(self.api(self.malika).get('/api/mijozlar/sonlar/').status_code, 403)  # sotuvchiga yopiq
+
+    def test_eski_mijoz_yangi_emas(self):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from .models import Zakaz
+        Zakaz.objects.filter(id=self.z.id).update(yaratilgan=timezone.now() - timedelta(days=45))
+        self.assertEqual(self.api(self.rahbar).get('/api/mijozlar/sonlar/').json()['yangi'], 0)

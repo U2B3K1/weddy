@@ -80,9 +80,11 @@ class SmenaHolatiView(APIView):
 
 class SmenaOchishSerializer(serializers.Serializer):
     boshlangich_qoldiq = serializers.IntegerField(min_value=0)
+    izoh = serializers.CharField(max_length=300, required=False, allow_blank=True, default='')  # C-11: seyf farqi sababi
 
 
 class SmenaOchishView(APIView):
+    faqat_korishda_ruxsat = True  # C-12: obuna tugaganda ham boshlangan ish yakunlanadi
     permission_classes = [SalonYozishRuxsati]
 
     def post(self, request):
@@ -96,6 +98,7 @@ class SmenaOchishView(APIView):
 
 
 class SmenaQoshilishView(APIView):
+    faqat_korishda_ruxsat = True  # C-12: obuna tugaganda ham boshlangan ish yakunlanadi
     permission_classes = [SalonYozishRuxsati]
 
     def post(self, request):
@@ -116,6 +119,7 @@ class SanashSerializer(serializers.Serializer):
 
 class SmenaChiqishView(APIView):
     """POST {summa, kimga?} — qo'ldagi naqdni smenada qolayotgan xodimga yoki rahbarga topshirib chiqish."""
+    faqat_korishda_ruxsat = True  # C-12: obuna tugaganda ham boshlangan ish yakunlanadi
     permission_classes = [SalonYozishRuxsati]
 
     def post(self, request):
@@ -131,6 +135,7 @@ class SmenaChiqishView(APIView):
 
 
 class SmenaYopishView(APIView):
+    faqat_korishda_ruxsat = True  # C-12: obuna tugaganda ham boshlangan ish yakunlanadi
     permission_classes = [SalonYozishRuxsati]
 
     def post(self, request):
@@ -154,6 +159,7 @@ def otkazma_json(t):
 
 class OtkazmaTasdiqView(APIView):
     """POST {keldi: true|false} — rahbar o'tkazma (Click, Payme) hisobiga kelganini tasdiqlaydi."""
+    faqat_korishda_ruxsat = True  # C-12: obuna tugaganda ham boshlangan ish yakunlanadi
 
     def get_permissions(self):
         from apps.tenants.permissions import IsRahbar
@@ -173,6 +179,7 @@ class OtkazmaTasdiqView(APIView):
 
 class TolovTuzatishView(APIView):
     """POST {usul?, summa?, sabab} — rahbar xato yozilgan avans/qoldiqni tuzatadi (smena ochiq paytda)."""
+    faqat_korishda_ruxsat = True  # C-12: obuna tugaganda ham boshlangan ish yakunlanadi
 
     def get_permissions(self):
         from apps.tenants.permissions import IsRahbar
@@ -196,6 +203,7 @@ class TolovTuzatishView(APIView):
 class InkassatsiyaView(APIView):
     """POST {summa, rahbar | kimga, izoh?} — naqdning bir qismini topshirish: rahbarga (kassadan chiqadi) yoki
     smenadagi hamkasbga (`kimga`, pul kassada qoladi). Qabul qiluvchi Telegramda yoki ilovada tasdiqlaydi."""
+    faqat_korishda_ruxsat = True  # C-12: obuna tugaganda ham boshlangan ish yakunlanadi
     permission_classes = [SalonYozishRuxsati]
 
     def post(self, request):
@@ -218,6 +226,7 @@ class InkassatsiyaView(APIView):
 
 class TopshiriqQabulView(APIView):
     """POST {summa?} — menga topshirilgan pulni sanab qabul qilish (summasiz — topshiruvchi aytgan summa)."""
+    faqat_korishda_ruxsat = True  # C-12: obuna tugaganda ham boshlangan ish yakunlanadi
     permission_classes = [SalonYozishRuxsati]
 
     def post(self, request, pk):
@@ -247,6 +256,7 @@ class TolovSerializer(serializers.Serializer):
 
 
 class TolovView(APIView):
+    faqat_korishda_ruxsat = True  # C-12: obuna tugaganda ham boshlangan ish yakunlanadi
     permission_classes = [SalonYozishRuxsati]
 
     def post(self, request):
@@ -268,6 +278,7 @@ class TolovView(APIView):
 
 class ZaloglarView(APIView):
     """Kunlik zalog tekshiruvi (FT-12.5): GET — saqlanayotgan hujjat/tillo zaloglar; POST — «joyida» / «yo'q»."""
+    faqat_korishda_ruxsat = True  # C-12: obuna tugaganda ham boshlangan ish yakunlanadi
     permission_classes = [IsStaff]
 
     def _smena(self, request):
@@ -312,13 +323,21 @@ class SmenalarView(APIView):
         return [IsRahbar()]
 
     def get(self, request):
+        """?farqli=1 — faqat kassa, terminal yoki seyf (ochishdagi) farqi bor smenalar (egasi kamomadni ko'radi)."""
+        from django.db.models import Q
+
         from .models import Smena
-        qs = Smena.objects.filter(salon=request.salon).select_related('ochgan', 'filial').order_by('-id')[:40]
+        qs = Smena.objects.filter(salon=request.salon)
+        if request.query_params.get('farqli') == '1':
+            qs = qs.filter(Q(farq__lt=0) | Q(farq__gt=0) | Q(terminal_farq__lt=0) | Q(terminal_farq__gt=0)
+                           | Q(seyf_farq__lt=0) | Q(seyf_farq__gt=0))
+        qs = qs.select_related('ochgan', 'filial').order_by('-id')[:40]
         return Response([tekshiruv.smena_json(s) for s in qs])
 
 
 class SmenaTuzatishView(APIView):
     """PATCH — yopilgan smenaning fakt qoldig'i va izohini faqat rahbar o'zgartiradi (FT-12.11)."""
+    faqat_korishda_ruxsat = True  # C-12: obuna tugaganda ham boshlangan ish yakunlanadi
 
     def get_permissions(self):
         from apps.tenants.permissions import IsRahbar

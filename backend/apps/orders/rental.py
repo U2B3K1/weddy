@@ -9,6 +9,7 @@ from apps.cash.services import KassaXatosi, tolangan_summa, tolov_qabul
 from apps.catalog.models import Libos
 from apps.tenants.models import sozlama
 
+from .changes import _log
 from .models import QaytarishAkti, Zalog, Zakaz, ZakazPozitsiya
 
 OGIRLIK_TOLERANSIYA = Decimal('0.1')  # gramm
@@ -47,6 +48,11 @@ def libos_berish(*, salon, xodim, zakaz, zaloglar, usul=Tolov.Usul.NAQD, erta=Tr
         if (ZakazPozitsiya.objects.filter(libos=p.libos, zakaz__holat=Zakaz.Holat.BERILDI)
                 .exclude(zakaz=zakaz).exists()):
             raise BerishXatosi(f"«{p.libos.nomi}» hali oldingi mijozdan qaytmagan.")
+    bugun = timezone.localdate()
+    eski_olib_ketish = zakaz.olib_ketish
+    if zakaz.olib_ketish > bugun:  # C-08: erta berilsa libos bugundan band — bron boshlanishi bugunga ko'chadi
+        _bronni_bugundan(zakaz, bugun)
+        zakaz.olib_ketish = bugun
 
     ruxsat = sozlama(salon).zalog_turlari()  # admin panelda yoqilgan turlar (FT-7.1)
     for z in zaloglar:
@@ -77,17 +83,61 @@ def libos_berish(*, salon, xodim, zakaz, zaloglar, usul=Tolov.Usul.NAQD, erta=Tr
             except KassaXatosi as e:
                 raise BerishXatosi(str(e))
     zakaz.holat = Zakaz.Holat.BERILDI
-    zakaz.save(update_fields=['holat'])
+    zakaz.save(update_fields=['holat', 'olib_ketish'])
+    _log(zakaz, xodim, 'berildi',
+         f'olib ketish {eski_olib_ketish:%d.%m.%Y} edi — erta berildi' if eski_olib_ketish != zakaz.olib_ketish else '',
+         'zalog: ' + '; '.join(_zalog_matni(z) for z in zaloglar))
     return zakaz
+
+
+def _zalog_matni(z):
+    """Tarix uchun qisqa: «pul 1000000», «hujjat pasport AA1234567», «tillo uzuk 5.00 g»."""
+    if z['turi'] == Zalog.Turi.PUL:
+        return f"pul {z.get('summa', 0)}"
+    if z['turi'] == Zalog.Turi.HUJJAT:
+        return f"hujjat {z.get('hujjat_turi', '')} {z.get('hujjat_raqami', '')}".strip()
+    return f"tillo {z.get('tavsif', '')} {z.get('ogirlik_gr', '')} g".strip()
+
+
+def _bronni_bugundan(zakaz, bugun):
+    """Erta berishda zakazning libos va aksessuar bronlari bugundan boshlanadi (yuqori chegarasi o'zgarmaydi).
+
+    Oradagi kunlarda libos boshqa zakazga band bo'lsa — berish rad etiladi: aks holda mijoz qo'lidagi libos
+    shu kunlarga ikkinchi mijozga ham berilib qo'yilardi. Muddati o'tgan avanssiz bronlar avval bo'shatiladi.
+    """
+    from psycopg.types.range import Range
+
+    from apps.bookings.models import AksessuarBron, Bron
+    from apps.bookings.services import _muddati_otganlarni_boshat
+
+    for model, kalit in ((Bron, 'libos'), (AksessuarBron, 'dona')):
+        for b in model.objects.select_related(kalit).filter(zakaz=zakaz):
+            yangi = Range(bugun, b.oraliq.upper, '[' + b.oraliq.bounds[1])
+            oradagi = Range(bugun, zakaz.olib_ketish, '[)')
+            filtr = {kalit: getattr(b, kalit), 'oraliq__overlap': oradagi}
+            _muddati_otganlarni_boshat(model.objects.filter(turi=Bron.Turi.VAQTINCHALIK, muddati__lt=timezone.now(),
+                                                            **filtr).exclude(zakaz=zakaz), zakaz)
+            tosiq = model.objects.filter(**filtr).exclude(zakaz=zakaz).select_related('zakaz').first()
+            if tosiq:
+                nomi = (f'«{b.libos.artikul} {b.libos.nomi}»' if kalit == 'libos'
+                        else f'«{b.dona.aksessuar.nomi}» ({b.dona.yorliq})')
+                band = f" zakaz #{tosiq.zakaz.raqam} da" if tosiq.zakaz_id else ''
+                raise BerishXatosi(f"{nomi} {zakaz.olib_ketish:%d.%m.%Y} gacha{band} band — oldinroq berib bo'lmaydi. "
+                                   f"Olib ketish kuni ({zakaz.olib_ketish:%d.%m.%Y}) bering.")
+            b.oraliq = yangi
+            b.save(update_fields=['oraliq'])
 
 
 @transaction.atomic
 def libos_qaytarish(*, salon, xodim, zakaz, tekshiruv=QaytarishAkti.Tekshiruv.BUTUN, jarima=0,
-                    jarima_tolandi=0, tortilgan_gr=None, baho=None, izoh='', kunlik_kechikish_jarimasi=None):
+                    jarima_tolandi=0, tortilgan_gr=None, baho=None, izoh='', kunlik_kechikish_jarimasi=None,
+                    usul=Tolov.Usul.NAQD, yoqolgan_donalar=()):
     """Qaytarishni rasmiylashtiradi (FT-7.3, FT-9.2–9.4).
 
     Jarima avval pul zalogidan ushlab qolinadi; qolgani qarz bo'ladi. Hujjat va tillo zalog jarima to'lanmaguncha
-    qaytarilmaydi. Barcha zalog qaytib, qarz bo'lmasa zakaz yopiladi.
+    qaytarilmaydi. Qarz ham, to'lanmagan qoldiq (masalan, «kelmadi» o'tkazma) ham bo'lmasa zakaz yopiladi (C-03).
+    «Yirtiq» / «Dog'» — libos ta'mirga o'tadi (keyingi mijozga ketib qolmasin), «Aksessuar yo'q» —
+    `yoqolgan_donalar` dagi donalar «yo'qolgan» bo'ladi (C-10). `usul` — hozir to'langan jarima qanday olingani (C-20).
     """
     zakaz = Zakaz.objects.select_for_update().get(id=zakaz.id, salon=salon)
     if zakaz.holat != Zakaz.Holat.BERILDI:
@@ -110,12 +160,19 @@ def libos_qaytarish(*, salon, xodim, zakaz, tekshiruv=QaytarishAkti.Tekshiruv.BU
 
     ushlab = min(jarima, pul_jami)
     qarz = jarima - ushlab
+    # Yo'qolgan aksessuar donalari faqat shu zakazniki bo'lishi mumkin (C-10)
+    zakaz_donalari = {a.dona_id: a.dona for a in zakaz.aksessuarlar.select_related('dona__aksessuar')}
+    yoqolgan = [zakaz_donalari[i] for i in dict.fromkeys(yoqolgan_donalar or ()) if i in zakaz_donalari]
+    if len(yoqolgan) != len(set(yoqolgan_donalar or ())):
+        raise BerishXatosi("Yo'qolgan deb belgilangan aksessuar bu zakazda yo'q.")
+
     t = min(jarima_tolandi or 0, qarz)  # mijoz qolgan jarimani hozir to'ladi
     if t > 0:  # jarima pul zalogidan to'liq ushlangan bo'lsa to'lanadigan narsa yo'q (0 so'mlik to'lov rad etiladi)
-        tolov_qabul(salon=salon, xodim=xodim, tur=Tolov.Tur.JARIMA, summa=t, zakaz=zakaz)
+        tolov_qabul(salon=salon, xodim=xodim, tur=Tolov.Tur.JARIMA, summa=t, usul=usul, zakaz=zakaz)
         qarz -= t
 
-    # Tillo og'irligini solishtirish (FT-7.5)
+    # Tillo og'irligini solishtirish (FT-7.5). C-26: xato matnida kutilgan og'irlik aytilmaydi — aks holda
+    # o'sha raqamni qayta yozib tekshiruvni chetlab o'tish mumkin edi
     ogirlik_mos = None
     tillolar = [z for z in zaloglar if z.turi == Zalog.Turi.TILLO]
     if tillolar:
@@ -124,7 +181,8 @@ def libos_qaytarish(*, salon, xodim, zakaz, tekshiruv=QaytarishAkti.Tekshiruv.BU
         kutilgan = sum(z.ogirlik_gr for z in tillolar)
         ogirlik_mos = abs(Decimal(str(tortilgan_gr)) - kutilgan) <= OGIRLIK_TOLERANSIYA
         if not ogirlik_mos:
-            raise BerishXatosi(f"Og'irlik mos kelmadi: berilgan {kutilgan} g, hozir {tortilgan_gr} g.")
+            raise BerishXatosi("Og'irlik mos kelmadi — dalolatnomadagidan farq qiladi. Buyumni qayta torting; farq qolsa, "
+                               "zalogni qaytarmang va rahbarga xabar bering.")
 
     # Pul: butun zalog chiqim, ushlab qolingan qismi jarima sifatida tushum (FT-7.3, 4.12 qatorlari)
     if pul_jami:
@@ -149,13 +207,40 @@ def libos_qaytarish(*, salon, xodim, zakaz, tekshiruv=QaytarishAkti.Tekshiruv.BU
         ushlab_qolingan=ushlab, qarz=qarz, kechikish_kunlari=kechikish,
         tortilgan_gr=tortilgan_gr, ogirlik_mos=ogirlik_mos, baho=baho, izoh=izoh, xodim=xodim)
 
-    for p in zakaz.pozitsiyalar.select_related('libos'):  # FT-9.4
-        if p.libos.holat == Libos.Holat.BOSH:
-            p.libos.holat = Libos.Holat.TOZALASHDA
-            p.libos.save(update_fields=['holat'])
-    yopildi = qarz == 0
+    # C-03: to'lanmagan qoldiq (masalan, o'tkazma «kelmadi») bo'lsa zakaz yopilmaydi — qoldiq olinguncha «Qaytarildi»
+    yopildi = qarz == 0 and tolangan_summa(zakaz) >= zakaz.jami
     zakaz.holat = Zakaz.Holat.YOPILDI if yopildi else Zakaz.Holat.QAYTARILDI
     zakaz.save(update_fields=['holat'])
+
+    nuqson = tekshiruv in (QaytarishAkti.Tekshiruv.YIRTIQ, QaytarishAkti.Tekshiruv.DOG)
+    for p in zakaz.pozitsiyalar.select_related('libos'):  # FT-9.4
+        if p.libos.holat != Libos.Holat.BOSH:
+            continue
+        if nuqson:  # C-10: nuqsonli libos tozalashdan o'zi «bo'sh» bo'lib keyingi mijozga ketmasin — ta'mirga
+            from apps.catalog.services import KatalogXatosi
+            from apps.catalog.tamir import tamirga_berish
+            ish = f"Qaytarishda: {QaytarishAkti.Tekshiruv(tekshiruv).label.lower()} (zakaz #{zakaz.raqam})"
+            try:
+                tamirga_berish(salon=salon, xodim=xodim, libos=p.libos, ish_turi=f'{ish}. {izoh}'.strip(' .') if izoh else ish)
+            except KatalogXatosi as e:
+                raise BerishXatosi(f"«{p.libos.nomi}»ni ta'mirga o'tkazib bo'lmadi: {e}")
+        else:
+            p.libos.holat = Libos.Holat.TOZALASHDA
+            p.libos.save(update_fields=['holat'])
+    if yoqolgan:  # C-10: yo'qolgan dona ijaraga chiqmaydi
+        from apps.catalog.models import AksessuarDona
+        AksessuarDona.objects.filter(id__in=[d.id for d in yoqolgan]).update(holat=AksessuarDona.Holat.YOQOLGAN)
+
+    qismlar = [QaytarishAkti.Tekshiruv(tekshiruv).label.lower()]
+    if jarima:
+        qismlar.append(f'jarima {jarima}, zalogdan ushlandi {ushlab}, qarz {qarz}')
+    if kechikish:
+        qismlar.append(f'kechikish {kechikish} kun')
+    if yoqolgan:
+        qismlar.append("yo'qolgan: " + ', '.join(d.yorliq for d in yoqolgan))
+    if nuqson:
+        qismlar.append("libos ta'mirga o'tdi")
+    _log(zakaz, xodim, 'qaytarildi', '', '; '.join(qismlar), izoh)
     return zakaz
 
 
@@ -170,19 +255,23 @@ def tozalash_tugadi(*, salon, libos):
 
 
 @transaction.atomic
-def qarzni_tolash(*, salon, xodim, zakaz, summa):
-    """Qaytarishdan keyingi jarima qarzi to'lanadi; to'liq to'lansa ushlab qolingan zalog qaytadi, zakaz yopiladi."""
+def qarzni_tolash(*, salon, xodim, zakaz, summa, usul=Tolov.Usul.NAQD):
+    """Qaytarishdan keyingi jarima qarzi to'lanadi; to'liq to'lansa ushlab qolingan zalog qaytadi.
+    Zakaz yopiladi — agar ijara qoldig'i ham to'langan bo'lsa (C-03). `usul` — naqd, terminal yoki o'tkazma (C-20)."""
     zakaz = Zakaz.objects.select_for_update().get(id=zakaz.id, salon=salon)
     akt = getattr(zakaz, 'qaytarish_akti', None)  # qaytarilmagan zakazda akt yo'q — 500 emas, 409
     if zakaz.holat != Zakaz.Holat.QAYTARILDI or akt is None or akt.qarz == 0:
         raise BerishXatosi("To'lanadigan qarz yo'q.")
     summa = min(summa, akt.qarz)
-    tolov_qabul(salon=salon, xodim=xodim, tur=Tolov.Tur.JARIMA, summa=summa, zakaz=zakaz)
+    tolov_qabul(salon=salon, xodim=xodim, tur=Tolov.Tur.JARIMA, summa=summa, usul=usul, zakaz=zakaz)
+    eski = akt.qarz
     akt.qarz -= summa
     akt.save(update_fields=['qarz'])
     if akt.qarz == 0:
         zakaz.zaloglar.filter(holat=Zalog.Holat.USHLAB_QOLINDI).update(
             holat=Zalog.Holat.QAYTARILDI, qaytarilgan=timezone.now())
-        zakaz.holat = Zakaz.Holat.YOPILDI
-        zakaz.save(update_fields=['holat'])
+        if tolangan_summa(zakaz) >= zakaz.jami:
+            zakaz.holat = Zakaz.Holat.YOPILDI
+            zakaz.save(update_fields=['holat'])
+    _log(zakaz, xodim, 'qarz_tolandi', f'qarz {eski}', f"to'landi {summa}, qoldi {akt.qarz}")
     return zakaz

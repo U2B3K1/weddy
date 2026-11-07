@@ -3,19 +3,40 @@
 Mijozlarning to'liq ro'yxatini faqat rahbar ko'radi (Ilova B). Sotuvchi faqat qidiradi: telefon yoki ismning kamida
 4 ta belgisi bilan, shunda u butun bazani varaqlab chiqa olmaydi. Ro'yxatni fayl qilib yuklab olish yo'q (7.4).
 """
-from django.db.models import Count, Max, Q, Sum
+from datetime import timedelta
+
+from django.db.models import Count, F, Max, Min, Q, Sum
+from django.utils import timezone
 from rest_framework import serializers
 from rest_framework.exceptions import NotFound
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.tenants.models import Xodim, jurnalga_yoz
-from apps.tenants.permissions import IsRahbar, IsStaff, SalonYozishRuxsati
+from apps.tenants.permissions import IsRahbar, IsStaff, SalonYozishRuxsati, yozish_taqiqi
 
 from .models import Mijoz, Zakaz
 
 OLCHAMLAR = ('kokrak', 'bel', 'son', 'boy', 'oyoq_olchami')
 QIDIRUV_MIN = 4
+DAVR = 30  # «yangi mijoz» va «yaqin to'y» — shuncha kun
+
+
+def _qarzdor_q():
+    """Libosni qaytargan, lekin jarima/zararni to'lamagan (Qarzdorlar ro'yxati bilan bir xil ta'rif)."""
+    return Q(zakazlar__holat=Zakaz.Holat.QAYTARILDI, zakazlar__qaytarish_akti__qarz__gt=0)
+
+
+def mijoz_filtri(qs, tur):
+    """Rahbar ko'rsatkich kartalari filtri: yangi (birinchi zakazi oxirgi 30 kunda), toy (to'yi 30 kun ichida), qarzdor."""
+    bugun = timezone.localdate()
+    if tur == 'yangi':
+        return qs.annotate(birinchi=Min('zakazlar__yaratilgan')).filter(birinchi__date__gte=bugun - timedelta(days=DAVR - 1))
+    if tur == 'toy':
+        return qs.filter(toy_sanasi__range=(bugun, bugun + timedelta(days=DAVR)))
+    if tur == 'qarzdor':
+        return qs.filter(id__in=Mijoz.objects.filter(_qarzdor_q()).values('id'))
+    return qs
 
 
 def mijoz_json(m, tolik=False):
@@ -47,14 +68,49 @@ class MijozlarView(APIView):
             qs = qs.filter(Q(telefon__icontains=q) | Q(fio__icontains=q) | Q(qoshimcha_telefon__icontains=q))
         if request.query_params.get('qora_royxat') == '1':
             qs = qs.filter(qora_royxat=True)
-        return Response([mijoz_json(m) for m in qs.order_by('fio', 'telefon')[:50 if not rahbar else 200]])
+        if rahbar:
+            qs = mijoz_filtri(qs, request.query_params.get('tur'))
+        # B-32: tartib — oxirgi zakaz sanasi (jadvaldagi «Oxirgi zakaz» ustuni) bo'yicha, zakazsizlar oxirida
+        qs = qs.order_by(F('oxirgi_zakaz').desc(nulls_last=True), 'fio', 'telefon')
+        kesim = 50 if not rahbar else 200
+        if request.query_params.get('sahifa'):  # {natija, jami}: «200 tadan ko'p» xabari va «Yana» uchun
+            limit = _butun(request.query_params.get('limit'), kesim, 1, kesim)
+            offset = _butun(request.query_params.get('offset'), 0)
+            return Response({'natija': [mijoz_json(m) for m in qs[offset:offset + limit]], 'jami': qs.count()})
+        return Response([mijoz_json(m) for m in qs[:kesim]])
+
+
+class MijozSonlariView(APIView):
+    """GET /api/mijozlar/sonlar/ — Mijozlar sahifasidagi ko'rsatkich kartalari (faqat rahbar; sotuvchi ro'yxatni ko'rmaydi)."""
+    permission_classes = [IsRahbar]
+
+    def get(self, request):
+        qs = Mijoz.objects.filter(salon=request.salon)
+        qarz = (Zakaz.objects.filter(salon=request.salon, holat=Zakaz.Holat.QAYTARILDI, qaytarish_akti__qarz__gt=0)
+                .aggregate(s=Sum('qaytarish_akti__qarz'))['s'] or 0)
+        return Response({'jami': qs.count(), 'yangi': mijoz_filtri(qs, 'yangi').count(), 'toy': mijoz_filtri(qs, 'toy').count(),
+                         'qarzdor': mijoz_filtri(qs, 'qarzdor').count(), 'qarz_jami': qarz,
+                         'qora': qs.filter(qora_royxat=True).count(), 'davr': DAVR})
+
+
+def _butun(qiymat, standart, kichik=0, katta=None):
+    try:
+        n = int(qiymat)
+    except (TypeError, ValueError):
+        return standart
+    n = max(kichik, n)
+    return min(n, katta) if katta is not None else n
+
+
+MANBA_XATO = {'invalid_choice': "«{input}» — noma'lum manba. Ro'yxatdan tanlang."}
 
 
 class MijozSerializer(serializers.Serializer):
     fio = serializers.CharField(max_length=200, required=False, allow_blank=True)
     qoshimcha_telefon = serializers.CharField(max_length=20, required=False, allow_blank=True)
     toy_sanasi = serializers.DateField(required=False, allow_null=True)
-    manba = serializers.ChoiceField(choices=Mijoz.Manba.choices, required=False)
+    # bo'sh qiymat — «ko'rsatilmagan» (B-12)
+    manba = serializers.ChoiceField(choices=Mijoz.Manba.choices, required=False, allow_blank=True, error_messages=MANBA_XATO)
     izoh = serializers.CharField(max_length=300, required=False, allow_blank=True)
     kiyim_olchami = serializers.CharField(max_length=20, required=False, allow_blank=True)
     kokrak = serializers.IntegerField(min_value=40, max_value=200, required=False, allow_null=True)
@@ -82,8 +138,8 @@ class MijozView(APIView):
              'liboslar': [p.libos.nomi for p in z.pozitsiyalar.all()]} for z in tarix]})
 
     def patch(self, request, pk):
-        if not SalonYozishRuxsati().has_permission(request, self):
-            return Response({'detail': "Salon «faqat ko'rish» rejimida."}, status=403)
+        if (rad := yozish_taqiqi(request, self)):  # o'zbekcha sabab bilan (C-12)
+            return rad
         ser = MijozSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
         m = self._mijoz(request, pk)

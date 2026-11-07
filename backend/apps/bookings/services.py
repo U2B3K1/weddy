@@ -102,15 +102,37 @@ def bosh_liboslar(salon, olib_ketish, qaytarish, bandlarni_korsat=False, xodim=N
                                                       oraliq__endswith__gt=olib_ketish)
                                    .values_list('libos_id', 'oraliq')):
             keyingi.setdefault(libos_id, []).append(b_oraliq)
+    qaytmagan = qaytmagan_liboslar(salon)
     for libos in liboslar:
         oraliq = bron_oraliq(libos, olib_ketish, qaytarish, bufer)
-        band = any(_kesishadi(oraliq, b) for b in bronlar.get(libos.id, ()))
+        band = (any(_kesishadi(oraliq, b) for b in bronlar.get(libos.id, ()))
+                or (libos.id in qaytmagan and olib_ketish <= _qaytishi_mumkin(libos, bufer)))
         if not band or bandlarni_korsat:
             libos.qulflangan = not band and any(_kesishadi(oraliq, q) for q in qulflar.get(libos.id, ()))
+            # kechikkan (hali qaytmagan) libos qachon bo'shashi noma'lum — taxmin qilinmaydi
             libos.eng_yaqin_bosh = (eng_yaqin_bosh_sana(libos, olib_ketish, qaytarish, bufer,
-                                                        keyingi.get(libos.id, [])) if band else None)
+                                                        keyingi.get(libos.id, []))
+                                    if band and libos.id not in qaytmagan else None)
             natija.append((libos, band))
     return natija
+
+
+def qaytmagan_liboslar(salon, zakaz=None):
+    """C-08: qaytarish kuni o'tgan, lekin hali mijozdan qaytmagan («Berildi») liboslar — {libos_id: zakaz}.
+
+    Ularning broni tugagan, ammo libos salonda yo'q: bugungi (va bufer kunlaridagi) yangi bronga berilmaydi.
+    """
+    from apps.orders.models import Zakaz, ZakazPozitsiya
+    qs = (ZakazPozitsiya.objects.filter(zakaz__salon=salon, zakaz__holat=Zakaz.Holat.BERILDI,
+                                        zakaz__qaytarish__lt=timezone.localdate()).select_related('zakaz'))
+    if zakaz is not None:
+        qs = qs.exclude(zakaz=zakaz)
+    return {p.libos_id: p.zakaz for p in qs}
+
+
+def _qaytishi_mumkin(libos, bufer):
+    """Kechikkan libos eng erta qachon ijaraga chiqishi mumkin: bugun qaytsa ham tozalash (bufer) kunlari kerak."""
+    return timezone.localdate() + timedelta(days=libos.samarali_bufer_kun(bufer))
 
 
 @transaction.atomic
@@ -128,6 +150,10 @@ def bron_qilish(*, salon, libos, olib_ketish, qaytarish, xodim, avans_bor=False,
     oraliq = bron_oraliq(libos, olib_ketish, qaytarish)
     if boshqa_qulf(libos, oraliq, xodim).exists():
         raise BandlikXatosi("Hozir boshqa sotuvchi rasmiylashtiryapti.")
+    kech = qaytmagan_liboslar(salon, zakaz).get(libos.id)
+    if kech and olib_ketish <= _qaytishi_mumkin(libos, sozlama(salon).bufer_kun):
+        raise BandlikXatosi(f"«{libos.nomi}» hali mijozdan qaytmagan (zakaz #{kech.raqam}, qaytarish "
+                            f"{kech.qaytarish:%d.%m.%Y} edi) — bu sanalarga berib bo'lmaydi.")
     # Muddati o'tgan vaqtinchalik bronlar libosni band ushlab turmasligi uchun o'chiriladi (FT-2.5).
     _muddati_otganlarni_boshat(Bron.objects.filter(salon=salon, libos=libos, oraliq__overlap=oraliq,
                                                   turi=Bron.Turi.VAQTINCHALIK, muddati__lt=timezone.now()), zakaz)

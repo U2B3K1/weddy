@@ -5,6 +5,7 @@ from django.utils import timezone
 from apps.cash.services import tolangan_summa
 from apps.tenants.models import Xodim, sozlama
 
+from .changes import _log
 from .models import ChegirmaSorovi, TayyorChegirma, Zakaz
 from .pricing import narx_hisobla
 
@@ -43,8 +44,11 @@ def tayyor_chegirma_qollash(*, salon, xodim, zakaz, tayyor):
     if tayyor.salon_id != salon.id or not tayyor.faol:
         raise ChegirmaXatosi('Tayyor chegirma topilmadi.')
     _tekshir(zakaz)
+    eski_jami = zakaz.jami
     miqdor = _qollash(zakaz, foiz=tayyor.foiz, summa=tayyor.summa)
     zakaz.save(update_fields=['chegirma', 'jami'])
+    _log(zakaz, xodim, 'chegirma_qarori', f'jami {eski_jami}', f'tayyor chegirma «{tayyor.nomi}»: −{miqdor}, jami {zakaz.jami}',
+         "tayyor chegirma (tasdiqsiz)")
     return ChegirmaSorovi.objects.create(
         salon=salon, zakaz=zakaz, sotuvchi=xodim, tayyor=tayyor, foiz=tayyor.foiz, summa=tayyor.summa,
         holat=Holat.TAYYOR, tasdiqlangan_summa=miqdor, sabab=ChegirmaSorovi.Sabab.BOSHQA,
@@ -66,9 +70,47 @@ def chegirma_sorash(*, salon, xodim, zakaz, sabab, foiz=None, summa=None, izoh='
     zakaz.save(update_fields=['holat'])
     sorov = ChegirmaSorovi.objects.create(salon=salon, zakaz=zakaz, sotuvchi=xodim, foiz=foiz, summa=summa,
                                           sabab=sabab, izoh=izoh)
+    _log(zakaz, xodim, 'chegirma_soraldi', f'jami {zakaz.jami}', f'{foiz}%' if foiz is not None else f'{summa}',
+         sorov.get_sabab_display() + (f': {izoh}' if izoh else ''))
     from apps.notify.services import chegirma_sorovi_xabari  # rahbarga Telegram so'rov (FT-11.2)
     chegirma_sorovi_xabari(sorov)
     return sorov
+
+
+@transaction.atomic
+def chegirmani_olib_tashlash(*, salon, xodim, zakaz):
+    """C-15/C-06: (1) kutilayotgan chegirma so'rovi qaytarib olinadi — zakaz «Vaqtinchalik»ga qaytadi, so'rov yopiladi
+    (promokod so'rovi bo'lsa kod ham bo'shaydi); (2) qo'llangan tayyor chegirma olib tashlanadi — narx qayta hisoblanadi.
+    Ikkalasi ham faqat avans olinmagan zakazda (chegirma berish qoidasi bilan bir xil). Tarixga yoziladi."""
+    zakaz = Zakaz.objects.select_for_update().get(id=zakaz.id, salon=salon)
+    if zakaz.holat == Zakaz.Holat.CHEGIRMA_KUTILMOQDA:
+        sorov = zakaz.chegirma_sorovlari.select_for_update().filter(holat=Holat.KUTILMOQDA).first()
+        if sorov is None:
+            raise ChegirmaXatosi("Kutilayotgan chegirma so'rovi topilmadi.")
+        sorov.holat, sorov.rahbar_izohi, sorov.qaror_vaqti = Holat.RAD, "So'rov qaytarib olindi", timezone.now()
+        sorov.save(update_fields=['holat', 'rahbar_izohi', 'qaror_vaqti'])
+        ish = sorov.promokod_ishlatilishi
+        if ish is not None and not ish.bekor:
+            ish.bekor = True  # promokod so'rovi edi — kod yana bo'shaydi
+            ish.save(update_fields=['bekor'])
+        zakaz.holat = Zakaz.Holat.VAQTINCHALIK
+        zakaz.save(update_fields=['holat'])
+        soralgan = f'{sorov.foiz}%' if sorov.foiz is not None else f'{sorov.summa}'
+        _log(zakaz, xodim, 'chegirma_olib_tashlandi', f"so'ralgan {soralgan}", "so'rov qaytarib olindi")
+        return zakaz
+    if zakaz.holat != Zakaz.Holat.VAQTINCHALIK or tolangan_summa(zakaz) > 0:
+        raise ChegirmaXatosi("Chegirmani faqat avans olinmagan zakazdan olib tashlash mumkin.")
+    tayyor = zakaz.chegirma_sorovlari.select_for_update().filter(holat=Holat.TAYYOR).order_by('-id').first()
+    if tayyor is None or zakaz.chegirma <= zakaz.promokod_chegirma:
+        raise ChegirmaXatosi("Bu zakazda olib tashlanadigan tayyor chegirma yo'q.")
+    eski = zakaz.chegirma - zakaz.promokod_chegirma
+    zakaz.chegirma = zakaz.promokod_chegirma  # promokod chegirmasi (birga qo'llangan bo'lsa) qoladi
+    zakaz.jami = zakaz.asosiy_narx + zakaz.ustama - zakaz.chegirma
+    zakaz.save(update_fields=['chegirma', 'jami'])
+    tayyor.holat, tayyor.rahbar_izohi = Holat.RAD, "Chegirma olib tashlandi"  # hisobotlarda qo'llangan deb sanalmasin
+    tayyor.save(update_fields=['holat', 'rahbar_izohi'])
+    _log(zakaz, xodim, 'chegirma_olib_tashlandi', f'tayyor chegirma «{tayyor.izoh}»: −{eski}', f'jami {zakaz.jami}')
+    return zakaz
 
 
 @transaction.atomic
@@ -105,4 +147,8 @@ def chegirma_qarori(*, salon, rahbar, sorov, tasdiqlash, foiz=None, summa=None, 
     zakaz.save(update_fields=['holat', 'chegirma', 'jami', 'promokod', 'promokod_chegirma'])
     sorov.rahbar, sorov.rahbar_izohi, sorov.qaror_vaqti = rahbar, izoh, timezone.now()
     sorov.save()
+    soralgan = f'{sorov.foiz}%' if sorov.foiz is not None else f'{sorov.summa}'
+    _log(zakaz, rahbar, 'chegirma_qarori',
+         f"so'ralgan {soralgan}" + (f' ({sorov.sotuvchi.ism})' if sorov.sotuvchi_id else ''),
+         f'tasdiqlandi: −{sorov.tasdiqlangan_summa}, jami {zakaz.jami}' if tasdiqlash else 'rad etildi', izoh)
     return sorov

@@ -176,3 +176,18 @@ class BahoTests(PrimerkaBase):
         self.assertEqual(QaytarishAkti.objects.get(zakaz=z).baho, 4)
         with self.assertRaises(BerishXatosi):
             self.qaytar(6)
+
+
+class PrimerkaFaqatKorishTests(PrimerkaBase):
+    """C-12 (R3, koordinator qarori): primerka — mavjud zakazga xizmat: «faqat ko'rish» salonida ochiq, bloklanganda yopiq."""
+
+    def test_faqat_korishda_ochiq_bloklanganda_yopiq(self):
+        from apps.tenants.models import Salon
+        Salon.objects.filter(id=self.salon.id).update(holat=Salon.Holat.FAQAT_KORISH)
+        m = self.api(self.malika)
+        vaqt = soat(self.bugun + timedelta(days=2)).isoformat()
+        j = m.post(f'/api/zakazlar/{self.zakaz.id}/primerka/', {'vaqt': vaqt}, format='json')
+        self.assertEqual(j.status_code, 201)
+        self.assertEqual(m.patch(f'/api/primerkalar/{j.data["id"]}/', {'natija': 'yaxshi'}, format='json').status_code, 200)
+        Salon.objects.filter(id=self.salon.id).update(holat=Salon.Holat.BLOKLANGAN)
+        self.assertIn(m.patch(f'/api/primerkalar/{j.data["id"]}/', {'natija': 'x'}, format='json').status_code, (401, 403))

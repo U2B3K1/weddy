@@ -325,12 +325,24 @@ def _oy_siljit(yil, oy, n):
     return i // 12, i % 12 + 1
 
 
-def taqqoslash(salon, yil, oy, filial=None):
-    """O'tgan oy va o'tgan yilning shu oyi bilan taqqoslash (FT-18.1)."""
+def taqqoslash(salon, yil, oy, filial=None, bugun=None):
+    """O'tgan oy va o'tgan yilning shu oyi bilan taqqoslash (FT-18.1).
+
+    Joriy (hali tugamagan) oy tanlansa, solishtiriladigan oy ham shu kungacha olinadi: 7-noyabrda noyabrning 7 kuni
+    oktabrning 1–7 kunlari bilan solishtiriladi. Aks holda 7 kun 31 kun bilan taqqoslanib, «−63%» kabi yolg'on pasayish
+    chiqardi. `gacha_kun` — solishtirilgan oxirgi kun (to'liq oyda None).
+    """
+    bugun = bugun or timezone.localdate()
+    joriy = (yil, oy) == (bugun.year, bugun.month)
+
     def qisqa(y, m):
-        r = foyda(salon, *oy_chegaralari(y, m), filial)  # oy holati (investitsiya, tasdiqlar) kerak emas
-        return {'oy': f'{y}-{m:02d}', 'tushum': r['tushum'], 'sof_foyda': r['sof_foyda'], 'zakazlar_soni': r['zakazlar_soni']}
-    return {'otgan_oy': qisqa(*_oy_siljit(yil, oy, -1)), 'otgan_yil': qisqa(yil - 1, oy)}
+        boshi, oxiri = oy_chegaralari(y, m)
+        if joriy:
+            oxiri = boshi.replace(day=min(bugun.day, oxiri.day))  # 31-martda fevralning oxirgi kunigacha
+        r = foyda(salon, boshi, oxiri, filial)  # oy holati (investitsiya, tasdiqlar) kerak emas
+        return {'oy': f'{y}-{m:02d}', 'gacha_kun': oxiri.day if joriy else None,
+                'tushum': r['tushum'], 'sof_foyda': r['sof_foyda'], 'zakazlar_soni': r['zakazlar_soni']}
+    return {'otgan_oy': qisqa(*_oy_siljit(yil, oy, -1)), 'otgan_yil': qisqa(yil - 1, oy), 'qisman': joriy}
 
 
 def oylik_qator(salon, yil, oy, soni=12, filial=None):

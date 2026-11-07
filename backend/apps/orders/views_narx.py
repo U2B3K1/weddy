@@ -8,7 +8,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.tenants.models import jurnalga_yoz, sozlama
-from apps.tenants.permissions import IsRahbar, IsStaff, SalonYozishRuxsati
+from apps.tenants.permissions import IsRahbar, IsStaff, SalonYozishRuxsati, yozish_taqiqi
 
 from .models import MavsumiyNarx
 from .pricing import mavsumiy_qoida
@@ -50,8 +50,8 @@ class MavsumiyNarxlarView(APIView):
                          'qoidalar': [qoida_json(q) for q in MavsumiyNarx.objects.filter(salon=request.salon)]})
 
     def post(self, request):
-        if not SalonYozishRuxsati().has_permission(request, self):
-            return Response({'detail': "Salon «faqat ko'rish» rejimida."}, status=403)
+        if (rad := yozish_taqiqi(request, self)):  # o'zbekcha sabab bilan (C-12)
+            return rad
         ser = QoidaSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
         q = MavsumiyNarx.objects.create(salon=request.salon, **ser.validated_data)

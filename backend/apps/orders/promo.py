@@ -206,6 +206,8 @@ def promokod_qollash(*, salon, xodim, zakaz, kod):
         ish.summa = chegirma
         ish.save(update_fields=['summa'])
         zakaz.save(update_fields=['promokod', 'promokod_chegirma', 'chegirma', 'jami', 'salonchi'])
+        from .changes import _log
+        _log(zakaz, xodim, 'promokod', '', f'{promokod.kod}: −{chegirma}, jami {zakaz.jami}')
     else:
         zakaz.holat = Zakaz.Holat.CHEGIRMA_KUTILMOQDA
         zakaz.save(update_fields=['holat', 'salonchi'])
@@ -214,6 +216,8 @@ def promokod_qollash(*, salon, xodim, zakaz, kod):
                                               promokod_ishlatilishi=ish)
         from apps.notify.services import chegirma_sorovi_xabari
         chegirma_sorovi_xabari(sorov)
+        from .changes import _log
+        _log(zakaz, xodim, 'promokod', '', f"{promokod.kod}: −{chegirma}, rahbar tasdig'iga yuborildi")
     return zakaz, ish
 
 
@@ -226,10 +230,13 @@ def promokodni_olib_tashlash(*, salon, xodim, zakaz):
     if zakaz.holat != Zakaz.Holat.VAQTINCHALIK or tolangan_summa(zakaz) > 0:
         raise PromokodXatosi("To'lov olingan zakazdan promokodni olib tashlab bo'lmaydi.")
     zakaz.promokod_ishlatilishlari.filter(bekor=False).update(bekor=True)
+    kod = zakaz.promokod.kod
     zakaz.chegirma = max(0, zakaz.chegirma - zakaz.promokod_chegirma)
     zakaz.promokod, zakaz.promokod_chegirma = None, 0
     zakaz.jami = zakaz.asosiy_narx + zakaz.ustama - zakaz.chegirma
     zakaz.save(update_fields=['promokod', 'promokod_chegirma', 'chegirma', 'jami'])
+    from .changes import _log
+    _log(zakaz, xodim, 'promokod', kod, f'olib tashlandi, jami {zakaz.jami}')
     return zakaz
 
 

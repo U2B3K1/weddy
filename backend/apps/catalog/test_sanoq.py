@@ -127,6 +127,36 @@ class SanoqTests(TestCase):
         self.assertEqual(d['tarix'][0]['izoh'], 'A-2 kimyoviy tozalashda')
         self.assertEqual(c.post('/api/sanoq/yakunlash/', {}, format='json').status_code, 404)
 
+    def test_bekor_qilish_xabarsiz_va_tarixsiz(self):
+        """B-24: tasodifan boshlangan sanoq bekor qilinadi — Telegramga hech narsa ketmaydi, tarixda qolmaydi."""
+        from apps.tenants.models import Jurnal
+
+        from .models import Sanoq
+        c = APIClient()
+        c.credentials(HTTP_AUTHORIZATION='Bearer ' + make_staff_token(self.malika))
+        self.assertEqual(c.delete('/api/sanoq/').status_code, 404)  # ochiq sanoq yo'q
+        c.post('/api/sanoq/', {}, format='json')
+        c.post('/api/sanoq/belgilash/', {'artikul': 'A-1'}, format='json')
+        xabarlar = Xabar.objects.count()
+        self.assertEqual(c.delete('/api/sanoq/').status_code, 204)
+        self.assertEqual(Xabar.objects.count(), xabarlar)
+        self.assertFalse(Sanoq.objects.exists())
+        self.assertFalse(SanoqQatori.objects.exists())
+        d = c.get('/api/sanoq/').data
+        self.assertEqual((d['ochiq'], d['tarix']), (None, []))
+        j = Jurnal.objects.get(harakat='sanoq_bekor_qilindi')
+        self.assertEqual((j.xodim, j.yangi), (self.malika, '1 / 3 belgilangan edi'))
+        self.assertEqual(c.post('/api/sanoq/', {}, format='json').status_code, 201)  # yangisini boshlash mumkin
+
+    def test_tarixdagi_vaqt_mahalliy(self):
+        """B-25: sana UTC emas, mahalliy vaqtda (02:10 dagi sanoq oldingi kun bo'lib ko'rinmasin)."""
+        from .sanoq import sanoq_json
+        s = sanoq_yakunlash(salon=self.salon, xodim=self.malika, sanoq=self.boshla())
+        d = sanoq_json(s)
+        mahalliy = timezone.localtime(s.yakunlangan)
+        self.assertEqual((d['yakunlangan'].utcoffset(), d['yakunlangan'].date()), (mahalliy.utcoffset(), mahalliy.date()))
+        self.assertEqual(d['boshlangan'].utcoffset(), mahalliy.utcoffset())
+
     def test_boshqa_salon_sanoqni_kormaydi(self):
         self.boshla()
         salon2, x2, _ = salon_yarat('boshqa')

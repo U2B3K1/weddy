@@ -77,8 +77,13 @@ def shartnoma(zakaz):
     # Zalog bandi tanlangan zalog turiga mos keladi; hali olinmagan bo'lsa yoqilgan turlar sanaladi
     olingan = list(dict.fromkeys(zakaz.zaloglar.values_list('turi', flat=True)))
     turlar = olingan or soz.zalog_turlari()
+    # C-29: pul zalog summasi — olingan bo'lsa haqiqiysi, hali olinmagan bo'lsa liboslar zalogi (oldindan ma'lum)
+    pul_zalog = (sum(z.summa for z in zakaz.zaloglar.filter(turi=Zalog.Turi.PUL)) if 'pul' in olingan
+                 else sum(p.zalog for p in zakaz.pozitsiyalar.all()))
     if olingan:
         zalog_matni = ' '.join(ZALOG_MATNI[t] for t in turlar)
+        if pul_zalog:
+            zalog_matni = zalog_matni.replace('pul qoldiradi.', f'pul qoldiradi ({_som(pul_zalog)}).', 1)
     else:
         nomlar = ', '.join(Zalog.Turi(t).label.lower() for t in turlar)
         # jarima oqibati faqat yoqilgan zalog turlari bo'yicha yoziladi (FT-16.1)
@@ -88,6 +93,8 @@ def shartnoma(zakaz):
         buyumlar = ' yoki '.join(Zalog.Turi(t).label.lower() for t in turlar if t != 'pul')
         if buyumlar:
             oqibat.append(f"{buyumlar} jarima to'lanmaguncha qaytarilmaydi")
+        if 'pul' in turlar and pul_zalog:
+            nomlar = nomlar.replace('pul', f'pul — {_som(pul_zalog)}', 1)
         zalog_matni = (f"Libos berilayotganda mijoz zalog qoldiradi ({nomlar}). Zalog ijara haqi emas va libos "
                        "shartnomadagi holatda qaytarilganda to'liq qaytariladi; jarima yoki zarar bo'lsa, "
                        + ', '.join(oqibat) + '.')
@@ -106,7 +113,8 @@ def shartnoma(zakaz):
                     f"{_som(soz.kechikish_kunlik_summa)} jarima to'lanadi."})
 
     qismlar = []
-    qoida = soz.qaytarish_qoidasi
+    from .changes import bekor_qoidasi
+    qoida, asos, avans_foizi = bekor_qoidasi(zakaz)  # QA-17: zakazga qotirilgan qoida (eski zakazda — joriy sozlama)
     for i, (kun, foiz) in enumerate(qoida):
         if kun > 0:
             yuqori = f' ({qoida[i - 1][0] - 1} kungacha)' if i > 0 else ''
@@ -114,13 +122,8 @@ def shartnoma(zakaz):
         else:
             oldingi = qoida[i - 1][0] if i > 0 else 0
             qismlar.append((f"{oldingi} kundan kam qolganda" if oldingi else 'istalgan vaqtda') + f" — {foiz}%")
-    bandlar.append({
-        'sarlavha': 'Bekor qilish va avansni qaytarish',
-        'matn': "Zakaz libos berilgunga qadar bekor qilinishi mumkin. "
-                + ("To'langan summaning" if soz.qaytarish_asosi == 'tolangan' else "Avansning")
-                + " qaytariladigan qismi olib ketish sanasigacha qolgan kunga bog'liq: " + '; '.join(qismlar)
-                + (". Avansdan tashqari oldindan to'langan summa to'liq qaytariladi" if soz.qaytarish_asosi != 'tolangan' else '')
-                + ". Libos berilgandan keyin zakaz bekor qilinmaydi, faqat muddatidan oldin qaytariladi."})
+    bandlar.append({'sarlavha': 'Bekor qilish va avansni qaytarish',
+                    'matn': bekor_qilish_matni(zakaz, asos, avans_foizi, qismlar)})
 
     # Salonning o'z bandlari (admin paneldan); avtomatik bandlar sozlamalarga bog'liq bo'lgani uchun tahrirlanmaydi
     for b in soz.shartnoma_bandlari or []:
@@ -141,20 +144,50 @@ def shartnoma(zakaz):
     }
 
 
+def bekor_qilish_matni(zakaz, asos, avans_foizi, qismlar):
+    """Shartnomaning bekor qilish bandi zakazga qotirilgan qoidani aniq aytadi (C-21, QA-17), raqamli misol bilan."""
+    boshi = "Zakaz libos berilgunga qadar bekor qilinishi mumkin. "
+    oxiri = ". Libos berilgandan keyin zakaz bekor qilinmaydi, faqat muddatidan oldin qaytariladi."
+    if asos == 'tolangan':
+        return (boshi + "To'langan summaning qaytariladigan qismi olib ketish sanasigacha qolgan kunga bog'liq: "
+                + '; '.join(qismlar) + oxiri)
+    if avans_foizi:
+        avans = zakaz.jami * avans_foizi // 100
+        return (boshi + f"Avans — zakaz summasining {avans_foizi}% i (bu zakazda {_som(zakaz.jami)} dan {_som(avans)}). "
+                "Avansning qaytariladigan qismi olib ketish sanasigacha qolgan kunga bog'liq: " + '; '.join(qismlar)
+                + ". Avansdan ortiq oldindan to'langan summa to'liq qaytariladi" + oxiri)
+    return (boshi + "Avansning qaytariladigan qismi olib ketish sanasigacha qolgan kunga bog'liq: " + '; '.join(qismlar)
+            + ". Avans — bron qilishda avans sifatida to'langan summa; avansdan tashqari oldindan to'langan summa "
+            "to'liq qaytariladi" + oxiri)
+
+
 def kvitansiya(zakaz):
+    """To'lovlar kvitansiyasi (C-09): mijozga qaytarilgan pul manfiy va «Qaytarildi» nomi bilan; rahbar «kelmadi»
+    degan o'tkazma `kelmadi: true` (hisobga olinmagan — chizib ko'rsatiladi); bekor qilingan zakazda pastki blok
+    «To'langan · Qaytarildi · Ushlab qolindi» (qoldiq yo'q — mijoz hech narsa qarzdor emas)."""
     if zakaz.holat == Zakaz.Holat.CHEGIRMA_KUTILMOQDA:
         raise HujjatXatosi("Chegirma tasdiqlanmaguncha shartnoma va kvitansiya chop etilmaydi.")
     tolovlar = zakaz.tolovlar.filter(tur__in=[Tolov.Tur.AVANS, Tolov.Tur.QOLDIQ, Tolov.Tur.JARIMA,
                                               Tolov.Tur.VOZVRAT]).select_related('xodim').order_by('vaqt')
     if not tolovlar:
         raise HujjatXatosi("Zakazda hali to'lov yo'q.")
-    tolangan = tolangan_summa(zakaz)
+    qatorlar = []
+    for t in tolovlar:
+        chiqim = t.tur == Tolov.Tur.VOZVRAT
+        qatorlar.append({'tur': 'Qaytarildi' if chiqim else t.get_tur_display(), 'summa': -t.summa if chiqim else t.summa,
+                         'usul': t.get_usul_display(), 'sana': timezone.localtime(t.vaqt).date(), 'xodim': t.xodim.ism,
+                         'chiqim': chiqim, 'kelmadi': t.tasdiq == Tolov.Tasdiq.KELMADI})
+    if zakaz.holat == Zakaz.Holat.BEKOR:
+        kirim = sum(t.summa for t in tolovlar if t.tur in (Tolov.Tur.AVANS, Tolov.Tur.QOLDIQ)
+                    and t.tasdiq != Tolov.Tasdiq.KELMADI)
+        qaytdi = sum(t.summa for t in tolovlar if t.tur == Tolov.Tur.VOZVRAT)
+        narx = {'bekor': True, 'jami': zakaz.jami, 'tolangan': kirim, 'qaytarildi': qaytdi, 'ushlab_qolindi': kirim - qaytdi}
+    else:
+        tolangan = tolangan_summa(zakaz)
+        narx = {'jami': zakaz.jami, 'tolangan': tolangan, 'qoldiq': zakaz.jami - tolangan}
     return {
         **_asos(zakaz), 'tur': 'kvitansiya', 'sarlavha': f"To'lov kvitansiyasi (zakaz № {zakaz.raqam})",
-        'pozitsiyalar': _pozitsiyalar(zakaz),
-        'tolovlar': [{'tur': t.get_tur_display(), 'summa': t.summa, 'usul': t.get_usul_display(),
-                      'sana': timezone.localtime(t.vaqt).date(), 'xodim': t.xodim.ism} for t in tolovlar],
-        'narx': {'jami': zakaz.jami, 'tolangan': tolangan, 'qoldiq': zakaz.jami - tolangan},
+        'pozitsiyalar': _pozitsiyalar(zakaz), 'tolovlar': qatorlar, 'narx': narx,
         'imzolar': ['Sotuvchi', 'Mijoz'],
     }
 
@@ -166,17 +199,27 @@ def dalolatnoma(zakaz):
         raise HujjatXatosi('Zakazda zalog yo\'q.')
     akt = getattr(zakaz, 'qaytarish_akti', None)
     qatorlar = []
+    ushlash = akt.ushlab_qolingan if akt else 0  # jarima pul zaloglaridan tartib bilan ushlangan (rental.libos_qaytarish)
     for z in zaloglar:
+        ushlandi = 0
+        holat = z.get_holat_display()
         if z.turi == Zalog.Turi.PUL:
             tavsif = _som(z.summa)
+            if z.qaytarilgan and ushlash:
+                ushlandi = min(ushlash, z.summa)
+                ushlash -= ushlandi
+                holat = ('Jarimaga ushlab qolindi' if ushlandi == z.summa
+                         else f"{_som(z.summa - ushlandi)} qaytarildi, {_som(ushlandi)} jarimaga ushlab qolindi")
         elif z.turi == Zalog.Turi.HUJJAT:
             tavsif = f'{z.hujjat_turi} № {z.hujjat_raqami}'
         else:
             tavsif = f"{z.tavsif}, {z.ogirlik_gr} g, taxminiy qiymati {_som(z.summa)}"
         qatorlar.append({'yorliq': z.yorliq, 'turi': z.get_turi_display(), 'tavsif': tavsif,
-                         'holat': z.get_holat_display(),
+                         'holat': holat, 'ushlab_qolindi': ushlandi,
                          'olingan': timezone.localtime(z.olingan).date(),
-                         'qaytarilgan': timezone.localtime(z.qaytarilgan).date() if z.qaytarilgan else None})
+                         # to'liq ushlangan pul zalog mijozga qaytarilmagan — «qaytarilgan» sanasi yo'q
+                         'qaytarilgan': (timezone.localtime(z.qaytarilgan).date()
+                                         if z.qaytarilgan and not (ushlandi and ushlandi == z.summa) else None)})
     qaytarish = None
     if akt:
         qaytarish = {'sana': akt.sana, 'tekshiruv': akt.get_tekshiruv_display(), 'jarima': akt.jarima,

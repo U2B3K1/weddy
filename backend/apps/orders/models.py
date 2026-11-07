@@ -24,6 +24,7 @@ def telefon_normal(telefon):
 class Mijoz(SalonModel):
     class Manba(models.TextChoices):
         INSTAGRAM = 'instagram', 'Instagram'
+        TELEGRAM = 'telegram', 'Telegram'
         TAVSIYA = 'tavsiya', 'Tavsiya'
         SALONCHI = 'salonchi', 'Salonchi'
         BOSHQA = 'boshqa', 'Boshqa'
@@ -32,7 +33,8 @@ class Mijoz(SalonModel):
     telefon = models.CharField(max_length=20)
     qoshimcha_telefon = models.CharField(max_length=20, blank=True)
     toy_sanasi = models.DateField(null=True, blank=True)
-    manba = models.CharField(max_length=12, choices=Manba.choices, default=Manba.BOSHQA)
+    # bo'sh — «ko'rsatilmagan» (mijoz kartasida tanlov olib tashlansa; B-12)
+    manba = models.CharField(max_length=12, choices=Manba.choices, default=Manba.BOSHQA, blank=True)
     qora_royxat = models.BooleanField(default=False)  # FT-8.3
     qora_royxat_sabab = models.CharField(max_length=300, blank=True)
     # O'lchamlar (ixtiyoriy, sm; FT-8.4): primerkada yangilanadi
@@ -104,6 +106,12 @@ class Zakaz(SalonModel):
     bekor_vaqti = models.DateTimeField(null=True, blank=True)
     qaytarilgan_avans = models.PositiveIntegerField(default=0)
     ushlab_qolingan_avans = models.PositiveIntegerField(default=0)
+    # QA-17 (b): bekor qilish qoidasi zakaz yaratilgan paytda salon sozlamasidan nusxa olinadi (imzolangan shartnomaga
+    # mos — salon keyin qoidani o'zgartirsa ham bu zakazga eski qoida qo'llanadi). `qaytarish_qoidasi` bo'sh (None) —
+    # qotirilmagan zakaz: salonning joriy sozlamasi. `avans_foizi` bo'sh — «avans sifatida olingan to'lov to'liq avans»
+    qaytarish_qoidasi = models.JSONField(null=True, blank=True)
+    qaytarish_asosi = models.CharField(max_length=10, blank=True, default='')
+    avans_foizi = models.PositiveSmallIntegerField(null=True, blank=True)
     yaratilgan = models.DateTimeField(auto_now_add=True)
 
     class Meta:

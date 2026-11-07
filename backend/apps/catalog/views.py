@@ -6,7 +6,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.tenants.models import Jurnal, Xodim, jurnalga_yoz, sozlama
-from apps.tenants.permissions import IsRahbar, IsStaff, SalonYozishRuxsati
+from apps.tenants.permissions import IsRahbar, IsStaff, SalonYozishRuxsati, yozish_taqiqi
 
 from apps.cash.services import KassaXatosi, xato_tanasi
 from apps.finance.services import XarajatXatosi
@@ -14,25 +14,42 @@ from apps.finance.services import XarajatXatosi
 from .models import AksessuarDona, Kategoriya, Libos, Rasm, Sanoq, TamirYozuvi, YetkazibBeruvchi
 from .manekin import joylashuvni_saqlash, manekin_json, qatlam_yaratish
 from .rasm import rasm_yuklash, rasmni_ochirish
-from .sanoq import belgilash, ochiq_sanoq, qator_json, sanoq_boshlash, sanoq_json, sanoq_yakunlash
+from .sanoq import belgilash, ochiq_sanoq, qator_json, sanoq_bekor, sanoq_boshlash, sanoq_json, sanoq_yakunlash
 from .tamir import tamirga_berish, tamirni_tugatish
 from .yetkazib import YetkazibXatosi, libos_xaridi_yoz
 from .services import (KatalogXatosi, QOLDA_HOLATLAR, keyingi_artikul, tozalashni_yakunla, libos_qoshish,
-                       libosni_ozgartirish, libosni_tasdiqlash)
+                       libosni_ozgartirish, libosni_rad_etish, libosni_tasdiqlash)
 
 
 def rasm_json(r, request):
+    # ochira_oladi — «×» faqat ruxsat bo'lsa ko'rsatiladi (rahbar yoki rasmni yuklagan xodim, RasmOchirishView bilan bir xil)
     return {'id': r.id, 'katta': request.build_absolute_uri(r.katta.url),
             'kichik': request.build_absolute_uri(r.kichik.url), 'standart': r.standart,
-            'fonsiz': request.build_absolute_uri(r.fonsiz.url) if r.fonsiz else None}
+            'fonsiz': request.build_absolute_uri(r.fonsiz.url) if r.fonsiz else None,
+            'ochira_oladi': _rahbar(request) or r.yuklagan_id == request.user.id}
 
 
-def libos_json(l, rahbar, request=None, rasmlar=False):
-    """Tannarx faqat rahbarga ko'rinadi (FT-3.5, 3-bo'lim)."""
+def mijozdagi_liboslar(salon, liboslar=None):
+    """Hozir mijozda turgan liboslar: {libos_id: qaytish sanasi} — berilgan («berildi») zakazdagi pozitsiyalar
+    (sanoqdagi `_joylar` bilan bir xil ta'rif). Libos holati berishda o'zgarmaydi («bo'sh» qoladi), shuning uchun
+    katalog «mijozda»ni shu yerdan biladi."""
+    from apps.orders.models import Zakaz, ZakazPozitsiya
+    qs = ZakazPozitsiya.objects.filter(salon=salon, zakaz__holat=Zakaz.Holat.BERILDI)
+    if liboslar is not None:
+        qs = qs.filter(libos__in=liboslar)
+    return dict(qs.order_by('zakaz__qaytarish').values_list('libos_id', 'zakaz__qaytarish'))
+
+
+def libos_json(l, rahbar, request=None, rasmlar=False, mijozda=None):
+    """Tannarx faqat rahbarga ko'rinadi (FT-3.5, 3-bo'lim). `mijozda` — `mijozdagi_liboslar()` natijasi (berilmasa
+    shu libos uchun so'raladi): mijozda bo'lsa `mijozda: true` va `qaytish` — kelishilgan qaytarish sanasi."""
+    if mijozda is None:
+        mijozda = mijozdagi_liboslar(l.salon_id, [l.id])
     d = {'id': l.id, 'artikul': l.artikul, 'nomi': l.nomi, 'kategoriya': l.kategoriya.nomi,
          'kategoriya_id': l.kategoriya_id, 'olcham': l.olcham, 'rang': l.rang, 'holat': l.holat,
          'ijara_narxi': l.ijara_narxi, 'zalog': l.zalog, 'filial': l.filial_id,
-         'qoshgan': l.qoshgan.ism if l.qoshgan else None}
+         'qoshgan': l.qoshgan.ism if l.qoshgan else None,
+         'mijozda': l.id in mijozda, 'qaytish': mijozda.get(l.id)}
     if request is not None:
         r = list(l.rasmlar.all())  # prefetch qilingan bo'lsa qo'shimcha so'rov yo'q
         d['rasm'] = request.build_absolute_uri(r[0].kichik.url) if r else None
@@ -109,11 +126,12 @@ class LiboslarView(APIView):
         if p.get('q'):
             qs = qs.filter(artikul__icontains=p['q']) | qs.filter(nomi__icontains=p['q'])
         rahbar = _rahbar(request)
-        return Response([libos_json(l, rahbar, request) for l in qs.order_by('artikul')[:300]])
+        mijozda = mijozdagi_liboslar(request.salon)  # bitta so'rov butun ro'yxat uchun
+        return Response([libos_json(l, rahbar, request, mijozda=mijozda) for l in qs.order_by('artikul')[:300]])
 
     def post(self, request):
-        if not SalonYozishRuxsati().has_permission(request, self):
-            return Response({'detail': "Salon «faqat ko'rish» rejimida."}, status=403)
+        if (rad := yozish_taqiqi(request, self)):  # o'zbekcha sabab bilan (C-12)
+            return rad
         ser = LibosYaratSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
         d = ser.validated_data
@@ -148,6 +166,8 @@ class LibosTafsilotView(APIView):
         return Response(libos_json(_libos(request, pk), _rahbar(request), request, rasmlar=True))
 
     def patch(self, request, pk):
+        if (rad := yozish_taqiqi(request, self)):  # «faqat ko'rish»da katalog yopiq (QA-15)
+            return rad
         if not _rahbar(request):
             return Response({'detail': "Narx va tannarxni faqat rahbar o'zgartiradi."}, status=403)
 
@@ -157,9 +177,21 @@ class LibosTafsilotView(APIView):
             zalog = serializers.IntegerField(min_value=0, required=False)
             bufer_kun = serializers.IntegerField(min_value=0, max_value=30, required=False)
             holat = serializers.ChoiceField(choices=[h.value for h in QOLDA_HOLATLAR], required=False)
+            # B-05: libos ma'lumoti (xato kiritilgan o'lcham filtrni buzadi — arxivlab qayta qo'shish shart emas)
+            artikul = serializers.CharField(max_length=50, required=False)
+            nomi = serializers.CharField(max_length=200, required=False)
+            kategoriya = serializers.IntegerField(required=False)
+            olcham = serializers.CharField(max_length=20, required=False, allow_blank=True)
+            rang = serializers.CharField(max_length=50, required=False, allow_blank=True)
 
         ser = S(data=request.data)
         ser.is_valid(raise_exception=True)
+        if 'kategoriya' in ser.validated_data:
+            kat = Kategoriya.objects.filter(salon=request.salon, id=ser.validated_data['kategoriya'],
+                                            turi=Kategoriya.Turi.LIBOS).first()
+            if not kat:
+                return Response({'kategoriya': ['Kategoriya topilmadi.']}, status=400)
+            ser.validated_data['kategoriya'] = kat
         yb_ozgaradi, yb = 'yetkazib_beruvchi' in request.data, None
         if yb_ozgaradi and request.data['yetkazib_beruvchi']:
             yb = YetkazibBeruvchi.objects.filter(salon=request.salon, id=request.data['yetkazib_beruvchi']).first()
@@ -187,6 +219,25 @@ class LibosTafsilotView(APIView):
         return err or Response(libos_json(libos, True, request))
 
 
+class LibosRadView(APIView):
+    """POST {sabab?} — rahbar tasdiq kutayotgan libosni rad etadi (arxivga, jurnalga; C-25)."""
+    permission_classes = [IsRahbar, SalonYozishRuxsati]
+
+    def post(self, request, pk):
+        sabab = str(request.data.get('sabab') or '')[:300]
+        libos, err = _bajar(libosni_rad_etish, salon=request.salon, rahbar=request.user, libos=_libos(request, pk), sabab=sabab)
+        return err or Response(libos_json(libos, True, request))
+
+
+class LibosPasportView(APIView):
+    """GET — libos pasporti: hozir kimda va qachon qaytadi, kelgusi bronlar; rahbarga — samaradorlik (faqat o'qish)."""
+    permission_classes = [IsStaff]
+
+    def get(self, request, pk):
+        from .pasport import libos_pasporti
+        return Response(libos_pasporti(request.salon, _libos(request, pk), rahbar=_rahbar(request)))
+
+
 class LibosTasdiqView(APIView):
     permission_classes = [IsRahbar, SalonYozishRuxsati]
 
@@ -205,7 +256,8 @@ class LibosTasdiqView(APIView):
 
 class KategoriyalarView(APIView):
     def get_permissions(self):
-        return [(IsRahbar if self.request.method == 'POST' else IsStaff)()]
+        # yaratish — rahbar va salon yozishga ochiq bo'lsa («faqat ko'rish»da katalog yopiq, QA-15)
+        return [IsRahbar(), SalonYozishRuxsati()] if self.request.method == 'POST' else [IsStaff()]
 
     def get(self, request):
         qs = Kategoriya.objects.filter(salon=request.salon)
@@ -279,7 +331,8 @@ class JurnalView(APIView):
 
 
 class SanoqView(APIView):
-    """GET — ochiq sanoq (qatorlari bilan) va oxirgi yakunlanganlar; POST {filial?} — yangi sanoq boshlash."""
+    """GET — ochiq sanoq (qatorlari bilan) va oxirgi yakunlanganlar; POST {filial?} — yangi sanoq boshlash;
+    DELETE — ochiq sanoqni bekor qilish (tasodifan boshlangan bo'lsa: hech kimga xabar yuborilmaydi, tarixda qolmaydi)."""
 
     def get_permissions(self):
         return [IsStaff()] if self.request.method == 'GET' else [SalonYozishRuxsati()]
@@ -296,6 +349,13 @@ class SanoqView(APIView):
         filial = sorovdagi_filial(request) if request.data.get('filial') else None
         s, err = _bajar(sanoq_boshlash, salon=request.salon, xodim=request.user, filial=filial)
         return err or Response(sanoq_json(s, qatorlar=True), status=201)
+
+    def delete(self, request):
+        sanoq = ochiq_sanoq(request.salon)
+        if not sanoq:
+            raise NotFound("Ochiq sanoq yo'q.")
+        _, err = _bajar(sanoq_bekor, salon=request.salon, xodim=request.user, sanoq=sanoq)
+        return err or Response(status=204)
 
 
 class SanoqBelgilashSerializer(serializers.Serializer):
@@ -419,8 +479,8 @@ class TamirlarView(APIView):
         return Response([tamir_json(t) for t in libos.tamirlar.select_related('kiritgan')])
 
     def post(self, request, pk):
-        if not SalonYozishRuxsati().has_permission(request, self):
-            return Response({'detail': "Salon «faqat ko'rish» rejimida."}, status=403)
+        if (rad := yozish_taqiqi(request, self)):  # o'zbekcha sabab bilan (C-12)
+            return rad
 
         class S(serializers.Serializer):
             ish_turi = serializers.CharField(max_length=300)

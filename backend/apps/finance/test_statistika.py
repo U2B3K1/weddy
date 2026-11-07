@@ -97,12 +97,15 @@ class StatistikaTests(TestCase):
         self.assertEqual(self.qator(m, 'Salonchi')[1:], [1, 2_000_000])
         self.assertEqual(self.qator(m, 'Instagram')[1:], [1, 900_000])
 
-    def test_zalog_reestri_va_statistikasi(self):
+    def test_zaloglar_birlashgan(self):
+        """R2: reestr va statistika bitta hisobotda — salondagilar tepada, davrda qaytarilganlari ostida, turi bo'yicha qo'shimcha."""
         r = self.h('zalog')
-        self.assertEqual([(q[1], q[2]) for q in r['qatorlar']], [('Hujjat', '#2')])  # pul zalogi qaytarilgan
-        st = self.h('zalog-statistika')
+        self.assertEqual([(q[1], q[2], q[6]) for q in r['qatorlar']], [('Hujjat', '#2', 'Saqlanmoqda'), ('Pul', '#1', 'Qaytarildi')])
+        self.assertEqual((r['jami'][0], r['jami'][4]), ('Salonda 1 ta', 0))  # qaytarilgan pul zalogi salondagi pulga kirmaydi
+        st = r['qoshimcha']
         self.assertEqual(self.qator(st, 'Pul')[1:], [1, 1, 0, 0])
         self.assertEqual(self.qator(st, 'Hujjat')[1:], [1, 0, 0, 1])
+        self.assertNotIn('zalog-statistika', statistika.HISOBOTLAR)
 
     def test_bekor_va_kechikish(self):
         b = self.h('bekor')
@@ -112,8 +115,8 @@ class StatistikaTests(TestCase):
 
     def test_xarajat_va_pul_oqimi(self):
         x = self.h('xarajat')
-        self.assertEqual(self.qator(x, 'Bino ijarasi')[2:], [5_000_000, 0])
-        self.assertEqual(self.qator(x, 'Transport')[2:], [0, 50_000])  # tasdiq kutmoqda
+        self.assertEqual(self.qator(x, 'Bino ijarasi')[1:], [5_000_000, 0])
+        self.assertEqual(self.qator(x, 'Transport')[1:], [0, 50_000])  # tasdiq kutmoqda
         p = self.qator(self.h('pul-oqimi'), 'Naqd')
         # tushum: avanslar 2 000 000 + 900 000 + 1 000 000 + 500 000 + jarima 100 000
         self.assertEqual(p[1:], [4_500_000, 500_000, 500_000, 50_000, 500_000, 0, 3_950_000])
@@ -127,6 +130,8 @@ class StatistikaTests(TestCase):
         self.assertEqual(self.qator(b, 'B Libos B')[1:], [5, 50.0])  # 0..3 kun + 1 bufer = 5 kun / 10
         kel = self.h('kelgusi')
         self.assertEqual(kel['jami'][1:], [1, 500_000, 2_500_000])
+        self.assertRegex(kel['qatorlar'][0][0], r'^[A-Z][a-z]+ \d{4}$')  # «Noyabr 2026», «2026-11» emas
+        self.assertEqual(statistika.oy_nomi('2026-10'), 'Oktabr 2026')
         ch = self.h('chegirma')
         self.assertEqual(ch['qatorlar'][0][1:], ['Malika', '10%', 'Doimiy mijoz', 'Tasdiqlandi', 100_000, 'Rahbar'])
 
@@ -134,10 +139,29 @@ class StatistikaTests(TestCase):
         smena_yopish(salon=self.salon, xodim=self.malika, fakt_qoldiq=4_940_000, izoh='10 ming yetmadi')
         n = self.h('nazorat')
         # 1 smena, kamomad 10 000, 4 yangi zakaz (tushum 3,9 mln), 1 bekor qilgan (50% — 500 000 qaytargan), 1 chegirma so'ragan
-        self.assertEqual(self.qator(n, 'Malika')[1:], ['kamomad 1 marta', -10_000, 1, 4, 3_900_000, 1, 500_000, 1])
+        self.assertEqual(self.qator(n, 'Malika')[1:], ['kamomad 1 marta', -10_000, 1, 4, 3_900_000, 1, 500_000, 1, 0])
         self.assertEqual([q[0] for q in n['qatorlar']], ['Malika'])  # amali yo'q rahbar ro'yxatda yo'q
         k = self.h('kassa')
         self.assertEqual(k['qatorlar'][0][4:8], [4_500_000, 0, 500_000, 50_000])  # naqd kirdi, naqdsiz, qaytarildi, kassadan xarajat
+
+    def test_seyf_farqi_kunlik_kassa_va_nazoratda(self):
+        """C-11: kechasi seyfdan kamaygan pul (oldingi yopishdagi seyf − ochishda sanalgan) hisobotlarda ko'rinadi."""
+        smena_yopish(salon=self.salon, xodim=self.malika, fakt_qoldiq=4_950_000)  # seyfda 4 950 000 qoladi
+        dilnoza = Xodim.objects.create(salon=self.salon, ism='Dilnoza')
+        smena_ochish(salon=self.salon, xodim=dilnoza, boshlangich_qoldiq=4_900_000, izoh='rahbar 50 ming oldi')  # 50 000 kam
+        k = self.h('kassa')
+        nomlar = [u['nom'] for u in k['ustunlar']]
+        ikkinchi = k['qatorlar'][-1]
+        self.assertEqual(ikkinchi[nomlar.index('Seyf farqi')], -50_000)
+        self.assertIn("Dilnoza ochishda 4 900 000 sanadi", ikkinchi[nomlar.index('Izoh')])
+        self.assertIn('ochuvchi izohi: rahbar 50 ming oldi', ikkinchi[nomlar.index('Izoh')])
+        self.assertIsNone(k['qatorlar'][0][nomlar.index('Seyf farqi')])  # birinchi smenaning oldingisi yo'q
+        self.assertEqual(k['jami'][nomlar.index('Seyf farqi')], -50_000)
+        n = self.h('nazorat')
+        d = self.qator(n, 'Dilnoza')
+        self.assertEqual(d[-1], -50_000)
+        self.assertIn('smena ochishda seyfda farq 1 marta', d[1])
+        self.assertEqual(d[2], 0)  # kassa farqiga qo'shilmaydi
 
     def test_bosh_liboslar(self):
         from apps.catalog.models import Libos
@@ -148,7 +172,14 @@ class StatistikaTests(TestCase):
     def test_api_hammasi_ishlaydi_va_faqat_rahbarga(self):
         c = APIClient(); c.credentials(HTTP_AUTHORIZATION='Bearer ' + make_staff_token(self.rahbar))
         royxat = c.get('/api/hisobotlar/royxat/').json()
-        self.assertEqual(len(royxat), 18)  # P&L + 17
+        self.assertEqual(len(royxat), 16)  # P&L + 15 («Xarajatlar» — alohida bo'lim; ikki zalog hisoboti bitta)
+        self.assertNotIn('xarajat', [h['kalit'] for h in royxat])
+        self.assertEqual({h['kalit'] for h in royxat if h.get('davrsiz')}, {'kelgusi', 'bosh-liboslar'})
+        self.assertEqual(c.get('/api/hisobotlar/h/xarajat/').status_code, 200)  # API saqlanadi (Xarajatlar jamlanmasi)
+        # B-01: «Tushum» nomli ustun hisobotlarda yo'q — rasmiy tushum faqat Foyda va zararda
+        for h in royxat[1:]:
+            nomlar = [u['nom'] for u in c.get(f"/api/hisobotlar/h/{h['kalit']}/").json()['ustunlar']]
+            self.assertFalse([n for n in nomlar if 'tushum' in n.lower()], h['kalit'])
         for h in royxat[1:]:
             r = c.get(f"/api/hisobotlar/h/{h['kalit']}/")
             self.assertEqual(r.status_code, 200, h['kalit'])

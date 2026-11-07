@@ -117,6 +117,25 @@ class TaqqoslashTests(Base):
     def test_yanvar_uchun_otgan_oy_dekabr(self):
         self.assertEqual(reports.taqqoslash(self.salon, 2026, 1)['otgan_oy']['oy'], '2025-12')
 
+    def test_joriy_oy_otgan_oyning_shu_kunigacha_solishtiriladi(self):
+        """B-03: 7-noyabrda noyabr oktabrning 1–7 kunlari bilan solishtiriladi (to'liq 31 kun bilan emas)."""
+        self.zakaz(1, 1_000_000, date(2026, 10, 3))
+        self.zakaz(2, 4_000_000, date(2026, 10, 20))  # 7-kundan keyin — joriy oy taqqoslashiga kirmaydi
+        self.zakaz(3, 700_000, date(2025, 11, 7))
+        self.zakaz(4, 900_000, date(2025, 11, 8))
+        t = reports.taqqoslash(self.salon, 2026, 11, bugun=date(2026, 11, 7))
+        self.assertTrue(t['qisman'])
+        self.assertEqual((t['otgan_oy']['oy'], t['otgan_oy']['gacha_kun'], t['otgan_oy']['tushum']), ('2026-10', 7, 1_000_000))
+        self.assertEqual((t['otgan_yil']['gacha_kun'], t['otgan_yil']['tushum']), (7, 700_000))
+        # tugagan oy — to'liq oy bilan
+        t = reports.taqqoslash(self.salon, 2026, 11, bugun=date(2026, 12, 2))
+        self.assertEqual((t['qisman'], t['otgan_oy']['gacha_kun'], t['otgan_oy']['tushum']), (False, None, 5_000_000))
+
+    def test_31_kun_qisqa_oy_bilan(self):
+        self.zakaz(1, 1_000_000, date(2026, 2, 28))
+        t = reports.taqqoslash(self.salon, 2026, 3, bugun=date(2026, 3, 31))
+        self.assertEqual((t['otgan_oy']['gacha_kun'], t['otgan_oy']['tushum']), (28, 1_000_000))
+
     def test_12_oylik_qator(self):
         self.zakaz(1, 5_000_000, date(2026, 10, 5))
         self.zakaz(2, 3_000_000, date(2026, 1, 5))

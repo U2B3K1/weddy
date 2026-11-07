@@ -38,11 +38,19 @@ def xarajat_kiritish(*, salon, xodim, modda, summa, sana=None, usul='naqd', izoh
         tolov = tolov_qabul(salon=salon, xodim=xodim, tur=Tolov.Tur.XARAJAT, summa=summa,
                             usul=usul, izoh=f'{modda}: {izoh}'.strip(': ')[:300])
         filial = tolov.smena.filial or filial  # kassadan to'langan bo'lsa — shu kassa filiali
-    return Xarajat.objects.create(
+    x = Xarajat.objects.create(
         filial=filial, salon=salon, sana=sana or timezone.localdate(), modda=modda, summa=summa, usul=usul, izoh=izoh,
         kiritgan=xodim, tolov=tolov,
         holat=Xarajat.Holat.TASDIQLANDI if rahbar else Xarajat.Holat.KUTILMOQDA,
         tasdiqlagan=xodim if rahbar else None)
+    if not rahbar:  # rahbar qarori kerak: ilovadagi qo'ng'iroqchadan tashqari Telegramda ham (xabar xatosi amalni buzmaydi)
+        from apps.notify.services import rahbarlarga, som
+        from .moddalar import modda_nomlari
+        rahbarlarga(salon, 'xarajat_tasdiq',
+                    f"🧾 {xodim.ism} xarajat kiritdi: {modda_nomlari(salon).get(modda, modda)} — {som(summa)}"
+                    f"{' (kassadan)' if kassadan else ''}{f' · «{izoh}»' if izoh else ''}.\n"
+                    f"Ilovada tasdiqlang yoki rad eting: qo'ng'iroqcha → «Qaroringiz kerak».")
+    return x
 
 
 @transaction.atomic

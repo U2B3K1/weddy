@@ -8,7 +8,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.tenants.models import Xodim
-from apps.tenants.permissions import IsStaff, SalonYozishRuxsati
+from apps.tenants.permissions import IsStaff, SalonYozishRuxsati, yozish_taqiqi
 
 from .models import Salonchi, Zakaz, telefon_normal
 
@@ -82,8 +82,8 @@ class SalonchilarView(APIView):
         return Response([salonchi_json(s, rahbar) for s in qs])
 
     def post(self, request):
-        if not SalonYozishRuxsati().has_permission(request, self):
-            return Response({'detail': "Salon «faqat ko'rish» rejimida."}, status=403)
+        if (rad := yozish_taqiqi(request, self)):  # o'zbekcha sabab bilan (C-12)
+            return rad
         ser = SalonchiSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
         d = ser.validated_data
@@ -132,6 +132,10 @@ class ZakazSalonchiView(APIView):
             salonchi = Salonchi.objects.filter(salon=request.salon, id=sid).first()
             if not salonchi:
                 raise NotFound('Salonchi topilmadi.')
+        eski = zakaz.salonchi.ism if zakaz.salonchi_id else ''
         zakaz.salonchi = salonchi
         zakaz.save(update_fields=['salonchi'])
+        if eski != (salonchi.ism if salonchi else ''):  # C-05: kim, qachon salonchini o'zgartirgani tarixda
+            from .changes import _log
+            _log(zakaz, request.user, 'salonchi', eski, salonchi.ism if salonchi else '')
         return Response({'salonchi': salonchi.ism if salonchi else None})

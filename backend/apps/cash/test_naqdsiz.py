@@ -94,7 +94,7 @@ class TerminalTests(Base):
             smena_yopish(salon=self.salon, xodim=self.malika, fakt_qoldiq=0, terminal=990_000)
         s = smena_yopish(salon=self.salon, xodim=self.malika, fakt_qoldiq=0, terminal=990_000, izoh='bitta chek bekor')
         self.assertEqual((s.terminal_tizimda, s.terminal_sverka, s.terminal_farq), (1_000_000, 990_000, -10_000))
-        self.assertIn('Terminal sverkasi farqi', Xabar.objects.get(xodim=self.rahbar, tur='terminal_farqi').matn)
+        self.assertIn('Terminal hisoboti farqi', Xabar.objects.get(xodim=self.rahbar, tur='terminal_farqi').matn)
         b = timezone.localdate()
         k = kassa(self.salon, b, b)
         self.assertEqual(k['qatorlar'][0][3], -10_000)

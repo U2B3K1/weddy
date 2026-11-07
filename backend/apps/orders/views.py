@@ -7,7 +7,8 @@ from rest_framework.views import APIView
 
 from apps.bookings.models import Bron
 from apps.bookings.services import BandlikXatosi
-from apps.cash.services import KassaXatosi, xato_tanasi
+from apps.cash.models import Tolov
+from apps.cash.services import KassaXatosi, tolangan_summa, xato_tanasi
 from apps.catalog.models import Libos
 from apps.tenants.permissions import SalonYozishRuxsati
 
@@ -26,11 +27,18 @@ def zakaz_json(z):
         'promokod': z.promokod.kod if z.promokod_id else None, 'promokod_chegirma': z.promokod_chegirma,
         'liboslar': [p.libos_id for p in z.pozitsiyalar.all()],
         'aksessuarlar': [a.dona.yorliq for a in z.aksessuarlar.all()],
+        # C-07/C-17: narxni o'zgartiradigan amaldan keyin — yangi jami, qoldiq va shu amalda mijozga qaytarilgan pul
+        'yangi_jami': z.jami, 'tolangan': (tolangan := tolangan_summa(z)), 'qoldiq': max(z.jami - tolangan, 0),
+        'qaytariladi': getattr(z, 'qaytarildi_summa', 0),
     }
 
 
 class MijozQidirishView(APIView):
-    """FT-2.9: telefon bo'yicha mijoz, tarixi va qora ro'yxat belgisi. Faqat o'z salon mijozi."""
+    """FT-2.9: telefon bo'yicha mijoz, tarixi va qora ro'yxat belgisi. Faqat o'z salon mijozi.
+
+    A-39: topilmasa 200 `{"topildi": false}` (yangi mijoz — oddiy holat, xato emas; konsolda 404 chiqmasin);
+    topilsa mijoz obyekti + `"topildi": true`.
+    """
 
     def get(self, request):
         telefon = request.query_params.get('telefon', '').strip()
@@ -38,10 +46,11 @@ class MijozQidirishView(APIView):
         mijoz = (Mijoz.objects.filter(salon=request.salon, telefon__in={telefon_normal(telefon), telefon} - {''})
                  .order_by('id').first())
         if not mijoz:
-            raise NotFound('Yangi mijoz.')
+            return Response({'topildi': False})
         tarix = (mijoz.zakazlar.prefetch_related('pozitsiyalar__libos')
                  .exclude(holat=Zakaz.Holat.BEKOR)[:10])
         return Response({
+            'topildi': True,
             'id': mijoz.id, 'fio': mijoz.fio, 'telefon': mijoz.telefon, 'toy_sanasi': mijoz.toy_sanasi,
             'olchamlar': {o: getattr(mijoz, o) for o in ('kokrak', 'bel', 'son', 'boy', 'oyoq_olchami')},
             'kiyim_olchami': mijoz.kiyim_olchami,
@@ -60,7 +69,8 @@ class ZakazYaratishSerializer(serializers.Serializer):
     # takrorlangan id = shuncha dona: [5, 5, 7] — 2 ta fata va 1 ta toj
     aksessuarlar = serializers.ListField(child=serializers.IntegerField(), required=False, default=list)
     salonchi = serializers.IntegerField(required=False, allow_null=True)
-    manba = serializers.ChoiceField(choices=Mijoz.Manba.choices, required=False)
+    manba = serializers.ChoiceField(choices=Mijoz.Manba.choices, required=False,
+                                    error_messages={'invalid_choice': "«{input}» — noma'lum manba. Ro'yxatdan tanlang."})
     toy_sanasi = serializers.DateField(required=False, allow_null=True)
 
 
@@ -108,6 +118,10 @@ def _bajar(fn, **kw):
         return None, Response(xato_tanasi(e), status=409)
 
 
+# Qaytarim, jarima va qarz to'lovi qanday olinadi/beriladi (C-20) — Kassadagi usullar bilan bir xil
+USULLAR = (Tolov.Usul.NAQD, Tolov.Usul.KARTA, Tolov.Usul.OTKAZMA)
+
+
 class ZalogSerializer(serializers.Serializer):
     turi = serializers.ChoiceField(choices=['pul', 'hujjat', 'tillo'])
     summa = serializers.IntegerField(min_value=0, required=False, default=0)
@@ -124,6 +138,7 @@ class BerishSerializer(serializers.Serializer):
 
 class BerishView(APIView):
     """Libosni berish: qoldiq to'liq to'langan, zalog olingan bo'lishi shart (ekran 9)."""
+    faqat_korishda_ruxsat = True  # C-12: obuna tugaganda ham boshlangan zakaz yakunlanadi
     permission_classes = [SalonYozishRuxsati]
 
     def post(self, request, pk):
@@ -146,9 +161,12 @@ class QaytarishSerializer(serializers.Serializer):
     tortilgan_gr = serializers.DecimalField(max_digits=7, decimal_places=2, required=False)
     baho = serializers.IntegerField(required=False)
     izoh = serializers.CharField(required=False, allow_blank=True, default='', max_length=300)
+    usul = serializers.ChoiceField(choices=USULLAR, default=Tolov.Usul.NAQD)  # C-20: hozir to'langan jarima usuli
+    yoqolgan_donalar = serializers.ListField(child=serializers.IntegerField(), required=False, default=list)  # C-10
 
 
 class QaytarishView(APIView):
+    faqat_korishda_ruxsat = True  # C-12: obuna tugaganda ham boshlangan zakaz yakunlanadi
     permission_classes = [SalonYozishRuxsati]
 
     def post(self, request, pk):
@@ -159,21 +177,27 @@ class QaytarishView(APIView):
         if err:
             return err
         akt = zakaz.qaytarish_akti
+        # A-16: kassir mijozga qo'lda beradigan pul — pul zalog minus undan ushlab qolingan jarima
+        pul_zalog = sum(g.summa for g in zakaz.zaloglar.filter(turi='pul', qaytarilgan__isnull=False))
         return Response({**zakaz_json(zakaz), 'jarima': akt.jarima, 'ushlab_qolingan': akt.ushlab_qolingan,
-                         'qarz': akt.qarz, 'kechikish_kunlari': akt.kechikish_kunlari})
+                         'qarz': akt.qarz, 'kechikish_kunlari': akt.kechikish_kunlari,
+                         'pul_zalog': pul_zalog, 'mijozga_qaytariladi': max(0, pul_zalog - akt.ushlab_qolingan)})
 
 
 class QarzTolashView(APIView):
+    faqat_korishda_ruxsat = True  # C-12: obuna tugaganda ham boshlangan zakaz yakunlanadi
     permission_classes = [SalonYozishRuxsati]
 
     def post(self, request, pk):
         summa = serializers.IntegerField(min_value=1).run_validation(request.data.get('summa'))
+        usul = serializers.ChoiceField(choices=USULLAR).run_validation(request.data.get('usul') or Tolov.Usul.NAQD)  # C-20
         zakaz, err = _bajar(qarzni_tolash, salon=request.salon, xodim=request.user,
-                            zakaz=_zakaz(request, pk), summa=summa)
+                            zakaz=_zakaz(request, pk), summa=summa, usul=usul)
         return err or Response(zakaz_json(zakaz))
 
 
 class TozalandiView(APIView):
+    faqat_korishda_ruxsat = True  # C-12: obuna tugaganda ham boshlangan zakaz yakunlanadi
     permission_classes = [SalonYozishRuxsati]
 
     def post(self, request, pk):

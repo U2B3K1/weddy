@@ -72,9 +72,15 @@ class ShartnomaTests(HujjatBase):
         self.assertIn('7 kundan kam qolganda — 0%', m)
         self.assertIsNotNone(self.band(h, "Shaxsiy ma'lumotlar"))
 
-    def test_ozgargan_qoida_shartnomaga_tushadi(self):
+    def test_ozgargan_qoida_faqat_yangi_zakaz_shartnomasiga_tushadi(self):
+        # QA-17 (b): qoida zakaz yaratilganda qotiriladi — eski zakaz shartnomasi o'zgarmaydi, yangisiga yangi qoida
         s = sozlama(self.salon); s.qaytarish_qoidasi = [[14, 100], [0, 20]]; s.save()
-        m = self.band(hujjatlar.shartnoma(self.zakaz), 'Bekor qilish va avansni qaytarish')['matn']
+        eski = self.band(hujjatlar.shartnoma(self.zakaz), 'Bekor qilish va avansni qaytarish')['matn']
+        self.assertIn("30 kun va undan ko'p qolganda — 100%", eski)
+        yangi_zakaz = zakaz_yaratish(salon=self.salon, xodim=self.malika, telefon='+998907771717',
+                                     olib_ketish=self.zakaz.olib_ketish + timedelta(days=40),
+                                     qaytarish=self.zakaz.olib_ketish + timedelta(days=41), libos_idlari=[self.libos.id])
+        m = self.band(hujjatlar.shartnoma(yangi_zakaz), 'Bekor qilish va avansni qaytarish')['matn']
         self.assertIn("14 kun va undan ko'p qolganda — 100%", m)
         self.assertIn('14 kundan kam qolganda — 20%', m)
 

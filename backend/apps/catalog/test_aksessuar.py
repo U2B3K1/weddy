@@ -306,14 +306,19 @@ class ZakazgaAksessuarQoshishTests(AksBase):
         z.refresh_from_db()
         self.assertEqual((z.jami, z.aksessuarlar.count(), AksessuarBron.objects.count()), (2_000_000, 0, 0))
 
-    def test_tolangan_jamidan_oshsa_olib_tashlab_bolmaydi(self):
+    def test_tolangan_jamidan_oshsa_farq_mijozga_qaytariladi(self):
+        """C-07 (D3 shartnomasi, R3): to'liq to'langan zakazdan aksessuar olib tashlansa — rad etilmaydi, narx kamayadi va
+        ortiqcha to'lov mijozga qaytariladi (VOZVRAT); avval 409 bilan bekor qilish tavsiya qilinardi."""
         smena_ochish(salon=self.salon, xodim=self.malika, boshlangich_qoldiq=0)
         z = self.zakaz(aks=[self.fata.id])
-        tolov_qabul(salon=self.salon, xodim=self.malika, tur=Tolov.Tur.AVANS, summa=2_300_000, zakaz=z)
+        tolov_qabul(salon=self.salon, xodim=self.malika, tur=Tolov.Tur.AVANS, summa=z.jami, zakaz=z)
         qid = z.aksessuarlar.get().id
         r = self.api(self.malika).delete(f'/api/zakazlar/{z.id}/aksessuar/{qid}/')
-        self.assertEqual(r.status_code, 409)
-        self.assertEqual((z.aksessuarlar.count(), AksessuarBron.objects.filter(zakaz=z).count()), (1, 1))
+        self.assertEqual(r.status_code, 200)
+        z.refresh_from_db()
+        self.assertEqual((z.aksessuarlar.count(), AksessuarBron.objects.filter(zakaz=z).count()), (0, 0))
+        self.assertEqual(r.json()['qaytariladi'], self.fata.ijara_narxi)
+        self.assertTrue(Tolov.objects.filter(zakaz=z, tur=Tolov.Tur.VOZVRAT, summa=self.fata.ijara_narxi).exists())
 
     def test_avansdan_keyin_qoshilgan_aksessuar_mustahkam_bron(self):
         smena_ochish(salon=self.salon, xodim=self.malika, boshlangich_qoldiq=0)

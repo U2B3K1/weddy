@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.catalog.models import Aksessuar, Kategoriya
-from apps.tenants.permissions import IsRahbar, IsStaff, SalonYozishRuxsati
+from apps.tenants.permissions import IsRahbar, IsStaff, SalonYozishRuxsati, yozish_taqiqi
 
 from . import promo
 from .models import Promokod, Salonchi, Zakaz
@@ -47,8 +47,8 @@ class PromokodlarView(APIView):
         return Response(promo.statistika(request.salon))
 
     def post(self, request):
-        if not SalonYozishRuxsati().has_permission(request, self):
-            return Response({'detail': "Salon «faqat ko'rish» rejimida."}, status=403)
+        if (rad := yozish_taqiqi(request, self)):  # o'zbekcha sabab bilan (C-12)
+            return rad
         ser = PromokodSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
         d = dict(ser.validated_data)

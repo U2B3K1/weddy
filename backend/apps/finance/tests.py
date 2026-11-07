@@ -191,6 +191,17 @@ class XarajatTests(FinanceBase):
         with self.assertRaises(XarajatXatosi):
             xarajat_qarori(salon=self.salon, rahbar=self.rahbar, xarajat=x, tasdiqlash=False)
 
+    def test_sotuvchi_xarajati_rahbarga_telegram_xabari(self):
+        """Rahbar qarori kerak bo'lgan xarajat — qo'ng'iroqchadan tashqari Telegram xabari ham (rahbar kiritgani — yo'q)."""
+        from apps.notify.models import Xabar
+        smena_ochish(salon=self.salon, xodim=self.malika, boshlangich_qoldiq=0)
+        xarajat_kiritish(salon=self.salon, xodim=self.malika, modda='transport', summa=50_000, izoh='taksi')
+        x = Xabar.objects.get(xodim=self.rahbar, tur='xarajat_tasdiq')
+        self.assertIn("xarajat kiritdi", x.matn)
+        self.assertIn("50 000 so'm (kassadan) · «taksi»", x.matn)
+        xarajat_kiritish(salon=self.salon, xodim=self.rahbar, modda='transport', summa=10_000)
+        self.assertEqual(Xabar.objects.filter(tur='xarajat_tasdiq').count(), 1)
+
     def test_sotuvchi_tasdiqlay_olmaydi(self):
         smena_ochish(salon=self.salon, xodim=self.malika, boshlangich_qoldiq=0)
         x = xarajat_kiritish(salon=self.salon, xodim=self.malika, modda='boshqa', summa=1000)

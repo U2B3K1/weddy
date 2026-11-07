@@ -7,7 +7,7 @@ from rest_framework.views import APIView
 
 from apps.cash.services import KassaXatosi, xato_tanasi
 from apps.tenants.models import Xodim
-from apps.tenants.permissions import IsRahbar, IsStaff, SalonYozishRuxsati, salon_yoza_oladimi
+from apps.tenants.permissions import IsRahbar, IsStaff, SalonYozishRuxsati, salon_yoza_oladimi, yozish_taqiqi
 from django.utils import timezone
 
 from . import reports
@@ -55,8 +55,8 @@ class XarajatlarView(APIView):
         return Response([xarajat_json(x, nomlar) for x in qs.order_by('-sana', '-id')[:200]])
 
     def post(self, request):
-        if not SalonYozishRuxsati().has_permission(request, self):
-            return Response({'detail': "Salon «faqat ko'rish» rejimida."}, status=403)
+        if (rad := yozish_taqiqi(request, self)):  # o'zbekcha sabab bilan (C-12)
+            return rad
         ser = XarajatSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
         try:
@@ -239,8 +239,8 @@ class OyniYopishView(APIView):
                          for y in YopilganOy.objects.filter(salon=request.salon).select_related('yopgan')])
 
     def _bajar(self, request, fn, qiymat):
-        if not SalonYozishRuxsati().has_permission(request, self):
-            return Response({'detail': "Salon «faqat ko'rish» rejimida."}, status=403)
+        if (rad := yozish_taqiqi(request, self)):  # o'zbekcha sabab bilan (C-12)
+            return rad
         yil, m = _oy(qiymat)
         try:
             fn(salon=request.salon, rahbar=request.user, yil=yil, oy=m)
@@ -260,11 +260,12 @@ class HisobotlarRoyxatiView(APIView):
     permission_classes = [IsRahbar]
 
     def get(self, request):
-        from .statistika import HISOBOTLAR, SARLAVHALAR
+        from .statistika import DAVRSIZ, HISOBOTLAR, ROYXATDA_YOQ, SARLAVHALAR
         from apps.tenants.models import sozlama
-        yashirin = set() if sozlama(request.salon).qoplamagan_royxat else {'bosh-liboslar'}  # 4.16: yoq-o'ch
-        return Response([{'kalit': 'pnl', 'sarlavha': 'Foyda va zarar (P&L)'}]
-                        + [{'kalit': k, 'sarlavha': SARLAVHALAR[k]} for k in HISOBOTLAR if k not in yashirin])
+        yashirin = set(ROYXATDA_YOQ) | (set() if sozlama(request.salon).qoplamagan_royxat else {'bosh-liboslar'})  # 4.16: yoq-o'ch
+        return Response([{'kalit': 'pnl', 'sarlavha': 'Oylik foyda'}]
+                        + [{'kalit': k, 'sarlavha': SARLAVHALAR[k], 'davrsiz': k in DAVRSIZ}
+                           for k in HISOBOTLAR if k not in yashirin])
 
 
 class HisobotView(APIView):
@@ -279,8 +280,9 @@ class HisobotView(APIView):
         from .statistika import FILTRLAR
         # FT-20.1: faqat shu hisobotga tegishli filtrlar qo'llanadi
         dan, gacha, filtrlar = _davr_va_filtrlar(request, FILTRLAR.get(nom, ()))
+        from .statistika import DAVRSIZ
         return Response({**fn(request.salon, dan, gacha, **filtrlar), 'dan': dan, 'gacha': gacha,
-                         'filtrlar': list(FILTRLAR.get(nom, ()))})
+                         'filtrlar': list(FILTRLAR.get(nom, ())), 'davrsiz': nom in DAVRSIZ})
 
 
 class OylikQatorView(APIView):
@@ -301,8 +303,8 @@ class BankView(APIView):
         return Response({'oy': f'{yil}-{m:02d}', 'usullar': bank_holati(request.salon, yil, m)})
 
     def post(self, request):
-        if not SalonYozishRuxsati().has_permission(request, self):
-            return Response({'detail': "Salon «faqat ko'rish» rejimida."}, status=403)
+        if (rad := yozish_taqiqi(request, self)):  # o'zbekcha sabab bilan (C-12)
+            return rad
 
         class S(serializers.Serializer):
             oy = serializers.CharField()
@@ -391,8 +393,8 @@ class DoimiyXarajatlarView(APIView):
         return Response([_doimiy_json(d, nomlar) for d in DoimiyXarajat.objects.filter(salon=request.salon)])
 
     def post(self, request):
-        if not SalonYozishRuxsati().has_permission(request, self):
-            return Response({'detail': "Salon «faqat ko'rish» rejimida."}, status=403)
+        if (rad := yozish_taqiqi(request, self)):  # o'zbekcha sabab bilan (C-12)
+            return rad
         from apps.tenants.models import Filial
 
         from .moddalar import modda_bormi, modda_nomlari

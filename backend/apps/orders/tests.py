@@ -105,15 +105,17 @@ class ZakazTests(TestCase):
         r = c.post('/api/zakazlar/', body, format='json')
         self.assertEqual(r.status_code, 409)
         h = c.get('/api/mijozlar/qidirish/', {'telefon': '+998901112233'}).json()
-        self.assertEqual(h['tarix'][0]['liboslar'], ['Libos A'])
-        self.assertEqual(c.get('/api/mijozlar/qidirish/', {'telefon': '+998000'}).status_code, 404)
+        self.assertEqual((h['topildi'], h['tarix'][0]['liboslar']), (True, ['Libos A']))
+        r = c.get('/api/mijozlar/qidirish/', {'telefon': '+998000'})  # A-39: yangi mijoz — xato emas
+        self.assertEqual((r.status_code, r.json()), (200, {'topildi': False}))
 
     def test_mijoz_boshqa_salonda_korinmaydi(self):
         self.zakaz()
         boshqa, xodim_b, _ = salon_yarat('b')
         c = APIClient()
         c.credentials(HTTP_AUTHORIZATION='Bearer ' + make_staff_token(xodim_b))
-        self.assertEqual(c.get('/api/mijozlar/qidirish/', {'telefon': '+998901112233'}).status_code, 404)
+        r = c.get('/api/mijozlar/qidirish/', {'telefon': '+998901112233'})
+        self.assertEqual((r.status_code, r.json()), (200, {'topildi': False}))
 
 
 class QulfBelgisiTests(TestCase):

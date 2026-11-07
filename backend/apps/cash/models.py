@@ -20,6 +20,11 @@ class Smena(SalonModel):
     zalog_yoq = models.PositiveSmallIntegerField(default=0)
     # Yopilganda seyfda qolgan naqd (rahbarga topshirilsa 0): ertaga ochuvchining boshlang'ich qoldig'i shunga solishtiriladi
     seyfda = models.BigIntegerField(null=True, blank=True)
+    # C-11: ochishda seyf sanog'i — oldingi smena seyfda qoldirgani, farq (sanalgan − qoldirilgan) va ochuvchining izohi.
+    # Telegram ulanmagan salonda ham farq yo'qolmaydi: Kunlik kassa, Xodimlar nazorati va Smenalar tarixida ko'rinadi
+    seyfda_edi = models.BigIntegerField(null=True, blank=True)
+    seyf_farq = models.BigIntegerField(null=True, blank=True)
+    ochish_izohi = models.CharField(max_length=300, blank=True)
     # Terminal sverkasi: smena yopishda terminaldan olingan summa tizimdagi terminal to'lovlari bilan solishtiriladi
     terminal_tizimda = models.BigIntegerField(null=True, blank=True)
     terminal_sverka = models.BigIntegerField(null=True, blank=True)

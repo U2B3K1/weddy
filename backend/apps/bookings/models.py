@@ -6,6 +6,10 @@ from django.utils import timezone
 from apps.catalog.models import Libos
 from apps.tenants.models import SalonModel
 
+# Libos/dona salonga qaytgan zakaz holatlari (orders.Zakaz.Holat qiymatlari; import aylanasiz). Bunday zakazning broni bandlik
+# uchun (bufer — tozalash kunlari) saqlanadi, lekin libosni arxivga/sotilganga o'tkazishni yoki donani ta'mirga berishni to'smaydi.
+YAKUNLANGAN_ZAKAZ = ('qaytarildi', 'yopildi', 'bekor')
+
 
 class Bron(SalonModel):
     """Libosning sana oralig'ida bandligi.
@@ -42,8 +46,9 @@ class Bron(SalonModel):
 
     @classmethod
     def kelgusi(cls):
-        """Hali tugamagan faol bronlar (libos sotilish/arxivga o'tishini to'sadi)."""
-        return cls.faol().filter(oraliq__endswith__gt=timezone.localdate())
+        """Hali tugamagan faol bronlar (libos sotilish/arxivga o'tishini to'sadi). Erta qaytarilgan/yopilgan zakazning
+        qolgan kunlari kelgusi emas — libos allaqachon salonda."""
+        return cls.faol().filter(oraliq__endswith__gt=timezone.localdate()).exclude(zakaz__holat__in=YAKUNLANGAN_ZAKAZ)
 
 
 class LibosQulfi(SalonModel):
@@ -79,5 +84,5 @@ class AksessuarBron(SalonModel):
     @classmethod
     def kelgusi(cls):
         """Hali tugamagan faol bronlar. Qaytarilgan zakazning bronlari o'chirilmaydi — ular donani abadiy
-        «bronlari bor» qilib to'smasligi uchun o'tib ketganlari hisobga olinmaydi."""
-        return cls.faol().filter(oraliq__endswith__gt=timezone.localdate())
+        «bronlari bor» qilib to'smasligi uchun o'tib ketganlari va yakunlangan zakaznikilari hisobga olinmaydi."""
+        return cls.faol().filter(oraliq__endswith__gt=timezone.localdate()).exclude(zakaz__holat__in=YAKUNLANGAN_ZAKAZ)

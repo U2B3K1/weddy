@@ -201,6 +201,10 @@ class RasmOchirishTests(RasmBase):
         self.yukla(self.malika, rasm_fayl((400, 600)))
         rid = Rasm.objects.get().id
         self.assertEqual(self.api(dilnoza).delete(f'/api/rasmlar/{rid}/').status_code, 403)
+        # B-28: «×» faqat ruxsat bo'lsa — rasm JSON ida ochira_oladi
+        def ruxsat(x):
+            return self.api(x).get(f'/api/liboslar/{self.libos.id}/').json()['rasmlar'][0]['ochira_oladi']
+        self.assertEqual((ruxsat(dilnoza), ruxsat(self.malika), ruxsat(self.rahbar)), (False, True, True))
         self.assertEqual(self.api(self.rahbar).delete(f'/api/rasmlar/{rid}/').status_code, 204)
 
     def test_boshqa_salon_rasmi_topilmaydi(self):

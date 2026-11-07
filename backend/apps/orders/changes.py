@@ -81,8 +81,9 @@ def tolov_holatini_mosla(zakaz, xato=None):
 
     tolangan = tolangan_summa(zakaz)
     if tolangan > zakaz.jami:
-        raise (xato or OzgartirishXatosi)("To'langan summa yangi jamidan oshib ketadi. "
-                                          "Avval zakazni bekor qilib, avansni qaytaring.")
+        # C-07: narx kamaygan zakaz o'zgartirishlarida farq oldin qaytariladi (`_ortiqchani_qaytar`), shu yerga yetmaydi
+        raise (xato or OzgartirishXatosi)(f"To'langan summa ({tolangan:,}) zakaz jamidan ({zakaz.jami:,}) oshib ketadi."
+                                          .replace(',', ' '))
     s = zakaz.tolangan_sana
     if s and (zakaz.tushum_farqlari.exists() or oy_yopilgan(zakaz.salon_id, s.year, s.month)):
         _tushum_farqi(zakaz, tolangan)
@@ -107,6 +108,20 @@ def _tushum_farqi(zakaz, tolangan):
         kutilgan.save(update_fields=['summa', 'sana'])
     else:
         TushumFarqi.objects.create(salon=zakaz.salon, zakaz=zakaz, summa=farq, sana=sana)
+
+
+def _ortiqchani_qaytar(zakaz, xodim, usul):
+    """C-07: to'liq (yoki ko'p) to'langan zakazda narx kamaysa — farq mijozga qaytariladi (VOZVRAT, tanlangan usulda).
+
+    Avval bekor qilishni tavsiya qilardik — bu mijozga zarar edi (avansning bir qismi ushlanardi). Qaytarish xodim
+    smenasidan chiqadi (ochiq smena va ishtirok shart). Qaytarilgan summa javobda `qaytariladi` bo'lib ko'rinadi.
+    """
+    ortiqcha = tolangan_summa(zakaz) - zakaz.jami
+    if ortiqcha > 0:
+        tolov_qabul(salon=zakaz.salon, xodim=xodim, tur=Tolov.Tur.VOZVRAT, summa=ortiqcha, usul=usul or Tolov.Usul.NAQD,
+                    zakaz=zakaz, izoh=f"Zakaz #{zakaz.raqam}: narx kamaydi — farq qaytarildi")
+    zakaz.qaytarildi_summa = max(ortiqcha, 0)
+    return zakaz.qaytarildi_summa
 
 
 def _vaqtinchalik_muddat(zakaz):
@@ -220,8 +235,9 @@ def sanani_kochirish(*, salon, xodim, zakaz, olib_ketish, qaytarish, sabab=''):
 
 
 @transaction.atomic
-def libosni_almashtirish(*, salon, xodim, zakaz, eski_libos, yangi_libos, sabab=''):
-    """Narx farqi jamiga qo'shiladi yoki qoldiq to'lovdan ayiriladi (FT-17.2)."""
+def libosni_almashtirish(*, salon, xodim, zakaz, eski_libos, yangi_libos, sabab='', usul=None):
+    """Narx farqi jamiga qo'shiladi yoki qoldiq to'lovdan ayiriladi (FT-17.2). To'langan summa yangi jamidan oshsa —
+    farq mijozga `usul` bilan qaytariladi (C-07)."""
     zakaz = _ochiq_zakaz(salon, zakaz)
     poz = zakaz.pozitsiyalar.select_related('libos').filter(libos_id=eski_libos.id).first()
     if not poz:
@@ -240,11 +256,57 @@ def libosni_almashtirish(*, salon, xodim, zakaz, eski_libos, yangi_libos, sabab=
     poz.libos, poz.narx, poz.zalog = yangi, yangi.ijara_narxi, yangi.zalog
     poz.save()
     eski_jami = zakaz.jami
+    _narxni_hisobla(zakaz)
+    qaytdi = _ortiqchani_qaytar(zakaz, xodim, usul)
     _qayta_hisobla(zakaz)  # qimmatroq libos: qoldiq paydo bo'lsa daromad sanasi tozalanadi
     zakaz.save()
     _log(zakaz, xodim, 'libos_almashtirildi', f'{eski_libos.artikul} (jami {eski_jami})',
-         f'{yangi.artikul} (jami {zakaz.jami})', sabab)
+         f'{yangi.artikul} (jami {zakaz.jami})' + (f', mijozga qaytarildi {qaytdi}' if qaytdi else ''), sabab)
     return zakaz
+
+
+def bekor_qoidasi(zakaz):
+    """(qoida, asos, avans_foizi) — zakazga qotirilgani (QA-17 b); qotirilmagan (eski) zakazda salonning joriy sozlamasi."""
+    if zakaz.qaytarish_qoidasi is not None:
+        return zakaz.qaytarish_qoidasi, zakaz.qaytarish_asosi or 'avans', zakaz.avans_foizi
+    soz = sozlama(zakaz.salon)
+    return soz.qaytarish_qoidasi, soz.qaytarish_asosi, soz.avans_foizi
+
+
+def avans_qismi(zakaz, tolangan=None, asos=None):
+    """Bekor qilish qoidasi qo'llanadigan summa (C-21). Qolgani (oldindan to'langan) to'liq qaytariladi."""
+    _, zakaz_asosi, avans_foizi = bekor_qoidasi(zakaz)
+    tolangan = tolangan_summa(zakaz) if tolangan is None else tolangan
+    if (asos or zakaz_asosi) == 'tolangan':
+        return tolangan
+    if avans_foizi:
+        return min(tolangan, zakaz.jami * avans_foizi // 100)
+    olingan = zakaz.tolovlar.filter(Tolov.HAQIQIY, tur=Tolov.Tur.AVANS).aggregate(s=Sum('summa'))['s'] or 0
+    return min(tolangan, olingan)
+
+
+def bekor_hisobi(zakaz, xodim=None, foiz_override=None, qoida=None, asos=None):
+    """Bekor qilinsa mijozga qancha qaytadi — bekor qilishning o'zi ham, oldindan ko'rsatish (GET) ham shuni ishlatadi.
+
+    Qoida salon sozlamasiga ko'ra: faqat avansga (FT-17.3 — avansdan ortiq oldindan to'langan summa to'liq qaytariladi)
+    yoki hamma to'langan summaga. Avans nima — salon sozlamasi (C-21, `avans_foizi`). Qoidadan tashqari foiz — faqat rahbar.
+    """
+    zakaz_qoidasi, zakaz_asosi, _ = bekor_qoidasi(zakaz)  # QA-17: zakazga qotirilgan (FT-17.4)
+    qoida = zakaz_qoidasi if qoida is None else qoida
+    asos = zakaz_asosi if asos is None else asos
+    qolgan = (zakaz.olib_ketish - timezone.localdate()).days
+    foiz = qaytariladigan_foiz(qolgan, qoida)
+    if foiz_override is not None:
+        if xodim is None or xodim.rol != Xodim.Rol.RAHBAR:
+            raise OzgartirishXatosi("Qoidadan tashqari qaytarishni faqat rahbar belgilaydi.")
+        if not 0 <= foiz_override <= 100:
+            raise OzgartirishXatosi("Foiz 0 dan 100 gacha bo'lishi kerak.")
+        foiz = foiz_override
+    tolangan = tolangan_summa(zakaz)
+    avans = avans_qismi(zakaz, tolangan, asos)
+    qaytariladi = avans * foiz // 100 + (tolangan - avans)
+    return {'tolangan': tolangan, 'avans': avans, 'oldindan': tolangan - avans, 'qolgan_kun': qolgan, 'foiz': foiz,
+            'qaytariladi': qaytariladi, 'ushlab_qolinadi': tolangan - qaytariladi}
 
 
 @transaction.atomic
@@ -258,25 +320,8 @@ def zakazni_bekor_qilish(*, salon, xodim, zakaz, sabab, qaytariladigan_foiz_over
     if not sabab.strip():
         raise OzgartirishXatosi('Bekor qilish sababi majburiy.')
     zakaz = _ochiq_zakaz(salon, zakaz)
-    if qoida is None:  # admin paneldagi qoida (FT-17.4)
-        qoida = sozlama(salon).qaytarish_qoidasi
-    if asos is None:
-        asos = sozlama(salon).qaytarish_asosi
-    qolgan = (zakaz.olib_ketish - timezone.localdate()).days
-    foiz = qaytariladigan_foiz(qolgan, qoida)
-    if qaytariladigan_foiz_override is not None:
-        if xodim.rol != Xodim.Rol.RAHBAR:
-            raise OzgartirishXatosi("Qoidadan tashqari qaytarishni faqat rahbar belgilaydi.")
-        if not 0 <= qaytariladigan_foiz_override <= 100:
-            raise OzgartirishXatosi("Foiz 0 dan 100 gacha bo'lishi kerak.")
-        foiz = qaytariladigan_foiz_override
-
-    # Qoida salon sozlamasiga ko'ra: faqat avansga (FT-17.3 — oldindan to'langan qoldiq to'liq qaytariladi)
-    # yoki hamma to'langan summaga
-    tolangan = tolangan_summa(zakaz)
-    avans = (tolangan if asos == 'tolangan'
-             else zakaz.tolovlar.filter(tur=Tolov.Tur.AVANS).aggregate(s=Sum('summa'))['s'] or 0)
-    qaytariladi = avans * foiz // 100 + (tolangan - avans)
+    h = bekor_hisobi(zakaz, xodim, qaytariladigan_foiz_override, qoida, asos)
+    tolangan, avans, foiz, qaytariladi = h['tolangan'], h['avans'], h['foiz'], h['qaytariladi']
     if qaytariladi:
         tolov_qabul(salon=salon, xodim=xodim, tur=Tolov.Tur.VOZVRAT, summa=qaytariladi,
                     usul=usul, zakaz=zakaz, izoh=f'Zakaz #{zakaz.raqam} bekor qilindi')
@@ -312,8 +357,8 @@ def zakazga_aksessuar_qoshish(*, salon, xodim, zakaz, aksessuar, soni=1):
 
 
 @transaction.atomic
-def zakazdan_aksessuarni_olish(*, salon, xodim, zakaz, qator_id, sabab=''):
-    """Aksessuarni zakazdan olib tashlaydi: dona bo'shaydi, narx kamayadi."""
+def zakazdan_aksessuarni_olish(*, salon, xodim, zakaz, qator_id, sabab='', usul=None):
+    """Aksessuarni zakazdan olib tashlaydi: dona bo'shaydi, narx kamayadi; ortiqcha to'langan bo'lsa farq qaytariladi (C-07)."""
     zakaz = _ochiq_zakaz(salon, zakaz)
     qator = zakaz.aksessuarlar.select_related('dona__aksessuar').filter(id=qator_id).first()
     if not qator:
@@ -329,9 +374,12 @@ def zakazdan_aksessuarni_olish(*, salon, xodim, zakaz, qator_id, sabab=''):
         zakaz.promokod_ishlatilishlari.filter(bekor=False).update(bekor=True)
         zakaz.chegirma = max(0, zakaz.chegirma - zakaz.promokod_chegirma)
         zakaz.promokod, zakaz.promokod_chegirma = None, 0
+    _narxni_hisobla(zakaz)
+    qaytdi = _ortiqchani_qaytar(zakaz, xodim, usul)
     _qayta_hisobla(zakaz)
     zakaz.save()
-    _log(zakaz, xodim, 'aksessuar_olib_tashlandi', f'{nomi} (jami {eski_jami})', f'jami {zakaz.jami}', sabab)
+    _log(zakaz, xodim, 'aksessuar_olib_tashlandi', f'{nomi} (jami {eski_jami})',
+         f'jami {zakaz.jami}' + (f', mijozga qaytarildi {qaytdi}' if qaytdi else ''), sabab)
     return zakaz
 
 

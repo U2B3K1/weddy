@@ -101,6 +101,19 @@ class SmenaTuzatishTests(Base):
         r2 = Xodim.objects.create(salon=salon2, ism='R2', rol=Xodim.Rol.RAHBAR)
         self.assertEqual(self.api(r2).patch(u, {'fakt_qoldiq': 1}, format='json').status_code, 404)
 
+    def test_faqat_farqlilar(self):
+        # setUp dagi smena −10 000 farq bilan; ikkinchisi farqsiz, uchinchisi ochiq — ro'yxatda faqat birinchisi
+        smena_ochish(salon=self.salon, xodim=self.malika, boshlangich_qoldiq=90_000)
+        farqsiz = smena_yopish(salon=self.salon, xodim=self.malika, fakt_qoldiq=90_000)
+        smena_ochish(salon=self.salon, xodim=self.malika, boshlangich_qoldiq=90_000)
+        self.assertEqual(len(self.r.get('/api/kassa/smenalar/').data), 3)
+        j = self.r.get('/api/kassa/smenalar/', {'farqli': 1}).data
+        self.assertEqual([s['id'] for s in j], [self.smena.id])
+        # tuzatilib farq 0 bo'lsa — ro'yxatdan chiqadi
+        self.r.patch(f'/api/kassa/smenalar/{self.smena.id}/', {'fakt_qoldiq': 100_000}, format='json')
+        self.assertEqual(self.r.get('/api/kassa/smenalar/', {'farqli': 1}).data, [])
+        self.assertNotEqual(farqsiz.id, self.smena.id)
+
     def test_ochiq_smena_tuzatilmaydi(self):
         s = smena_ochish(salon=self.salon, xodim=self.malika, boshlangich_qoldiq=0)
         self.assertEqual(self.r.patch(f'/api/kassa/smenalar/{s.id}/', {'fakt_qoldiq': 1}, format='json').status_code, 409)

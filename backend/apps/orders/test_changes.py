@@ -207,14 +207,16 @@ class AlmashtirishTests(ChangeBase):
                                  yangi_libos=self.c)
         self.assertEqual(z.jami, 1_000_000)
 
-    def test_tolangan_yangi_jamidan_oshsa_rad(self):
+    def test_tolangan_yangi_jamidan_oshsa_farq_qaytariladi(self):
+        # C-07 (R3): avval rad etilib, bekor qilish tavsiya qilinardi (avansning bir qismi ushlanardi — mijozga zarar).
+        # Endi almashtirish bajariladi va ortiqcha to'langan pul mijozga qaytariladi
+        from apps.cash.services import tolangan_summa
         z = self.zakaz(kun(10), avans=1_500_000)
-        with self.assertRaises(OzgartirishXatosi):
-            libosni_almashtirish(salon=self.salon, xodim=self.malika, zakaz=z, eski_libos=self.a,
+        z = libosni_almashtirish(salon=self.salon, xodim=self.malika, zakaz=z, eski_libos=self.a,
                                  yangi_libos=self.c)
-        z.refresh_from_db()
-        self.assertEqual(z.jami, 2_000_000)  # hech narsa o'zgarmadi
-        self.assertEqual(Bron.objects.get(zakaz=z).libos, self.a)
+        self.assertEqual((z.jami, tolangan_summa(z), z.qaytarildi_summa), (1_000_000, 1_000_000, 500_000))
+        self.assertEqual(z.tolovlar.get(tur=Tolov.Tur.VOZVRAT).summa, 500_000)
+        self.assertEqual(Bron.objects.get(zakaz=z).libos, self.c)
 
     def test_band_libosga_almashtirib_bolmaydi(self):
         z = self.zakaz(kun(10))

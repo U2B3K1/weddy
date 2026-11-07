@@ -64,9 +64,10 @@ def seyf_qoldigi(salon, filial, hozirgi=None):
 
 
 @transaction.atomic
-def smena_ochish(*, salon, xodim, boshlangich_qoldiq, filial=None):
+def smena_ochish(*, salon, xodim, boshlangich_qoldiq, filial=None, izoh=''):
     """Birinchi kelgan xodim smenani ochadi va seyfdagi naqdni sanab tasdiqlaydi (FT-12.7).
-    Oldingi smena yopilganda seyfda qolgan summadan farq qilsa — rahbarga xabar."""
+    Oldingi smena yopilganda seyfda qolgan summadan farq qilsa — farq smenada saqlanadi (C-11: hisobotlarda
+    ko'rinadi, Telegram ulanmagan salonda ham yo'qolmaydi) va rahbarga xabar boradi. Izohni ochish oynasi so'raydi."""
     _pul_olishi_shart(salon, xodim)
     boshqa = xodim_smenasi(salon, xodim)
     if boshqa and boshqa.filial_id != (filial.id if filial else None):
@@ -79,11 +80,16 @@ def smena_ochish(*, salon, xodim, boshlangich_qoldiq, filial=None):
         raise KassaXatosi('Smena allaqachon ochiq. Unga qo\'shiling.')
     SmenaIshtirokchi.objects.create(salon=salon, smena=smena, xodim=xodim)
     oldingi = seyf_qoldigi(salon, filial, smena)
+    if oldingi is not None:
+        smena.seyfda_edi, smena.seyf_farq = oldingi, boshlangich_qoldiq - oldingi
+        smena.ochish_izohi = izoh.strip()[:300] if smena.seyf_farq else ''
+        smena.save(update_fields=['seyfda_edi', 'seyf_farq', 'ochish_izohi'])
     if oldingi is not None and oldingi != boshlangich_qoldiq:
         from apps.notify.services import rahbarlarga, som
         rahbarlarga(salon, 'seyf_farqi',
                     f"Seyf farqi{' · ' + filial.nomi if filial else ''}: oldingi smena yopilganda seyfda {som(oldingi)} "
-                    f"qolgan, {xodim.ism} ochishda {som(boshlangich_qoldiq)} sanadi (farq {som(boshlangich_qoldiq - oldingi)}).")
+                    f"qolgan, {xodim.ism} ochishda {som(boshlangich_qoldiq)} sanadi (farq {som(boshlangich_qoldiq - oldingi)})."
+                    + (f"{chr(10)}Izoh: {smena.ochish_izohi}" if smena.ochish_izohi else ''))
     return smena
 
 
@@ -123,8 +129,15 @@ def _bronlar_joyida(zakaz):
 
 
 def tolangan_summa(zakaz):
-    r = zakaz.tolovlar.filter(Tolov.HAQIQIY, tur__in=[Tolov.Tur.AVANS, Tolov.Tur.QOLDIQ]).aggregate(s=Sum('summa'))
-    return r['s'] or 0
+    """Mijozdan olingan ijara puli: avans + qoldiq (rahbar «kelmadi» demaganlari) − mijozga qaytarilgani (VOZVRAT).
+
+    VOZVRAT faol zakazda narx kamayganda (C-07: farq qaytariladi), bekor qilingan zakazda — qaytarilgan avans.
+    Shuning uchun bekor zakazda bu summa salonda qolgan pulga (`ushlab_qolingan_avans`) teng.
+    """
+    r = zakaz.tolovlar.filter(Tolov.HAQIQIY).aggregate(
+        kirim=Sum('summa', filter=Q(tur__in=[Tolov.Tur.AVANS, Tolov.Tur.QOLDIQ])),
+        qaytim=Sum('summa', filter=Q(tur=Tolov.Tur.VOZVRAT)))
+    return (r['kirim'] or 0) - (r['qaytim'] or 0)
 
 
 @transaction.atomic
@@ -188,6 +201,10 @@ def tolov_qabul(*, salon, xodim, tur, summa, usul=Tolov.Usul.NAQD, zakaz=None, i
             zakaz.tushum_farqlari.filter(sana=None).update(sana=timezone.localdate())
         else:
             zakaz.tolangan_sana = timezone.localdate()
+        # C-03: libos qaytgan, lekin qoldiq («kelmadi» o'tkazma) qolgan zakaz — qoldiq to'langach yopiladi
+        akt = getattr(zakaz, 'qaytarish_akti', None)
+        if zakaz.holat == Zakaz.Holat.QAYTARILDI and (akt is None or akt.qarz == 0):
+            zakaz.holat = Zakaz.Holat.YOPILDI
     if tur in (Tolov.Tur.AVANS, Tolov.Tur.QOLDIQ):
         zakaz.save(update_fields=['holat', 'tolangan_sana'])
     return tolov
@@ -237,6 +254,13 @@ def otkazma_tasdiqlash(*, salon, rahbar, tolov, keldi):
         z = t.zakaz
         if z and z.tolangan_sana and tolangan_summa(z) < z.jami:  # to'liq to'lanmagan bo'lib qoldi
             Zakaz.objects.filter(id=z.id).update(tolangan_sana=None)
+        if z:
+            # C-03: yopilgan zakaz qoldig'i paydo bo'ldi — u yana «Qaytarildi» (qoldiq olinguncha yopilmaydi)
+            if z.holat == Zakaz.Holat.YOPILDI and tolangan_summa(z) < z.jami:
+                Zakaz.objects.filter(id=z.id).update(holat=Zakaz.Holat.QAYTARILDI)
+            from apps.orders.changes import _log
+            _log(z, rahbar, 'otkazma_kelmadi', f"{t.get_tur_display()} {t.get_usul_display()} {t.summa}",
+                 f"qoldiq {z.jami - tolangan_summa(z)}", f"qabul qilgan: {t.xodim.ism}")
         from apps.notify.services import som, xabar_yoz
         xabar_yoz(t.xodim, 'otkazma_kelmadi',
                   f"❗ {t.get_usul_display()} {som(t.summa)}{f' (zakaz #{z.raqam})' if z else ''} rahbar hisobiga kelmadi. "
@@ -449,10 +473,10 @@ def smena_yopish(*, salon, xodim, fakt_qoldiq, izoh='', filial=None, rahbar=None
         raise KassaXatosi('Kassa farqi bor: izoh majburiy.')
     t_tizim = terminal_tizimda(smena)
     if t_tizim and terminal is None and sozlama(salon).terminal_sverkasi:
-        raise KassaXatosi("Terminal sverkasini oling va undagi summani kiriting.", kod='terminal')
+        raise KassaXatosi("Terminal hisobotini (kun yakuni chekini) oling va undagi summani kiriting.", kod='terminal')
     t_farq = None if terminal is None else terminal - t_tizim
     if t_farq and not izoh.strip():
-        raise KassaXatosi('Terminal sverkasi tizimdagidan farq qiladi: izoh majburiy.')
+        raise KassaXatosi('Terminal hisoboti tizimdagidan farq qiladi: izoh majburiy.')
     smena.terminal_tizimda, smena.terminal_sverka, smena.terminal_farq = (t_tizim, terminal, t_farq) if terminal is not None else (None, None, None)
     if rahbar is not None:
         _topshirish(salon=salon, smena=smena, kimdan=xodim, kimga=rahbar, rahbarga=True, summa=fakt_qoldiq,
@@ -476,9 +500,9 @@ def smena_yopish(*, salon, xodim, fakt_qoldiq, izoh='', filial=None, rahbar=None
     if t_farq:
         from apps.notify.services import rahbarlarga, som
         rahbarlarga(salon, 'terminal_farqi',
-                    f"Terminal sverkasi farqi: {som(t_farq)}{' · ' + smena.filial.nomi if smena.filial_id else ''}\n"
+                    f"Terminal hisoboti farqi: {som(t_farq)}{' · ' + smena.filial.nomi if smena.filial_id else ''}\n"
                     f"Smena {smena.sana:%d.%m.%Y}, yopdi: {xodim.ism}.\n"
-                    f"Tizimda terminal orqali {som(t_tizim)}, sverkada {som(terminal)}.\nIzoh: {izoh}")
+                    f"Tizimda terminal orqali {som(t_tizim)}, terminal hisobotida {som(terminal)}.\nIzoh: {izoh}")
     return smena
 
 

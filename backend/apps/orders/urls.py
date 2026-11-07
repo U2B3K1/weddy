@@ -1,11 +1,13 @@
 from django.urls import path
 
-from . import views, views_chegirma, views_mijoz, views_narx, views_ozgartirish, views_primerka, views_promo, views_royxat, views_salonchi
+from . import (views, views_bildirishnoma, views_chegirma, views_mijoz, views_narx, views_ozgartirish, views_panel, views_primerka,
+               views_promo, views_royxat, views_salonchi)
 
 urlpatterns = [
     path('zakazlar/', views.ZakazlarView.as_view()),
     path('mijozlar/qidirish/', views.MijozQidirishView.as_view()),
     path('mijozlar/', views_mijoz.MijozlarView.as_view()),
+    path('mijozlar/sonlar/', views_mijoz.MijozSonlariView.as_view()),
     path('mijozlar/<int:pk>/', views_mijoz.MijozView.as_view()),
     path('mijozlar/<int:pk>/qora-royxat/', views_mijoz.QoraRoyxatView.as_view()),
     path('zakazlar/<int:pk>/berish/', views.BerishView.as_view()),
@@ -44,4 +46,6 @@ urlpatterns = [
     path('primerkalar/<int:pk>/', views_primerka.PrimerkaView.as_view()),
     path('bosh-ekran/', views_royxat.BoshEkranView.as_view()),
     path('dashbord/', views_royxat.RahbarDashbordView.as_view()),
+    path('dashbord/panel/', views_panel.DashbordPanelView.as_view()),
+    path('bildirishnomalar/', views_bildirishnoma.BildirishnomalarView.as_view()),
 ]

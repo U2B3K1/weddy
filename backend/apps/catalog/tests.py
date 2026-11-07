@@ -189,6 +189,163 @@ class OzgartirishTests(KatalogBase):
         self.assertEqual(self.api(xodim_b).get('/api/liboslar/').json(), [])
 
 
+class MalumotTahririTests(KatalogBase):
+    """B-05: rahbar libos ma'lumotini (artikul, nomi, kategoriya, o'lcham, rang) tahrirlaydi; jurnalga yoziladi."""
+
+    def setUp(self):
+        super().setUp()
+        self.libos = Libos.objects.get(id=self.yangi(self.api(self.rahbar), 'L1').json()['id'])
+        self.kat2 = Kategoriya.objects.create(salon=self.salon, nomi='Kechki', turi='libos')
+
+    def patch(self, xodim, body):
+        return self.api(xodim).patch(f'/api/liboslar/{self.libos.id}/', body, format='json')
+
+    def test_hamma_maydon_va_jurnal(self):
+        r = self.patch(self.rahbar, {'artikul': ' L-001 ', 'nomi': 'Bella', 'kategoriya': self.kat2.id,
+                                     'olcham': '44', 'rang': 'oq'})
+        self.assertEqual(r.status_code, 200)
+        d = r.json()
+        self.assertEqual((d['artikul'], d['nomi'], d['kategoriya'], d['olcham'], d['rang']),
+                         ('L-001', 'Bella', 'Kechki', '44', 'oq'))
+        harakatlar = set(Jurnal.objects.filter(harakat__startswith='libos_').values_list('harakat', flat=True))
+        self.assertTrue({'libos_artikul_ozgardi', 'libos_nomi_ozgardi', 'libos_kategoriyasi', 'libos_olcham_ozgardi',
+                         'libos_rang_ozgardi'} <= harakatlar)
+        j = Jurnal.objects.get(harakat='libos_artikul_ozgardi')
+        self.assertEqual((j.obyekt, j.eski, j.yangi), ('libos L1', 'L1', 'L-001'))
+        # o'zgarmagan qiymat jurnalga qayta yozilmaydi
+        n = Jurnal.objects.count()
+        self.patch(self.rahbar, {'nomi': 'Bella', 'olcham': '44'})
+        self.assertEqual(Jurnal.objects.count(), n)
+
+    def test_artikul_noyob_va_bosh_bolmaydi(self):
+        self.yangi(self.api(self.rahbar), 'L2')
+        r = self.patch(self.rahbar, {'artikul': 'l2'})
+        self.assertEqual(r.status_code, 409)
+        self.assertIn('allaqachon bor', r.json()['detail'])
+        self.assertEqual(self.patch(self.rahbar, {'nomi': '  '}).status_code, 400)  # DRF: bo'sh satr
+        self.assertEqual(Libos.objects.get(id=self.libos.id).artikul, 'L1')
+
+    def test_kategoriya_tekshiriladi_va_sotuvchi_ozgartira_olmaydi(self):
+        aks = Kategoriya.objects.create(salon=self.salon, nomi='Fata', turi='aksessuar')
+        self.assertEqual(self.patch(self.rahbar, {'kategoriya': aks.id}).status_code, 400)
+        _, _, boshqa = salon_yarat('b')
+        self.assertEqual(self.patch(self.rahbar, {'kategoriya': boshqa.id}).status_code, 400)
+        self.assertEqual(self.patch(self.malika, {'nomi': 'X'}).status_code, 403)
+
+
+class MijozdaTests(KatalogBase):
+    """B-02: berilgan (mijozdagi) libos katalogda «mijozda» va qaytish sanasi bilan."""
+
+    def test_mijozda_va_qaytish(self):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from apps.cash.models import Tolov
+        from apps.cash.services import smena_ochish, tolov_qabul
+        from apps.orders.rental import libos_berish
+        from apps.orders.services import zakaz_yaratish
+        c = self.api(self.rahbar)
+        a = self.yangi(c, 'M1').json()['id']
+        b = self.yangi(c, 'M2').json()['id']
+        bugun = timezone.localdate()
+        smena_ochish(salon=self.salon, xodim=self.malika, boshlangich_qoldiq=0)
+        z = zakaz_yaratish(salon=self.salon, xodim=self.malika, telefon='+998901', olib_ketish=bugun,
+                           qaytarish=bugun + timedelta(days=3), libos_idlari=[a])
+        tolov_qabul(salon=self.salon, xodim=self.malika, tur=Tolov.Tur.AVANS, summa=z.jami, zakaz=z)
+        libos_berish(salon=self.salon, xodim=self.malika, zakaz=z, zaloglar=[{'turi': 'pul', 'summa': 1}])
+        royxat = {x['artikul']: x for x in self.api(self.malika).get('/api/liboslar/').json()}
+        self.assertEqual((royxat['M1']['mijozda'], royxat['M1']['qaytish']), (True, str(bugun + timedelta(days=3))))
+        self.assertEqual((royxat['M2']['mijozda'], royxat['M2']['qaytish']), (False, None))
+        self.assertEqual(royxat['M1']['holat'], 'bosh')  # holat o'zgarmaydi — «mijozda» alohida maydon
+        self.assertTrue(c.get(f'/api/liboslar/{a}/').json()['mijozda'])
+        self.assertFalse(c.get(f'/api/liboslar/{b}/').json()['mijozda'])
+
+
+class PasportTests(KatalogBase):
+    """R2: libos pasporti — hozir kimda, kelgusi bronlar; samaradorlik faqat rahbarga."""
+
+    def test_hozir_kelgusi_va_samaradorlik(self):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from apps.cash.models import Tolov
+        from apps.cash.services import smena_ochish, tolov_qabul
+        from apps.orders.rental import libos_berish
+        from apps.orders.services import zakaz_yaratish
+        c = self.api(self.rahbar)
+        lid = self.yangi(c, 'P1', tannarx=4_000_000).json()['id']
+        bugun = timezone.localdate()
+        smena_ochish(salon=self.salon, xodim=self.malika, boshlangich_qoldiq=0)
+        z1 = zakaz_yaratish(salon=self.salon, xodim=self.malika, telefon='+998901', fio='Madina', olib_ketish=bugun,
+                            qaytarish=bugun + timedelta(days=2), libos_idlari=[lid])
+        tolov_qabul(salon=self.salon, xodim=self.malika, tur=Tolov.Tur.AVANS, summa=z1.jami, zakaz=z1)
+        libos_berish(salon=self.salon, xodim=self.malika, zakaz=z1, zaloglar=[{'turi': 'pul', 'summa': 1}])
+        z2 = zakaz_yaratish(salon=self.salon, xodim=self.malika, telefon='+998902', olib_ketish=bugun + timedelta(days=20),
+                            qaytarish=bugun + timedelta(days=22), libos_idlari=[lid])
+        p = c.get(f'/api/liboslar/{lid}/pasport/').json()
+        self.assertEqual((p['hozir']['raqam'], p['hozir']['mijoz'], p['hozir']['kechikkan']), (z1.raqam, 'Madina', False))
+        self.assertEqual([k['raqam'] for k in p['kelgusi']], [z2.raqam])  # berilgan zakaz kelgusida takrorlanmaydi
+        s = p['samaradorlik']
+        self.assertEqual((s['berilgan'], s['ijara_jami'], s['qoplash_foiz']), (1, 2_000_000, 50.0))  # to'liq to'langan
+        # sotuvchi: kimda va bronlar ko'rinadi, samaradorlik (tannarx) — yo'q
+        ps = self.api(self.malika).get(f'/api/liboslar/{lid}/pasport/').json()
+        self.assertIn('hozir', ps)
+        self.assertNotIn('samaradorlik', ps)
+        _, xodim_b, _ = salon_yarat('b')
+        self.assertEqual(self.api(xodim_b).get(f'/api/liboslar/{lid}/pasport/').status_code, 404)
+
+
+class RadEtishTests(KatalogBase):
+    """C-25: sotuvchi qo'shgan libos unga ko'rinadi (tasdiq kutilmoqda); rahbar rad etadi — arxivga, jurnalga."""
+
+    def test_sotuvchi_kutayotganini_koradi_va_rahbar_rad_etadi(self):
+        lid = self.yangi(self.api(self.malika), 'S1').json()['id']
+        royxat = {x['artikul']: x['holat'] for x in self.api(self.malika).get('/api/liboslar/').json()}
+        self.assertEqual(royxat['S1'], 'tasdiq_kutilmoqda')
+        self.assertEqual(self.api(self.malika).post(f'/api/liboslar/{lid}/rad/', {}, format='json').status_code, 403)
+        r = self.api(self.rahbar).post(f'/api/liboslar/{lid}/rad/', {'sabab': 'takror yozuv'}, format='json')
+        self.assertEqual((r.status_code, r.json()['holat']), (200, 'arxiv'))
+        j = Jurnal.objects.get(harakat='libos_rad_etildi')
+        self.assertEqual((j.obyekt, j.eski, j.yangi), ('libos S1', "qo'shgan: Malika", 'takror yozuv'))
+        self.assertNotIn('S1', [x['artikul'] for x in self.api(self.malika).get('/api/liboslar/').json()])  # arxiv
+        r = self.api(self.rahbar).post(f'/api/liboslar/{lid}/rad/', {}, format='json')
+        self.assertEqual(r.status_code, 409)  # endi tasdiq kutmaydi
+
+
+class FaqatKorishTests(KatalogBase):
+    """C-12: «faqat ko'rish» salonida yozish — o'zbekcha sababli rad; `faqat_korishda_ruxsat` belgili view'da — ruxsat."""
+
+    def setUp(self):
+        super().setUp()
+        self.salon.holat = Salon.Holat.FAQAT_KORISH
+        self.salon.save(update_fields=['holat'])
+
+    def test_xabar_ozbekcha(self):
+        from apps.tenants.permissions import FAQAT_KORISH_XABARI
+        r = self.yangi(self.api(self.rahbar))  # view ichida qo'lda tekshiriladi
+        self.assertEqual((r.status_code, r.json()['detail']), (403, FAQAT_KORISH_XABARI))
+        r = self.api(self.malika).post('/api/sanoq/', {}, format='json')  # permission_classes orqali
+        self.assertEqual((r.status_code, r.json()['detail']), (403, FAQAT_KORISH_XABARI))
+        self.assertEqual(self.api(self.malika).get('/api/liboslar/').status_code, 200)  # o'qish ochiq
+
+    def test_faqat_korishda_ruxsat_belgisi(self):
+        from types import SimpleNamespace
+
+        from apps.tenants.permissions import FAQAT_KORISH_XABARI, SalonYozishRuxsati
+        so_rov = SimpleNamespace(user=self.malika, salon=self.salon, method='POST')
+        p = SalonYozishRuxsati()
+        self.assertFalse(p.has_permission(so_rov, SimpleNamespace()))
+        self.assertEqual(p.message, FAQAT_KORISH_XABARI)
+        self.assertTrue(SalonYozishRuxsati().has_permission(so_rov, SimpleNamespace(faqat_korishda_ruxsat=True)))
+        # bloklangan salonda belgi ham yordam bermaydi
+        self.salon.holat = Salon.Holat.BLOKLANGAN
+        p = SalonYozishRuxsati()
+        self.assertFalse(p.has_permission(so_rov, SimpleNamespace(faqat_korishda_ruxsat=True)))
+        self.assertIn('bloklangan', p.message)
+
+
 class KategoriyaVaJurnalTests(KatalogBase):
     def test_kategoriya_faqat_rahbar_yaratadi(self):
         self.assertEqual(self.api(self.malika).post('/api/kategoriyalar/', {'nomi': 'Yangi'},

@@ -82,7 +82,9 @@ def smena_json(s):
             'boshlangich_qoldiq': s.boshlangich_qoldiq, 'hisobdagi_qoldiq': s.hisobdagi_qoldiq, 'fakt_qoldiq': s.fakt_qoldiq,
             'farq': s.farq, 'izoh': s.izoh, 'yopilgan': s.yopilgan,
             'zalog_tekshirilmagan': s.zalog_tekshirilmagan, 'zalog_yoq': s.zalog_yoq,
-            'terminal_tizimda': s.terminal_tizimda, 'terminal_sverka': s.terminal_sverka, 'terminal_farq': s.terminal_farq}
+            'terminal_tizimda': s.terminal_tizimda, 'terminal_sverka': s.terminal_sverka, 'terminal_farq': s.terminal_farq,
+            # C-11: ochishdagi seyf sanog'i (oldingi smena seyfda qoldirgani, farq, ochuvchi izohi)
+            'seyfda_edi': s.seyfda_edi, 'seyf_farq': s.seyf_farq, 'ochish_izohi': s.ochish_izohi}
 
 
 def yopishda_zalog_hisobi(smena):

@@ -6,9 +6,10 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.tenants.models import Xodim
-from apps.tenants.permissions import IsRahbar, IsStaff, SalonYozishRuxsati
+from apps.tenants.permissions import IsRahbar, IsStaff, SalonYozishRuxsati, yozish_taqiqi
 
-from .discounts import ChegirmaXatosi, chegirma_qarori, chegirma_sorash, tayyor_chegirma_qollash
+from .discounts import (ChegirmaXatosi, chegirma_qarori, chegirma_sorash, chegirmani_olib_tashlash,
+                        tayyor_chegirma_qollash)
 from .models import ChegirmaSorovi, TayyorChegirma, Zakaz
 from .views import zakaz_json
 
@@ -67,6 +68,11 @@ class ChegirmaView(APIView):
             return err
         zakaz.refresh_from_db()
         return Response({'sorov': sorov_json(sorov), 'zakaz': zakaz_json(zakaz)}, status=201)
+
+    def delete(self, request, pk):
+        """Tayyor chegirmani olib tashlash yoki kutilayotgan so'rovni qaytarib olish (C-15/C-06) → {zakaz}."""
+        zakaz, err = _bajar(chegirmani_olib_tashlash, salon=request.salon, xodim=request.user, zakaz=_zakaz(request, pk))
+        return err or Response({'zakaz': zakaz_json(zakaz)})
 
 
 class ChegirmaSorovlariView(APIView):
@@ -130,8 +136,8 @@ class TayyorChegirmalarView(APIView):
         return Response([tayyor_json(t) for t in qs.order_by('-faol', 'nomi')])
 
     def post(self, request):
-        if not SalonYozishRuxsati().has_permission(request, self):
-            return Response({'detail': "Salon «faqat ko'rish» rejimida."}, status=403)
+        if (rad := yozish_taqiqi(request, self)):  # o'zbekcha sabab bilan (C-12)
+            return rad
         ser = TayyorChegirmaSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
         t = TayyorChegirma.objects.create(salon=request.salon, **ser.validated_data)

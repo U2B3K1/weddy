@@ -131,6 +131,22 @@ def sanoq_yakunlash(*, salon, xodim, sanoq, izoh=''):
     return sanoq
 
 
+@transaction.atomic
+def sanoq_bekor(*, salon, xodim, sanoq):
+    """Ochiq sanoqni bekor qilish (tasodifan boshlangan yoki chala qolgan): qatorlari bilan o'chadi, tarixda qolmaydi va
+    rahbarga Telegram xabari ketmaydi — aks holda yakunlanganda «34 ta yo'q» degan yolg'on signal borardi.
+    Amal jurnalga yoziladi (kim, nechtasi belgilangan edi)."""
+    from apps.tenants.models import jurnalga_yoz
+    sanoq = Sanoq.objects.select_for_update().get(id=sanoq.id, salon=salon)
+    if sanoq.yakunlangan:
+        raise KatalogXatosi("Sanoq yakunlangan — uni bekor qilib bo'lmaydi.")
+    jami = sanoq.qatorlar.count()
+    belgilangan = sanoq.qatorlar.filter(topildi=True).count()
+    jurnalga_yoz(salon, xodim, 'sanoq_bekor_qilindi', f'sanoq {timezone.localtime(sanoq.boshlangan):%d.%m.%Y %H:%M}',
+                 f'boshladi: {sanoq.boshlagan.ism}', f'{belgilangan} / {jami} belgilangan edi')
+    sanoq.delete()
+
+
 def qator_json(q):
     if q.libos_id:
         return {'tur': 'libos', 'libos': q.libos_id, 'dona': None, 'artikul': q.libos.artikul, 'nomi': q.libos.nomi,
@@ -142,9 +158,11 @@ def qator_json(q):
 
 
 def sanoq_json(sanoq, qatorlar=False):
+    # Vaqt mahalliy vaqtda: UTC da 07.11 02:10 dagi sanoq «06.11» bo'lib ko'rinardi (frontend sanani kesib oladi)
     d = {'id': sanoq.id, 'filial': sanoq.filial.nomi if sanoq.filial_id else None,
-         'boshlagan': sanoq.boshlagan.ism, 'boshlangan': sanoq.boshlangan,
-         'yakunlagan': sanoq.yakunlagan.ism if sanoq.yakunlagan_id else None, 'yakunlangan': sanoq.yakunlangan,
+         'boshlagan': sanoq.boshlagan.ism, 'boshlangan': timezone.localtime(sanoq.boshlangan),
+         'yakunlagan': sanoq.yakunlagan.ism if sanoq.yakunlagan_id else None,
+         'yakunlangan': timezone.localtime(sanoq.yakunlangan) if sanoq.yakunlangan else None,
          'izoh': sanoq.izoh, 'kutilgan': sanoq.kutilgan, 'topilgan': sanoq.topilgan, 'yoq': sanoq.yoq,
          'ortiqcha': sanoq.ortiqcha}
     if qatorlar:

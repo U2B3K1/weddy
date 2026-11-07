@@ -5,7 +5,7 @@ from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.tenants.permissions import IsRahbar, IsStaff, SalonYozishRuxsati
+from apps.tenants.permissions import IsRahbar, IsStaff, SalonYozishRuxsati, yozish_taqiqi
 
 from .dona_tamir import dona_tamir_json, dona_tamirini_tugatish, donani_tamirga_berish
 from .manekin import (aksessuar_joylashuvi, aksessuar_manekin_json, aksessuar_qatlami,
@@ -89,8 +89,8 @@ class AksessuarlarView(APIView):
         return Response([aksessuar_json(request, a, rahbar) for a in qs])
 
     def post(self, request):
-        if not SalonYozishRuxsati().has_permission(request, self):
-            return Response({'detail': "Salon «faqat ko'rish» rejimida."}, status=403)
+        if (rad := yozish_taqiqi(request, self)):  # o'zbekcha sabab bilan (C-12)
+            return rad
         ser = AksessuarYaratSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
         d = ser.validated_data
@@ -117,6 +117,8 @@ class AksessuarTafsilotView(APIView):
         return Response(aksessuar_json(request, _aksessuar(request, pk), _rahbar(request), donalar=True))
 
     def patch(self, request, pk):
+        if (rad := yozish_taqiqi(request, self)):  # «faqat ko'rish»da katalog yopiq (QA-15)
+            return rad
         if not _rahbar(request):
             return Response({'detail': "Narx va tannarxni faqat rahbar o'zgartiradi."}, status=403)
 
@@ -294,8 +296,8 @@ class DonaTamirView(APIView):
         return Response([dona_tamir_json(t) for t in self._dona(request, pk).tamirlar.select_related('xarajat')])
 
     def post(self, request, pk):
-        if not SalonYozishRuxsati().has_permission(request, self):
-            return Response({'detail': "Salon «faqat ko'rish» rejimida."}, status=403)
+        if (rad := yozish_taqiqi(request, self)):  # o'zbekcha sabab bilan (C-12)
+            return rad
 
         class S(serializers.Serializer):
             ish_turi = serializers.CharField(max_length=300)

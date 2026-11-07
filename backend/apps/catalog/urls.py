@@ -7,6 +7,8 @@ urlpatterns = [
     path('liboslar/keyingi-artikul/', views.KeyingiArtikulView.as_view()),
     path('liboslar/<int:pk>/', views.LibosTafsilotView.as_view()),
     path('liboslar/<int:pk>/tasdiq/', views.LibosTasdiqView.as_view()),
+    path('liboslar/<int:pk>/pasport/', views.LibosPasportView.as_view()),
+    path('liboslar/<int:pk>/rad/', views.LibosRadView.as_view()),
     path('liboslar/<int:pk>/rasmlar/', views.RasmlarView.as_view()),
     path('liboslar/<int:pk>/tamir/', views.TamirlarView.as_view()),
     path('tamir/<int:pk>/tugatish/', views.TamirTugatishView.as_view()),

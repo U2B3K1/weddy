@@ -94,6 +94,22 @@ def libosni_tasdiqlash(*, salon, rahbar, libos, ijara_narxi, tannarx, zalog=None
     return libos
 
 
+@transaction.atomic
+def libosni_rad_etish(*, salon, rahbar, libos, sabab=''):
+    """C-25: sotuvchi qo'shgan (tasdiq kutayotgan) libosni rahbar rad etadi — xato yoki takror yozuv katalogga chiqmaydi.
+    Libos arxivga o'tadi (o'chirilmaydi: rasm va jurnal izi qoladi), sabab jurnalga yoziladi."""
+    if not _rahbar(rahbar):
+        raise KatalogXatosi('Libosni faqat rahbar rad etadi.')
+    libos = Libos.objects.select_for_update().get(id=libos.id, salon=salon)
+    if libos.holat != Libos.Holat.TASDIQ_KUTILMOQDA:
+        raise KatalogXatosi('Libos tasdiq kutmayapti.')
+    libos.holat = Libos.Holat.ARXIV
+    libos.save(update_fields=['holat'])
+    jurnalga_yoz(salon, rahbar, 'libos_rad_etildi', f'libos {libos.artikul}',
+                 f"qo'shgan: {libos.qoshgan.ism if libos.qoshgan else '—'}", (sabab or '').strip()[:300] or 'sabab yozilmagan')
+    return libos
+
+
 # Qo'lda o'tkaziladigan holatlar (FT-3.9); «bosh/tozalashda» zakaz jarayonida o'zi o'zgaradi
 # «Ta'mirda» holati faqat ta'mir jurnali orqali (catalog/tamir.py), shunda sana, narx va kunlar yoziladi
 def tozalashni_yakunla(salon=None):
@@ -141,6 +157,29 @@ def libosni_ozgartirish(*, salon, rahbar, libos, **maydonlar):
     if libos.holat == Libos.Holat.TASDIQ_KUTILMOQDA:
         raise KatalogXatosi('Avval libosni tasdiqlang.')
     holat = maydonlar.pop('holat', None)
+    # B-05: ma'lumot (artikul, nomi, kategoriya, o'lcham, rang) — har o'zgarish jurnalga; artikul salonda noyob
+    eski_artikul = libos.artikul
+    for nom in ('artikul', 'nomi', 'olcham', 'rang', 'kategoriya'):
+        if nom not in maydonlar:
+            continue
+        qiymat = maydonlar.pop(nom)
+        if isinstance(qiymat, str):
+            qiymat = qiymat.strip()
+        if nom in ('artikul', 'nomi') and not qiymat:
+            raise KatalogXatosi('Artikul va nomi bo\'sh bo\'lmasligi kerak.')
+        if nom == 'artikul' and qiymat != libos.artikul and Libos.objects.filter(
+                salon=salon, artikul__iexact=qiymat).exclude(id=libos.id).exists():
+            raise KatalogXatosi(f'«{qiymat}» artikuli salonda allaqachon bor.')
+        eski = getattr(libos, nom)
+        if qiymat == eski:
+            continue
+        if nom == 'kategoriya':
+            if qiymat.salon_id != salon.id or qiymat.turi != qiymat.Turi.LIBOS:
+                raise KatalogXatosi('Kategoriya topilmadi.')
+            jurnalga_yoz(salon, rahbar, 'libos_kategoriyasi', f'libos {eski_artikul}', eski.nomi, qiymat.nomi)
+        else:
+            jurnalga_yoz(salon, rahbar, f'libos_{nom}_ozgardi', f'libos {eski_artikul}', eski, qiymat)
+        setattr(libos, nom, qiymat)
     for nom, qiymat in maydonlar.items():
         eski = getattr(libos, nom)
         if qiymat is not None and qiymat != eski:

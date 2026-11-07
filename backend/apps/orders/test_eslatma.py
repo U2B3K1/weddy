@@ -161,7 +161,8 @@ class EslatmaTests(Base):
         e = self.eslatmalar()
         self.assertEqual([(x['tur'], x['raqam'], x['telefon'], x['boglangan']) for x in e],
                          [('olib_ketish_ertaga', 1, '+998901', False)])
-        self.assertIn("qoldiq to'lovni eslating", e[0]['matn'])
+        self.assertIn('avans hali olinmagan', e[0]['matn'])  # A-29: vaqtinchalik bronda summa bilan
+        self.assertEqual(e[0]['qoldiq'], z.jami)
         c = self.api(self.malika)
         r = c.post(f'/api/zakazlar/{z.id}/boglandim/', {'tur': 'olib_ketish_ertaga', 'izoh': 'Ertaga soat 10 da keladi'},
                    format='json')

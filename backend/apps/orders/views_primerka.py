@@ -20,6 +20,8 @@ class PrimerkaSerializer(serializers.Serializer):
 class ZakazPrimerkaView(APIView):
     """POST /api/zakazlar/<id>/primerka/ {vaqt} — zakazga primerka sanasi va vaqtini qo'shadi."""
     permission_classes = [IsStaff, SalonYozishRuxsati]
+    # Mavjud zakazga xizmat — «faqat ko'rish» (obuna tugagan) salonida ham ochiq; bloklanganda yopiq (C-12, koordinator qarori R3)
+    faqat_korishda_ruxsat = True
 
     def post(self, request, pk):
         zakaz = Zakaz.objects.filter(salon=request.salon, id=pk).first()
@@ -38,6 +40,8 @@ class ZakazPrimerkaView(APIView):
 
 class PrimerkaView(APIView):
     permission_classes = [IsStaff, SalonYozishRuxsati]
+    # Mavjud zakazga xizmat — «faqat ko'rish» (obuna tugagan) salonida ham ochiq; bloklanganda yopiq (C-12, koordinator qarori R3)
+    faqat_korishda_ruxsat = True
 
     def patch(self, request, pk):
         p = Primerka.objects.filter(salon=request.salon, id=pk).first()
