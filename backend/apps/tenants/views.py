@@ -213,7 +213,9 @@ class PinLoginView(OchiqView):
         from apps.notify import services as notify
         # FT-1.1, FT-22.3: rahbar kirishi Telegram kod bilan tasdiqlanadi. Qurilmani hozirgina Telegramdan
         # o'zi tasdiqlagan bo'lsa — shaxsi Telegram orqali allaqachon tasdiqlangan, ikkinchi kod so'ralmaydi.
-        if (notify.kirish_kodi_kerak(xodim) and not notify.tg_tasdiq_kodsiz_kirish(xodim, qurilma)
+        kod_kerak = notify.kirish_kodi_kerak(xodim)
+        if (kod_kerak and not notify.rahbar_faol_qurilma(xodim, qurilma)  # qurilmada 3 kundan kam faolsiz
+                and not notify.tg_tasdiq_kodsiz_kirish(xodim, qurilma)
                 and not notify.kirish_tasdiqlandimi(xodim, qurilma)):  # Telegramda «Ruxsat berish» bosilgan
             kod = str(request.data.get('telegram_kod', '')).strip()
             if not kod:
@@ -226,6 +228,8 @@ class PinLoginView(OchiqView):
                 return Response({'telegram_kod_kerak': True}, status=202)
             if not notify.kirish_kodini_tekshir(xodim, kod):
                 raise AuthenticationFailed("Telegram kod noto'g'ri yoki muddati o'tgan.")
+        if kod_kerak:
+            notify.rahbar_faolligini_yangila(xodim, qurilma)
         Salon.objects.filter(id=salon.id).update(oxirgi_kirish=timezone.now())  # platforma egasi uchun faollik
         yangi = {'oxirgi_kirish': timezone.now()}
         modeli = str(request.data.get('qurilma_modeli') or '')[:200]

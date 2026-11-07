@@ -226,6 +226,10 @@ class IshonchliQurilma(SalonModel):
     tg_token_tugaydi = models.DateTimeField(null=True, blank=True)
     # Rahbar shu qurilmani Telegramdan tasdiqlagan payt: shu kirishda PIN dan keyin ikkinchi kod so'ralmaydi
     tg_tasdiqlangan = models.DateTimeField(null=True, blank=True)
+    # Rahbar shu qurilmada Telegram bilan oxirgi marta tasdiqlangan/faol bo'lgan payt: faol bo'lmagan 3 kundan
+    # keyingina Telegram qayta so'raladi (har kirishda surilib turadi)
+    rahbar_faol = models.DateTimeField(null=True, blank=True)
+    rahbar_faol_xodim = models.ForeignKey('Xodim', null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
     # Qurilma (planshet) qaysi filialda turadi: yangi zakaz va libos shu filialga yoziladi
     filial = models.ForeignKey(Filial, null=True, blank=True, on_delete=models.SET_NULL, related_name='qurilmalar')
 
@@ -279,6 +283,9 @@ class SalonSozlamalari(models.Model):
     # Qoida nimaga qo'llanadi: faqat avansga (oldindan to'langan qoldiq to'liq qaytadi) yoki hamma to'langan summaga
     qaytarish_asosi = models.CharField(max_length=10, choices=[('avans', 'Avans'), ('tolangan', "To'langan summa")],
                                        default='avans')
+    # C-21: avans nima — bo'sh: avans sifatida olingan to'lov to'liq avans; son (1–100): zakaz jamining shu foizigacha
+    # bo'lgan qism avans, ortig'i «oldindan to'lov» — bekor qilishda to'liq qaytariladi (qaytarish_asosi='avans' bo'lsa)
+    avans_foizi = models.PositiveSmallIntegerField(null=True, blank=True)  # 1–100 (API tekshiradi)
     libos_tasdigi = models.BooleanField(default=True)                       # FT-3.6
     # Promokodlar (4.18); 3-bosqich sozlamalari
     promokod_tasdiqsiz = models.BooleanField(default=True)        # o'chirilsa promokod ham rahbar tasdig'iga boradi (FT-21.7)

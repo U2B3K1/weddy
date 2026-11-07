@@ -248,6 +248,21 @@ class KirishKodiTests(Base):
         self.assertIn('token', r.json())
         self.assertFalse(KirishKodi.objects.exists())  # kod bir martalik
 
+    def test_faol_rahbar_3_kun_telegramsiz_kiradi(self):
+        """Telegram bilan kirgan rahbar shu qurilmada 3 kun faol bo'lmaguncha qayta so'ralmaydi; har kirish muddatni suradi."""
+        from datetime import timedelta
+        from django.utils import timezone
+        self.pin(self.rahbar, '1111')
+        self.assertEqual(self.pin(self.rahbar, '1111', telegram_kod=self.kod()).status_code, 200)
+        yuborilgan = len(self.yuborilgan)
+        self.assertEqual(self.pin(self.rahbar, '1111').status_code, 200)  # ikkinchi kirish — Telegramsiz
+        self.assertEqual(len(self.yuborilgan), yuborilgan)
+        q = IshonchliQurilma.objects.get()
+        IshonchliQurilma.objects.filter(id=q.id).update(rahbar_faol=timezone.now() - timedelta(days=2, hours=23))
+        self.assertEqual(self.pin(self.rahbar, '1111').status_code, 200)  # 3 kundan kam — hali kiradi (va suriladi)
+        IshonchliQurilma.objects.filter(id=q.id).update(rahbar_faol=timezone.now() - timedelta(days=3, minutes=1))
+        self.assertEqual(self.pin(self.rahbar, '1111').status_code, 202)  # 3 kun faol bo'lmadi — Telegram qayta so'raladi
+
     def test_telegram_ruxsat_tugmasi(self):
         """Kod terish o'rniga: Telegramda «Ruxsat berish» — ilova kutish so'rovida kiradi; boshqa qurilmaga amal qilmaydi."""
         from apps.notify.services import tugma_ishla
@@ -455,7 +470,7 @@ class BuyruqlarTests(Base):
         self.assertEqual(eslatmalarni_yoz(), 0)  # o'sha kuni takrorlanmaydi
         x = Xabar.objects.filter(xodim=self.malika).get()
         self.assertIn('Zakaz #1 · Dilnoza (+998901)', x.matn)
-        self.assertIn("bog'laning", x.matn)
+        self.assertIn("ijozga eslating", x.matn)  # R1 (A-29): eslatma summa bilan, «Mijozga/mijozga eslating»
 
     def test_kunlik_hisobot(self):
         self.zakaz()

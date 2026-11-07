@@ -12,7 +12,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .models import Integratsiya, integratsiya, jurnalga_yoz
-from .permissions import IsRahbar, SalonYozishRuxsati
+from .permissions import IsRahbar, yozish_taqiqi
 
 MAXFIY = ('eskiz_parol',)
 OCHIQ = ('eskiz_email', 'eskiz_from', 'sms_shablon_olib_ketish', 'sms_shablon_qaytarish',
@@ -77,8 +77,8 @@ class IntegratsiyaView(APIView):
         return Response(integratsiya_json(integratsiya(request.salon)))
 
     def patch(self, request):
-        if not SalonYozishRuxsati().has_permission(request, self):
-            return Response({'detail': "Salon «faqat ko'rish» rejimida."}, status=403)
+        if (rad := yozish_taqiqi(request, self)):  # o'zbekcha sabab bilan (C-12)
+            return rad
         ser = IntegratsiyaSerializer(data=request.data)
         ser.is_valid(raise_exception=True)
         i = integratsiya(request.salon)

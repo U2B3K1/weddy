@@ -13,10 +13,10 @@ from apps.notify import telegram
 from apps.notify.services import ulash_kodi_yarat
 
 from .models import IshonchliQurilma, Xodim, YordamRuxsati, jurnalga_yoz, sozlama
-from .permissions import IsRahbar, IsStaff, SalonYozishRuxsati
+from .permissions import IsRahbar, IsStaff, SalonYozishRuxsati, yozish_taqiqi
 
 SOZLAMA_MAYDONLARI = ('bufer_kun', 'vaqtinchalik_bron_soat', 'zalog_pul', 'zalog_hujjat', 'zalog_tillo',
-                      'kechikish_jarimasi', 'kechikish_kunlik_summa', 'qaytarish_qoidasi', 'qaytarish_asosi', 'libos_tasdigi',
+                      'kechikish_jarimasi', 'kechikish_kunlik_summa', 'qaytarish_qoidasi', 'qaytarish_asosi', 'avans_foizi', 'libos_tasdigi',
                       'promokod_tasdiqsiz', 'promokod_chegirma_birga', 'salonchi_kodlari',
                       'mavsumiy_narx', 'sotuvchi_bonusi', 'bonus_foiz', 'primerka', 'mijoz_bahosi',
                       'qulf_daqiqa', 'sotuvchi_libos_qoshadi', 'qoplamagan_royxat',
@@ -46,6 +46,8 @@ class SozlamaSerializer(serializers.Serializer):
         child=serializers.ListField(child=serializers.IntegerField(), min_length=2, max_length=2),
         min_length=1, max_length=10, required=False)
     qaytarish_asosi = serializers.ChoiceField(choices=['avans', 'tolangan'], required=False)
+    # C-21: null — birinchi to'lov to'liq avans; 1–100 — avans zakazning shu foizi, ortig'i bekor qilishda to'liq qaytadi
+    avans_foizi = serializers.IntegerField(min_value=1, max_value=100, required=False, allow_null=True)
     libos_tasdigi = serializers.BooleanField(required=False)
     promokod_tasdiqsiz = serializers.BooleanField(required=False)
     promokod_chegirma_birga = serializers.BooleanField(required=False)
@@ -160,8 +162,8 @@ class XodimlarBoshqaruvView(APIView):
         return Response([xodim_json(x) for x in qs])
 
     def post(self, request):
-        if not SalonYozishRuxsati().has_permission(request, self):
-            return Response({'detail': "Salon «faqat ko'rish» rejimida."}, status=403)
+        if (rad := yozish_taqiqi(request, self)):  # o'zbekcha sabab bilan (C-12)
+            return rad
 
         class S(serializers.Serializer):
             ism = serializers.CharField(max_length=200)
@@ -344,14 +346,17 @@ class SalonParolView(APIView):
 class YordamRuxsatiView(APIView):
     """Rahbar platforma egasiga muddatli ko'rish ruxsatini beradi yoki bekor qiladi."""
     permission_classes = [IsRahbar]
+    # «Faqat ko'rish» (obuna tugagan) salonida ham ochiq: rahbar aynan shu paytda yordam so'raydi, yangi biznes amali emas
+    # (koordinator qarori, R3). Bloklangan salonda yopiq.
+    faqat_korishda_ruxsat = True
 
     def get(self, request):
         r = YordamRuxsati.amaldagi(request.salon)
         return Response({'amalda': bool(r), 'tugaydi': r.tugaydi if r else None})
 
     def post(self, request):
-        if not SalonYozishRuxsati().has_permission(request, self):
-            return Response({'detail': "Salon «faqat ko'rish» rejimida."}, status=403)
+        if (rad := yozish_taqiqi(request, self)):  # o'zbekcha sabab bilan (C-12)
+            return rad
         soat = serializers.IntegerField(min_value=1, max_value=72).run_validation(request.data.get('soat'))
         YordamRuxsati.objects.filter(salon=request.salon, bekor_qilingan=False).update(bekor_qilingan=True)
         r = YordamRuxsati.objects.create(salon=request.salon, bergan=request.user,

@@ -475,6 +475,20 @@ def kirish_tugma_ishla(chat_id, kid, amal):
     return "✅ Ruxsat berildi — ilova o'zi kiradi."
 
 
+RAHBAR_FAOLSIZLIK = timedelta(days=3)  # rahbar shu qurilmada shuncha faol bo'lmasa, Telegram qayta so'raladi
+
+
+def rahbar_faol_qurilma(xodim, qurilma):
+    """Rahbar shu qurilmada Telegram bilan tasdiqlangan va oxirgi 3 kunda faol bo'lgan — Telegram so'ralmaydi."""
+    return bool(qurilma.rahbar_faol and qurilma.rahbar_faol_xodim_id == xodim.id
+                and qurilma.rahbar_faol > timezone.now() - RAHBAR_FAOLSIZLIK)
+
+
+def rahbar_faolligini_yangila(xodim, qurilma):
+    """To'liq kirgan rahbar uchun 3 kunlik muddat shu paytdan qayta hisoblanadi."""
+    IshonchliQurilma.objects.filter(id=qurilma.id).update(rahbar_faol=timezone.now(), rahbar_faol_xodim=xodim)
+
+
 def kirish_tasdiqlandimi(xodim, qurilma):
     """Telegramda «Ruxsat berish» bosilgan va so'rov aynan shu qurilmadan bo'lsa — bir martalik ruxsat."""
     return bool(KirishKodi.objects.filter(xodim=xodim, qurilma=qurilma, tasdiqlandi__isnull=False,
