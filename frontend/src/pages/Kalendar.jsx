@@ -42,9 +42,29 @@ function bolaklar(l, kunlar) {
   return natija
 }
 
+// QA-12: bo'sh kataklar Tab tartibida libos qatoriga bitta (birinchisi); qolganlariga strelkalar bilan yuriladi —
+// ←/→ shu qatorda, ↑/↓ shu kunda boshqa libos qatoriga (129 ta Tab to'xtashi o'rniga)
+function katakdanYur(e) {
+  const t = e.target
+  if (!t.classList?.contains('bosh-katak') || !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(e.key)) return
+  let keyingi = null
+  if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+    const katak = [...t.closest('tr').querySelectorAll('.bosh-katak')]
+    keyingi = katak[katak.indexOf(t) + (e.key === 'ArrowRight' ? 1 : -1)]
+  } else {
+    const qatorlar = [...t.closest('table').querySelectorAll('tbody tr')]
+    const qadam = e.key === 'ArrowDown' ? 1 : -1
+    for (let i = qatorlar.indexOf(t.closest('tr')) + qadam; i >= 0 && i < qatorlar.length && !keyingi; i += qadam) {
+      keyingi = qatorlar[i].querySelector(`.bosh-katak[data-kun="${t.dataset.kun}"]`)
+    }
+  }
+  if (keyingi) { e.preventDefault(); keyingi.focus() }
+}
+
 // FT-2.6: bandlik kalendari — kun, hafta, oy; libos qatorlarida bron tasmasi, kun sarlavhasida nechta libos band.
 // Kun bosilsa — shu kun varaqasi: kim olib ketadi, kim qaytaradi, nima ijarada, nima tozalashda.
-export default function Kalendar({ onZakaz }) {
+// `onYangi({ dan, gacha, libos_id })` (R2): bo'sh katak bosilsa — shu libos va kunga oldindan to'ldirilgan Yangi zakaz.
+export default function Kalendar({ onZakaz, onYangi }) {
   const [uzunlik, setUzunlik] = useState(7)
   const [bosh, setBosh] = useState(bugunIso)
   const korinish = korinishi(uzunlik)
@@ -53,6 +73,8 @@ export default function Kalendar({ onZakaz }) {
   const [q, setQ] = useState('')
   const [tanlangan, setTanlangan] = useState(null)
   const bugun = bugunIso()
+  // Bo'sh katak — o'tmagan kun, bron va primerkasiz bitta kun (shu libos va kunga Yangi zakaz)
+  const yangiMumkin = (s) => !s.h && !s.p && s.son === 1 && s.dan >= bugun
 
   const kunlar = useMemo(() => Array.from({ length: uzunlik }, (_, i) => kunQosh(bosh, i)), [bosh, uzunlik])
   const dan = kunlar[0], gacha = kunlar[kunlar.length - 1]
@@ -133,7 +155,7 @@ export default function Kalendar({ onZakaz }) {
         <p className="malumot jadval-bosh">{qidiruv ? `«${q}» bo'yicha libos topilmadi.` : "Hali libos yo'q."}</p>
       ) : (
         <div className="bandlik-ora">
-          <table className={`bandlik bandlik-${korinish}`} style={{ '--kun-son': kunlar.length }}>
+          <table className={`bandlik bandlik-${korinish}`} style={{ '--kun-son': kunlar.length }} onKeyDown={katakdanYur}>
             <thead>
               <tr>
                 <th className="libos-katak">Libos <small>{hammasi.length} ta</small></th>
@@ -160,16 +182,22 @@ export default function Kalendar({ onZakaz }) {
                 {guruhlar.length > 1 && (
                   <tr className="bandlik-guruh"><th colSpan={kunlar.length + 1}><span>{g.nomi}<span className="tab-son">{g.liboslar.length}</span></span></th></tr>
                 )}
-                {g.liboslar.map((l) => (
+                {g.liboslar.map((l) => { const bol = bolaklar(l, kunlar); const birinchi = bol.find(yangiMumkin)?.dan; return (
                   <tr key={l.id} className={l.holat !== 'bosh' ? 'libos-band' : ''}>
                     <th className="libos-katak" scope="row">
                       <b>{l.artikul}</b>
                       <small>{l.holat !== 'bosh' ? <em>{l.holat === 'tamirda' ? "ta'mirda" : 'tozalashda'}</em> : l.nomi}</small>
                     </th>
-                    {bolaklar(l, kunlar).map((s) => (
+                    {bol.map((s) => (
                       <td key={s.dan} colSpan={s.son}
                         className={`${s.h ? 'bron-katak' : ''} ${s.son === 1 && s.dan === bugun ? 'bugun' : ''} ${s.son === 1 && s.dan === varaqKuni ? 'tanlangan' : ''}`}>
                         {s.h && <Tasma s={s} onZakaz={onZakaz} />}
+                        {onYangi && yangiMumkin(s) && (
+                          <button type="button" className="bosh-katak" title={`${l.artikul} — ${davrNomi(s.dan, s.dan)}: yangi zakaz`}
+                            data-kun={s.dan} tabIndex={s.dan === birinchi ? 0 : -1}
+                            aria-label={`${l.artikul} ${l.nomi}, ${davrNomi(s.dan, s.dan)} — yangi zakaz`}
+                            onClick={() => onYangi({ dan: s.dan, gacha: s.dan, libos_id: l.id })}><span aria-hidden="true">+</span></button>
+                        )}
                         {s.p && (
                           <button type="button" className="primerka-belgi" title={`Primerka ${s.p.vaqt}: #${s.p.zakaz_raqami} ${s.p.mijoz}`}
                             onClick={() => onZakaz(s.p.zakaz_id)}>P</button>
@@ -177,7 +205,7 @@ export default function Kalendar({ onZakaz }) {
                       </td>
                     ))}
                   </tr>
-                ))}
+                ) })}
               </tbody>
             ))}
           </table>

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import Info from '../components/Info'
 import Hujjat from '../components/Hujjat'
 import CalendarPage from '../components/kalendar/CalendarPage'
@@ -6,28 +6,49 @@ import Tasdiq from '../components/Tasdiq'
 import SmenaTugma from '../components/SmenaTugma'
 import LibosSiluet from '../components/LibosSiluet'
 import NavIkona from '../components/NavIkona'
+import TolovTanlov, { UsulTanlov } from '../components/TolovTanlov'
 import { Bezak, IjaraSana, Muhr, VaraqSana } from '../components/Varaq'
 import {
-  bekorQilish, berish, chegirmaSora, mijozOzgartir, tolovHavola, primerkaBelgila, primerkaOzgartir, promokodOlibTashla, promokodQolla, qarzTolash, qaytarish, sanaKochirish, som, sozlamalar, tayyorChegirmalar,
-  saqlangan, tolovQabul, tolovTuzat, xatoMatni, zakazAksessuarOchir, zakazAksessuarQosh, zakazSonlari, zakazTafsilot, zakazTarixi, zakazlarRoyxat,
+  bekorHisobi, bekorQilish, berish, chegirmaMiqdori, chegirmaOlibTashla, chegirmaSora, mijozOzgartir, primerkaBelgila, primerkaOzgartir, promokodOlibTashla, promokodQolla, qarzTolash, qaytarish, sanaKochirish, som, sozlamalar, tayyorChegirmalar,
+  saqlangan, tolovQabul, tolovTuzat, xatoMatni, zakazAksessuarOchir, zakazAksessuarQosh, zakazSonlari, zakazTafsilot, zakazTarixi, zakazlarSahifa,
   boshAksessuarlar, boshLiboslar, libosAlmashtirish, salonchilar, zakazSalonchi,
   sanaMatni,
 } from '../api'
 import SummaInput from '../components/SummaInput'
+import KpiFiltr from '../components/KpiFiltr'
+import { Belgi, Qatorlar } from '../components/ZakazQatorlari'
 import { TARIX_HARAKATLARI, ZAKAZ_HOLATLARI } from '../nomlar'
 import { bugunIso } from '../components/kalendar/sana'
 
-// Zakaz yo'li: 4 qadam; «yopildi» — hammasi o'tilgan, «bekor» — hech biri.
-const QADAMLAR = ['Bron', 'Avans', 'Berildi', 'Qaytarildi']
+// Zakaz yo'li: 4 qadam (A-26); joriy — hozir kutilayotgani (ostida bir qator: qoldiq, muddat). Nomlar qisqa —
+// telefonda ham hammasi sig'adi. «yopildi» — hammasi o'tilgan, «bekor» — ip chiqmaydi.
+const QADAMLAR = ['Bron', "To'lov", 'Berildi', 'Qaytdi']
 function qadamIndeksi(z) {
   const h = z.holat
   if (h === 'yopildi') return 4
   if (h === 'qaytarildi') return 3
-  if (h === 'berildi') return 2
-  if (h === 'bron') return z.qoldiq === 0 ? 2 : 1
-  if (h === 'vaqtinchalik') return z.tolangan > 0 ? 1 : 0
-  return 0
+  if (h === 'berildi') return 3
+  if (h === 'bron') return z.qoldiq > 0 ? 1 : 2
+  return 0  // vaqtinchalik, chegirma kutilmoqda — avans hali olinmagan
 }
+// Joriy qadam ostidagi bir qator: endi nima kerak (A-26)
+function qadamIzohi(z) {
+  const h = z.holat
+  if (h === 'vaqtinchalik' || h === 'chegirma_kutilmoqda') return 'avans kutilmoqda'  // muddat — sarlavha ostida (QA-05)
+  if (h === 'bron') return z.qoldiq > 0 ? `qoldiq ${som(z.qoldiq)}` : "to'langan"
+  if (h === 'berildi') return muddat(z, bugunIso())?.[0] || null  // «bugun qaytaradi», «2 kun kechikdi»
+  if (h === 'qaytarildi' && z.qarz > 0) return `qarz ${som(z.qarz)}`
+  return null
+}
+// Vaqtinchalik bron muddati (A-17): bugun bo'lsa «02:06», boshqa kun — «08.11 02:06»
+const ikki = (n) => String(n).padStart(2, '0')
+function muddatVaqti(iso) {
+  const d = new Date(iso)
+  const soat = `${ikki(d.getHours())}:${ikki(d.getMinutes())}`
+  return d.toDateString() === new Date().toDateString() ? soat : `${ikki(d.getDate())}.${ikki(d.getMonth() + 1)} ${soat}`
+}
+// To'lov va tarix qatorlari uchun: «07.11 14:30»
+const qisqaVaqt = (iso) => { const d = new Date(iso); return `${ikki(d.getDate())}.${ikki(d.getMonth() + 1)} ${ikki(d.getHours())}:${ikki(d.getMinutes())}` }
 // Holatga qarab bitta katta asosiy tugma matni (yo'riqnoma 8.1)
 function asosiyTugma(z) {
   const h = z.holat
@@ -36,17 +57,29 @@ function asosiyTugma(z) {
   if (h === 'bron') return 'Libosni berish'
   if (h === 'berildi') return 'Qaytarib olish'
   if (h === 'qaytarildi' && z.qarz > 0) return 'Qarzni yopish'
+  if (h === 'qaytarildi' && z.qoldiq > 0) return 'Qoldiqni qabul qilish'  // C-03: o'tkazma kelmagan
   return null
 }
 // Avans olingach (bron tasdiqlangach) zakaz varaqasiga muhr bosiladi; vaqtinchalik bronda — bo'sh joy
 const MUHRLI = ['bron', 'berildi', 'qaytarildi', 'yopildi']
-const holatSinfi = (h) =>({ vaqtinchalik: 'vaqtinchalik', chegirma_kutilmoqda: 'vaqtinchalik', bron: 'bron', berildi: 'berildi', qaytarildi: 'qarz', yopildi: 'qaytarildi', bekor: 'qarz' }[h] || 'bron')
+// «Bekor qilingan» — xira (A-27): qizil «Qarz bor» bilan bir xil signal bermasin
+const holatSinfi = (h) => ({ vaqtinchalik: 'vaqtinchalik', chegirma_kutilmoqda: 'vaqtinchalik', bron: 'bron', berildi: 'berildi', qaytarildi: 'qarz', yopildi: 'qaytarildi', bekor: 'bekor' }[h] || 'bron')
 
-// Tezkor holat tablari — eng ko'p qidiriladiganlari; qolganlari (chegirma tasdig'i) «Hammasi» ichida ko'rinadi
-const HOLAT_TABLARI = [['', 'Hammasi'], ['vaqtinchalik', 'Vaqtinchalik'], ['bron', 'Bron'], ['berildi', 'Berildi'],
-  ['qaytarildi', 'Qarz bor'], ['yopildi', 'Yopilgan'], ['bekor', 'Bekor']]
-// «Bugun» tasmasi — holat emas, sanaga bog'liq ish ro'yxati; faqat soni bor bo'lsa chiqadi, bosilsa ro'yxat shu bo'yicha
-const BUGUN = [['bugun_olib', 'bugun olib ketadi'], ['bugun_qaytar', 'bugun qaytaradi'], ['kechikkan', 'kechikkan']]
+// Tezkor holat tablari (A-02): standart — «Faol» (ish davom etayotganlar), «Hammasi» oxirida.
+// Chegirma tasdig'idagilar «Faol» va «Hammasi» ichida ko'rinadi.
+const HOLAT_TABLARI = [['faol', 'Faol'], ['vaqtinchalik', 'Vaqtinchalik'], ['bron', 'Bron'], ['berildi', 'Berildi'],
+  ['qaytarildi', 'Qarz bor'], ['yopildi', 'Yopilgan'], ['bekor', 'Bekor'], ['', 'Hammasi']]
+// Tepadagi ko'rsatkich kartalari (maket uslubi) — holat emas, bugungi ish: bosilsa ro'yxat shu bo'yicha filtrlanadi,
+// yana bosilsa «Faol»ga qaytadi. Olib ketish/qaytarishda pastki qator — ertangisi (u ham filtr).
+const KORSATKICHLAR = [
+  { k: 'bugun_olib', nom: 'Bugun olib ketadi', ikon: 'chiqdi', rang: 'tilla', ertaga: 'ertaga_olib' },
+  { k: 'bugun_qaytar', nom: 'Bugun qaytaradi', ikon: 'qaytdi', rang: 'kok', ertaga: 'ertaga_qaytar' },
+  { k: 'kechikkan', nom: 'Kechikkan', ikon: 'soat', rang: 'pushti', izoh: (n) => (n > 0 ? "mijozga qo'ng'iroq qiling" : 'hammasi vaqtida') },
+  { k: 'tolov_kutmoqda', nom: "To'lov kutmoqda", ikon: 'kassa', rang: 'yashil', izoh: () => 'avans yoki qoldiq' },
+]
+const SAHIFA = 50
+// «Bugun» ustuni (o'ngda) faqat keng ekranda — torroqda jadval ustunlari sig'maydi, ko'rsatkich kartalari shu ishni qiladi
+const UCH_USTUN = '(min-width: 1440px)'
 // Mijoz bilan gaplashish kerak bo'ladigan holatlar — qatorda qo'ng'iroq tugmasi
 const QONGIROQ = ['vaqtinchalik', 'chegirma_kutilmoqda', 'bron', 'berildi', 'qaytarildi']
 const mln = (n) => `${(n / 1e6).toLocaleString('ru-RU', { maximumFractionDigits: 2 })} mln`
@@ -70,113 +103,246 @@ function muddat(z, bugun) {
   return null
 }
 
-export default function Zakazlar({ tanlangan, onTanla, onYangi, onKassa, boshQ }) {
-  // boshQ — yuqori paneldagi qidiruv matni; har yangi qidiruvda App komponentni key bilan qayta ochadi
-  const [q, setQ] = useState(boshQ || '')
-  const [holat, setHolat] = useState('')
-  const [royxat, setRoyxat] = useState(null)
-  const [sonlar, setSonlar] = useState({})
-  const [xato, setXato] = useState('')
-
-  useEffect(() => {
-    zakazlarRoyxat({ q: q || undefined, holat: holat || undefined })
-      .then(setRoyxat).catch((e) => setXato(xatoMatni(e)))
-  }, [q, holat, tanlangan])
-  useEffect(() => {
-    zakazSonlari({ q: q || undefined }).then(setSonlar).catch(() => {})
-  }, [q, tanlangan])
-
-  if (tanlangan) return <Karta id={tanlangan} onOrqaga={() => onTanla(null)} onKassa={onKassa} />
-
+// Zakazlar jadvali — Zakazlar ro'yxati va bosh ekran «Bugungi ishlar» uchun bitta ko'rinish (A-28):
+// libos rasmi, ijara sanasi + «qachon?», holat (avanssiz bronda muddati), to'lov progressi, qo'ng'iroq tugmasi.
+// `summa` — oxirgi ustun (standart: jami), `tolovUstun` — keng ekrandagi to'lov progressi ustuni.
+export function ZakazJadvali({ royxat, onOch, summaNomi = 'Jami', summa = (z) => som(z.jami), tolovUstun = true }) {
   const bugun = bugunIso()
   return (
-    <section className="blok jadval-panel">
-      {/* Asboblar paneli: tepada holat tablari (yonida soni), o'ngda qidiruv va asosiy amal — hammasi bir joyda, ixcham */}
-      <div className="jadval-asboblar">
-        <h3 className="panel-nom">Zakazlar</h3>
-        <div className="tezkor-tablar" role="tablist" aria-label="Holat bo'yicha">
-          {HOLAT_TABLARI.map(([k, nom]) => (
-            <button key={k || 'hammasi'} type="button" role="tab" aria-selected={holat === k}
-              className={holat === k ? 'faol' : ''} onClick={() => setHolat(k)}>
-              {nom}{sonlar[k] > 0 && <span className="tab-son">{sonlar[k]}</span>}
-            </button>
-          ))}
-        </div>
-        <label className="qidiruv-maydon zakaz-qidiruv">
-          <NavIkona nom="qidiruv" className="tugma-ikon" />
-          <input type="search" className="jadval-qidiruv" placeholder="Raqam, telefon yoki ism" aria-label="Zakaz qidirish"
-            value={q} onChange={(e) => setQ(e.target.value)} />
-        </label>
-        {onYangi && <button type="button" className="kichik yangi-zakaz-tugma" onClick={onYangi}><NavIkona nom="qosh" className="tugma-ikon" />Yangi zakaz</button>}
-      </div>
-      {BUGUN.some(([k]) => sonlar[k] > 0 || holat === k) && (
-        <div className="bugun-tasma" role="group" aria-label="Bugungi ishlar">
-          <span className="bugun-nom">Bugun</span>
-          {BUGUN.filter(([k]) => sonlar[k] > 0 || holat === k).map(([k, nom]) => (
-            <button key={k} type="button" className={`bugun-chip ${k === 'kechikkan' ? 'kech' : ''}`} aria-pressed={holat === k}
-              onClick={() => setHolat(holat === k ? '' : k)}>
-              <b>{sonlar[k] || 0}</b> {nom}
-            </button>
-          ))}
-        </div>
-      )}
-      {xato && <p className="xato jadval-bosh">{xato}</p>}
-      {royxat === null ? null : royxat.length === 0 ? (
-        <p className="malumot jadval-bosh">{q ? `«${q}» bo'yicha zakaz topilmadi.` : "Bu filtr bo'yicha zakaz yo'q."}</p>
-      ) : (
-        <div className="jadval-ora">
-          <table className="zakaz-jadval">
-            <thead>
-              <tr><th>Zakaz</th><th>Ijara</th><th>Holat</th><th className="tor-yashir">To'lov</th><th className="ong">Jami</th></tr>
-            </thead>
-            <tbody>
-              {royxat.map((z) => {
-                const foiz = z.jami ? Math.min(100, Math.round((z.tolangan / z.jami) * 100)) : 100
-                const m = muddat(z, bugun)
-                return (
-                  <tr key={z.id} onClick={() => onTanla(z.id)} className={m?.[1] === 'kech' ? 'kechikkan' : ''}>
-                    <td>
-                      {/* tugma — klaviatura uchun; bosish hodisasi qatorga ko'tariladi */}
-                      <span className="zakaz-bosh">
-                        <button type="button" className="zakaz-katak">
-                          <span className="zakaz-eskiz">{z.rasm ? <img src={z.rasm} alt="" loading="lazy" /> : <LibosSiluet />}</span>
-                          <span className="zakaz-nom"><b>#{z.raqam} {z.mijoz}</b><small>{z.liboslar.join(', ')}</small></span>
-                        </button>
-                        {/* qatorni bosish kartani ochadi; qo'ng'iroq — alohida, telefon ilovasiga */}
-                        {QONGIROQ.includes(z.holat) && z.telefon && (
-                          <a className="qongiroq" href={`tel:${z.telefon}`} title={z.telefon} aria-label={`${z.mijoz} — qo'ng'iroq qilish`}
-                            onClick={(e) => e.stopPropagation()}><NavIkona nom="telefon" /></a>
-                        )}
+    <div className="jadval-ora">
+      <table className="zakaz-jadval">
+        <thead>
+          <tr><th>Zakaz</th><th>Ijara</th><th>Holat</th>{tolovUstun && <th className="tor-yashir">To'lov</th>}<th className="ong">{summaNomi}</th></tr>
+        </thead>
+        <tbody>
+          {royxat.map((z) => {
+            const foiz = z.jami ? Math.min(100, Math.round((z.tolangan / z.jami) * 100)) : 100
+            const m = muddat(z, bugun)
+            const avanssiz = ['vaqtinchalik', 'chegirma_kutilmoqda'].includes(z.holat) && !(z.tolangan > 0)
+            return (
+              <tr key={z.id} onClick={() => onOch(z.id)} className={m?.[1] === 'kech' ? 'kechikkan' : ''}>
+                <td>
+                  {/* tugma — klaviatura uchun; bosish hodisasi qatorga ko'tariladi */}
+                  <span className="zakaz-bosh">
+                    <button type="button" className="zakaz-katak">
+                      <span className="zakaz-eskiz">{z.rasm ? <img src={z.rasm} alt="" loading="lazy" /> : <LibosSiluet />}</span>
+                      <span className="zakaz-nom"><b>#{z.raqam} {z.mijoz}</b><small>{z.liboslar.join(', ')}</small></span>
+                    </button>
+                    {/* qatorni bosish kartani ochadi; qo'ng'iroq — alohida, telefon ilovasiga */}
+                    {QONGIROQ.includes(z.holat) && z.telefon && (
+                      <a className="qongiroq" href={`tel:${z.telefon}`} title={z.telefon} aria-label={`${z.mijoz} — qo'ng'iroq qilish`}
+                        onClick={(e) => e.stopPropagation()}><NavIkona nom="telefon" /></a>
+                    )}
+                  </span>
+                </td>
+                <td className="ijara-katak">
+                  <IjaraSana dan={z.olib_ketish} gacha={z.qaytarish} />
+                  {m && <small className={`muddat ${m[1]}`}>{m[0]}</small>}
+                </td>
+                <td className="holat-katak">
+                  <span className={`holat ${holatSinfi(z.holat)}`}>{ZAKAZ_HOLATLARI[z.holat]}</span>
+                  {/* A-17: avans olinmasa bron qachon o'zi bekor bo'ladi */}
+                  {z.bron_muddati && <small className="bron-muddat">avans {muddatVaqti(z.bron_muddati)} gacha</small>}
+                </td>
+                {tolovUstun && (
+                  <td className="tor-yashir">
+                    {z.holat === 'bekor' ? <span className="malumot">—</span> : avanssiz && z.jami > 0 ? (
+                      <span className="malumot">Avans yo'q</span>
+                    ) : (
+                      <span className="tolov-progress" title={`${som(z.tolangan)} to'langan`}>
+                        <i style={{ '--foiz': `${foiz}%` }} className={foiz >= 100 ? 'toliq' : ''} />
+                        <small>{foiz >= 100 ? "To'liq" : `${mln(z.tolangan)} / ${mln(z.jami)}`}</small>
                       </span>
-                    </td>
-                    <td className="ijara-katak">
-                      <IjaraSana dan={z.olib_ketish} gacha={z.qaytarish} />
-                      {m && <small className={`muddat ${m[1]}`}>{m[0]}</small>}
-                    </td>
-                    <td className="holat-katak"><span className={`holat ${holatSinfi(z.holat)}`}>{ZAKAZ_HOLATLARI[z.holat]}</span></td>
-                    <td className="tor-yashir">
-                      {z.holat === 'bekor' ? <span className="malumot">—</span> : (
-                        <span className="tolov-progress" title={`${som(z.tolangan)} to'langan`}>
-                          <i style={{ '--foiz': `${foiz}%` }} className={foiz >= 100 ? 'toliq' : ''} />
-                          <small>{foiz >= 100 ? "To'liq" : `${mln(z.tolangan)} / ${mln(z.jami)}`}</small>
-                        </span>
-                      )}
-                    </td>
-                    <td className="ong jami-katak"><b>{som(z.jami)}</b></td>
-                  </tr>
-                )
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </section>
+                    )}
+                  </td>
+                )}
+                <td className="ong jami-katak"><b>{summa(z)}</b></td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+    </div>
   )
 }
 
-function Karta({ id, onOrqaga, onKassa }) {
+export default function Zakazlar({ tanlangan, onTanla, onYangi, onKassa, boshQ, boshHolat, amal, yangiYopiq }) {
+  // boshQ — yuqori paneldagi qidiruv matni, boshHolat — qo'ng'iroqchadan kelgan filtr (masalan, «kechikkan»);
+  // har yangi qidiruvda App komponentni key bilan qayta ochadi
+  const [q, setQ] = useState(boshQ || '')
+  const [qKech, setQKech] = useState((boshQ || '').trim())  // A-35: har harfda emas, 300 ms to'xtagach so'raladi
+  // A-02: standart — «Faol»; qidiruvda — «Hammasi» (yopilgan zakaz ham raqami bilan topilsin)
+  const [holat, setHolat] = useState(boshHolat ?? (boshQ ? '' : 'faol'))
+  const [royxat, setRoyxat] = useState(null)
+  const [jami, setJami] = useState(0)
+  const [sonlar, setSonlar] = useState({})
+  const [xato, setXato] = useState('')
+  const [band, setBand] = useState(false)
+  const yuklangan = useRef(SAHIFA)  // kartadan qaytganda shuncha qator qayta yuklanadi — skroll joyi saqlanadi
+  const skroll = useRef(null)
+  const uchUstun = useMedia(UCH_USTUN)
+
+  useEffect(() => {
+    const t = setTimeout(() => setQKech(q.trim()), 300)
+    return () => clearTimeout(t)
+  }, [q])
+  useEffect(() => {
+    if (tanlangan) return undefined
+    let bekor = false
+    zakazlarSahifa({ q: qKech || undefined, holat: holat || undefined, limit: Math.min(yuklangan.current, 200), offset: 0 })
+      .then((d) => { if (!bekor) { setRoyxat(d.natija); setJami(d.jami); setXato('') } })
+      .catch((e) => { if (!bekor) setXato(xatoMatni(e)) })
+    return () => { bekor = true }
+  }, [qKech, holat, tanlangan])
+  useEffect(() => {
+    if (tanlangan) return
+    zakazSonlari({ q: qKech || undefined }).then(setSonlar).catch(() => {})
+  }, [qKech, tanlangan])
+  // A-38: kartadan «‹» bilan qaytganda ro'yxat avvalgi joyida ochiladi
+  useLayoutEffect(() => {
+    if (!tanlangan && skroll.current != null) { window.scrollTo(0, skroll.current); skroll.current = null }
+  }, [tanlangan])
+
+  if (tanlangan) return <Karta key={tanlangan} id={tanlangan} amal={amal} onOrqaga={() => onTanla(null)} onKassa={onKassa} />
+
+  const filtr = (k) => { yuklangan.current = SAHIFA; setHolat(k) }
+  const qidir = (v) => {
+    yuklangan.current = SAHIFA
+    setQ(v)
+    if (v.trim() && holat === 'faol') setHolat('')  // raqam bo'yicha qidiruv yopilgan zakazni ham topsin
+  }
+  const och = (id) => { skroll.current = window.scrollY; onTanla(id); window.scrollTo(0, 0) }
+  const yana = async () => {
+    setBand(true)
+    try {
+      const d = await zakazlarSahifa({ q: qKech || undefined, holat: holat || undefined, limit: SAHIFA, offset: royxat.length })
+      const keyingi = [...royxat, ...d.natija.filter((x) => !royxat.some((y) => y.id === x.id))]
+      yuklangan.current = keyingi.length
+      setRoyxat(keyingi); setJami(d.jami)
+    } catch (e) { setXato(xatoMatni(e)) } finally { setBand(false) }
+  }
+  return (
+    <div className="zakaz-sahifa">
+      <section className="dash-kpi zakaz-kpi kpi-filtrlar" aria-label="Zakazlar ko'rsatkichlari">
+        {KORSATKICHLAR.map((c) => (
+          <Korsatkich key={c.k} c={c} son={sonlar[c.k]} ertaga={c.ertaga ? sonlar[c.ertaga] : null}
+            tanlangan={holat} onFiltr={(k) => filtr(holat === k ? 'faol' : k)} />
+        ))}
+      </section>
+      <div className="zakaz-tor">
+        <section className="blok jadval-panel">
+          {/* Asboblar paneli: tepada holat tablari (yonida soni), o'ngda qidiruv va asosiy amal — hammasi bir joyda, ixcham.
+              Sahifa nomi yuqori panelda — bu yerda takrorlanmaydi (A-37) */}
+          <div className="jadval-asboblar">
+            <div className="tezkor-tablar" role="tablist" aria-label="Holat bo'yicha">
+              {HOLAT_TABLARI.map(([k, nom]) => (
+                <button key={k || 'hammasi'} type="button" role="tab" aria-selected={holat === k}
+                  className={holat === k ? 'faol' : ''} onClick={() => filtr(k)}>
+                  {nom}{sonlar[k] > 0 && <span className="tab-son">{sonlar[k]}</span>}
+                </button>
+              ))}
+            </div>
+            {/* QA-06: qidiruv va asosiy amal birga — tablar ko'p bo'lsa ham bir qatorda, o'ngda */}
+            <div className="zakaz-asboblar-ong">
+              <label className="qidiruv-maydon zakaz-qidiruv">
+                <NavIkona nom="qidiruv" className="tugma-ikon" />
+                <input type="search" className="jadval-qidiruv" placeholder="Raqam, telefon yoki ism" aria-label="Zakaz qidirish"
+                  value={q} onChange={(e) => qidir(e.target.value)} />
+              </label>
+              {onYangi && (
+                <button type="button" className="kichik yangi-zakaz-tugma" onClick={onYangi} disabled={Boolean(yangiYopiq)} title={yangiYopiq || undefined}>
+                  <NavIkona nom="qosh" className="tugma-ikon" />Yangi zakaz
+                </button>
+              )}
+            </div>
+          </div>
+          {xato && <p className="xato jadval-bosh">{xato}</p>}
+          {royxat === null ? null : royxat.length === 0 ? (
+            <p className="malumot jadval-bosh">{qKech ? `«${qKech}» bo'yicha zakaz topilmadi.` : "Bu filtr bo'yicha zakaz yo'q."}</p>
+          ) : (
+            <>
+              <ZakazJadvali royxat={royxat} onOch={och} />
+              {royxat.length < jami && (
+                <div className="jadval-yana">
+                  <button type="button" className="ikkinchi kichik" disabled={band} onClick={yana}>
+                    {band ? 'Yuklanmoqda…' : `Yana ${Math.min(SAHIFA, jami - royxat.length)} ta`}
+                  </button>
+                  <span className="malumot">{royxat.length} / {jami} ko'rsatildi</span>
+                </div>
+              )}
+            </>
+          )}
+        </section>
+        {uchUstun && <BugunUstuni onOch={och} />}
+      </div>
+    </div>
+  )
+}
+
+// Ko'rsatkich kartasi-filtr; olib ketish/qaytarishda «ertaga — N ta» — alohida kichik tugma ustida
+function Korsatkich({ c, son, ertaga, tanlangan, onFiltr }) {
+  return (
+    <KpiFiltr nom={c.nom} son={son} ikon={c.ikon} rang={c.rang} tanlangan={tanlangan === c.k} xavf={c.k === 'kechikkan' && son > 0}
+      onBos={() => onFiltr(c.k)} izoh={c.izoh?.(son)}
+      pastki={c.ertaga && (
+        <button type="button" className="kpi-ertaga" aria-pressed={tanlangan === c.ertaga}
+          aria-label={`${c.nom.replace('Bugun', 'Ertaga')}: ${ertaga ?? 0}`} onClick={() => onFiltr(c.ertaga)}>
+          ertaga — {ertaga ?? 0} ta
+        </button>
+      )} />
+  )
+}
+
+function useMedia(sorov) {
+  const [mos, setMos] = useState(() => Boolean(window.matchMedia?.(sorov).matches))
+  useEffect(() => {
+    const mq = window.matchMedia?.(sorov)
+    if (!mq) return undefined
+    const ozgardi = () => setMos(mq.matches)
+    mq.addEventListener('change', ozgardi)
+    return () => mq.removeEventListener('change', ozgardi)
+  }, [sorov])
+  return mos
+}
+
+// O'ng ustun — bugungi kun tartibi bir qarashda: kim olib ketadi (qoldig'i bilan), kim qaytaradi, kim kechikdi.
+// Qator bosilsa zakaz kartasi; ro'yxatning o'zi esa o'z filtrida qoladi.
+function BugunUstuni({ onOch }) {
+  const [d, setD] = useState(null)
+  useEffect(() => {
+    let bekor = false
+    Promise.all(['bugun_olib', 'bugun_qaytar', 'kechikkan'].map((h) => zakazlarSahifa({ holat: h, limit: 20, offset: 0 }).then((r) => r.natija)))
+      .then(([olib, qaytar, kech]) => { if (!bekor) setD({ olib, qaytar, kech }) })
+      .catch(() => { if (!bekor) setD({ olib: [], qaytar: [], kech: [] }) })
+    return () => { bekor = true }
+  }, [])
+  const bugun = bugunIso()
+  const guruhlar = d ? [
+    { k: 'olib', nom: 'Olib ketadi', ikon: 'chiqdi', royxat: d.olib,
+      ong: (z) => (z.qoldiq > 0 ? <><b>{som(z.qoldiq)}</b><span className="holat-pill vaqt">qoldiq</span></> : <span className="holat-pill bron">To'langan</span>) },
+    { k: 'qaytar', nom: 'Qaytaradi', ikon: 'qaytdi', royxat: d.qaytar, ong: () => <span className="holat-pill kok">mijozda</span> },
+    { k: 'kech', nom: 'Kechikkan', ikon: 'soat', royxat: d.kech,
+      ong: (z) => <span className="holat-pill qarz">{Math.max(1, kunFarqi(z.qaytarish, bugun))} kun</span> },
+  ].filter((g) => g.royxat.length > 0) : []
+  return (
+    <aside className="blok dash-karta zakaz-bugun" aria-label="Bugun">
+      <div className="dash-karta-bosh"><h3><Belgi nom="kun" />Bugun</h3></div>
+      {!d ? <p className="malumot">Yuklanmoqda…</p> : guruhlar.length === 0 ? (
+        <p className="zakaz-bugun-bosh"><Belgi nom="bajarildi" />Bugun olib ketish ham, qaytarish ham yo'q.</p>
+      ) : guruhlar.map((g) => (
+        <section key={g.k} className={`zakaz-bugun-guruh${g.k === 'kech' ? ' xavf' : ''}`} aria-label={`${g.nom}: ${g.royxat.length}`}>
+          <h4><Belgi nom={g.ikon} />{g.nom}<span className="ish-son">{g.royxat.length}</span></h4>
+          <Qatorlar royxat={g.royxat} onZakaz={onOch} ong={g.ong} kop={5} />
+        </section>
+      ))}
+    </aside>
+  )
+}
+
+function Karta({ id, amal, onOrqaga, onKassa }) {
   const [z, setZ] = useState(null)
   const [tarix, setTarix] = useState(null)
+  const [tarixOchiq, setTarixOchiq] = useState(false)
   const [xabar, setXabar] = useState({ turi: '', matn: '' })
   const [soz, setSoz] = useState(null)
   const [chop, setChop] = useState(null)
@@ -188,27 +354,89 @@ function Karta({ id, onOrqaga, onKassa }) {
   const yukla = useCallback(() => zakazTafsilot(id).then((d) => { setZ(d); return d }), [id])
   useEffect(() => { yukla() }, [yukla])
   const [muhrBosildi, setMuhrBosildi] = useState(false)  // shu kartada avans olinib bron tasdiqlandi — muhr ko'z oldida bosiladi
+  // R2: Kassadan «Libosni berish →» — karta yuklangach asosiy amal (berish formasi) ochilib ko'rinadigan joyga suriladi
+  const yuklandi = Boolean(z)
+  useEffect(() => {
+    if (amal !== 'berish' || !yuklandi) return undefined
+    const t = setTimeout(() => {
+      const d = document.getElementById('asosiy-amal')
+      if (d) { d.open = true; d.scrollIntoView({ behavior: 'smooth', block: 'center' }) }
+    }, 150)
+    return () => clearTimeout(t)
+  }, [amal, yuklandi])
 
-  // Har bir amal: muvaffaqiyatda kartani yangilaydi, xatoni ko'rsatadi.
+  // Har bir amal: muvaffaqiyatda kartani yangilaydi, xatoni ko'rsatadi. `ok` — matn yoki server javobidan matn (A-16).
+  // `ok` — matn yoki (javob, yangiKarta, eskiKarta) => matn
   const bajar = async (fn, ok = 'Bajarildi.') => {
     setXabar({ turi: '', matn: '' })
-    const oldingiHolat = z?.holat
+    const oldingi = z
+    let javob
     try {
-      await fn()
-      setXabar({ turi: 'ok', matn: ok })
-      setTarix(null)
-      const yangi = await yukla()
-      if (!MUHRLI.includes(oldingiHolat) && MUHRLI.includes(yangi?.holat)) setMuhrBosildi(true)
-      return true
+      javob = await fn()
     } catch (e) {
       setXabar({ turi: 'xato', matn: xatoMatni(e), kod: e.response?.data?.kod })
       return false
     }
+    setTarix(null); setTarixOchiq(false)
+    let yangi = null
+    try { yangi = await yukla() } catch { /* amal bajarildi, karta keyingi ochilishda yangilanadi */ }
+    setXabar({ turi: 'ok', matn: typeof ok === 'function' ? ok(javob, yangi, oldingi) : ok })
+    if (!MUHRLI.includes(oldingi?.holat) && MUHRLI.includes(yangi?.holat)) setMuhrBosildi(true)
+    return true
+  }
+  // C-07, C-17, C-31: narxga ta'sir qiladigan amal natijasi — eski → yangi jami, qoldiq, mijozga qaytariladigan pul
+  const narxXabari = (boshi) => (javob, yangi, oldingi) => {
+    const jami = javob?.yangi_jami ?? yangi?.jami
+    const qoldiq = javob?.qoldiq ?? yangi?.qoldiq
+    let m = boshi
+    if (oldingi && jami != null && jami !== oldingi.jami) m += ` Jami ${som(oldingi.jami)} → ${som(jami)}`
+    if (qoldiq != null && (jami !== oldingi?.jami || qoldiq !== oldingi?.qoldiq)) m += `${m.endsWith('.') ? ' Q' : ', q'}oldiq ${som(qoldiq)}`
+    if (javob?.qaytariladi > 0) m += `. Mijozga ${som(javob.qaytariladi)} qaytaring`
+    return m.endsWith('.') ? m : `${m}.`
+  }
+  // A-18: tarix tugmasi ochadi va yopadi; birinchi ochilishda yuklanadi
+  const tarixniAlmashtir = () => {
+    if (tarixOchiq) { setTarixOchiq(false); return }
+    setTarixOchiq(true)
+    if (!tarix) zakazTarixi(id).then(setTarix).catch(() => setTarix([]))
   }
 
   if (chop) return <Hujjat zakazId={id} tur={chop} onYop={() => setChop(null)} />
   if (!z) return <p className="malumot">Yuklanmoqda…</p>
   const h = z.holat
+  const q = qadamIndeksi(z)
+  const izoh = qadamIzohi(z)
+  // Kassadan mijozga qaytariladigan pul zalog (A-16)
+  const pulZalog = z.zaloglar.filter((g) => g.turi === 'pul' && g.holat === 'saqlanmoqda').reduce((s, g) => s + g.summa, 0)
+  // Zalog to'lovlari alohida qator bo'lib takrorlanmaydi — zalog o'z qatorida holati bilan (A-30)
+  const tolovlar = z.tolovlar.filter((t) => !['zalog', 'zalog_qaytarish'].includes(t.tur))
+  const qaytarishXabari = (r) => {
+    const qismlar = ['Qaytarish rasmiylashtirildi.']
+    if (r?.mijozga_qaytariladi > 0) qismlar.push(`Mijozga ${som(r.mijozga_qaytariladi)} qaytaring.`)
+    if (r?.ushlab_qolingan > 0) qismlar.push(`Zalogdan jarimaga ushlab qolindi: ${som(r.ushlab_qolingan)}.`)
+    if (r?.qarz > 0) qismlar.push(`Mijoz qarzi: ${som(r.qarz)}.`)
+    return qismlar.join(' ')
+  }
+
+  // «Boshqa amallar» — faqat shu holatda mavjud bandlar (A-21): bo'sh bo'lsa chiqmaydi, bitta bo'lsa ichma-ich ochilmaydi
+  const ochiqZakaz = ['vaqtinchalik', 'chegirma_kutilmoqda', 'bron'].includes(h)
+  const amallar = [
+    h === 'vaqtinchalik' && z.tolangan === 0 && (soz?.promokodlar_bolimi !== false || z.promokod) && <PromokodForma key="promokod" z={z} bajar={bajar} />,
+    h === 'vaqtinchalik' && <ChegirmaForma key="chegirma" zakazId={z.id} z={z} bajar={bajar} />,
+    ['vaqtinchalik', 'bron'].includes(h) && <AksessuarForma key="aksessuar" z={z} bajar={bajar} narxXabari={narxXabari} />,
+    ochiqZakaz && <LibosAlmashtirishForma key="libos" z={z} bajar={bajar} narxXabari={narxXabari} />,
+    h !== 'bekor' && <SalonchiTanlash key="salonchi" z={z} bajar={bajar} />,
+    (soz?.primerka || z.primerkalar.length > 0) && (
+      <PrimerkaForma key="primerka" z={z} bajar={bajar} ochiq={ochiqZakaz && !!soz?.primerka} />
+    ),
+    ochiqZakaz && <KochirishForma key={`kochirish-${z.olib_ketish}-${z.qaytarish}`} z={z}
+      onYuborish={(b) => bajar(() => sanaKochirish(z.id, b), narxXabari("Sana ko'chirildi."))} />,
+    ochiqZakaz && (kassirda && z.tolangan > 0
+      ? <div key="bekor" className="blok"><p className="malumot">To'lov qilingan zakazni kassir bekor qiladi — mijozga pul qaytarish kassada.</p></div>
+      : <BekorForma key="bekor" soz={soz} z={z} rahbar={rahbar} onYuborish={(b) => bajar(() => bekorQilish(z.id, b), (r) => (
+        `Zakaz bekor qilindi.${r?.qaytarilgan_avans > 0 ? ` Mijozga ${som(r.qaytarilgan_avans)} qaytaring` : ''}`
+        + `${r?.ushlab_qolingan_avans > 0 ? `${r?.qaytarilgan_avans > 0 ? ', u' : ' U'}shlab qolindi ${som(r.ushlab_qolingan_avans)}` : ''}${r?.qaytarilgan_avans > 0 || r?.ushlab_qolingan_avans > 0 ? '.' : ''}`))} />),
+  ].filter(Boolean)
 
   return (
     <div className="stack karta">
@@ -216,19 +444,27 @@ function Karta({ id, onOrqaga, onKassa }) {
         <button className="ikkinchi karta-orqaga" aria-label="Zakazlar ro'yxatiga qaytish" onClick={onOrqaga}><NavIkona nom="chap" className="tugma-ikon" /></button>
         <h2>Zakaz #{z.raqam}</h2>
         <span className={`holat ${holatSinfi(h)}`}>{ZAKAZ_HOLATLARI[h]}</span>
+        {/* A-17: avanssiz bron qachon o'zi bekor bo'lishi — sotuvchi mijozga aniq vaqtni aytadi */}
+        {z.bron_muddati && (
+          <p className="bron-muddat-izoh">{h === 'chegirma_kutilmoqda'
+            ? `Rahbar ${muddatVaqti(z.bron_muddati)} gacha qaror qilmasa, bron o'zi bekor bo'ladi`
+            : `${muddatVaqti(z.bron_muddati)} gacha avans olinmasa, bron o'zi bekor bo'ladi`}</p>
+        )}
       </div>
       {h !== 'bekor' && (
-        <ol className="zakaz-ip holat-ip" aria-label="Zakaz bosqichlari">
-          {QADAMLAR.map((n, i) => {
-            const q = qadamIndeksi(z)
-            return (
-              <li key={n} className={i < q ? 'otdi' : i === q ? 'joriy' : ''} aria-current={i === q ? 'step' : undefined}>
-                <span><span className="ip-tugun" aria-hidden="true">{i < q ? '✓' : i + 1}</span><span className="ip-nom">{n}</span></span>
-              </li>
-            )
-          })}
+        <ol className="zakaz-ip holat-ip qadam-ip" aria-label="Zakaz bosqichlari">
+          {QADAMLAR.map((n, i) => (
+            <li key={n} className={i < q ? 'otdi' : i === q ? 'joriy' : ''} aria-current={i === q ? 'step' : undefined}>
+              <span>
+                <span className="ip-tugun" aria-hidden="true">{i < q ? '✓' : i + 1}</span>
+                <span className="ip-matn"><span className="ip-nom">{n}</span>{i === q && izoh && <small className="ip-izoh">{izoh}</small>}</span>
+              </span>
+            </li>
+          ))}
         </ol>
       )}
+      {/* QA-02: telefonda joriy qadam izohi ip ichida qo'shni qadam ustiga chiqardi — u yerda alohida qatorda */}
+      {h !== 'bekor' && izoh && <p className="qadam-izoh-tel"><b>{QADAMLAR[Math.min(q, QADAMLAR.length - 1)]}:</b> {izoh}</p>}
       {asosiyTugma(z) && (
         <button className="asosiy-tugma" onClick={() => {
           const d = document.getElementById('asosiy-amal')
@@ -289,7 +525,7 @@ function Karta({ id, onOrqaga, onKassa }) {
       </section>
       <div className="karta-ong">
       {xabar.matn && (
-        <p className={xabar.turi === 'xato' ? 'xato' : 'malumot'}>
+        <p className={xabar.turi === 'xato' ? 'xato' : 'malumot'} role={xabar.turi === 'xato' ? 'alert' : 'status'}>
           {xabar.matn}{' '}
           {xabar.turi === 'xato' && (
             <SmenaTugma kod={xabar.kod} onKassa={onKassa}
@@ -298,15 +534,23 @@ function Karta({ id, onOrqaga, onKassa }) {
         </p>
       )}
 
-      {kassirda && (((h === 'vaqtinchalik' || h === 'bron') && z.qoldiq > 0) || (h === 'qaytarildi' && z.qarz > 0)) && (
+      {h === 'chegirma_kutilmoqda' && z.chegirma_sorovi?.holat === 'kutilmoqda' && (
+        <ChegirmaKutilmoqda z={z} bajar={bajar} />
+      )}
+      {kassirda && (((h === 'vaqtinchalik' || h === 'bron' || h === 'berildi' || h === 'qaytarildi') && z.qoldiq > 0) || (h === 'qaytarildi' && z.qarz > 0)) && (
         <p className="malumot">To'lovni kassir qabul qiladi — mijozni kassaga yuboring (zakaz #{z.raqam}).</p>
       )}
       {!kassirda && (h === 'vaqtinchalik' || h === 'bron') && z.qoldiq > 0 && (
-        <TolovForma sarlavha={h === 'bron' ? "Qoldiq to'lov" : 'Avans qabul qilish'} maks={z.qoldiq}
-          zakazId={soz?.tolov_havolasi ? z.id : null}
+        <TolovForma key={`tolov-${z.qoldiq}`} sarlavha={h === 'bron' ? "Qoldiq to'lov" : 'Avans qabul qilish'} maks={z.qoldiq} foizlar={h !== 'bron'}
           onYuborish={(summa, usul) => bajar(
             () => tolovQabul({ zakaz: z.id, tur: h === 'bron' ? 'qoldiq' : 'avans', summa, usul }),
             `To'lov qabul qilindi.${soz?.fiskal_eslatma ? ` ${soz.fiskal_izoh || 'Fiskal chekni urishni unutmang.'}` : ''}`)} />
+      )}
+      {!kassirda && (h === 'berildi' || h === 'qaytarildi') && z.qoldiq > 0 && (
+        <TolovForma key={`qoldiq-${z.qoldiq}`} sarlavha="Qoldiq to'lov (o'tkazma kelmagan)" maks={z.qoldiq}
+          id={h === 'qaytarildi' && !(z.qarz > 0) ? 'asosiy-amal' : null}
+          izoh={`To'lov hisobdan chiqqani uchun ${som(z.qoldiq)} mijozdan qayta olinadi.`}
+          onYuborish={(summa, usul) => bajar(() => tolovQabul({ zakaz: z.id, tur: 'qoldiq', summa, usul }), "To'lov qabul qilindi.")} />
       )}
       {!kassirda && h === 'vaqtinchalik' && z.jami === 0 && (
         <button onClick={() => bajar(() => tolovQabul({ zakaz: z.id, tur: 'avans', summa: 0, usul: 'naqd' }), 'Bron tasdiqlandi.')}>
@@ -314,48 +558,37 @@ function Karta({ id, onOrqaga, onKassa }) {
         </button>
       )}
       {h === 'bron' && z.qoldiq === 0 && <BerishForma soz={soz} pulsiz={kassirda} libosZalogi={z.libos_zalogi} olibKetish={z.olib_ketish}
+        kutilayotgan={z.tolovlar.filter((t) => t.tasdiq === 'kutilmoqda').reduce((s, t) => s + t.summa, 0)}
         onYuborish={(zaloglar, erta) => bajar(() => berish(z.id, zaloglar, erta), 'Libos berildi.')} />}
-      {h === 'berildi' && kassirda && z.zaloglar.some((g) => g.turi === 'pul' && g.holat === 'saqlanmoqda') && (
+      {h === 'berildi' && kassirda && pulZalog > 0 && (
         <p className="malumot">Pul zalogni kassir qaytaradi — libos qaytarilishini kassir rasmiylashtiradi (zakaz #{z.raqam}).</p>
       )}
-      {h === 'berildi' && !(kassirda && z.zaloglar.some((g) => g.turi === 'pul' && g.holat === 'saqlanmoqda')) && <QaytarishForma pulsiz={kassirda} qaytarish={z.qaytarish} kechikishJarimasi={soz ? (soz.kechikish_jarimasi ? soz.kechikish_kunlik_summa : 0) : null} tillo={z.zaloglar.some((g) => g.turi === 'tillo')} onYuborish={(b) => bajar(() => qaytarish(z.id, b), 'Qaytarish rasmiylashtirildi.')} />}
+      {h === 'berildi' && !(kassirda && pulZalog > 0) && <QaytarishForma pulsiz={kassirda} pulZalog={pulZalog} aksessuarlar={z.aksessuar_qatorlari} qaytarish={z.qaytarish} kechikishJarimasi={soz ? (soz.kechikish_jarimasi ? soz.kechikish_kunlik_summa : 0) : null} tillo={z.zaloglar.some((g) => g.turi === 'tillo')} onYuborish={(b) => bajar(() => qaytarish(z.id, b), qaytarishXabari)} />}
       {!kassirda && h === 'qaytarildi' && z.qarz > 0 && (
-        <TolovForma sarlavha="Jarima qarzini to'lash" maks={z.qarz} usulsiz
-          onYuborish={(summa) => bajar(() => qarzTolash(z.id, summa), "Qarz to'landi.")} />
+        <TolovForma key={`qarz-${z.qarz}`} sarlavha="Jarima qarzini to'lash" maks={z.qarz}
+          onYuborish={(summa, usul) => bajar(() => qarzTolash(z.id, summa, usul), "Qarz to'landi.")} />
       )}
-      <details className="boshqa-amallar">
-        <summary className="havola-tugma">Boshqa amallar</summary>
-      {h === 'vaqtinchalik' && z.tolangan === 0 && (soz?.promokodlar_bolimi !== false || z.promokod) && <PromokodForma z={z} bajar={bajar} />}
-      {h === 'vaqtinchalik' && <ChegirmaForma zakazId={z.id} z={z} bajar={bajar} />}
-      {['vaqtinchalik', 'bron'].includes(h) && <AksessuarForma z={z} bajar={bajar} />}
-      {['vaqtinchalik', 'chegirma_kutilmoqda', 'bron'].includes(h) && <LibosAlmashtirishForma z={z} bajar={bajar} />}
-      {h !== 'bekor' && <SalonchiTanlash z={z} bajar={bajar} />}
-      {(soz?.primerka || z.primerkalar.length > 0) && (
-        <PrimerkaForma z={z} bajar={bajar} ochiq={['vaqtinchalik', 'chegirma_kutilmoqda', 'bron'].includes(h) && !!soz?.primerka} />
+      {amallar.length === 1 && amallar[0]}
+      {amallar.length > 1 && (
+        <details className="boshqa-amallar">
+          <summary className="havola-tugma">Boshqa amallar</summary>
+          {amallar}
+        </details>
       )}
-      {['vaqtinchalik', 'chegirma_kutilmoqda', 'bron'].includes(h) && (
-        <>
-          <KochirishForma key={`${z.olib_ketish}-${z.qaytarish}`} z={z}
-            onYuborish={(b) => bajar(() => sanaKochirish(z.id, b), 'Sana ko\'chirildi.')} />
-          {kassirda && z.tolangan > 0
-            ? <div className="blok"><p className="malumot">To'lov qilingan zakazni kassir bekor qiladi — mijozga pul qaytarish kassada.</p></div>
-            : <BekorForma soz={soz} onYuborish={(b) => bajar(() => bekorQilish(z.id, b), 'Zakaz bekor qilindi.')} />}
-        </>
-      )}
-      </details>
       </div>
       <section className="blok karta-tolovlar">
         <h3>To'lovlar</h3>
-        {z.tolovlar.length === 0 && <p className="malumot">Hali to'lov yo'q.</p>}
-        {z.tolovlar.map((t, i) => (
-          <div key={i} className={`tolov-qator${t.tasdiq === 'kelmadi' ? ' kelmadi' : ''}`}>
+        {tolovlar.length === 0 && z.zaloglar.length === 0 && <p className="malumot">Hali to'lov yo'q.</p>}
+        {tolovlar.map((t) => (
+          <div key={t.id} className={`tolov-qator${t.tasdiq === 'kelmadi' ? ' kelmadi' : ''}`}>
             <span className="tolov-nom">
               <b>{t.tur_nomi}</b>
-              <small>{t.usul_nomi}, {t.xodim}</small>
+              {/* A-30: qachon va kim — «07.11 14:30 · Naqd, Malika» */}
+              <small><time dateTime={t.vaqt}>{qisqaVaqt(t.vaqt)}</time> · {t.usul_nomi}, {t.xodim}</small>
               {t.tasdiq === 'kutilmoqda' && <small className="tolov-kutish">Rahbar tasdig'i kutilmoqda</small>}
               {t.tasdiq === 'kelmadi' && <small className="qizil">Kelmadi — hisobga olinmagan</small>}
             </span>
-            <b className="tolov-summa">{som(t.summa)}</b>
+            <b className="tolov-summa">{['vozvrat'].includes(t.tur) ? '−' : ''}{som(t.summa)}</b>
             {rahbar && t.tuzatsa_boladi && <TolovTuzatish t={t} onYuborish={(tana) => bajar(() => tolovTuzat(t.id, tana), "To'lov tuzatildi.")} />}
           </div>
         ))}
@@ -365,19 +598,35 @@ function Karta({ id, onOrqaga, onKassa }) {
             <span className="tolov-summa zalog-holat">{g.turi === 'pul' && g.summa ? `${som(g.summa)}, ` : ''}{g.holat_nomi.toLowerCase()}</span>
           </div>
         ))}
-        <button className="ikkinchi kichik" onClick={() => zakazTarixi(id).then(setTarix)}>O'zgarishlar tarixi</button>
-        {tarix && tarix.map((t, i) => (
-          <p key={i} className="qator-matn">{TARIX_HARAKATLARI[t.harakat] || t.harakat}: {t.eski} → {t.yangi} ({t.xodim}) {t.sabab}</p>
-        ))}
+        <button type="button" className="ikkinchi kichik" aria-expanded={tarixOchiq} onClick={tarixniAlmashtir}>
+          {tarixOchiq ? "Tarixni yopish" : "O'zgarishlar tarixi"}
+        </button>
+        {tarixOchiq && (
+          tarix === null ? <p className="malumot">Yuklanmoqda…</p>
+            : tarix.length === 0 ? <p className="malumot">O'zgarish yo'q.</p>
+              : (
+                <ol className="tarix-royxat">
+                  {tarix.map((t, i) => (
+                    <li key={i}>
+                      <small className="tarix-kim"><time dateTime={t.vaqt}>{qisqaVaqt(t.vaqt)}</time> · {t.xodim || 'Tizim'}</small>
+                      <span><b>{t.nomi || TARIX_HARAKATLARI[t.harakat] || t.harakat}</b>{t.matn ? ` — ${t.matn}` : ''}</span>
+                      {t.sabab && <small className="tarix-sabab">Sabab: {t.sabab}</small>}
+                    </li>
+                  ))}
+                </ol>
+              )
+        )}
       </section>
     </div>
   )
 }
 
 // Saqlangan zakazga aksessuar qo'shish yoki olib tashlash; narx va bandlik serverda qayta hisoblanadi.
-function AksessuarForma({ z, bajar }) {
+function AksessuarForma({ z, bajar, narxXabari }) {
   const [bosh, setBosh] = useState([])
   const [tanlov, setTanlov] = useState('')
+  const [usul, setUsul] = useState('naqd')  // C-07: olib tashlansa va to'langan jamidan oshsa — farq shu usulda qaytariladi
+  const ortiqcha = (q) => z.tolangan > z.jami - q.narx
   const qatorlar = z.aksessuar_qatorlari
   useEffect(() => {
     boshAksessuarlar(z.olib_ketish, z.qaytarish).then(setBosh).catch(() => {})
@@ -389,15 +638,16 @@ function AksessuarForma({ z, bajar }) {
         <div key={q.id} className="qator aks-qator">
           <span className="matn-ustun">{q.nomi} ({q.yorliq}) · {som(q.narx)}</span>
           <button className="ikkinchi kichik"
-            onClick={() => bajar(() => zakazAksessuarOchir(z.id, q.id), 'Aksessuar olib tashlandi.')}>Olib tashlash</button>
+            onClick={() => bajar(() => zakazAksessuarOchir(z.id, q.id, ortiqcha(q) ? usul : undefined), narxXabari('Aksessuar olib tashlandi.'))}>Olib tashlash</button>
         </div>
       ))}
+      {qatorlar.some(ortiqcha) && <UsulTanlov usul={usul} onUsul={setUsul} yorliq="Ortiqcha to'lov qanday qaytariladi" />}
       {bosh.length > 0 ? (
         <div className="qator">
-          <select value={id} onChange={(e) => setTanlov(e.target.value)}>
+          <select value={id} aria-label="Qo'shiladigan aksessuar" onChange={(e) => setTanlov(e.target.value)}>
             {bosh.map((a) => <option key={a.id} value={a.id}>{a.nomi} · {som(a.ijara_narxi)} · bo'sh {a.bosh_soni}</option>)}
           </select>
-          <button className="ikkinchi" onClick={() => bajar(() => zakazAksessuarQosh(z.id, Number(id)), "Aksessuar qo'shildi.")}>Qo'shish</button>
+          <button className="ikkinchi" onClick={() => bajar(() => zakazAksessuarQosh(z.id, Number(id)), narxXabari("Aksessuar qo'shildi."))}>Qo'shish</button>
         </div>
       ) : <p className="malumot">Bu sanalarga bo'sh aksessuar yo'q.</p>}
     </Amal>
@@ -405,7 +655,7 @@ function AksessuarForma({ z, bajar }) {
 }
 
 // FT-17.2: zakazdagi libosni shu sanalarga bo'sh boshqa libosga almashtirish; narx farqi serverda hisoblanadi.
-function LibosAlmashtirishForma({ z, bajar }) {
+function LibosAlmashtirishForma({ z, bajar, narxXabari }) {
   const [bosh, setBosh] = useState(null)
   const [eski, setEski] = useState('')
   const [yangi, setYangi] = useState('')
@@ -418,6 +668,11 @@ function LibosAlmashtirishForma({ z, bajar }) {
   }
   const mavjud = (bosh || []).filter((l) => !l.band && !l.qulflangan && !qatorlar.some((q) => q.id === l.id))
   const eskiId = eski || qatorlar[0]?.id
+  const eskiNarx = qatorlar.find((q) => String(q.id) === String(eskiId))?.narx || 0
+  const yangiL = mavjud.find((l) => String(l.id) === String(yangi))
+  const [usul, setUsul] = useState('naqd')  // C-07: arzonroq libos va to'langan summa yangi jamidan oshsa — farq qaytariladi
+  const farq = (l) => l.ijara_narxi - eskiNarx
+  const qaytadi = yangiL ? Math.max(0, z.tolangan - (z.jami + farq(yangiL))) : 0
   return (
     <details className="blok amal" onToggle={och}>
       <summary>Libosni almashtirish</summary>
@@ -433,13 +688,19 @@ function LibosAlmashtirishForma({ z, bajar }) {
           <label>Yangi libos
             <select value={yangi} onChange={(e) => setYangi(e.target.value)}>
               <option value="">Tanlang</option>
-              {mavjud.map((l) => <option key={l.id} value={l.id}>{l.artikul} {l.nomi} · {som(l.ijara_narxi)}</option>)}
+              {mavjud.map((l) => (
+                <option key={l.id} value={l.id}>
+                  {l.artikul} {l.nomi}{l.olcham ? ` · ${l.olcham}` : ''} · {som(l.ijara_narxi)}{farq(l) ? ` (${farq(l) > 0 ? '+' : '−'}${som(Math.abs(farq(l)))})` : ''}
+                </option>
+              ))}
             </select>
           </label>
         )}
+        {yangiL && <p className="malumot">Jami {som(z.jami)} → {som(z.jami + farq(yangiL))}{qaytadi > 0 ? `; mijozga ${som(qaytadi)} qaytariladi` : ''}.</p>}
+        {qaytadi > 0 && <UsulTanlov usul={usul} onUsul={setUsul} yorliq="Farq qanday qaytariladi" />}
         <label>Sabab<input value={sabab} onChange={(e) => setSabab(e.target.value)} /></label>
         <button className="ikkinchi" disabled={!eskiId || !yangi}
-          onClick={() => bajar(() => libosAlmashtirish(z.id, { eski: Number(eskiId), yangi: Number(yangi), sabab }), 'Libos almashtirildi.')
+          onClick={() => bajar(() => libosAlmashtirish(z.id, { eski: Number(eskiId), yangi: Number(yangi), sabab, ...(qaytadi > 0 ? { usul } : {}) }), narxXabari('Libos almashtirildi.'))
             .then((ok) => { if (ok) { setYangi(''); setEski(''); setSabab(''); setBosh(null) } })}>Almashtirish</button>
       </div>
     </details>
@@ -490,36 +751,17 @@ function Amal({ sarlavha, children, id }) {
   )
 }
 
-function TolovForma({ sarlavha, maks, onYuborish, usulsiz, zakazId }) {
-  const [summa, setSumma] = useState('')
+// To'lov formasi (A-12): summa standart — to'liq qoldiq (bir bosishda qabul), «To'liq / 50% / 30%», usul — tugmalar.
+// Click/Payme havolasi bloki olib tashlandi (A-36): bu usullar 2026-11-01 dan tanlovda yo'q edi.
+function TolovForma({ sarlavha, maks, onYuborish, usulsiz, foizlar, id = 'asosiy-amal', izoh }) {
+  const [summa, setSumma] = useState(String(maks))
   const [usul, setUsul] = useState('naqd')
-  // Click/Payme merchant ma'lumotlari kiritilgan bo'lsa — mijozga beriladigan to'lov havolasi
-  const [havola, setHavola] = useState(null)
-  const havolaOl = () => tolovHavola(zakazId, Number(summa) || undefined).then(setHavola).catch(() => setHavola({ havolalar: {} }))
+  const n = Number(summa)
   return (
-    <Amal sarlavha={sarlavha} id="asosiy-amal">
-      <label>Summa (maks. {som(maks)})
-        <SummaInput value={summa} onChange={(e) => setSumma(e.target.value)} />
-      </label>
-      {!usulsiz && (
-        <select value={usul} onChange={(e) => setUsul(e.target.value)}>
-          <option value="naqd">Naqd</option><option value="karta">Terminal (karta)</option>
-          <option value="otkazma">O'tkazma (karta raqamiga)</option>
-        </select>
-      )}
-      {zakazId && ['click', 'payme'].includes(usul) && (
-        <>
-          <button type="button" className="ikkinchi" onClick={havolaOl}>To'lov havolasini ko'rsatish</button>
-          {havola && Object.entries(havola.havolalar).filter(([k]) => k === usul).map(([k, url]) => (
-            <p key={k} className="malumot havola-matn">
-              {k === 'click' ? 'Click' : 'Payme'} · {som(havola.summa)}: <a href={url} target="_blank" rel="noreferrer">{url}</a>
-            </p>
-          ))}
-          {havola && !havola.havolalar[usul] && <p className="malumot">Bu to'lov tizimi «Integratsiyalar»da ulanmagan.</p>}
-          <p className="malumot">Havolani mijozga yuboring; to'lov tushganini merchant kabinetida ko'rgach «Qabul qilish» ni bosing.</p>
-        </>
-      )}
-      <button disabled={!summa} onClick={() => onYuborish(Number(summa), usul).then((ok) => { if (ok) { setSumma(''); setHavola(null) } })}>
+    <Amal sarlavha={sarlavha} id={id || undefined}>
+      {izoh && <p className="ogohlantirish">{izoh}</p>}
+      <TolovTanlov maks={maks} summa={summa} onSumma={setSumma} usul={usul} onUsul={setUsul} usulsiz={usulsiz} foizlar={foizlar} />
+      <button disabled={!(n > 0) || n > maks} onClick={() => onYuborish(n, usul)}>
         Qabul qilish
       </button>
     </Amal>
@@ -550,23 +792,78 @@ function PromokodForma({ z, bajar }) {
   )
 }
 
+// C-06/C-15: chegirmani olib tashlash va so'rovni qaytarib olish — `DELETE /api/zakazlar/<id>/chegirma/` (D3).
+// Olib tashlanadi faqat tayyor chegirma (rahbar tasdiqlagani bu yo'l bilan olinmaydi) va avans olinguncha
+const CHEGIRMA_OLIB_TASHLASH = true
+
+// C-06: chegirma so'rovi kutilayotganda — nima va qancha so'ralgani, kim so'ragani; so'rovni qaytarib olish (avans olish uchun)
+function ChegirmaKutilmoqda({ z, bajar }) {
+  const c = z.chegirma_sorovi
+  const [surov, setSurov] = useState(false)
+  const miqdor = chegirmaMiqdori(z, c)
+  const vaqt = new Date(c.yaratilgan)
+  const soat = `${String(vaqt.getHours()).padStart(2, '0')}:${String(vaqt.getMinutes()).padStart(2, '0')}`
+  return (
+    <section className="blok chegirma-kutilmoqda" aria-label="Chegirma so'rovi">
+      <p><b>{c.sotuvchi || 'Sotuvchi'}</b> {soat} da {c.foiz != null ? `${Number(c.foiz)}% (${som(miqdor)})` : som(miqdor)} chegirma so'radi — {c.nomi.toLowerCase()}. Rahbar qarori kutilmoqda.</p>
+      <p className="malumot">Tasdiqlansa yangi jami {som(z.asosiy_narx + z.ustama - (z.promokod_chegirma || 0) - miqdor)}. Qaror kelguncha avans olinmaydi.</p>
+      {CHEGIRMA_OLIB_TASHLASH && <button type="button" className="ikkinchi kichik" onClick={() => setSurov(true)}>So'rovni qaytarib olish</button>}
+      {surov && (
+        <Tasdiq sarlavha="So'rov qaytarib olinsinmi?" tugma="Ha, qaytarib olish" xavfli={false}
+          matn={`Zakaz chegirmasiz narxda (${som(z.jami)}) davom etadi — avans qabul qilish mumkin bo'ladi.`}
+          onYop={() => setSurov(false)} onTasdiq={() => { setSurov(false); bajar(() => chegirmaOlibTashla(z.id), "So'rov qaytarib olindi.") }} />
+      )}
+    </section>
+  )
+}
+
+// C-15: tayyor chegirma tugmasida summa, qo'llashdan oldin tasdiq; qo'llangach forma o'rnida — qaysi chegirma va «Olib tashlash»
 function ChegirmaForma({ zakazId, z, bajar }) {
   const [tayyor, setTayyor] = useState([])
   const [foiz, setFoiz] = useState('')
   const [tur, setTur] = useState('foiz')
+  const [tanlangan, setTanlangan] = useState(null)  // tasdiq kutayotgan tayyor chegirma
+  const [olibSurov, setOlibSurov] = useState(false)
   // chegirma ustama qo'shilgan summadan hisoblanadi (FT-4.3); promokod chegirmasi saqlanadi
-  const asos = z.asosiy_narx + z.ustama
-  const miqdor = Math.min(tur === 'foiz' ? Math.round((asos * Number(foiz || 0)) / 100) : Number(foiz || 0), asos - (z.promokod_chegirma || 0))
+  const asos = z.asosiy_narx + z.ustama - (z.promokod_chegirma || 0)
+  const miqdor = chegirmaMiqdori(z, tur === 'foiz' ? { foiz: Number(foiz || 0) } : { summa: Number(foiz || 0) })
   const [sabab, setSabab] = useState('doimiy_mijoz')
   useEffect(() => { tayyorChegirmalar().then(setTayyor).catch(() => {}) }, [])
+  const bor = z.chegirma - (z.promokod_chegirma || 0)
+  if (bor > 0) {
+    const c = z.chegirma_sorovi
+    const olinadi = CHEGIRMA_OLIB_TASHLASH && c?.holat === 'tayyor'
+    return (
+      <Amal sarlavha={`Chegirma: −${som(bor)}`}>
+        <p className="malumot">{c?.nomi ? `«${c.nomi}», ` : ''}−{som(bor)}{c?.holat === 'tasdiqlandi' && c.rahbar ? `, tasdiqladi: ${c.rahbar}` : ''}.{olinadi ? ' Avans olinguncha olib tashlash mumkin.' : ''}</p>
+        {olinadi && <button type="button" className="ikkinchi" onClick={() => setOlibSurov(true)}>Olib tashlash</button>}
+        {olibSurov && (
+          <Tasdiq sarlavha="Chegirma olib tashlansinmi?" tugma="Ha, olib tashlash"
+            matn={`Jami ${som(z.jami)} → ${som(z.jami + bor)}.`}
+            onYop={() => setOlibSurov(false)}
+            onTasdiq={() => { setOlibSurov(false); bajar(() => chegirmaOlibTashla(zakazId), `Chegirma olib tashlandi. Yangi jami ${som(z.jami + bor)}.`) }} />
+        )}
+      </Amal>
+    )
+  }
+  const tMiqdor = (t) => chegirmaMiqdori(z, t)
   return (
     <Amal sarlavha="Chegirma">
       {tayyor.map((t) => (
-        <button key={t.id} className="ikkinchi"
-          onClick={() => bajar(() => chegirmaSora(zakazId, { tayyor: t.id }), 'Chegirma qo\'llandi.')}>
-          {t.nomi}
+        <button key={t.id} type="button" className="ikkinchi" onClick={() => setTanlangan(t)}>
+          {t.nomi}: −{som(tMiqdor(t))}
         </button>
       ))}
+      {tanlangan && (
+        <Tasdiq sarlavha={`«${tanlangan.nomi}» qo'llansinmi?`} tugma="Ha, qo'llash" xavfli={false}
+          matn={`Chegirma ${som(tMiqdor(tanlangan))}: jami ${som(z.jami)} → ${som(asos - tMiqdor(tanlangan))}. Rahbar tasdig'i kerak emas.`}
+          onYop={() => setTanlangan(null)}
+          onTasdiq={() => {
+            const t = tanlangan
+            setTanlangan(null)
+            bajar(() => chegirmaSora(zakazId, { tayyor: t.id }), `Chegirma qo'llandi: −${som(tMiqdor(t))}. Yangi jami ${som(asos - tMiqdor(t))}.`)
+          }} />
+      )}
       <div className="segment">
         <button type="button" className={tur === 'foiz' ? '' : 'ikkinchi'} onClick={() => { setTur('foiz'); setFoiz('') }}>Foizda</button>
         <button type="button" className={tur === 'summa' ? '' : 'ikkinchi'} onClick={() => { setTur('summa'); setFoiz('') }}>Summada</button>
@@ -577,13 +874,15 @@ function ChegirmaForma({ zakazId, z, bajar }) {
           : <SummaInput value={foiz} onChange={(e) => setFoiz(e.target.value)} />}
       </label>
       {Number(foiz) > 0 && (
-        <p className="malumot">Chegirma: {som(miqdor)} · yangi jami: <b>{som(asos - (z.promokod_chegirma || 0) - miqdor)}</b> (rahbar tasdiqlasa)</p>
+        <p className="malumot">Chegirma: {som(miqdor)} · yangi jami: <b>{som(asos - miqdor)}</b> (rahbar tasdiqlasa)</p>
       )}
-      <select value={sabab} onChange={(e) => setSabab(e.target.value)}>
-        <option value="doimiy_mijoz">Doimiy mijoz</option>
-        <option value="nuqson">Libosda kichik nuqson</option>
-        <option value="boshqa">Boshqa</option>
-      </select>
+      <label>Sabab
+        <select value={sabab} onChange={(e) => setSabab(e.target.value)}>
+          <option value="doimiy_mijoz">Doimiy mijoz</option>
+          <option value="nuqson">Libosda kichik nuqson</option>
+          <option value="boshqa">Boshqa</option>
+        </select>
+      </label>
       <button disabled={!(Number(foiz) > 0)}
         onClick={() => bajar(() => chegirmaSora(zakazId, tur === 'foiz' ? { foiz, sabab } : { summa: Number(foiz), sabab }), "Rahbar tasdig'iga yuborildi.")}>
         Rahbardan so'rash
@@ -616,7 +915,9 @@ function TolovTuzatish({ t, onYuborish }) {
   )
 }
 
-function BerishForma({ onYuborish, soz, libosZalogi, olibKetish, pulsiz }) {
+// C-18: avval forma tekshiruvi (to'ldirilmaguncha tugma o'chiq, sababi ostida), keyin erta berish tasdig'i.
+// C-03(4): rahbar tasdig'ini kutayotgan o'tkazma bo'lsa — ogohlantirish (pul kelmasa qoldiq qayta olinadi)
+function BerishForma({ onYuborish, soz, libosZalogi, olibKetish, pulsiz, kutilayotgan = 0 }) {
   const TURLAR = [['pul', 'Pul', 'zalog_pul'], ['hujjat', 'Hujjat', 'zalog_hujjat'], ['tillo', 'Tillo buyum', 'zalog_tillo']]
     .filter(([t, , k]) => (!soz || soz[k]) && !(pulsiz && t === 'pul'))  // admin panelda yoqilgan turlar (FT-7.1); kassir rejimida sotuvchi pul olmaydi
   const [tanlov, setTuri] = useState('')
@@ -631,46 +932,73 @@ function BerishForma({ onYuborish, soz, libosZalogi, olibKetish, pulsiz }) {
     : turi === 'hujjat'
       ? { turi, hujjat_turi: f.hujjat_turi, hujjat_raqami: f.hujjat_raqami }
       : { turi, tavsif: f.tavsif, ogirlik_gr: f.ogirlik_gr, summa: Number(f.summa || 0) }
+  // backend (rental.libos_berish) talablari bilan bir xil
+  const yetmaydi = turi === 'pul' ? [!(Number(pulSumma) > 0) && 'zalog summasi']
+    : turi === 'hujjat' ? [!f.hujjat_turi?.trim() && 'hujjat turi', !f.hujjat_raqami?.trim() && 'hujjat raqami']
+      : [!f.tavsif?.trim() && 'tavsif', !(Number(f.ogirlik_gr) > 0) && "og'irligi"]
+  const kerak = yetmaydi.filter(Boolean)
   return (
     <Amal sarlavha="Libosni berish (zalog)" id="asosiy-amal">
-      <select value={turi} onChange={(e) => { setTuri(e.target.value); setF({}) }}>
-        {TURLAR.map(([t, nom]) => <option key={t} value={t}>{nom}</option>)}
-      </select>
-      {turi === 'pul' && <label>Zalog summasi<SummaInput value={pulSumma} onChange={set('summa')} /></label>}
+      {kutilayotgan > 0 && <p className="ogohlantirish">{som(kutilayotgan)} o'tkazma rahbar tasdig'ini kutmoqda — pul kelmasa, qoldiq mijozdan qayta olinadi.</p>}
+      <label>Zalog turi
+        <select value={turi} onChange={(e) => { setTuri(e.target.value); setF({}) }}>
+          {TURLAR.map(([t, nom]) => <option key={t} value={t}>{nom}</option>)}
+        </select>
+      </label>
+      {turi === 'pul' && <label>Zalog summasi *<SummaInput value={pulSumma} onChange={set('summa')} /></label>}
       {turi === 'hujjat' && (<>
-        <label>Hujjat turi<input placeholder="pasport" onChange={set('hujjat_turi')} /></label>
-        <label>Raqami<input onChange={set('hujjat_raqami')} /></label>
+        <label>Hujjat turi *<input placeholder="pasport" value={f.hujjat_turi || ''} onChange={set('hujjat_turi')} /></label>
+        <label>Raqami *<input value={f.hujjat_raqami || ''} onChange={set('hujjat_raqami')} /></label>
       </>)}
       {turi === 'tillo' && (<>
-        <label>Tavsif<input placeholder="uzuk" onChange={set('tavsif')} /></label>
-        <label>Og'irligi, g<input type="number" step="0.01" onChange={set('ogirlik_gr')} /></label>
+        <label>Tavsif *<input placeholder="uzuk" value={f.tavsif || ''} onChange={set('tavsif')} /></label>
+        <label>Og'irligi, g *<input type="number" step="0.01" value={f.ogirlik_gr || ''} onChange={set('ogirlik_gr')} /></label>
         <label>Taxminiy qiymat<SummaInput onChange={set('summa')} /></label>
       </>)}
-      <button onClick={() => (ertaMi() ? setSurov(true) : onYuborish([zalog], false))}>Zalogni qabul qilib berish</button>
+      <button disabled={kerak.length > 0} onClick={() => (ertaMi() ? setSurov(true) : onYuborish([zalog], false))}>Zalogni qabul qilib berish</button>
+      {kerak.length > 0 && <p className="malumot tugma-sabab">To'ldiring: {kerak.join(', ')}.</p>}
       {surov && (
         <Tasdiq sarlavha="Libos oldinroq beriladimi?" tugma="Ha, hozir berish" xavfli={false}
-          matn={`Olib ketish sanasi ${sanaMatni(olibKetish)} — hali kelmagan. Libos hozir berilsa, shu kundan boshlab band hisoblanadi.`}
+          matn={`Olib ketish sanasi ${sanaMatni(olibKetish)} — hali kelmagan. Libos hozir berilsa, bron bugundan boshlanadi (shu kunlarda libos boshqa zakazda band bo'lsa, berib bo'lmaydi).`}
           onYop={() => setSurov(false)} onTasdiq={() => { setSurov(false); onYuborish([zalog], true) }} />
       )}
     </Amal>
   )
 }
 
-function QaytarishForma({ onYuborish, tillo, qaytarish, kechikishJarimasi, pulsiz }) {
+// C-19, C-20, C-10: qaytarish — zalogdan ushlanadigan, mijozga qaytadigan va qo'shimcha to'lanadigan summa jonli;
+// qo'shimchani mijoz hozir to'lasa — belgi va usul; «aksessuar yo'q» — qaysi dona yo'qligi; yirtiq/dog' — libos ta'mirga
+function QaytarishForma({ onYuborish, tillo, qaytarish, kechikishJarimasi, pulsiz, pulZalog = 0, aksessuarlar = [] }) {
   const [f, setF] = useState({ tekshiruv: 'butun' })
+  const [usul, setUsul] = useState('naqd')
+  const [tolandi, setTolandi] = useState(false)
+  const [yoqolgan, setYoqolgan] = useState([])
   const [bugun] = useState(() => new Date().toLocaleDateString('sv-SE'))  // YYYY-MM-DD, mahalliy sana
   // Kechikkan qaytarish: jarima avtomatik hisoblanishi yoki o'chirilgani (jim nol jarima bo'lmasin)
   const kechikkan = qaytarish && qaytarish < bugun ? Math.round((new Date(bugun) - new Date(qaytarish)) / 86400000) : 0
+  const kechJarima = kechikkan > 0 && kechikishJarimasi > 0 ? kechikkan * kechikishJarimasi : 0
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value })
+  // backend (rental.libos_qaytarish) hisobi: jarima avval pul zalogidan ushlanadi, ortig'i — qo'shimcha to'lov yoki qarz
+  const jarimaJami = Number(f.jarima || 0) + kechJarima
+  const ushlanadi = Math.min(jarimaJami, pulZalog)
+  const qoshimcha = jarimaJami - ushlanadi
+  const mijozga = pulZalog - ushlanadi
+  const aksYoq = f.tekshiruv === 'aksessuar_yoq'
   const body = {
-    tekshiruv: f.tekshiruv, jarima: Number(f.jarima || 0), jarima_tolandi: Number(f.jarima_tolandi || 0),
+    tekshiruv: f.tekshiruv, jarima: Number(f.jarima || 0), jarima_tolandi: tolandi && !pulsiz ? qoshimcha : 0,
+    ...(tolandi && qoshimcha > 0 ? { usul } : {}),
+    ...(aksYoq ? { yoqolgan_donalar: yoqolgan } : {}),
     ...(f.tortilgan_gr ? { tortilgan_gr: f.tortilgan_gr } : {}),
     izoh: f.izoh || '',
   }
   return (
     <Amal sarlavha="Qaytarish" id="asosiy-amal">
+      {/* A-16: kassadan pul chiqadigan joy — qancha qaytishi oldindan ko'rinadi */}
+      {pulZalog > 0 && !pulsiz && jarimaJami === 0 && (
+        <p className="zalog-qaytadi">Pul zalog <b>{som(pulZalog)}</b> — mijozga qaytariladi.</p>
+      )}
       {kechikkan > 0 && kechikishJarimasi > 0 && (
-        <p className="malumot">Kechikish: {kechikkan} kun · avtomatik jarima {som(kechikkan * kechikishJarimasi)} ({som(kechikishJarimasi)} × {kechikkan}).</p>
+        <p className="malumot">Kechikish: {kechikkan} kun · avtomatik jarima {som(kechJarima)} ({som(kechikishJarimasi)} × {kechikkan}).</p>
       )}
       {kechikkan > 0 && kechikishJarimasi === 0 && (
         <p className="ogohlantirish">
@@ -679,15 +1007,102 @@ function QaytarishForma({ onYuborish, tillo, qaytarish, kechikishJarimasi, pulsi
         </p>
       )}
       <label>Holat tekshiruvi
-        <select value={f.tekshiruv} onChange={set('tekshiruv')}>
+        <select value={f.tekshiruv} onChange={(e) => { set('tekshiruv')(e); setYoqolgan([]) }}>
           <option value="butun">Butun</option><option value="dog">Dog'</option>
           <option value="yirtiq">Yirtiq</option><option value="aksessuar_yoq">Aksessuar yo'q</option>
         </select>
       </label>
+      {(f.tekshiruv === 'yirtiq' || f.tekshiruv === 'dog') && (
+        <p className="malumot">Libos «ta'mirda» holatiga o'tadi — ta'mirlanmaguncha ijaraga chiqmaydi.</p>
+      )}
+      {aksYoq && aksessuarlar.length > 0 && (
+        <fieldset className="yoqolgan-donalar">
+          <legend>Qaysi aksessuar qaytmadi?</legend>
+          {aksessuarlar.map((a) => (
+            <label key={a.dona_id} className="belgi-qator">
+              <input type="checkbox" checked={yoqolgan.includes(a.dona_id)}
+                onChange={(e) => setYoqolgan(e.target.checked ? [...yoqolgan, a.dona_id] : yoqolgan.filter((x) => x !== a.dona_id))} />
+              {a.nomi} ({a.yorliq})
+            </label>
+          ))}
+        </fieldset>
+      )}
       <label>Jarima<SummaInput onChange={set('jarima')} /><Info nom="Jarima">Libosga yetgan zarar uchun summa: dog', yirtiq, yo'qolgan aksessuar. Avval pul zalogidan ushlanadi; zalog yetmasa, qolgani mijoz qarzi bo'ladi. Kechikish jarimasi (yoqilgan bo'lsa) bunga o'zi qo'shiladi.</Info></label>
-      {!pulsiz && <label>Shu zahoti to'langan jarima (zalogdan ortig'i)<SummaInput onChange={set('jarima_tolandi')} /><Info nom="To'langan jarima">Jarima pul zalogidan oshsa, ortig'ini mijoz hozir to'lasa — shu yerga yozing, kassaga tushadi. Yozilmasa, ortig'i mijoz qarzi bo'lib qoladi.</Info></label>}
+      {jarimaJami > 0 && (
+        <dl className="qaytarish-hisob" aria-live="polite">
+          {pulZalog > 0 && <div><dt>Zalogdan ushlanadi</dt><dd>{som(ushlanadi)}</dd></div>}
+          {pulZalog > 0 && !pulsiz && <div><dt>Mijozga qaytariladi</dt><dd>{som(mijozga)}</dd></div>}
+          {qoshimcha > 0 && <div className="qarz"><dt>Mijoz qo'shimcha to'laydi</dt><dd>{som(qoshimcha)}</dd></div>}
+        </dl>
+      )}
+      {qoshimcha > 0 && !pulsiz && (
+        <>
+          <label className="belgi-qator">
+            <input type="checkbox" checked={tolandi} onChange={(e) => setTolandi(e.target.checked)} />
+            {som(qoshimcha)} hozir to'landi
+          </label>
+          {tolandi ? <UsulTanlov usul={usul} onUsul={setUsul} yorliq="Jarima to'lov usuli" />
+            : <p className="malumot">Belgilanmasa, {som(qoshimcha)} mijoz qarzi bo'lib qoladi.</p>}
+        </>
+      )}
       {tillo && <label>Tillo qayta tortildi, g<input type="number" step="0.01" onChange={set('tortilgan_gr')} /><Info nom="Tillo og'irligi">Zalogga olingan tillo buyumni qaytarishdan oldin qayta torting. Berilgandagi og'irlikdan farq qilsa, qaytarish to'xtatiladi — buyum almashtirilmaganiga ishonch hosil qilish uchun.</Info></label>}
-      <button onClick={() => onYuborish(body)}>Qaytarishni rasmiylashtirish</button>
+      <button disabled={aksYoq && aksessuarlar.length > 0 && yoqolgan.length === 0} onClick={() => onYuborish(body)}>Qaytarishni rasmiylashtirish</button>
+      {aksYoq && aksessuarlar.length > 0 && yoqolgan.length === 0 && <p className="malumot tugma-sabab">Qaysi aksessuar qaytmaganini belgilang.</p>}
+    </Amal>
+  )
+}
+
+// C-04: tasdiqda va natijada aniq summa — backend oldindan hisobi (`GET .../bekor/`, bitta haqiqat manbai);
+// C-20: qaytarim usuli (standart — asl to'lov usuli), rahbarga qoidadan boshqa foiz
+function BekorForma({ onYuborish, soz, z, rahbar }) {
+  const qoida = (soz?.qaytarish_qoidasi || [[30, 100], [7, 50], [0, 0]])
+    .map(([kun, foiz]) => (kun > 0 ? `${kun}+ kun — ${foiz}%` : `undan kam — ${foiz}%`)).join(', ')
+  const [sabab, setSabab] = useState('')
+  const [foizQolda, setFoizQolda] = useState('')
+  const aslUsul = z.tolovlar.find((t) => ['avans', 'qoldiq'].includes(t.tur) && t.tasdiq !== 'kelmadi')?.usul
+  const [usul, setUsul] = useState(['naqd', 'karta', 'otkazma'].includes(aslUsul) ? aslUsul : 'naqd')
+  const [surov, setSurov] = useState(false)
+  const [h, setH] = useState(null)
+  const [hXato, setHXato] = useState('')
+  const pulBor = z.tolangan > 0
+  useEffect(() => {
+    if (!pulBor) return undefined
+    const foiz = rahbar && foizQolda !== '' ? Number(foizQolda) : undefined
+    const t = setTimeout(() => {
+      bekorHisobi(z.id, foiz).then((r) => { setH(r); setHXato('') }).catch((e) => setHXato(xatoMatni(e)))
+    }, foiz === undefined ? 0 : 300)
+    return () => clearTimeout(t)
+  }, [z.id, z.tolangan, pulBor, rahbar, foizQolda])
+  const avansNomi = soz?.qaytarish_asosi === 'tolangan' ? "To'langan" : 'Avans'
+  const hisob = !pulBor ? "To'lov olinmagan — pul qaytarilmaydi."
+    : !h ? '' : `${avansNomi} ${som(h.avans)}, olib ketishgacha ${h.qolgan_kun} kun — ${h.foiz}% qaytadi.`
+      + (h.oldindan > 0 ? ` Avansdan ortiq ${som(h.oldindan)} to'liq qaytadi.` : '')
+      + ` Mijozga ${som(h.qaytariladi)} qaytariladi, ${som(h.ushlab_qolinadi)} ushlab qolinadi.`
+  const tayyor = !pulBor || Boolean(h)
+  return (
+    <Amal sarlavha="Zakazni bekor qilish">
+      <p className="malumot">Qaytarish qoidasi: {qoida}.</p>
+      {pulBor && (h ? <p className="bekor-hisob" aria-live="polite">{hisob}</p> : !hXato && <p className="malumot">Hisoblanmoqda…</p>)}
+      {hXato && <p className="xato" role="alert">{hXato}</p>}
+      {pulBor && rahbar && (
+        <label>Qaytariladigan foiz (qoidadan boshqa bo'lsa)
+          <input type="number" min="0" max="100" value={foizQolda} placeholder={h && foizQolda === '' ? String(h.foiz) : ''}
+            onChange={(e) => setFoizQolda(e.target.value)} />
+        </label>
+      )}
+      {pulBor && h?.qaytariladi > 0 && <UsulTanlov usul={usul} onUsul={setUsul} yorliq="Pul qanday qaytariladi" />}
+      <label>Sabab<input value={sabab} onChange={(e) => setSabab(e.target.value)} /></label>
+      <button className="xavfli" disabled={!sabab.trim() || !tayyor || Boolean(hXato)} onClick={() => setSurov(true)}>Bekor qilish</button>
+      {surov && (
+        <Tasdiq sarlavha="Zakazni bekor qilasizmi?" tugma="Ha, bekor qilish"
+          matn={`Zakaz #${z.raqam} bekor qilinadi (sabab: ${sabab.trim()}). ${hisob} Bu amalni qaytarib bo'lmaydi.`}
+          onYop={() => setSurov(false)}
+          onTasdiq={() => {
+            setSurov(false)
+            onYuborish({ sabab, ...(pulBor && h?.qaytariladi > 0 ? { usul } : {}),
+              ...(rahbar && foizQolda !== '' ? { qaytariladigan_foiz: Number(foizQolda) } : {}) })
+          }} />
+      )}
     </Amal>
   )
 }
@@ -793,26 +1208,6 @@ function KochirishForma({ z, onYuborish }) {
             + "narx to'langan summadan pastga tushmaydi."}
           onYop={() => setSurov(false)}
           onTasdiq={() => { setSurov(false); onYuborish({ dan, gacha, sabab: sabab.trim() }) }} />
-      )}
-    </Amal>
-  )
-}
-
-function BekorForma({ onYuborish, soz }) {
-  const qoida = (soz?.qaytarish_qoidasi || [[30, 100], [7, 50], [0, 0]])
-    .map(([kun, foiz]) => (kun > 0 ? `${kun}+ kun — ${foiz}%` : `undan kam — ${foiz}%`)).join(', ')
-    + (soz?.qaytarish_asosi === 'tolangan' ? " (hamma to'langan summaga)" : " (faqat avansga, qoldiq to'liq qaytadi)")
-  const [sabab, setSabab] = useState('')
-  const [surov, setSurov] = useState(false)
-  return (
-    <Amal sarlavha="Zakazni bekor qilish">
-      <p className="malumot">Avans qaytarish qoidasi: {qoida}.</p>
-      <label>Sabab<input value={sabab} onChange={(e) => setSabab(e.target.value)} /></label>
-      <button className="xavfli" disabled={!sabab.trim()} onClick={() => setSurov(true)}>Bekor qilish</button>
-      {surov && (
-        <Tasdiq sarlavha="Zakazni bekor qilasizmi?" tugma="Ha, bekor qilish"
-          matn={`Zakaz bekor qilinadi (sabab: ${sabab.trim()}). Avans qaytarish qoidasi: ${qoida}. Bu amalni qaytarib bo'lmaydi.`}
-          onYop={() => setSurov(false)} onTasdiq={() => { setSurov(false); onYuborish({ sabab }) }} />
       )}
     </Amal>
   )

@@ -2,8 +2,9 @@ import { useState } from 'react'
 import { som } from '../api'
 
 // 12 oylik ustunli grafik (6.5). Bitta o'lchov — bitta grafik: tushum va sof foyda alohida chiziladi (ikki o'qli grafik emas).
-// Rang validatsiyadan o'tgan: #9a4c95 — och fon, #B9833A — qorong'i fon (dataviz validator, dark band). Matn doim matn rangida.
-const RANG = '#9a4c95'
+// Rang validatsiyadan o'tgan: #B9833A — qorong'i fon (dataviz validator, dark band; ilova faqat qorong'i fonda).
+// Avval standart #9a4c95 (och fon uchun) edi — Hisobotda ustunlar binafsha chiqardi. Matn doim matn rangida.
+const RANG = '#B9833A'
 const OYLAR = ['Yan', 'Fev', 'Mar', 'Apr', 'May', 'Iyn', 'Iyl', 'Avg', 'Sen', 'Okt', 'Noy', 'Dek']
 const W = 440
 const H = 150

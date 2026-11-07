@@ -38,7 +38,7 @@ export default function TayyorChegirmalar() {
           onSaqla={(b, ok) => bajar(() => tayyorChegirmaOzgartir(t.id, b), ok)} />
       ))}
       <div className="stack">
-        <input placeholder="Nomi (masalan, Doimiy mijoz)" value={f.nomi} maxLength={100} onChange={(e) => setF({ ...f, nomi: e.target.value })} />
+        <input placeholder="Nomi (masalan, Doimiy mijoz)" aria-label="Chegirma nomi" value={f.nomi} maxLength={100} onChange={(e) => setF({ ...f, nomi: e.target.value })} />
         <div className="qator">
           <select value={f.turi} aria-label="Chegirma turi" onChange={(e) => setF({ ...f, turi: e.target.value, qiymat: '' })}>
             <option value="foiz">Foiz, %</option><option value="summa">Summa, so'm</option>

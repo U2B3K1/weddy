@@ -24,9 +24,16 @@ test('sotuvchi: zakazdan smena yopilishigacha', async ({ page }) => {
 
   await test.step('smenani ochish (0 so\'m)', async () => {
     await nav(page).getByRole('button', { name: 'Kassa', exact: true }).click()
-    await page.locator('.smena-panel').getByRole('button', { name: 'Smenani ochish' }).click()
+    // smena yopiq: «Smenani ochish» bitta (To'lov qabulda — «Smena yopiq» varaqasida, varaq yo'q bo'limda — panelda)
+    await page.getByRole('button', { name: 'Smenani ochish' }).click()
     const oyna = page.getByRole('dialog', { name: 'Smenani ochish' })
     await summaTer(oyna, ['0'])
+    // C-11: oldingi testlar seyfda pul qoldirgan bo'lsa — farq jonli ko'rinadi va sababi so'raladi
+    const izoh = oyna.getByLabel('Izoh (farq sababi — majburiy)')
+    if (await izoh.count()) {
+      await expect(oyna.getByRole('button', { name: 'Smenani ochish' })).toBeDisabled()
+      await izoh.fill("E2E: seyfdagi pul oldingi testdan qolgan")
+    }
     await oyna.getByRole('button', { name: 'Smenani ochish' }).click()
     await expect(page.getByText('Smena ochildi.')).toBeVisible()
   })
@@ -42,6 +49,8 @@ test('sotuvchi: zakazdan smena yopilishigacha', async ({ page }) => {
     await page.getByRole('button', { name: 'Davom etish', exact: true }).click()
     await page.getByLabel('Mijoz telefoni').fill(telefon)
     await page.getByLabel('Mijoz telefoni').blur()
+    // yangi mijoz ismsiz saqlanmaydi
+    await expect(page.getByRole('button', { name: 'Zakazni saqlash' })).toBeDisabled()
     await page.getByLabel('Yangi mijoz — F.I.O.').fill('Sinov Kelin')
     await page.getByRole('button', { name: 'Zakazni saqlash' }).click()
     const sarlavha = page.getByRole('heading', { name: /Zakaz #\d+ saqlandi/ })

@@ -57,8 +57,15 @@ export default function Hujjat({ zakazId, tur, onYop }) {
             <table className="hujjat-jadval">
               <thead><tr><th>Sana</th><th>To'lov</th><th>Usul</th><th>Summa</th><th>Qabul qildi</th></tr></thead>
               <tbody>
+                {/* C-09: qaytarilgan pul manfiy; rahbar «kelmadi» degan o'tkazma chizilgan — hisobga olinmagan */}
                 {h.tolovlar.map((t, i) => (
-                  <tr key={i}><td>{sanaMatni(t.sana)}</td><td>{t.tur}</td><td>{t.usul}</td><td>{som(t.summa)}</td><td>{t.xodim}</td></tr>
+                  <tr key={i} className={t.kelmadi ? 'hujjat-kelmadi' : undefined}>
+                    <td>{sanaMatni(t.sana)}</td>
+                    <td>{t.tur}{t.kelmadi && <small> (kelmadi — hisobga olinmagan)</small>}</td>
+                    <td>{t.usul}</td>
+                    <td>{t.kelmadi ? <s>{som(t.summa)}</s> : t.summa < 0 ? `−${som(-t.summa)}` : som(t.summa)}</td>
+                    <td>{t.xodim}</td>
+                  </tr>
                 ))}
               </tbody>
             </table>
@@ -70,7 +77,11 @@ export default function Hujjat({ zakazId, tur, onYop }) {
               {h.narx.chegirma > 0 && <tr><td>Chegirma</td><td>−{som(h.narx.chegirma)}</td></tr>}
               <tr><td><b>Jami</b></td><td><b>{som(h.narx.jami)}</b></td></tr>
               <tr><td>To'langan</td><td>{som(h.narx.tolangan)}</td></tr>
-              <tr><td>Qoldiq</td><td>{som(h.narx.qoldiq)}</td></tr>
+              {h.narx.bekor ? (<>
+                {/* bekor qilingan zakaz: mijoz qarzdor emas — qoldiq o'rniga qaytarilgan va ushlab qolingan */}
+                <tr><td>Qaytarildi</td><td>{h.narx.qaytarildi ? `−${som(h.narx.qaytarildi)}` : som(0)}</td></tr>
+                <tr><td>Ushlab qolindi</td><td>{som(h.narx.ushlab_qolindi)}</td></tr>
+              </>) : <tr><td>Qoldiq</td><td>{som(h.narx.qoldiq)}</td></tr>}
             </tbody></table>
           )}
 
@@ -81,7 +92,8 @@ export default function Hujjat({ zakazId, tur, onYop }) {
                 {h.zaloglar.map((z) => (
                   <tr key={z.yorliq}>
                     <td>{z.yorliq}</td><td>{z.turi}</td><td>{z.tavsif}</td><td>{sanaMatni(z.olingan)}</td>
-                    <td>{z.qaytarilgan ? sanaMatni(z.qaytarilgan) : z.holat}</td>
+                    {/* C-09: jarimaga ushlangan zalog «qaytarildi» deb ko'rsatilmaydi */}
+                    <td>{z.ushlab_qolindi ? z.holat : z.qaytarilgan ? sanaMatni(z.qaytarilgan) : z.holat}</td>
                   </tr>
                 ))}
               </tbody>

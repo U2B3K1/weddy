@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import SummaInput from '../components/SummaInput'
+import Tasdiq from '../components/Tasdiq'
 import {
   sanaMatni, som, xatoMatni, yetkazibBeruvchi, yetkazibBeruvchilar, yetkazibOzgartir, yetkazibTolov, yetkazibTolovOchir,
   yetkazibYarat,
@@ -54,16 +55,19 @@ export default function YetkazibBeruvchilar() {
 function Tafsilot({ id, bajar }) {
   const [d, setD] = useState(null)
   const [f, setF] = useState({ summa: '', izoh: '' })
+  const [xato, setXato] = useState('')
+  const [ochirSurov, setOchirSurov] = useState(null)
   const yukla = useCallback(() => yetkazibBeruvchi(id).then(setD), [id])
-  useEffect(() => { yukla().catch(() => {}) }, [yukla])
+  // Xato jimgina yutilmasin: aks holda «Yuklanmoqda…» abadiy turardi (B-35)
+  useEffect(() => { yukla().catch((e) => setXato(xatoMatni(e))) }, [yukla])
   const amal = async (fn, ok) => { if (await bajar(fn, ok)) await yukla() }
-  if (!d) return <p className="malumot">Yuklanmoqda…</p>
+  if (!d) return xato ? <p className="xato">{xato}</p> : <p className="malumot">Yuklanmoqda…</p>
   return (
     <div className="stack yetkazib-tafsilot">
-      <div className="qator">
-        <SummaInput placeholder={d.qarz > 0 ? `qarz: ${som(d.qarz)}` : 'Summa'} aria-label="To'lov summasi" value={f.summa}
-          onChange={(e) => setF({ ...f, summa: e.target.value })} />
-        <input placeholder="Izoh (ixtiyoriy)" aria-label="To'lov izohi" maxLength={300} value={f.izoh} onChange={(e) => setF({ ...f, izoh: e.target.value })} />
+      <div className="qator r2-yb-tolov">
+        <label>To'lov summasi<SummaInput placeholder={d.qarz > 0 ? `qarz: ${som(d.qarz)}` : ''} value={f.summa}
+          onChange={(e) => setF({ ...f, summa: e.target.value })} /></label>
+        <label>Izoh (ixtiyoriy)<input maxLength={300} value={f.izoh} onChange={(e) => setF({ ...f, izoh: e.target.value })} /></label>
         <button disabled={!(Number(f.summa) > 0)}
           onClick={() => amal(() => yetkazibTolov(id, { summa: Number(f.summa), izoh: f.izoh }).then(() => setF({ summa: '', izoh: '' })), "To'lov yozildi.")}>
           To'lov qilish
@@ -71,21 +75,60 @@ function Tafsilot({ id, bajar }) {
       </div>
       <h4>Olingan liboslar ({d.liboslar.length})</h4>
       {d.liboslar.length === 0 && <p className="malumot">Libos qo'shishda yoki libos kartasida «Qayerdan olingan» ni tanlang.</p>}
-      {d.liboslar.map((l) => (
-        <p key={l.id} className="qator-matn">{sanaMatni(l.sana)} · <b>{l.artikul}</b> {l.nomi} · {l.tannarx == null ? 'tannarx kiritilmagan' : som(l.tannarx)}
-          {l.holat !== 'bosh' && <span className="malumot"> · {l.holat_nomi}</span>}</p>
-      ))}
-      {d.aksessuarlar.length > 0 && <h4>Olingan aksessuarlar</h4>}
-      {d.aksessuarlar.map((a) => (
-        <p key={a.id} className="qator-matn">{sanaMatni(a.sana)} · <b>{a.kod}</b> {a.nomi} · {a.soni} dona × {a.narx == null ? 'narx kiritilmagan' : `${som(a.narx)} = ${som(a.jami)}`}</p>
-      ))}
-      <h4>To'lovlar ({d.tolovlar.length})</h4>
-      {d.tolovlar.map((t) => (
-        <div key={t.id} className="qator yetkazib-tolov">
-          <span className="qator-matn">{sanaMatni(t.sana)} · <b>{som(t.summa)}</b>{t.izoh ? ` · ${t.izoh}` : ''}</span>
-          <button className="ikkinchi kichik" onClick={() => amal(() => yetkazibTolovOchir(t.id), "To'lov o'chirildi.")}>O'chirish</button>
+      {d.liboslar.length > 0 && (
+        <div className="jadval-ora">
+          <table className="hisobot r2-kichik-jadval">
+            <thead><tr><th>Sana</th><th>Libos</th><th>Holat</th><th className="ong">Tannarx</th></tr></thead>
+            <tbody>
+              {d.liboslar.map((l) => (
+                <tr key={l.id}>
+                  <td>{sanaMatni(l.sana)}</td><td><b>{l.artikul}</b> {l.nomi}</td><td>{l.holat_nomi}</td>
+                  <td className="ong">{l.tannarx == null ? <span className="malumot">kiritilmagan</span> : som(l.tannarx)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
-      ))}
+      )}
+      {d.aksessuarlar.length > 0 && <h4>Olingan aksessuarlar</h4>}
+      {d.aksessuarlar.length > 0 && (
+        <div className="jadval-ora">
+          <table className="hisobot r2-kichik-jadval">
+            <thead><tr><th>Sana</th><th>Aksessuar</th><th className="ong">Soni</th><th className="ong">Narx</th><th className="ong">Jami</th></tr></thead>
+            <tbody>
+              {d.aksessuarlar.map((a) => (
+                <tr key={a.id}>
+                  <td>{sanaMatni(a.sana)}</td><td><b>{a.kod}</b> {a.nomi}</td><td className="ong">{a.soni}</td>
+                  <td className="ong">{a.narx == null ? <span className="malumot">kiritilmagan</span> : som(a.narx)}</td>
+                  <td className="ong">{a.narx == null ? '—' : som(a.jami)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      <h4>To'lovlar ({d.tolovlar.length})</h4>
+      {d.tolovlar.length > 0 && (
+        <div className="jadval-ora">
+          <table className="hisobot r2-kichik-jadval">
+            <thead><tr><th>Sana</th><th className="ong">Summa</th><th>Izoh</th><th aria-label="Amallar" /></tr></thead>
+            <tbody>
+              {d.tolovlar.map((t) => (
+                <tr key={t.id}>
+                  <td>{sanaMatni(t.sana)}</td><td className="ong"><b>{som(t.summa)}</b></td><td>{t.izoh || '—'}</td>
+                  <td className="ong"><button className="ikkinchi kichik" onClick={() => setOchirSurov(t)}>O'chirish</button></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+      {ochirSurov && (
+        <Tasdiq sarlavha="To'lov o'chirilsinmi?" tugma="Ha, o'chirish"
+          matn={`${sanaMatni(ochirSurov.sana)}dagi ${som(ochirSurov.summa)} to'lov o'chadi — yetkazib beruvchiga qarz shuncha oshadi. Qaytarib bo'lmaydi.`}
+          onYop={() => setOchirSurov(null)}
+          onTasdiq={() => { const t = ochirSurov; setOchirSurov(null); amal(() => yetkazibTolovOchir(t.id), "To'lov o'chirildi.") }} />
+      )}
       <Tahrir d={d} onSaqla={(b) => amal(() => yetkazibOzgartir(id, b), 'Saqlandi.')} />
     </div>
   )
@@ -113,7 +156,7 @@ function YangiForma({ onYuborish }) {
     <details className="blok amal">
       <summary>Yetkazib beruvchi qo'shish</summary>
       <div className="stack">
-        <label>Nomi<input value={f.nomi} maxLength={120} placeholder="masalan: Istanbul Bridal" onChange={(e) => setF({ ...f, nomi: e.target.value })} /></label>
+        <label>Nomi *<input value={f.nomi} maxLength={120} placeholder="masalan: Istanbul Bridal" onChange={(e) => setF({ ...f, nomi: e.target.value })} /></label>
         <label>Telefon<input inputMode="tel" value={f.telefon} maxLength={30} onChange={(e) => setF({ ...f, telefon: e.target.value })} /></label>
         <button disabled={!f.nomi.trim()} onClick={async () => { if (await onYuborish(f)) setF({ nomi: '', telefon: '' }) }}>Qo'shish</button>
       </div>

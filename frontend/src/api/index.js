@@ -35,10 +35,21 @@ api.interceptors.request.use((cfg) => {
 })
 
 // Tarmoq holati: javob kelmasa (server yoki internet yo'q) ilova oflayn rejimga o'tadi (7-bo'lim).
+// C-14: bitta uzilish ilovani almashtirmaydi — faqat brauzer «aloqa yo'q» desa yoki ketma-ket 2+ so'rov javobsiz qolsa.
 export const tarmoqXatosi = (e) => !e.response
+let ketmaKetXato = 0
 api.interceptors.response.use(
-  (r) => { window.dispatchEvent(new Event('weddy-onlayn')); return r },
-  (e) => { if (tarmoqXatosi(e)) window.dispatchEvent(new Event('weddy-oflayn')); return Promise.reject(e) },
+  (r) => { ketmaKetXato = 0; window.dispatchEvent(new Event('weddy-onlayn')); return r },
+  (e) => {
+    if (tarmoqXatosi(e)) {
+      ketmaKetXato += 1
+      if (!navigator.onLine || ketmaKetXato >= 2) window.dispatchEvent(new Event('weddy-oflayn'))
+    } else {
+      ketmaKetXato = 0  // server javob berdi (4xx/5xx) — aloqa bor
+      window.dispatchEvent(new Event('weddy-onlayn'))
+    }
+    return Promise.reject(e)
+  },
 )
 
 // Oflayn kesh: bugungi/ertangi bronlar, telefonlar va saqlanayotgan zaloglar. Qurilma salondan chiqarilsa o'chadi.
@@ -139,8 +150,9 @@ export const qulf = (libos, dan, gacha) =>
   api.post('/bronlar/qulf/', { libos, dan, gacha }).then((r) => r.data)
 // Javob kutilmaydi: qulf baribir 15 daqiqada o'zi tugaydi, xato foydalanuvchini to'xtatmasin
 export const qulfOchir = (libos) => api.delete(`/bronlar/qulf/${libos}/`).catch(() => {})
+// A-39: topilmasa server 200 { topildi: false } beradi (404 emas). Orqaga moslik: `yangi` — eski iste'molchilar uchun
 export const mijozQidir = (telefon) =>
-  api.get('/mijozlar/qidirish/', { params: { telefon } }).then((r) => r.data)
+  api.get('/mijozlar/qidirish/', { params: { telefon } }).then((r) => ({ ...r.data, yangi: r.data.topildi === false }))
 export const zakazYarat = (body) => api.post('/zakazlar/', body).then((r) => r.data)
 
 const get = (url, params) => api.get(url, { params }).then((r) => r.data)
@@ -154,17 +166,23 @@ export const zakazTarixi = (id) => get(`/zakazlar/${id}/tarix/`)
 export const tolovQabul = (body) => post('/kassa/tolovlar/', body)
 export const berish = (id, zaloglar, erta = false) => post(`/zakazlar/${id}/berish/`, { zaloglar, erta })
 export const qaytarish = (id, body) => post(`/zakazlar/${id}/qaytarish/`, body)
-export const qarzTolash = (id, summa) => post(`/zakazlar/${id}/qarz-tolash/`, { summa })
+export const qarzTolash = (id, summa, usul) => post(`/zakazlar/${id}/qarz-tolash/`, { summa, ...(usul ? { usul } : {}) })  // C-20: usul ixtiyoriy
 export const bekorQilish = (id, body) => post(`/zakazlar/${id}/bekor/`, body)
+// C-04 (R3): bekor qilishdan oldingi hisob → { tolangan, avans, oldindan, qolgan_kun, foiz, qaytariladi, ushlab_qolinadi };
+// `qaytariladigan_foiz` — faqat rahbar (sotuvchida 409)
+export const bekorHisobi = (id, qaytariladigan_foiz) => get(`/zakazlar/${id}/bekor/`, qaytariladigan_foiz != null ? { qaytariladigan_foiz } : undefined)
 export const sanaKochirish = (id, body) => post(`/zakazlar/${id}/sana-kochirish/`, body)
 export const chegirmaSora = (id, body) => post(`/zakazlar/${id}/chegirma/`, body)
 export const zakazAksessuarQosh = (id, aksessuar, soni = 1) => post(`/zakazlar/${id}/aksessuar/`, { aksessuar, soni })
-export const zakazAksessuarOchir = (id, qatorId) => api.delete(`/zakazlar/${id}/aksessuar/${qatorId}/`).then((r) => r.data)
+// C-07: `usul` (ixtiyoriy) — olib tashlangach to'langan summa jamidan oshsa, farq shu usulda qaytariladi
+export const zakazAksessuarOchir = (id, qatorId, usul) => api.delete(`/zakazlar/${id}/aksessuar/${qatorId}/`, { params: usul ? { usul } : undefined }).then((r) => r.data)
 export const tayyorChegirmalar =() => get('/tayyor-chegirmalar/')
 export const tozalandi = (libosId) => post(`/liboslar/${libosId}/tozalandi/`)
 
 export const smenaHolati = () => get('/kassa/smena/')
 export const smenaOchish = (boshlangich_qoldiq) => post('/kassa/smena/ochish/', { boshlangich_qoldiq })
+// C-11: seyf farqi bo'lsa sababi bilan (smenada saqlanadi)
+export const smenaOchishIzoh = (boshlangich_qoldiq, izoh) => post('/kassa/smena/ochish/', { boshlangich_qoldiq, izoh: izoh || '' })
 export const smenaQoshilish = () => post('/kassa/smena/qoshilish/')
 export const smenaChiqish = (summa, kimga) => post('/kassa/smena/chiqish/', { summa, kimga })
 export const smenaYopish = (summa, izoh, rahbar, terminal) => post('/kassa/smena/yopish/', { summa, izoh, ...(rahbar ? { rahbar } : {}), ...(terminal != null ? { terminal } : {}) })
@@ -174,6 +192,8 @@ export const tolovTuzat = (id, tana) => post(`/kassa/tolovlar/${id}/tuzatish/`, 
 export const topshiriqQabul = (id, summa) => post(`/kassa/topshiriqlar/${id}/qabul/`, summa === undefined ? {} : { summa })
 
 export const dashbord = (davr = 'oy', filial) => get('/dashbord/', { davr, filial: filial || undefined })
+// Rahbar bosh sahifasi kartalari: tushum dinamikasi (oldingi teng davr bilan), eng ko'p ijara, yaqin bronlar, liboslar holati, filiallar
+export const dashbordPanel = (kun = 30, filial) => get('/dashbord/panel/', { kun, filial: filial || undefined })
 export const chegirmaSorovlari = () => get('/chegirma-sorovlari/')
 export const amallarJurnali = () => get('/jurnal/')
 export const telegramXabarlari = () => get('/xabarlar/')
@@ -191,6 +211,8 @@ export const kassaZaloglar = () => get('/kassa/zaloglar/')
 export const zalogBelgila = (body) => post('/kassa/zaloglar/', body)
 export const smenalar = () => get('/kassa/smenalar/')
 export const smenaTuzat = (id, body) => patch(`/kassa/smenalar/${id}/`, body)
+// Smenalar tarixi filtr bilan: { farqli: 1 } — faqat kassa yoki terminal farqi bilan yopilganlar
+export const smenalarRoyxat = (params) => get('/kassa/smenalar/', params)
 export const pnl = (oy, filial) => get('/hisobotlar/pnl/', { oy, filial: filial || undefined })
 export const oyniYop = (oy) => post('/hisobotlar/oyni-yopish/', { oy })
 export const oyniOch = (oy) => api.delete('/hisobotlar/oyni-yopish/', { params: { oy } }).then((r) => r.data)
@@ -320,12 +342,39 @@ export const tayyorChegirmaOzgartir = (id, body) => patch(`/tayyor-chegirmalar/$
 export const xarajatTuzat = (id, body) => patch(`/xarajatlar/${id}/`, body)
 export const xarajatBekor = (id) => api.delete(`/xarajatlar/${id}/`).then((r) => r.data)
 export const libosAlmashtirish = (zakazId, body) => post(`/zakazlar/${zakazId}/libos-almashtirish/`, body)
+// R1 (D1): sahifalangan zakazlar ro'yxati → { natija, jami }; params: holat (faol | holat | bugun_olib …), q, limit, offset
+export const zakazlarSahifa = (params) => get('/zakazlar/royxat/', { ...params, sahifa: 1 })
+// Kassa → To'lov qabul: avans/qoldiq olinadigan barcha zakazlar (vaqtinchalik + bron), olib ketish sanasi bo'yicha, kesimsiz
+export const tolovKutayotganlar = (q) => get('/zakazlar/royxat/', { holat: 'tolov_kutmoqda', q: q || undefined })
+// Mijozlar: sahifalangan → { natija, jami } (oxirgi zakaz sanasi bo'yicha); params: q, qora_royxat, limit, offset
+export const mijozlarSahifa = (params) => get('/mijozlar/', { ...params, sahifa: 1 })
+export const mijozSonlari = () => get('/mijozlar/sonlar/')
+// R3 (D1): chegirmani olib tashlash yoki kutilayotgan so'rovni qaytarib olish (avans olinguncha) — D3 backend shartnomasi
+export const chegirmaOlibTashla = (zakazId) => api.delete(`/zakazlar/${zakazId}/chegirma/`).then((r) => r.data)
+// Chegirma summasi — backend (`discounts._qollash`, FT-4.3) bilan bir xil: ustama qo'shilgan summadan, promokod qismidan oshmaydi
+export const chegirmaMiqdori = (z, { foiz, summa } = {}) => {
+  const asos = (z.asosiy_narx || 0) + (z.ustama || 0)
+  const m = foiz != null && foiz !== '' ? Math.round((asos * Number(foiz)) / 100) : Number(summa || 0)
+  return Math.max(0, Math.min(m, asos - (z.promokod_chegirma || 0)))
+}
+// R2 (D1): xodim qo'ng'iroqchasi → { xabarlar: [{ kalit, tur, matn, soni, zakaz_id?, summa? }], soni }
+export const bildirishnomalar = () => get('/bildirishnomalar/')
+// R1 (D2): ochiq sanoqni bekor qilish — Telegramga hech narsa yuborilmaydi, tarixda qolmaydi
+export const sanoqBekor = () => api.delete('/sanoq/').then((r) => r.data)
+// R2 (D2): libos pasporti — hozir kimda, kelgusi bronlar, rahbarga samaradorlik
+export const libosPasport = (id) => get(`/liboslar/${id}/pasport/`)
+// R3 (D2, C-25): rahbar tasdiq kutayotgan libosni rad etadi (arxivga, jurnalga)
+export const libosRad = (id, sabab = '') => post(`/liboslar/${id}/rad/`, { sabab })
 
+// C-18: server matnidagi ichki kodlar («(FT-7.6)») foydalanuvchiga ko'rsatilmaydi
+const kodsiz = (m) => String(m).replace(/\s*\(FT-[\d.]+\)/g, '')
 export const xatoMatni = (e, standart = 'Xatolik yuz berdi.') => {
+  // C-14: javob kelmadi — amal bajarildimi-yo'qmi noma'lum; foydalanuvchi buni bilishi kerak
+  if (e?.isAxiosError && !e.response) return "Server bilan aloqa uzildi — amal bajarilmagan bo'lishi mumkin. Aloqani tekshirib, natijani ko'rib qayta urining."
   const d = e.response?.data
   if (!d || typeof d !== 'object') return standart // masalan, server 500 da HTML qaytarsa
-  if (typeof d.detail === 'string') return d.detail
-  return Object.values(d).flat().join(' ') || standart
+  if (typeof d.detail === 'string') return kodsiz(d.detail)
+  return kodsiz(Object.values(d).flat().join(' ')) || standart
 }
 
 // ISO sana (2026-10-22 yoki to'liq vaqt) → 22.10.2026; bo'sh qiymat — bo'sh satr

@@ -35,7 +35,7 @@ test('telefon: pastki panel, chap menyu va xodim menyusi', async ({ page }) => {
     await page.getByRole('button', { name: 'Rahbar: profil va chiqish' }).click()
     const menyu = page.getByRole('menu')
     await expect(menyu.getByRole('menuitem', { name: 'Profil rasmini yuklash' })).toBeVisible()
-    await menyu.getByRole('menuitem', { name: 'Chiqish' }).click({ trial: true, timeout: 5000 })
+    await menyu.getByRole('menuitem', { name: 'Ilovadan chiqish' }).click({ trial: true, timeout: 5000 })
     await page.screenshot({ path: 'test-results/mobil/xodim-menyu.png' })
     await menyu.locator('input[type=file]').setInputFiles('public/kelinlar/2.jpg')
     await expect(page.locator('.shapka-xodim img')).toBeVisible()

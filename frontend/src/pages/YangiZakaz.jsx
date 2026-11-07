@@ -7,16 +7,19 @@ import { SalonchiForma } from './Salonchilar'
 import Manekin from '../components/Manekin'
 import CalendarPage from '../components/kalendar/CalendarPage'
 import { Bezak, Muhr, VaraqSana } from '../components/Varaq'
-import { aksessuarManekinSaqla, boshAksessuarlar, filiallar, boshLiboslar, mijozQidir, qulf, qulfOchir, manekinSaqla, salonchiQosh, salonchilar, som, ustamaFoiz, zakazYarat } from '../api'
+import { aksessuarManekinSaqla, boshAksessuarlar, filiallar, boshLiboslar, kategoriyalar, mijozQidir, qulf, qulfOchir, manekinSaqla, salonchiQosh, salonchilar, saqlangan, som, ustamaFoiz, zakazYarat } from '../api'
 import SummaInput from '../components/SummaInput'
 
 // Yangi zakaz: 1) sana, 2) libos tanlash, 3) mijoz va saqlash (4-bo'lim). O'ngda (telefonda pastda) zakaz
 // varaqasi tanlangan sari to'ladi; saqlangach unga muhr bosiladi.
+// C-13: qoralama xodimga bog'langan — planshetga boshqa xodim kirsa, oldingining sana va mijozi unda ochilmaydi
+// (aks holda zakaz va bonus boshqa xodimga yozilib ketardi). Eski umumiy kalit bir marta tozalanadi.
 const QORALAMA = 'libosa.yangi_zakaz'
+const qoralamaKaliti = () => `${QORALAMA}.${saqlangan.xodim()?.id ?? 'nomalum'}`
 const bugunIso = () => { const t = new Date(); return `${t.getFullYear()}-${String(t.getMonth() + 1).padStart(2, '0')}-${String(t.getDate()).padStart(2, '0')}` }
 const qoralamaOl = () => {
   let q
-  try { q = JSON.parse(sessionStorage.getItem(QORALAMA)) || {} } catch { return {} }
+  try { sessionStorage.removeItem(QORALAMA); q = JSON.parse(sessionStorage.getItem(qoralamaKaliti())) || {} } catch { return {} }
   // Kecha qoldirilgan qoralama: o'tgan sana bilan davom etib bo'lmaydi (server rad etadi) — sana qaytadan tanlanadi
   if (q.dan && q.dan < bugunIso()) q = { ...q, dan: '', gacha: '', qadam: 1 }
   // Tanlangan liboslar qoralamada saqlanmaydi — 3-qadamga libossiz qaytib qolmaslik uchun libos tanloviga
@@ -24,6 +27,10 @@ const qoralamaOl = () => {
 }
 // Telefondagi raqamlar soni: 9 (90 123 45 67) yoki 12 (998 90 123 45 67) — to'liq raqam
 const telefonRaqamlari = (t) => t.replace(/\D/g, '').length
+const faqatRaqam = (t) => t.replace(/\D/g, '')
+// Raqam to'liq terildimi: mahalliy 9 xona yoki +998 bilan 12 xona — shunda mijoz o'zi qidiriladi
+// («+998 90 1234» kabi chala raqam bo'yicha «yangi mijoz» chiqib ketmasin)
+const toliqRaqam = (t) => { const r = faqatRaqam(t); return r.startsWith('998') ? r.length === 12 : r.length === 9 }
 // Shundan uzoq ijara odatda kalendarda adashib bosilgan bo'ladi — sotuvchi ogohlantiriladi
 const UZOQ_IJARA_KUN = 7
 // Server vaqti UTC da keladi — mahalliy vaqtda «25.10.2026 14:30»
@@ -70,8 +77,33 @@ function VaraqRoyxat({ liboslar, aksessuarlar, aksSoni, ustama, ustamaSumma }) {
   )
 }
 
-export default function YangiZakaz({ onTayyor, onTolov }) {
-  const q0 = useState(qoralamaOl)[0]
+// Tashqaridan ochilganda (Kalendar katagi, Mijoz kartasi) — `boshlangich` = { n, dan?, gacha?, libos_id?, mijoz?: { telefon, fio } }.
+// Har yangi `n` bir marta qo'llanadi va sessiya qoralamasi ustidan yoziladi; bo'limga keyin qaytilganda qoralama davom etadi
+// (qo'llangan `n` modulda eslab qolinadi — App eski `boshlangich` ni uzatib tursa ham ish qayta tozalanmaydi. Sahifa yangilansa
+// App dagi `n` hisobi ham, bu qiymat ham noldan boshlanadi — shuning uchun sessionStorage emas).
+let qollanganN = null
+const yangiBoshlangich = (b) => Boolean(b?.n) && b.n !== qollanganN
+// Boshlang'ich qiymatlar: o'tgan sana olinmaydi; sana va libos bo'lsa — 2-qadam (libos yuklangach tanlanadi)
+const boshlangichdan = (b) => {
+  const sana = Boolean(b.dan && b.gacha && b.gacha >= b.dan && b.dan >= bugunIso())
+  return { qadam: sana && b.libos_id ? 2 : 1, dan: sana ? b.dan : '', gacha: sana ? b.gacha : '',
+    telefon: b.mijoz?.telefon || '', fio: b.mijoz?.fio || '', salonchi: '' }
+}
+
+export default function YangiZakaz({ boshlangich, ...props }) {
+  const [faolN, setFaolN] = useState(() => (yangiBoshlangich(boshlangich) ? boshlangich.n : null))
+  // ochiq turganda yangi `n` kelsa — forma yangidan (avvalgi render ma'lumotidan holat: React tavsiya qilgan usul)
+  if (boshlangich?.n && boshlangich.n !== faolN && yangiBoshlangich(boshlangich)) setFaolN(boshlangich.n)
+  useEffect(() => { if (faolN) qollanganN = faolN }, [faolN])
+  return <YangiZakazForma key={faolN ?? 'qoralama'} boshlangich={faolN && boshlangich?.n === faolN ? boshlangich : null} {...props} />
+}
+
+function YangiZakazForma({ onTayyor, onTolov, boshlangich }) {
+  const q0 = useState(() => (boshlangich ? boshlangichdan(boshlangich) : qoralamaOl()))[0]
+  // Kalendardan kelgan libos — ro'yxat yuklangach tanlanadi (bir marta)
+  const kutilganLibos = useRef(q0.qadam === 2 ? boshlangich?.libos_id : null)
+  // Mijoz kartasidan kelgan ism faqat o'sha raqamga tegishli — raqam almashtirilsa (o'zgartirilmagan) ism ham tozalanadi
+  const boshMijoz = useRef(boshlangich?.mijoz || null)
   const [qadam, setQadam] = useState(q0.qadam || 1) // 1 Sana → 2 Libos → 3 Mijoz
   const [dan, setDan] = useState(q0.dan || '')
   const [gacha, setGacha] = useState(q0.gacha || '')
@@ -85,6 +117,11 @@ export default function YangiZakaz({ onTayyor, onTolov }) {
   useEffect(() => { salonchilar().then(setSalonchiRoyxat).catch(() => {}) }, [])
   const tanlanganSalonchi = salonchiRoyxat.find((s) => String(s.id) === String(salonchi))
   const [bandlar, setBandlar] = useState(false)
+  // Telefonda o'lcham, rang, narx, filial va «Bandlar ham» — «Filtr» tugmasi ortida (ro'yxat birinchi ekranda ko'rinsin)
+  const [filtrOchiq, setFiltrOchiq] = useState(false)
+  // Kategoriya tablari Sozlamadagi tartibda (alifbo emas): salonning asosiy kategoriyasi birinchi ochiladi
+  const [katTartib, setKatTartib] = useState([])
+  useEffect(() => { kategoriyalar().then((r) => setKatTartib(r.filter((k) => k.turi !== 'aksessuar').map((k) => k.nomi))).catch(() => {}) }, [])
   const [liboslar, setLiboslar] = useState(null)
   const [tanlangan, setTanlangan] = useState([])
   // Sahifadan chiqib ketilsa yoki sana o'zgarsa qulflar bo'shatiladi — boshqa sotuvchi 15 daqiqa kutmasin
@@ -111,7 +148,7 @@ export default function YangiZakaz({ onTayyor, onTolov }) {
 
   // Qoralama: 10 daqiqa harakatsizlikdan keyin chiqib ketilsa yoki sahifa yangilansa yarim zakaz yo'qolmaydi.
   useEffect(() => {
-    try { sessionStorage.setItem(QORALAMA, JSON.stringify({ qadam, dan, gacha, telefon, fio, salonchi })) } catch { /* xotira yopiq */ }
+    try { sessionStorage.setItem(qoralamaKaliti(), JSON.stringify({ qadam, dan, gacha, telefon, fio, salonchi })) } catch { /* xotira yopiq */ }
   }, [qadam, dan, gacha, telefon, fio, salonchi])
 
   const aksJami = aksessuarlar.reduce((s, a) => s + a.ijara_narxi * (aksSoni[a.id] || 0), 0)
@@ -128,14 +165,54 @@ export default function YangiZakaz({ onTayyor, onTolov }) {
   const ustamaSumma = Math.round((asosiy * ustama.foiz) / 100)
   const jami = asosiy + ustamaSumma
 
+  // Mijoz qidiruvi: to'liq raqam terilganda o'zi (300 ms dan keyin), chala raqamda — maydondan chiqqanda.
+  // Natija qaysi raqamga tegishliligi eslab qolinadi: raqam o'zgarsa eski mijoz (yoki «yangi mijoz») hisobga olinmaydi.
+  const [qidirilgan, setQidirilgan] = useState('')
+  const sorov = useRef(0)
   const mijozniTekshir = async () => {
-    setMijoz(null)
-    if (!telefon) return
+    const r = faqatRaqam(telefon)
+    if (!r || r === qidirilgan) return
+    const n = ++sorov.current
+    setQidirilgan(r); setMijoz(null)
+    let m
     try {
-      setMijoz(await mijozQidir(telefon))
-    } catch {
-      setMijoz({ yangi: true })
+      const javob = await mijozQidir(telefon)
+      m = javob?.topildi === false ? { yangi: true } : javob  // A-39: topilmasa 200 { topildi: false }
+    } catch { m = { yangi: true } }  // eski backend 404 qaytaradi (o'tish davri); tarmoq xatosida ham — saqlashda server raqam bo'yicha topadi
+    if (n === sorov.current) setMijoz(m)  // orada boshqa raqam qidirilgan bo'lsa — eski javob yozilmaydi
+  }
+  useEffect(() => {
+    if (!toliqRaqam(telefon)) return undefined
+    const t = setTimeout(mijozniTekshir, 300)
+    return () => clearTimeout(t)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [telefon])
+  const joriyMijoz = faqatRaqam(telefon) === qidirilgan ? mijoz : null
+  // Yangi mijoz ismsiz yaratilmaydi: ro'yxat, eslatma va qo'ng'iroqlarda ism o'rnida raqam chiqib qolardi
+  const ismKerak = Boolean(joriyMijoz?.yangi && !fio.trim())
+
+  // Kalendardan kelgan libos: bo'sh bo'lsa qulf bilan tanlanadi va o'z kategoriyasi ochiladi; bo'lmasa — sababi bilan xabar
+  const boshLibosniTanla = async (id, royxat) => {
+    const libos = royxat.find((x) => x.id === id)
+    if (libos && !libos.band && !libos.qulflangan) {
+      try {
+        await qulf(libos.id, dan, gacha)
+        setTanlangan([libos])
+        setFiltr((f) => ({ ...f, kat: libos.kategoriya, filial: libos.filial == null || String(libos.filial) === f.filial ? f.filial : '' }))
+      } catch (e) { setXabar(e.response?.data?.detail || "Libosni tanlab bo'lmadi — ro'yxatdan boshqasini tanlang.") }
+      return
     }
+    let b = libos  // bo'shlar ro'yxatida yo'q — band yoki boshqa sotuvchi rasmiylashtiryapti: nomi va eng yaqin bo'sh sanasi uchun
+    if (!b) { try { b = (await boshLiboslar(dan, gacha, true)).find((x) => x.id === id) } catch { /* xabar umumiy bo'ladi */ } }
+    setXabar(!b ? "Tanlangan libos bu sanalarda bo'sh emas — ro'yxatdan boshqasini tanlang."
+      : `${b.artikul} ${b.nomi} bu sanalarda ${b.qulflangan ? 'boshqa sotuvchi rasmiylashtiryapti'
+        : `band${b.eng_yaqin_bosh ? ` (eng yaqin bo'sh sana: ${b.eng_yaqin_bosh})` : ''}`} — ro'yxatdan boshqasini tanlang.`)
+  }
+
+  const telefonOzgar = (t) => {
+    setTelefon(t)
+    const b = boshMijoz.current
+    if (b && faqatRaqam(t) !== faqatRaqam(b.telefon || '')) { boshMijoz.current = null; if (fio === (b.fio || '')) setFio('') }
   }
 
   const tanlash = async (l) => {
@@ -157,13 +234,14 @@ export default function YangiZakaz({ onTayyor, onTolov }) {
     setXabar('')
     if (!telefon) return setXabar('Mijoz telefonini kiriting.')
     if (telefonRaqamlari(telefon) < 9) return setXabar("Telefon raqami to'liq emas: masalan, +998 90 123 45 67.")
+    if (!joriyMijoz || ismKerak) return undefined  // tugma o'chiq bo'ladi; sababi tugma ostida yozilgan
     if (saqlanmoqda) return undefined // ikki marta bosilsa ikkinchi so'rov yuborilmaydi
     setSaqlanmoqda(true)
     try {
-      const yaratildi = await zakazYarat({ telefon, fio: mijoz?.yangi ? fio : '', manba: mijoz?.yangi && !salonchi ? manba : undefined,
+      const yaratildi = await zakazYarat({ telefon, fio: joriyMijoz.yangi ? fio.trim() : '', manba: joriyMijoz.yangi && !salonchi ? manba : undefined,
         salonchi: salonchi ? Number(salonchi) : undefined, dan, gacha, liboslar: tanlangan.map((l) => l.id),
         aksessuarlar: Object.entries(aksSoni).flatMap(([id, n]) => Array(n).fill(Number(id))) })
-      try { sessionStorage.removeItem(QORALAMA) } catch { /* xotira yopiq */ }
+      try { sessionStorage.removeItem(qoralamaKaliti()) } catch { /* xotira yopiq */ }
       qulflangan.current = [] // server qulflarni o'zi olib tashladi
       setZakaz(yaratildi)
     } catch (e) {
@@ -180,7 +258,7 @@ export default function YangiZakaz({ onTayyor, onTolov }) {
   }
 
   const yangi = () => {
-    setZakaz(null); setLiboslar(null); setTanlangan([]); setMijoz(null); setAksessuarlar([]); setAksSoni({})
+    setZakaz(null); setLiboslar(null); setTanlangan([]); setMijoz(null); setQidirilgan(''); setAksessuarlar([]); setAksSoni({})
     setDan(''); setGacha(''); setTelefon(''); setFio(''); setSalonchi(''); setManba('boshqa'); setQadam(1)
   }
 
@@ -192,10 +270,12 @@ export default function YangiZakaz({ onTayyor, onTolov }) {
     Promise.all([boshLiboslar(dan, gacha, bandlar, filtr.q), boshAksessuarlar(dan, gacha)]).then(([l, a]) => {
       if (bekor) return
       setLiboslar(l); setAksessuarlar(a); setTanlangan([]); setAksSoni({})
+      const id = kutilganLibos.current
+      if (id) { kutilganLibos.current = null; boshLibosniTanla(id, l) }
     }).catch(() => {})
     return () => { bekor = true }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dan, gacha, bandlar])
+  }, [dan, gacha])
 
   // FT-1.4: boshqa sotuvchi libosni band qilsa yoki qulflasa, ro'yxat sahifani yangilamasdan o'zgaradi.
   const royxatOchiq = liboslar !== null && !zakaz
@@ -222,20 +302,25 @@ export default function YangiZakaz({ onTayyor, onTolov }) {
     return () => clearInterval(t)
   }, [royxatOchiq, dan, gacha, bandlar, filtr.q])
 
-  // Qidiruv matni o'zgarsa ro'yxat darhol (300 ms kechikish bilan) qayta olinadi.
+  // Qidiruv matni yoki «Bandlar ham» o'zgarsa ro'yxat (300 ms kechikish bilan) qayta olinadi — tanlangan liboslar saqlanadi
   useEffect(() => {
     if (!royxatOchiq || !dan || !gacha) return undefined
     const t = setTimeout(() => boshLiboslar(dan, gacha, bandlar, filtr.q).then(setLiboslar).catch(() => {}), 300)
     return () => clearTimeout(t)
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filtr.q])
+  }, [filtr.q, bandlar])
 
   const noyob = (kalit) => [...new Set((liboslar || []).map((l) => l[kalit]).filter(Boolean))].sort()
   // Kategoriya tablari: libos kategoriyasi — faqat o'sha liboslar, «Aksessuarlar» — faqat aksessuarlar.
-  // «Hammasi» yo'q: boshida birinchi kategoriya ochiq. Qidiruv esa hamma kategoriya va aksessuarlar bo'ylab
-  // (artikul terilganda u qaysi tabda ekanini bilish shart emas)
+  // «Hammasi» yo'q: boshida birinchi kategoriya (Sozlamadagi tartib bo'yicha) ochiq. Qidiruv esa hamma kategoriya va
+  // aksessuarlar bo'ylab (artikul terilganda u qaysi tabda ekanini bilish shart emas)
   const AKS = '__aksessuar'
-  const tablar = [...noyob('kategoriya').map((k) => [k, k]), ...(aksessuarlar.length > 0 ? [[AKS, 'Aksessuarlar']] : [])]
+  const katOrni = (k) => { const i = katTartib.indexOf(k); return i < 0 ? katTartib.length : i }
+  const katlar = [...new Set((liboslar || []).map((l) => l.kategoriya).filter(Boolean))]
+    .sort((a, b) => katOrni(a) - katOrni(b) || a.localeCompare(b))
+  const tablar = [...katlar.map((k) => [k, k]), ...(aksessuarlar.length > 0 ? [[AKS, 'Aksessuarlar']] : [])]
+  // Telefonda «Filtr» tugmasidagi son: nechta qo'shimcha filtr yoqilgan
+  const filtrSoni = [filtr.olcham, filtr.rang, filtr.narx, bandlar].filter(Boolean).length
   const qidirilmoqda = filtr.q.trim() !== ''
   const kat = qidirilmoqda ? '' : tablar.some(([k]) => k === filtr.kat) ? filtr.kat : tablar[0]?.[0] ?? ''
   const libosKorinadi = kat !== AKS
@@ -253,7 +338,7 @@ export default function YangiZakaz({ onTayyor, onTolov }) {
     return <Vitrina liboslar={korsatiladigan} onChiqish={() => setVitrina(false)} />
   }
 
-  const mijozNomi = (mijoz?.yangi ? fio : mijoz?.fio || '').trim()
+  const mijozNomi = (joriyMijoz?.yangi ? fio : joriyMijoz?.fio || '').trim()
   const royxat = <VaraqRoyxat liboslar={tanlangan} aksessuarlar={aksessuarlar} aksSoni={aksSoni} ustama={ustama} ustamaSumma={ustamaSumma} />
 
   if (zakaz) {
@@ -294,10 +379,6 @@ export default function YangiZakaz({ onTayyor, onTolov }) {
               {sanaTayyor && kunlar(dan, gacha) > UZOQ_IJARA_KUN && (
                 <p className="ogohlantirish">Ijara {kunlar(dan, gacha)} kun — odatdagidan uzoq. Qaytarish kuni to'g'ri tanlanganini tekshiring.</p>
               )}
-              <label className="qator">
-                <input type="checkbox" checked={bandlar} onChange={(e) => setBandlar(e.target.checked)} />
-                Bandlarni ham ko'rsatish
-              </label>
             </section>
           )}
 
@@ -328,30 +409,44 @@ export default function YangiZakaz({ onTayyor, onTolov }) {
                   <input type="search" className="jadval-qidiruv" aria-label="Libos qidirish" placeholder="Artikul yoki nom" value={filtr.q}
                     onChange={(e) => setFiltr({ ...filtr, q: e.target.value })} />
                 </label>
-                {fil.length > 0 && (
-                  <select className="kichik-tanlov" value={filtr.filial} aria-label="Filial" onChange={(e) => setFiltr({ ...filtr, filial: e.target.value })}>
-                    <option value="">Barcha filiallar</option>
-                    {fil.map((f) => <option key={f.id} value={f.id}>{f.nomi}</option>)}
-                  </select>
-                )}
-                {libosKorinadi && (<>
-                  <select className="kichik-tanlov" value={filtr.olcham} aria-label="O'lcham" onChange={(e) => setFiltr({ ...filtr, olcham: e.target.value })}>
-                    <option value="">O'lcham</option>
-                    {noyob('olcham').map((o) => <option key={o} value={o}>{o}</option>)}
-                  </select>
-                  <select className="kichik-tanlov" value={filtr.rang} aria-label="Rang" onChange={(e) => setFiltr({ ...filtr, rang: e.target.value })}>
-                    <option value="">Rang</option>
-                    {noyob('rang').map((o) => <option key={o} value={o}>{o}</option>)}
-                  </select>
-                </>)}
-                <SummaInput className="narx-filtr" aria-label="Narx gacha" placeholder="Narx gacha" value={filtr.narx}
-                  onChange={(e) => setFiltr({ ...filtr, narx: e.target.value })} />
+                {/* faqat telefonda ko'rinadi; keng ekranda filtrlar doim ochiq */}
+                <button type="button" className="ikkinchi kichik filtr-tugma" aria-expanded={filtrOchiq} aria-controls="libos-filtrlari"
+                  onClick={() => setFiltrOchiq(!filtrOchiq)}>
+                  Filtr{filtrSoni > 0 && <span className="tab-son">{filtrSoni}</span>}
+                </button>
+                <div id="libos-filtrlari" className={`filtr-qoshimcha${filtrOchiq ? ' ochiq' : ''}`}>
+                  {fil.length > 0 && (
+                    <select className="kichik-tanlov" value={filtr.filial} aria-label="Filial" onChange={(e) => setFiltr({ ...filtr, filial: e.target.value })}>
+                      <option value="">Barcha filiallar</option>
+                      {fil.map((f) => <option key={f.id} value={f.id}>{f.nomi}</option>)}
+                    </select>
+                  )}
+                  {libosKorinadi && (<>
+                    <select className="kichik-tanlov" value={filtr.olcham} aria-label="O'lcham" onChange={(e) => setFiltr({ ...filtr, olcham: e.target.value })}>
+                      <option value="">O'lcham</option>
+                      {noyob('olcham').map((o) => <option key={o} value={o}>{o}</option>)}
+                    </select>
+                    <select className="kichik-tanlov" value={filtr.rang} aria-label="Rang" onChange={(e) => setFiltr({ ...filtr, rang: e.target.value })}>
+                      <option value="">Rang</option>
+                      {noyob('rang').map((o) => <option key={o} value={o}>{o}</option>)}
+                    </select>
+                  </>)}
+                  <SummaInput className="narx-filtr" aria-label="Narx gacha" placeholder="Narx gacha" value={filtr.narx}
+                    onChange={(e) => setFiltr({ ...filtr, narx: e.target.value })} />
+                  {libosKorinadi && (
+                    <button type="button" className="bugun-chip" aria-pressed={bandlar} onClick={() => setBandlar(!bandlar)}
+                      title="Band liboslar ham ro'yxatda — eng yaqin bo'sh sanasi va o'xshash bo'sh liboslar bilan">Bandlar ham</button>
+                  )}
+                </div>
               </div>
             </section>
             {libosKorinadi && <ul className="liboslar libos-grid">
               {korinadi.length === 0 && (
                 <li className="libos-bosh">
-                  {liboslar.length === 0 ? "Bu sanalarga bo'sh libos yo'q. Boshqa sanani tanlang yoki «Bandlarni ham ko'rsatish» ni yoqing." : 'Filtrga mos libos topilmadi.'}
+                  {liboslar.length === 0 ? (<>
+                    Bu sanalarga bo'sh libos yo'q. Boshqa sanani tanlang yoki band liboslarni ham ko'ring.{' '}
+                    {!bandlar && <button type="button" className="ikkinchi kichik" onClick={() => setBandlar(true)}>Bandlarni ko'rsatish</button>}
+                  </>) : 'Filtrga mos libos topilmadi.'}
                 </li>
               )}
               {korinadi.map((l) => {
@@ -431,22 +526,24 @@ export default function YangiZakaz({ onTayyor, onTolov }) {
               <h3>Mijoz</h3>
               <label>Mijoz telefoni
                 <input value={telefon} inputMode="tel" placeholder="+998 90 123 45 67"
-                  onChange={(e) => setTelefon(e.target.value)} onBlur={mijozniTekshir} />
+                  onChange={(e) => telefonOzgar(e.target.value)} onBlur={mijozniTekshir} />
               </label>
               {telefon && telefonRaqamlari(telefon) < 9 && <p className="malumot">Raqam to'liq emas: masalan, +998 90 123 45 67.</p>}
-              {mijoz?.yangi && (
-                <label>Yangi mijoz — F.I.O.<input value={fio} onChange={(e) => setFio(e.target.value)} /></label>
+              {joriyMijoz?.yangi && (
+                <label><span>Yangi mijoz — F.I.O. <span className="majburiy" aria-hidden="true">*</span></span>
+                  <input value={fio} required aria-invalid={ismKerak || undefined} autoComplete="off" onChange={(e) => setFio(e.target.value)} />
+                </label>
               )}
-              {mijoz && !mijoz.yangi && (
-                <div className={mijoz.qora_royxat ? 'ogohlantirish' : 'malumot'}>
-                  {mijoz.qora_royxat && <b>Qora ro'yxat: {mijoz.qora_royxat_sabab}. </b>}
-                  {mijoz.fio}, oldingi zakazlar: {mijoz.tarix.length}
-                  {mijoz.olchamlar && Object.values(mijoz.olchamlar).some((v) => v != null) && (
-                    <>. O'lchamlar: {[mijoz.olchamlar.kokrak, mijoz.olchamlar.bel, mijoz.olchamlar.son].map((v) => v ?? '—').join('/')}{mijoz.olchamlar.boy ? `, bo'y ${mijoz.olchamlar.boy}` : ''}</>
+              {joriyMijoz && !joriyMijoz.yangi && (
+                <div className={joriyMijoz.qora_royxat ? 'ogohlantirish' : 'malumot'}>
+                  {joriyMijoz.qora_royxat && <b>Qora ro'yxat: {joriyMijoz.qora_royxat_sabab}. </b>}
+                  {joriyMijoz.fio}, oldingi zakazlar: {joriyMijoz.tarix.length}
+                  {joriyMijoz.olchamlar && Object.values(joriyMijoz.olchamlar).some((v) => v != null) && (
+                    <>. O'lchamlar: {[joriyMijoz.olchamlar.kokrak, joriyMijoz.olchamlar.bel, joriyMijoz.olchamlar.son].map((v) => v ?? '—').join('/')}{joriyMijoz.olchamlar.boy ? `, bo'y ${joriyMijoz.olchamlar.boy}` : ''}</>
                   )}
                 </div>
               )}
-              {mijoz?.yangi && !salonchi && (
+              {joriyMijoz?.yangi && !salonchi && (
                 <label>Mijoz qayerdan keldi
                   <select value={manba} onChange={(e) => setManba(e.target.value)}>
                     <option value="instagram">Instagram</option><option value="tavsiya">Tavsiya</option><option value="boshqa">Boshqa</option>
@@ -513,11 +610,17 @@ export default function YangiZakaz({ onTayyor, onTolov }) {
               <button disabled={!sanaTayyor} onClick={() => { setXabar(''); setQadam(2) }}>Davom etish — liboslarni tanlash</button>
             ) : (<>
               <button className="ikkinchi" onClick={() => setQadam(qadam - 1)}>Orqaga</button>
-              <button onClick={davom} disabled={saqlanmoqda || tanlangan.length === 0 || (qadam === 3 && (!telefon || mijoz?.qora_royxat))}>
+              <button onClick={davom} disabled={saqlanmoqda || tanlangan.length === 0
+                || (qadam === 3 && (!telefon || !joriyMijoz || joriyMijoz.qora_royxat || ismKerak))}>
                 {qadam === 2 ? 'Davom etish' : saqlanmoqda ? 'Saqlanmoqda…' : 'Zakazni saqlash'}
               </button>
             </>)}
           </div>
+          {/* o'chiq «Zakazni saqlash» sababi — tugma ostida */}
+          {qadam === 3 && ismKerak && <p className="zakaz-sabab" role="status">Yangi mijozning ismini yozing</p>}
+          {qadam === 3 && telefon && !joriyMijoz && telefonRaqamlari(telefon) >= 9 && (
+            <p className="zakaz-sabab" role="status">{toliqRaqam(telefon) || faqatRaqam(telefon) === qidirilgan ? 'Mijoz tekshirilmoqda…' : 'Mijozni tekshirish uchun telefon maydonidan chiqing'}</p>
+          )}
         </aside>
       </div>
     </div>

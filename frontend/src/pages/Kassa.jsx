@@ -8,11 +8,12 @@ import Oyna from '../components/Oyna'
 import Tasdiq from '../components/Tasdiq'
 import SmenaTugma from '../components/SmenaTugma'
 import {
-  inkassatsiyaQil, kassaZaloglar, smenaChiqish, smenaHolati, smenaOchish, smenaQoshilish, smenaTuzat, smenaYopish, smenalar, som, sozlamalar,
-  otkazmaTasdiq, tolovQabul, topshiriqQabul, xarajatModdalari, xarajatYarat, xatoMatni, zakazlarRoyxat, zalogBelgila,
+  inkassatsiyaQil, kassaZaloglar, smenaChiqish, smenaHolati, smenaOchishIzoh, smenaQoshilish, smenaTuzat, smenaYopish, smenalarRoyxat, som, sozlamalar,
+  otkazmaTasdiq, tolovQabul, topshiriqQabul, xarajatModdalari, xarajatYarat, tolovKutayotganlar, xatoMatni, zalogBelgila,
   guruhla, sanaMatni,
 } from '../api'
 import SummaInput from '../components/SummaInput'
+import KpiFiltr from '../components/KpiFiltr'
 
 // Sotuvchi kassadan to'laydigan kundalik xarajatlar; salonning o'z moddalari ham chiqadi (FT-13.1)
 const KASSA_MODDALARI = ['tozalash', 'tamir', 'transport', 'kommunal', 'reklama', 'boshqa']
@@ -25,10 +26,14 @@ const SMENA_KERAK = ['tolov', 'xarajat', 'inkassatsiya', 'zalog', 'hisobot']
 // 4.12: Kassa — POS ish joyi. Tepada smena paneli (holat, kim ishlayapti, kassadagi naqd, smena amallari),
 // ostida ichki bo'limlar (App'dagi segment): yangi zakaz, to'lov qabul qilish, xarajat, inkassatsiya, zaloglar,
 // smena hisoboti, tarix. Summalar raqamli klaviaturadan kiritiladi — planshetda barmoq bilan qulay.
-export default function Kassa({ rahbar, bolim, onBolim, onHolatOzgardi, yangiZakaz, tolovZakaz }) {
+// `onZakaz(id, amal)` (ixtiyoriy, App) — to'lovdan keyin zakaz kartasini ochish; amal 'berish' — berish formasiga
+export default function Kassa({ rahbar, bolim, onBolim, onHolatOzgardi, yangiZakaz, tolovZakaz, onZakaz }) {
   const [s, setS] = useState(null)
   const [xabar, setXabar] = useState({ turi: '', matn: '' })
   const [oyna, setOyna] = useState(null) // 'ochish' | 'chiqish' | 'yopish'
+  // Oyna ichidagi amal xatosi: oyna ochiq qoladi, xato tugma ustida (sahifaga — parda ortiga — yozilmaydi)
+  const [oynaXato, setOynaXato] = useState('')
+  const yopOyna = useCallback(() => setOyna(null), [])
 
   // Smena holati App'dagi qo'ng'iroqcha va boshqa joylarga ham kerak: yuklangach onHolatOzgardi chaqiriladi.
   const yukla = useCallback(() => smenaHolati().then((r) => { setS(r); onHolatOzgardi?.() }), [onHolatOzgardi])
@@ -46,7 +51,21 @@ export default function Kassa({ rahbar, bolim, onBolim, onHolatOzgardi, yangiZak
       return false
     }
   }
-  const oynada = (fn, ok) => async (...a) => { const r = await bajar(() => fn(...a), ok); if (r) setOyna(null); return r }
+  const ochOyna = (n) => { setOynaXato(''); setOyna(n) }
+  // Muvaffaqiyatda oyna yopiladi, natija sahifada; xatoda oyna ochiq qoladi va xato oyna ichida ko'rinadi
+  const oynada = (fn, ok) => async (...a) => {
+    setOynaXato('')
+    try {
+      const r = await fn(...a)
+      setOyna(null)
+      setXabar({ turi: 'ok', matn: typeof ok === 'function' ? ok(r) : ok, bolim })
+      await yukla()
+      return true
+    } catch (e) {
+      setOynaXato(xatoMatni(e))
+      return false
+    }
+  }
 
   if (!s) return <p className="malumot">Yuklanmoqda…</p>
   const smenaYoq = !s.ochiq && SMENA_KERAK.includes(bolim)
@@ -77,14 +96,16 @@ export default function Kassa({ rahbar, bolim, onBolim, onHolatOzgardi, yangiZak
 
   return (
     <div className="pos">
-      <SmenaPaneli s={s} onOch={() => setOyna('ochish')} onQoshil={() => bajar(smenaQoshilish, "Smenaga qo'shildingiz.")}
-        onChiq={() => setOyna('chiqish')} onYop={() => setOyna('yopish')} onHisobot={() => onBolim('hisobot')} />
+      {/* «Yangi zakaz»da smena — ikkinchi darajali: telefonda bir qator (holat va naqd). «Smena hisoboti»da amallar «Kun yakuni»da. */}
+      <SmenaPaneli s={s} rahbar={rahbar} ixcham={bolim === 'yangi'} amalsiz={bolim === 'hisobot' && s.men_ishtirokchi}
+        ochishTugmasi={!smenaYoq} onOch={() => ochOyna('ochish')} onQoshil={() => bajar(smenaQoshilish, "Smenaga qo'shildingiz.")}
+        onChiq={() => ochOyna('chiqish')} onYop={() => ochOyna('yopish')} onHisobot={() => onBolim('hisobot')} />
       {kutayotgan}
       {xabar.matn && xabar.bolim === bolim && (  // eski xabar boshqa bo'limga o'tganda qolib ketmasin
         <p className={xabar.turi === 'xato' ? 'xato' : 'malumot pos-xabar'}>
           {xabar.matn}{' '}
           {xabar.turi === 'xato' && (
-            <SmenaTugma kod={xabar.kod} onKassa={() => setOyna('ochish')}
+            <SmenaTugma kod={xabar.kod} onKassa={() => ochOyna('ochish')}
               onTayyor={() => { setXabar({ turi: 'ok', matn: "Smenaga qo'shildingiz. Amalni qayta bajaring.", bolim }); yukla() }} />
           )}
         </p>
@@ -95,12 +116,12 @@ export default function Kassa({ rahbar, bolim, onBolim, onHolatOzgardi, yangiZak
           <h3>Smena yopiq</h3>
           <Bezak />
           <p className="varaq-izoh">To'lov, xarajat va inkassatsiya uchun avval smenani oching — kassadagi naqd pul sanaladi.</p>
-          <button onClick={() => setOyna('ochish')}>Smenani ochish</button>
+          <button onClick={() => ochOyna('ochish')}>Smenani ochish</button>
         </section>
       ) : (
         <>
           {bolim === 'yangi' && yangiZakaz}
-          {bolim === 'tolov' && <TolovPOS key={tolovZakaz?.n} boshZakaz={tolovZakaz?.id} onTolandi={yukla} onSmenaOchish={() => setOyna('ochish')} />}
+          {bolim === 'tolov' && <TolovPOS key={tolovZakaz?.n} boshZakaz={tolovZakaz?.id} onTolandi={yukla} onSmenaOchish={() => ochOyna('ochish')} onZakaz={onZakaz} />}
           {bolim === 'xarajat' && (
             <XarajatPOS onYuborish={(b) => bajar(() => xarajatYarat({ ...b, kassadan: true }), rahbar ? 'Xarajat kassadan yozildi.' : "Xarajat kassadan yozildi (rahbar tasdig'ini kutadi).")} />
           )}
@@ -110,28 +131,33 @@ export default function Kassa({ rahbar, bolim, onBolim, onHolatOzgardi, yangiZak
                 k.rahbar ? 'Inkassatsiya yozildi — rahbar Telegramda tasdiqlaydi.' : `Pul ${k.ism}ga topshirildi — u sanab, «Qabul qildim»ni bosadi.`)} />
           )}
           {bolim === 'zalog' && <ZalogTekshiruvi onOzgardi={yukla} />}
-          {bolim === 'hisobot' && <Hisobot h={s.hisobot} />}
+          {bolim === 'hisobot' && <SmenaKorsatkichlari s={s} />}
+          {bolim === 'hisobot' && (
+            <div className="kassa-hisobot">
+              <KunYakuni s={s} onBolim={onBolim} onChiq={() => ochOyna('chiqish')} onYop={() => ochOyna('yopish')} />
+              <Hisobot h={s.hisobot} />
+            </div>
+          )}
           {bolim === 'tarix' && rahbar && <YopilganSmenalar />}
         </>
       )}
 
       {oyna === 'ochish' && (
-        <Oyna sarlavha="Smenani ochish" onYop={() => setOyna(null)}>
-          {s.seyfda != null && <p className="malumot">Oldingi smena yopilganda seyfda <b>{som(s.seyfda)}</b> qolgan. Sanab, haqiqiy summani kiriting — farq bo'lsa rahbarga xabar boradi.</p>}
-          <SummaForma yorliq="Boshlang'ich qoldiq — seyfdagi naqd pul" tugma="Smenani ochish" nolRuxsat
-            onYuborish={oynada((q) => smenaOchish(q), 'Smena ochildi.')} />
+        <Oyna sarlavha="Smenani ochish" onYop={yopOyna}>
+          <SmenaOchish seyfda={s.seyfda} xato={oynaXato}
+            onYuborish={oynada((q, izoh) => smenaOchishIzoh(q, izoh), 'Smena ochildi.')} />
         </Oyna>
       )}
       {oyna === 'chiqish' && (
-        <Oyna sarlavha="Pulni topshirib chiqish" onYop={() => setOyna(null)}>
-          <PulTopshirish s={s} onYuborish={oynada((summa, kimga) => smenaChiqish(summa, kimga),
+        <Oyna sarlavha="Pulni topshirib chiqish" onYop={yopOyna}>
+          <PulTopshirish s={s} xato={oynaXato} onYuborish={oynada((summa, kimga) => smenaChiqish(summa, kimga),
             (r) => `Chiqdingiz. Pul ${r.kimga}ga topshirildi — u tasdiqlaydi.${r.farq ? ` Farq: ${som(r.farq)}` : ''}`)} />
         </Oyna>
       )}
       {oyna === 'yopish' && (
-        <Oyna sarlavha="Smenani yopish" onYop={() => setOyna(null)}>
+        <Oyna sarlavha="Smenani yopish" onYop={yopOyna}>
           <SmenaYopish hisobda={s.mening_hisobim ?? s.hisobot.hisobdagi_qoldiq} tekshirilmagan={s.zalog_tekshirilmagan} rahbarlar={s.rahbarlar}
-            terminalda={s.terminal_tizimda}
+            terminalda={s.terminal_tizimda} xato={oynaXato}
             onYuborish={oynada((summa, izoh, rahbar, terminal) => smenaYopish(summa, izoh, rahbar, terminal), (r) => `Smena yopildi. Farq: ${som(r.farq)}`)} />
         </Oyna>
       )}
@@ -139,19 +165,32 @@ export default function Kassa({ rahbar, bolim, onBolim, onHolatOzgardi, yangiZak
   )
 }
 
-// Smena paneli: POS'dagi «kassir chizig'i» — har bo'limda tepada
-function SmenaPaneli({ s, onOch, onQoshil, onChiq, onYop, onHisobot }) {
+// Oyna ichidagi amal xatosi — yuboradigan tugma ustida; ekran o'quvchi darhol o'qiydi
+const OynaXato = ({ matn }) => (matn ? <p className="xato oyna-xato" role="alert">{matn}</p> : null)
+
+// Smenani yopish faqat oxirgi qolgan ishtirokchiga mumkin (backend ham shuni tekshiradi)
+const yolgizmi = (s) => s.men_ishtirokchi && s.ishtirokchilar.length === 1
+
+// Smena paneli: POS'dagi «kassir chizig'i» — har bo'limda tepada. Faqat bajarib bo'ladigan amal tugmasi chiqadi:
+// yolg'iz ishtirokchiga — «Smenani yopish», hamkasbi bor ishtirokchiga — «Pulni topshirib chiqish», smenada yo'qqa — «Smenaga qo'shilish».
+// `ixcham` — «Yangi zakaz»da telefonda bir qator; `amalsiz` — amallar sahifaning o'zida («Kun yakuni»);
+// `ochishTugmasi` — smena yopiq va sahifada «Smena yopiq» varaqasi (o'z tugmasi bilan) bo'lmasa.
+function SmenaPaneli({ s, rahbar, ixcham, amalsiz, ochishTugmasi, onOch, onQoshil, onChiq, onYop, onHisobot }) {
   if (!s.ochiq) {
     return (
-      <div className="smena-panel yopiq">
+      <div className={`smena-panel yopiq${ixcham ? ' ixcham' : ''}`}>
         <span className="smena-holat"><i aria-hidden="true" />Smena yopiq{s.filial ? ` · ${s.filial}` : ''}</span>
-        <span className="malumot">To'lov qabul qilish uchun smenani oching</span>
-        <button className="kichik" onClick={onOch}>Smenani ochish</button>
+        {ochishTugmasi && (<>
+          <span className="malumot">To'lov qabul qilish uchun smenani oching</span>
+          {/* «Yangi zakaz»da smena shart emas — tugma zakaz tugmalari bilan raqobat qilmasin */}
+          <button className={ixcham ? 'ikkinchi kichik' : 'kichik'} onClick={onOch}>Smenani ochish</button>
+        </>)}
       </div>
     )
   }
+  const yolgiz = yolgizmi(s)
   return (
-    <div className="smena-panel">
+    <div className={`smena-panel${ixcham ? ' ixcham' : ''}`}>
       <span className="smena-holat ochiq"><i aria-hidden="true" />Smena ochiq{s.filial ? ` · ${s.filial}` : ''}</span>
       <span className="smena-kim">{s.ishtirokchilar.join(', ')}
         {s.yuborilgan?.map((t) => <small key={t.id} className="malumot"> · {t.kimga} {som(t.summa)} ni hali tasdiqlamadi</small>)}</span>
@@ -164,21 +203,73 @@ function SmenaPaneli({ s, onOch, onQoshil, onChiq, onYop, onHisobot }) {
           <small>Kassada naqd</small><b>{som(s.hisobot.hisobdagi_qoldiq)}</b>
         </button>
       )}
-      <div className="smena-amallar">
-        {!s.men_ishtirokchi && <button className="kichik" onClick={onQoshil}>Smenaga qo'shilish</button>}
-        {s.men_ishtirokchi && s.ishtirokchilar.length > 1 && <button className="ikkinchi kichik" onClick={onChiq}>Pulni topshirib chiqish</button>}
-        <button className="ikkinchi kichik" onClick={onYop}>Smenani yopish</button>
-      </div>
+      {!amalsiz && (
+        <div className="smena-amallar">
+          {/* rahbar odatda kuzatuvchi — qo'shilish unga ikkinchi darajali */}
+          {!s.men_ishtirokchi && <button className={rahbar ? 'ikkinchi kichik' : 'kichik'} onClick={onQoshil}>Smenaga qo'shilish</button>}
+          {s.men_ishtirokchi && !yolgiz && (<>
+            <small className="smena-izoh">Smenani oxirgi qolgan xodim yopadi</small>
+            <button className="ikkinchi kichik" onClick={onChiq}>Pulni topshirib chiqish</button>
+          </>)}
+          {yolgiz && <button className="ikkinchi kichik" onClick={onYop}>Smenani yopish</button>}
+        </div>
+      )}
     </div>
+  )
+}
+
+// Kun yakuni: smenani yopishdan oldingi tekshiruvlar bir joyda — har birining yonida o'sha ishni ochadigan tugma.
+// Yangi qoida yo'q: backend yopishda tekshiradigan narsalar oldindan ko'rinadi (yopishda tiqilib qolmaslik uchun).
+function KunYakuni({ s, onBolim, onChiq, onYop }) {
+  if (!s.men_ishtirokchi) return null
+  const qolganlar = (s.xodimlar || []).map((x) => x.ism)
+  const qatorlar = [
+    s.kutayotgan?.length > 0 && { nom: 'Sizga topshirilgan pulni qabul qiling', izoh: "Yuqoridagi «Sizga topshirilgan pul»da sanab tasdiqlang — shundan keyin yopiladi" },
+    s.zalog_tekshirilmagan > 0
+      ? { nom: `${s.zalog_tekshirilmagan} ta zalog tekshirilmagan`, izoh: 'Seyfdagi hujjat va tillo zaloglarni joyida deb belgilang', tugma: ['Zaloglarni tekshirish', () => onBolim('zalog')] }
+      : { tayyor: true, nom: 'Zaloglar tekshirilgan' },
+    qolganlar.length > 0
+      ? { nom: `Smenada yana: ${qolganlar.join(', ')}`, izoh: "Smenani oxirgi qolgan xodim yopadi. Siz ketayotgan bo'lsangiz — pulni topshirib chiqing", tugma: ['Pulni topshirib chiqish', onChiq] }
+      : { tayyor: true, nom: 'Smenada faqat siz qoldingiz' },
+    s.terminal_tizimda > 0 && { nom: `Terminal hisoboti — tizimda ${som(s.terminal_tizimda)}`, izoh: "Terminaldan kun yakuni chekini chiqaring: undagi summa smenani yopishda kiritiladi" },
+  ].filter(Boolean)
+  return (
+    <section className="blok jadval-panel pos-tor kun-yakuni" aria-labelledby="kun-yakuni-nom">
+      <div className="jadval-asboblar"><h3 className="panel-nom" id="kun-yakuni-nom">Kun yakuni</h3>
+        <span className="malumot">smenani yopishdan oldin</span></div>
+      {qatorlar.map((q) => (
+        <div key={q.nom} className={`tasdiq-qator${q.tayyor ? ' tayyor' : ''}`}>
+          <div className="kun-yakuni-band">
+            <NavIkona nom={q.tayyor ? 'bajarildi' : 'doira'} className="tugma-ikon" />
+            <div className="tasdiq-matn"><b>{q.nom}</b>{q.izoh && <small>{q.izoh}</small>}</div>
+          </div>
+          {q.tugma && <div className="tasdiq-tugmalar"><button className="ikkinchi kichik" onClick={q.tugma[1]}>{q.tugma[0]}</button></div>}
+        </div>
+      ))}
+      {yolgizmi(s) && (
+        <div className="kun-yakuni-oxir">
+          <span className="malumot">Sizda <b>{som(s.mening_hisobim)}</b> — pulni sanab, smenani yoping</span>
+          <button onClick={onYop}>Smenani yopish</button>
+        </div>
+      )}
+    </section>
   )
 }
 
 // Rahbarga: o'tkazma bilan olingan pul hisobiga tushdimi — bank SMS i bilan solishtirib belgilanadi.
 // Telegramdagi «Keldi / Kelmadi» tugmalari bilan bir xil.
+// «Kelmadi» qaytarib bo'lmaydi: to'lov hisobdan chiqadi va mijozdan qayta olinadi — avval Tasdiq (C-03)
 function Otkazmalar({ royxat, onTasdiq }) {
+  const [kelmadi, setKelmadi] = useState(null)
   if (!royxat?.length) return null
   return (
     <section className="blok jadval-panel">
+      {kelmadi && (
+        <Tasdiq sarlavha="O'tkazma kelmadimi?" tugma="Ha, kelmadi"
+          matn={`${kelmadi.zakaz ? `Zakaz #${kelmadi.zakaz} bo'yicha` : "Bu"} ${som(kelmadi.summa)} hisobdan chiqadi — mijozdan qayta olinadi `
+            + `(${kelmadi.zakaz ? "zakazda qarz bo'lib turadi" : "to'lov hisobga olinmaydi"}), ${kelmadi.xodim}ga xabar boradi. Buni qaytarib bo'lmaydi.`}
+          onYop={() => setKelmadi(null)} onTasdiq={() => { const t = kelmadi; setKelmadi(null); onTasdiq(t, false) }} />
+      )}
       <div className="jadval-asboblar"><h3 className="panel-nom">O'tkazmalar — hisobingizga keldimi?</h3>
         <span className="malumot">Bank SMS i bilan solishtiring</span></div>
       {royxat.map((t) => (
@@ -188,7 +279,7 @@ function Otkazmalar({ royxat, onTasdiq }) {
             <small>{t.tur_nomi}{t.mijoz && ` · ${t.mijoz}`} · qabul qildi: {t.xodim} · {mahalliyVaqt(t.vaqt)}</small>
           </div>
           <div className="tasdiq-tugmalar">
-            <button className="ikkinchi kichik" onClick={() => onTasdiq(t, false)}>Kelmadi</button>
+            <button className="ikkinchi kichik" onClick={() => setKelmadi(t)}>Kelmadi</button>
             <button className="kichik" onClick={() => onTasdiq(t, true)}>Keldi</button>
           </div>
         </div>
@@ -196,6 +287,9 @@ function Otkazmalar({ royxat, onTasdiq }) {
     </section>
   )
 }
+
+// Bugungi sana qurilma vaqtida («2026-11-07») — olib ketish sanasi bilan solishtirish uchun
+const bugunIso = () => new Date().toLocaleDateString('sv-SE')
 
 // Server vaqti UTC da keladi — qurilmaning mahalliy vaqtida «01.11.2026 01:15»
 const mahalliyVaqt = (v) => { const d = new Date(v); return `${sanaMatni(d.toLocaleDateString('sv-SE'))} ${d.toTimeString().slice(0, 5)}` }
@@ -235,7 +329,7 @@ function Kutayotgan({ royxat, onQabul }) {
 }
 
 // Smenadan chiqish: qo'ldagi naqd sanaladi va smenada qolayotgan xodimga yoki rahbarga beriladi; u tasdiqlaydi.
-function PulTopshirish({ s, onYuborish }) {
+function PulTopshirish({ s, xato, onYuborish }) {
   const qolganlar = s.xodimlar || []  // smenadagi boshqa xodimlar (o'zim kirmayman)
   const variantlar = [...qolganlar.map((x) => ({ ...x, izoh: 'smenada qoladi' })), ...s.rahbarlar.filter((r) => !qolganlar.some((x) => x.id === r.id)).map((r) => ({ ...r, izoh: 'rahbar' }))]
   const [kimga, setKimga] = useState('')
@@ -251,10 +345,22 @@ function PulTopshirish({ s, onYuborish }) {
           {variantlar.map((x) => <option key={x.id} value={x.id}>{x.ism} ({x.izoh})</option>)}
         </select>
       </label>
-      <Summa qiymat={summa} izoh={farq === null ? null : farq === 0 ? "Farq yo'q" : `Farq: ${som(farq)}`} />
+      <Summa qiymat={summa} />
+      <Farq farq={farq} />
       <Klaviatura qiymat={summa} onOzgar={setSumma} />
+      <OynaXato matn={xato} />
       <button className="pos-tugma" disabled={summa === '' || !kimga} onClick={() => onYuborish(Number(summa), Number(kimga))}>Topshirib chiqish</button>
     </div>
+  )
+}
+
+// Farq — pul sanashdagi eng muhim raqam: yirik, kamomad qizil, ortiqcha sariq, farqsiz yashil
+function Farq({ farq }) {
+  if (farq === null) return null
+  return (
+    <p className={`pos-farq ${farq < 0 ? 'kam' : farq > 0 ? 'ortiq' : 'teng'}`} aria-live="polite">
+      {farq === 0 ? "Farq yo'q" : <>Farq: <b>{som(farq)}</b></>}
+    </p>
   )
 }
 
@@ -295,28 +401,34 @@ const Summa = ({ qiymat, izoh }) => (
   </div>
 )
 
-// Bitta summa kiritadigan forma (smena ochish, chiqish, inkassatsiya)
-function SummaForma({ yorliq, tugma, onYuborish, nolRuxsat, izohYorliq }) {
+// Smenani ochish (C-11): seyfdagi naqd sanaladi; oldingi smena qoldirgan summadan farq jonli ko'rinadi,
+// farq bo'lsa sababi yoziladi (smenada saqlanadi, hisobotlarda va rahbar xabarida chiqadi)
+function SmenaOchish({ seyfda, xato, onYuborish }) {
   const [summa, setSumma] = useState('')
   const [izoh, setIzoh] = useState('')
-  const tayyor = summa !== '' && (nolRuxsat || Number(summa) > 0)
+  const farq = summa === '' || seyfda == null ? null : Number(summa) - seyfda
   return (
     <div className="stack">
-      <span className="malumot">{yorliq}</span>
+      <span className="malumot">{seyfda != null
+        ? <>Oldingi smena yopilganda seyfda <b>{som(seyfda)}</b> qolgan. Seyfdagi naqd pulni sanab kiriting.</>
+        : "Boshlang'ich qoldiq — seyfdagi naqd pul"}</span>
       <Summa qiymat={summa} />
+      <Farq farq={farq} />
       <Klaviatura qiymat={summa} onOzgar={setSumma} />
-      {izohYorliq && <label>{izohYorliq}<input value={izoh} maxLength={300} onChange={(e) => setIzoh(e.target.value)} /></label>}
-      <button className="pos-tugma" disabled={!tayyor} onClick={() => onYuborish(Number(summa), izoh).then((ok) => ok && (setSumma(''), setIzoh('')))}>{tugma}</button>
+      {!!farq && <label>Izoh (farq sababi — majburiy)<input value={izoh} maxLength={300} onChange={(e) => setIzoh(e.target.value)} /></label>}
+      <OynaXato matn={xato} />
+      <button className="pos-tugma" disabled={summa === '' || (!!farq && !izoh.trim())}
+        onClick={() => onYuborish(Number(summa), farq ? izoh.trim() : '')}>Smenani ochish</button>
     </div>
   )
 }
 
-function SmenaYopish({ hisobda, tekshirilmagan, rahbarlar, terminalda, onYuborish }) {
+function SmenaYopish({ hisobda, tekshirilmagan, rahbarlar, terminalda, xato, onYuborish }) {
   const [summa, setSumma] = useState('')
   const [izoh, setIzoh] = useState('')
   const [surov, setSurov] = useState(false)
   const [rahbar, setRahbar] = useState('')  // bo'sh — pul seyfda qoladi
-  const [terminal, setTerminal] = useState('')  // terminal sverkasidagi summa (terminal orqali to'lov bo'lsa majburiy)
+  const [terminal, setTerminal] = useState('')  // terminal hisobotidagi (kun yakuni chekidagi) summa (terminal orqali to'lov bo'lsa majburiy)
   const farq = summa === '' ? null : Number(summa) - hisobda
   const tFarq = terminal === '' ? null : Number(terminal) - terminalda
   const izohKerak = (farq !== null && farq !== 0) || (tFarq !== null && tFarq !== 0)
@@ -331,17 +443,19 @@ function SmenaYopish({ hisobda, tekshirilmagan, rahbarlar, terminalda, onYuboris
         <small className="malumot">{rahbar ? 'Rahbar Telegramda (yoki ilovada) qabul qilganini tasdiqlaydi.' : 'Ertaga smenani ochgan xodim sanab qabul qiladi.'}</small>
       </label>
       {tekshirilmagan > 0 && <p className="ogohlantirish">{tekshirilmagan} ta zalog tekshirilmagan — yopishdan oldin «Zaloglar» bo'limida belgilang.</p>}
-      <Summa qiymat={summa} izoh={farq === null ? null : farq === 0 ? 'Farq yo\'q' : `Farq: ${som(farq)}`} />
+      <Summa qiymat={summa} />
+      <Farq farq={farq} />
       <Klaviatura qiymat={summa} onOzgar={setSumma} />
       {terminalda > 0 && (
-        <label>Terminal sverkasi — terminaldan chiqarilgan summa (tizimda {som(terminalda)})
-          <SummaInput aria-label="Terminal sverkasi" value={terminal} onChange={(e) => setTerminal(e.target.value)} />
-          <Info nom="Terminal sverkasi">Kun oxirida terminaldan chiqariladigan yakuniy chekdagi jami summa. Tizimga yozilgan karta to'lovlari bilan
+        <label>Terminal hisoboti — kun yakuni chekidagi summa (tizimda {som(terminalda)})
+          <SummaInput aria-label="Terminal hisoboti" value={terminal} onChange={(e) => setTerminal(e.target.value)} />
+          <Info nom="Terminal hisoboti">Kun oxirida terminaldan chiqariladigan yakuniy chekdagi jami summa. Tizimga yozilgan karta to'lovlari bilan
             solishtiriladi: farq bo'lsa — terminaldan o'tgan, lekin tizimga yozilmagan (yoki aksincha) to'lov bor.</Info>
           {tFarq !== null && <small className={tFarq ? 'qizil' : 'malumot'}>{tFarq ? `Terminal farqi: ${som(tFarq)}` : "Terminal bo'yicha farq yo'q"}</small>}
         </label>
       )}
       {izohKerak && <label>Izoh (farq sababi — majburiy)<input value={izoh} maxLength={300} onChange={(e) => setIzoh(e.target.value)} /></label>}
+      <OynaXato matn={xato} />
       <button className="pos-tugma" disabled={summa === '' || (terminalda > 0 && terminal === '') || (izohKerak && !izoh.trim())} onClick={() => setSurov(true)}>Smenani yopish</button>
       {surov && (
         <Tasdiq sarlavha="Smenani yopasizmi?" tugma="Smenani yopish"
@@ -353,7 +467,7 @@ function SmenaYopish({ hisobda, tekshirilmagan, rahbarlar, terminalda, onYuboris
 }
 
 // To'lov qabul qilish — POS ekrani: chapda to'lov kutayotgan zakazlar, o'ngda chek (summa, klaviatura, usul)
-function TolovPOS({ boshZakaz, onTolandi, onSmenaOchish }) {
+function TolovPOS({ boshZakaz, onTolandi, onSmenaOchish, onZakaz }) {
   const [royxat, setRoyxat] = useState(null)
   const [q, setQ] = useState('')
   const [tanlangan, setTanlangan] = useState(boshZakaz || null)
@@ -363,15 +477,15 @@ function TolovPOS({ boshZakaz, onTolandi, onSmenaOchish }) {
   const [xatoKod, setXatoKod] = useState('')  // serverdan: smena_qoshilish | smena_yoq — xato yonida mos tugma
   const [qoshildi, setQoshildi] = useState(false)
   const [band, setBand] = useState(false)
-  const [tolandi, setTolandi] = useState(null) // { zakaz, summa }
+  const [tolandi, setTolandi] = useState(null) // { zakaz, summa, usul, berish }
   const [chek, setChek] = useState(null)
   const [soz, setSoz] = useState(null)
   useEffect(() => { sozlamalar().then(setSoz).catch(() => {}) }, [])
+  const chekRef = useRef(null)
 
-  const yukla = useCallback(() => Promise.all([zakazlarRoyxat({ holat: 'vaqtinchalik', q: q || undefined }), zakazlarRoyxat({ holat: 'bron', q: q || undefined })])
-    // to'liq chegirmali (0 so'm) vaqtinchalik bron ham — kassir uni «to'lovsiz» tasdiqlaydi
-    .then(([a, b]) => setRoyxat([...a, ...b].filter((z) => z.jami - z.tolangan > 0 || (z.holat === 'vaqtinchalik' && z.jami === 0))
-      .sort((x, y) => String(x.olib_ketish).localeCompare(String(y.olib_ketish)))))
+  // Bitta so'rov, kesimsiz: vaqtinchalik va bron, qoldig'i bor (yoki 0 so'mlik vaqtinchalik — kassir uni «to'lovsiz»
+  // tasdiqlaydi), olib ketish sanasi bo'yicha — filtr va tartib serverda
+  const yukla = useCallback(() => tolovKutayotganlar(q).then(setRoyxat)
     .catch((e) => setXato(xatoMatni(e))), [q])
   useEffect(() => { const t = setTimeout(yukla, q ? 300 : 0); return () => clearTimeout(t) }, [yukla, q])
 
@@ -379,11 +493,23 @@ function TolovPOS({ boshZakaz, onTolandi, onSmenaOchish }) {
   const qoldiq = z ? z.jami - z.tolangan : 0
   const avans = z?.holat === 'vaqtinchalik'
   const tanla = (id) => { setTanlangan(id); setSumma(''); setXato(''); setXatoKod(''); setQoshildi(false); setTolandi(null) }
+  // Bir ustunli ekranda (telefon, planshet) chek ro'yxat ostida: zakaz tanlansa yoki to'lov o'tsa ro'yxat yig'iladi
+  // (faqat tanlangan qator qoladi) va chek ko'rinadigan joyga suriladi
+  const yigilgan = Boolean(z || tolandi)
+  useEffect(() => {
+    if (!yigilgan || !window.matchMedia('(max-width: 1023px)').matches) return
+    const harakat = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth'
+    chekRef.current?.scrollIntoView({ block: 'start', behavior: harakat })
+  }, [yigilgan, z?.id])
   const qabul = async () => {
     setXato(''); setXatoKod(''); setQoshildi(false); setBand(true)
     try {
       await tolovQabul({ zakaz: z.id, tur: avans ? 'avans' : 'qoldiq', summa: Number(summa), usul })
-      setTolandi({ zakaz: z, summa: Number(summa), usul })
+      // To'liq to'landi va olib ketish kuni keldi — zakaz endi bron, keyingi qadam libosni berish
+      // QA-16: faqat hali berilmagan zakaz (to'lovdan keyin «Bron»: vaqtinchalik avans bilan bronga o'tadi);
+      // berilgan/qaytarilgan zakazning qoldig'i («kelmadi» o'tkazma) to'langanda berish yo'q
+      setTolandi({ zakaz: z, summa: Number(summa), usul,
+        berish: ['vaqtinchalik', 'bron'].includes(z.holat) && qoldiq - Number(summa) === 0 && String(z.olib_ketish) <= bugunIso() })
       setTanlangan(null); setSumma('')
       await Promise.all([yukla(), onTolandi?.()])
     } catch (e) { setXato(xatoMatni(e)); setXatoKod(e.response?.data?.kod || '') } finally { setBand(false) }
@@ -393,13 +519,15 @@ function TolovPOS({ boshZakaz, onTolandi, onSmenaOchish }) {
 
   return (
     <div className="pos-ish">
-      <section className="blok jadval-panel pos-royxat">
+      <section className={`blok jadval-panel pos-royxat${yigilgan ? ' yigilgan' : ''}`}>
         <div className="jadval-asboblar">
           <h3 className="panel-nom">To'lov kutayotgan zakazlar{royxat?.length > 0 && <span className="tab-son">{royxat.length}</span>}</h3>
           <label className="qidiruv-maydon">
             <NavIkona nom="qidiruv" className="tugma-ikon" />
             <input type="search" className="jadval-qidiruv" placeholder="Raqam, telefon yoki ism" aria-label="Zakaz qidirish" value={q} onChange={(e) => setQ(e.target.value)} />
           </label>
+          {/* faqat bir ustunli ekranda: yig'ilgan ro'yxatni qayta ochadi */}
+          {z && <button type="button" className="ikkinchi kichik pos-boshqa" onClick={() => tanla(null)}>Boshqa zakaz</button>}
         </div>
         {royxat === null && <p className="malumot jadval-bosh">Yuklanmoqda…</p>}
         {royxat && royxat.length === 0 && <p className="malumot jadval-bosh">{q ? `«${q}» bo'yicha zakaz topilmadi.` : "To'lov kutayotgan zakaz yo'q."}</p>}
@@ -418,23 +546,31 @@ function TolovPOS({ boshZakaz, onTolandi, onSmenaOchish }) {
       </section>
 
       {/* Chek — zakaz varaqasi uslubida: mijoz ismi qo'lyozmada, hisob va summa serif raqamlarda; to'langach muhr bosiladi */}
-      <section className="blok pos-chek varaq" aria-label="To'lov">
+      {/* tanlanmaguncha bo'sh: bir ustunli ekranda yashirin (ro'yxat ostida ma'nosiz) */}
+      <section className={`blok pos-chek varaq${!z && !tolandi ? ' bosh' : ''}`} aria-label="To'lov" ref={chekRef}>
         {tolandi && !z && (
           <div className="pos-tayyor">
             <Muhr raqam={tolandi.zakaz.raqam} />
             <h3>To'lov qabul qilindi</h3>
             <p>#{tolandi.zakaz.raqam} {tolandi.zakaz.mijoz} · <b>{som(tolandi.summa)}</b> · {USUL_NOMI[tolandi.usul]}</p>
+            {/* C-03: o'tkazma rahbar «keldi» demaguncha hisobga olingan, lekin tasdiqlanmagan */}
+            {tolandi.usul === 'otkazma' && soz?.otkazma_tasdigi !== false && (
+              <p className="ogohlantirish">{som(tolandi.summa)} o'tkazma rahbar tasdig'ini kutmoqda.</p>
+            )}
             {soz?.fiskal_eslatma && <p className="ogohlantirish">{soz.fiskal_izoh || 'Fiskal chekni urishni unutmang.'}</p>}
+            {onZakaz && tolandi.berish && (
+              <button className="pos-tugma" onClick={() => onZakaz(tolandi.zakaz.id, 'berish')}>Libosni berish →</button>
+            )}
             <div className="qator">
               <button className="ikkinchi" onClick={() => setChek(tolandi.zakaz.id)}>Kvitansiya</button>
-              <button onClick={() => setTolandi(null)}>Keyingi to'lov</button>
+              <button className={onZakaz && tolandi.berish ? 'ikkinchi' : ''} onClick={() => setTolandi(null)}>Keyingi to'lov</button>
             </div>
           </div>
         )}
         {!z && !tolandi && (
           <div className="pos-bosh-matn">
             <Bezak />
-            <p className="varaq-izoh">Chapdagi ro'yxatdan zakazni tanlang — to'lov shu yerda qabul qilinadi.</p>
+            <p className="varaq-izoh">Ro'yxatdan zakazni tanlang — to'lov shu yerda qabul qilinadi.</p>
           </div>
         )}
         {z && (
@@ -489,9 +625,25 @@ function TolovPOS({ boshZakaz, onTolandi, onSmenaOchish }) {
   )
 }
 
+// Smena hisoboti tepasida — maket uslubidagi 4 ko'rsatkich (bosilmaydi): batafsili ostidagi «Naqd pul hisobi»da.
+// Kassada summa yaxlitlanmaydi («2 mln» 1 990 000 ni yashirardi) — so'mgacha aniq
+function SmenaKorsatkichlari({ s }) {
+  const h = s.hisobot
+  const chiqim = h.xarajatlar + h.vozvrat_va_inkassatsiya
+  return (
+    <section className="dash-kpi kpi-filtrlar smena-kpi" aria-label="Smena ko'rsatkichlari">
+      <KpiFiltr nom="Kassada naqd" son={som(h.hisobdagi_qoldiq)} ikon="kassa" rang="tilla" izoh={`kun boshida ${som(h.kun_boshidagi_qoldiq)}`} />
+      <KpiFiltr nom="Kirgan naqd" son={som(h.tushum)} ikon="tushum" rang="yashil" izoh="avans + qoldiq + jarima" />
+      <KpiFiltr nom="Terminal" son={som(s.terminal_tizimda || 0)} ikon="terminal" rang="kok" izoh="chek bilan solishtiring" />
+      <KpiFiltr nom="Chiqim" son={som(chiqim)} ikon="hamyon" rang="pushti"
+        izoh={chiqim ? `xarajat ${som(h.xarajatlar)} · topshirildi ${som(h.vozvrat_va_inkassatsiya)}` : "bugun chiqim yo'q"} />
+    </section>
+  )
+}
+
 function Hisobot({ h }) {
   const qatorlar = [
-    ['Kun boshidagi qoldiq', h.kun_boshidagi_qoldiq], ['Tushum (avans + qoldiq + jarima)', h.tushum],
+    ['Kun boshidagi qoldiq', h.kun_boshidagi_qoldiq], ['Kirgan pul (avans + qoldiq + jarima)', h.tushum],
     ['Olingan pul zaloglar', h.olingan_zaloglar], ['Qaytarilgan zaloglar', -h.qaytarilgan_zaloglar],
     ['Xarajatlar', -h.xarajatlar], ['Pulni qaytarish va inkassatsiya', -h.vozvrat_va_inkassatsiya],
   ]
@@ -521,9 +673,9 @@ function XarajatPOS({ onYuborish }) {
   return (
     <div className="pos-ish">
       <section className="blok jadval-panel">
-        <div className="jadval-asboblar"><h3 className="panel-nom">Xarajat moddasi</h3><span className="malumot">nimaga to'landi?</span></div>
+        <div className="jadval-asboblar"><h3 className="panel-nom">Xarajat turi</h3><span className="malumot">nimaga to'landi?</span></div>
         <div className="pos-ich">
-          <div className="pos-plitkalar" role="radiogroup" aria-label="Xarajat moddasi">
+          <div className="pos-plitkalar" role="radiogroup" aria-label="Xarajat turi">
             {moddalar.map((m) => (
               <button key={m.kod} type="button" role="radio" aria-checked={modda === m.kod} className={modda === m.kod ? 'tanlandi' : ''} onClick={() => setModda(m.kod)}>{m.nomi}</button>
             ))}
@@ -589,7 +741,8 @@ function InkassatsiyaPOS({ rahbarlar, hamkasblar, smenada, onYuborish }) {
         <Klaviatura qiymat={summa} onOzgar={setSumma} />
         <button className="pos-tugma" disabled={!kimga || !(Number(summa) > 0)}
           onClick={() => onYuborish(Number(summa), izoh, kimga).then((ok) => ok && (setSumma(''), setIzoh('')))}>
-          Inkassatsiyani yozish
+          {/* C-27: hamkasbga berish inkassatsiya emas — pul kassada qoladi */}
+          {!kimga ? 'Topshirish' : kimga.rahbar ? 'Rahbarga topshirish' : `${kimga.ism}ga berish`}
         </button>
       </section>
     </div>
@@ -631,45 +784,79 @@ function ZalogTekshiruvi({ onOzgardi }) {
 }
 
 // FT-12.11: yopilgan smenani faqat rahbar o'zgartiradi (qayta sanash natijasi); o'zgarish jurnalga yoziladi.
+// Qatorda faqat ma'lumot, tuzatish — oynada. «Faqat farqlilar» — kassa yoki terminal farqi bilan yopilgan smenalar (serverda).
 function YopilganSmenalar() {
   const [royxat, setRoyxat] = useState(null)
-  const [f, setF] = useState({})
+  const [farqli, setFarqli] = useState(false)
+  const [tuzat, setTuzat] = useState(null)  // oynada tuzatilayotgan smena
   const [xabar, setXabar] = useState({ turi: '', matn: '' })
-  const yukla = () => smenalar().then(setRoyxat).catch((e) => setXabar({ turi: 'xato', matn: xatoMatni(e) }))
-  useEffect(() => { yukla() }, [])
-  const saqla = async (s) => {
-    setXabar({ turi: '', matn: '' })
-    try {
-      await smenaTuzat(s.id, { fakt_qoldiq: Number(f[`${s.id}_q`] ?? s.fakt_qoldiq), izoh: f[`${s.id}_i`] ?? s.izoh })
-      setF({}); setXabar({ turi: 'ok', matn: 'Smena tuzatildi.' }); await yukla()
-    } catch (e) { setXabar({ turi: 'xato', matn: xatoMatni(e) }) }
+  const yukla = useCallback(() => smenalarRoyxat(farqli ? { farqli: 1 } : undefined).then(setRoyxat)
+    .catch((e) => setXabar({ turi: 'xato', matn: xatoMatni(e) })), [farqli])
+  useEffect(() => { yukla() }, [yukla])
+  const yopTuzat = useCallback(() => setTuzat(null), [])
+  const saqla = async (s, body) => {
+    await smenaTuzat(s.id, body)  // xato bo'lsa oyna o'zi ko'rsatadi
+    setTuzat(null); setXabar({ turi: 'ok', matn: 'Smena tuzatildi.' }); await yukla()
   }
   return (
-    <section className="blok jadval-panel">
-      <div className="jadval-asboblar"><h3 className="panel-nom">Smenalar tarixi</h3></div>
-      {xabar.matn && <p className={xabar.turi === 'xato' ? 'xato jadval-bosh' : 'malumot jadval-bosh'}>{xabar.matn}</p>}
-      {royxat && royxat.length === 0 && <p className="malumot jadval-bosh">Smena yo'q.</p>}
-      {royxat?.map((s) => (
-        <div key={s.id} className="tasdiq-qator">
-          <div className="tasdiq-matn">
-            <b>{sanaMatni(s.sana)}{s.filial ? ` · ${s.filial}` : ''} · {s.ochgan}</b>
-            <small>{s.yopilgan
-              ? <>hisobda {som(s.hisobdagi_qoldiq)}, sanaldi {som(s.fakt_qoldiq)}, farq <b className={s.farq ? 'qizil' : ''}>{som(s.farq)}</b></>
-              : 'ochiq'}
-              {s.zalog_tekshirilmagan > 0 && <span className="qizil"> · {s.zalog_tekshirilmagan} ta zalog tekshirilmagan</span>}
-              {s.zalog_yoq > 0 && <b className="qizil"> · {s.zalog_yoq} ta zalog joyida emas</b>}
-              {!!s.terminal_farq && <b className="qizil"> · terminal farqi {som(s.terminal_farq)}</b>}
-              {s.izoh && ` · ${s.izoh}`}</small>
-          </div>
-          {s.yopilgan && (
-            <div className="tasdiq-tugmalar">
-              <SummaInput aria-label="Fakt qoldiq" value={f[`${s.id}_q`] ?? s.fakt_qoldiq} onChange={(e) => setF({ ...f, [`${s.id}_q`]: e.target.value })} />
-              <input placeholder="Izoh" aria-label="Izoh" value={f[`${s.id}_i`] ?? s.izoh} onChange={(e) => setF({ ...f, [`${s.id}_i`]: e.target.value })} />
-              <button className="ikkinchi kichik" onClick={() => saqla(s)}>Tuzatish</button>
-            </div>
-          )}
+    <>
+      <section className="blok jadval-panel">
+        <div className="jadval-asboblar"><h3 className="panel-nom">Smenalar tarixi</h3>
+          <button type="button" className="bugun-chip" aria-pressed={farqli} onClick={() => { setXabar({ turi: '', matn: '' }); setFarqli(!farqli) }}>Faqat farqlilar</button>
         </div>
-      ))}
-    </section>
+        {xabar.matn && <p className={xabar.turi === 'xato' ? 'xato jadval-bosh' : 'malumot jadval-bosh'}>{xabar.matn}</p>}
+        {royxat && royxat.length === 0 && <p className="malumot jadval-bosh">{farqli ? "Farq bilan yopilgan smena yo'q." : "Smena yo'q."}</p>}
+        {royxat?.map((s) => (
+          <div key={s.id} className="tasdiq-qator">
+            <div className="tasdiq-matn">
+              <b>{sanaMatni(s.sana)}{s.filial ? ` · ${s.filial}` : ''} · {s.ochgan}</b>
+              <small>{s.yopilgan ? <>hisobda {som(s.hisobdagi_qoldiq)}, sanaldi {som(s.fakt_qoldiq)}</> : 'ochiq'}
+                {s.zalog_tekshirilmagan > 0 && <span className="qizil"> · {s.zalog_tekshirilmagan} ta zalog tekshirilmagan</span>}
+                {s.zalog_yoq > 0 && <b className="qizil"> · {s.zalog_yoq} ta zalog joyida emas</b>}
+                {!!s.terminal_farq && <b className="qizil"> · terminal farqi {som(s.terminal_farq)}</b>}
+                {s.izoh && ` · ${s.izoh}`}</small>
+            </div>
+            {s.yopilgan && (
+              <div className="tasdiq-tugmalar">
+                <span className={`tarix-farq ${s.farq < 0 ? 'kam' : s.farq > 0 ? 'ortiq' : 'teng'}`}>{s.farq ? som(s.farq) : "farq yo'q"}</span>
+                <button className="ikkinchi kichik" onClick={() => setTuzat(s)}>Tuzatish</button>
+              </div>
+            )}
+          </div>
+        ))}
+      </section>
+      {tuzat && (
+        <Oyna sarlavha={`Smenani tuzatish · ${sanaMatni(tuzat.sana)}`} onYop={yopTuzat}>
+          <SmenaTuzatish s={tuzat} onSaqla={(body) => saqla(tuzat, body)} />
+        </Oyna>
+      )}
+    </>
+  )
+}
+
+// Yopilgan smenaning qayta sanash natijasi: sanalgan summa va izoh; farq jonli ko'rinadi
+function SmenaTuzatish({ s, onSaqla }) {
+  const [fakt, setFakt] = useState(String(s.fakt_qoldiq ?? ''))
+  const [izoh, setIzoh] = useState(s.izoh || '')
+  const [xato, setXato] = useState('')
+  const [band, setBand] = useState(false)
+  const farq = fakt === '' ? null : Number(fakt) - s.hisobdagi_qoldiq
+  const ozgardi = Number(fakt) !== s.fakt_qoldiq || izoh.trim() !== (s.izoh || '').trim()
+  const saqla = async () => {
+    setXato(''); setBand(true)
+    try { await onSaqla({ fakt_qoldiq: Number(fakt), izoh: izoh.trim() }) } catch (e) { setXato(xatoMatni(e)); setBand(false) }
+  }
+  return (
+    <div className="stack">
+      <p className="malumot">{s.ochgan} ochgan smena. Tizim bo'yicha kassada: <b>{som(s.hisobdagi_qoldiq)}</b>, yopishda sanalgan: <b>{som(s.fakt_qoldiq)}</b>.
+        Pul qayta sanalgan bo'lsa — yangi summani kiriting, o'zgarish jurnalga yoziladi.</p>
+      <label>Sanalgan summa<SummaInput value={fakt} onChange={(e) => setFakt(e.target.value)} /></label>
+      <Farq farq={farq} />
+      <label>Izoh{farq ? ' (farq sababi — majburiy)' : ''}<input value={izoh} maxLength={300} onChange={(e) => setIzoh(e.target.value)} /></label>
+      <OynaXato matn={xato} />
+      <button className="pos-tugma" disabled={band || fakt === '' || !ozgardi || (!!farq && !izoh.trim())} onClick={saqla}>
+        {band ? 'Saqlanmoqda…' : 'Tuzatishni saqlash'}
+      </button>
+    </div>
   )
 }

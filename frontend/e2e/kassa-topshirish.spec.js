@@ -32,9 +32,16 @@ test('pul topshirish: rahbar → sotuvchi → rahbar; kassir rejimi', async ({ p
   await nav(page).getByRole('button', { name: 'Kassa', exact: true }).click()
 
   await test.step('rahbar smenani ochadi va 2 000 000 avans oladi', async () => {
-    await page.locator('.smena-panel').getByRole('button', { name: 'Smenani ochish' }).click()
+    // smena yopiq: «Smenani ochish» bitta (To'lov qabulda — «Smena yopiq» varaqasida, varaq yo'q bo'limda — panelda)
+    await page.getByRole('button', { name: 'Smenani ochish' }).click()
     const oyna = page.getByRole('dialog', { name: 'Smenani ochish' })
     await summaTer(oyna, ['0'])
+    // C-11: oldingi testlar seyfda pul qoldirgan bo'lsa — farq jonli ko'rinadi va sababi so'raladi
+    const izoh = oyna.getByLabel('Izoh (farq sababi — majburiy)')
+    if (await izoh.count()) {
+      await expect(oyna.getByRole('button', { name: 'Smenani ochish' })).toBeDisabled()
+      await izoh.fill("E2E: seyfdagi pul oldingi testdan qolgan")
+    }
     await oyna.getByRole('button', { name: 'Smenani ochish' }).click()
     await expect(page.getByText('Smena ochildi.')).toBeVisible()
     const libos = (await apiSorov(page, 'GET', '/liboslar/')).find((l) => l.artikul === 'E2E-2')
@@ -54,6 +61,8 @@ test('pul topshirish: rahbar → sotuvchi → rahbar; kassir rejimi', async ({ p
     await expect(sotuvchi.locator('.smena-naqd')).toContainText("Sizda naqd0 so'm")
     await kassaga(page)
     await expect(page.locator('.smena-naqd')).toContainText("2 000 000 so'm")
+    // smenada ikki xodim — yopish tugmasi yo'q (oxirgi qolgan xodim yopadi), faqat topshirib chiqish
+    await expect(page.locator('.smena-panel').getByRole('button', { name: 'Smenani yopish' })).toHaveCount(0)
     await rasm(page, '1-rahbar-sizda-naqd')
     await page.locator('.smena-panel').getByRole('button', { name: 'Pulni topshirib chiqish' }).click()
     const oyna = page.getByRole('dialog', { name: 'Pulni topshirib chiqish' })
@@ -85,9 +94,26 @@ test('pul topshirish: rahbar → sotuvchi → rahbar; kassir rejimi', async ({ p
     const otk = page.locator('.blok', { hasText: "O'tkazmalar — hisobingizga keldimi?" })
     await expect(otk).toContainText("O'tkazma · 700 000 so'm")
     await rasm(page, '4a-otkazma-keldimi')
+    // «Kelmadi» qaytarib bo'lmaydi — avval oqibati aytiladi (C-03); bu yerda bekor qilinadi
+    await otk.getByRole('button', { name: 'Kelmadi' }).click()
+    const kelmadi = page.getByRole('alertdialog', { name: "O'tkazma kelmadimi?" })
+    await expect(kelmadi).toContainText("700 000 so'm hisobdan chiqadi")
+    await rasm(page, '4b-kelmadi-tasdiq')
+    await kelmadi.getByRole('button', { name: "Yo'q, qaytish" }).click()
+    await expect(kelmadi).toHaveCount(0)
     await otk.getByRole('button', { name: 'Keldi' }).click()
     await expect(page.getByText('Tasdiqlandi: pul keldi.')).toBeVisible()
     await kassaga(sotuvchi)
+  })
+
+  await test.step("smena hisoboti: tepada 4 ko'rsatkich (maket uslubi), terminal — tizimdagi summa", async () => {
+    await nav(sotuvchi).getByRole('button', { name: 'Smena hisoboti', exact: true }).click()
+    const kpi = sotuvchi.getByRole('region', { name: "Smena ko'rsatkichlari" })
+    await expect(kpi.locator('.dash-kpi-karta')).toHaveCount(4)
+    await expect(kpi.locator('.dash-kpi-karta', { hasText: 'Terminal' })).toContainText("300 000 so'm")
+    await expect(sotuvchi.getByRole('region', { name: 'Kun yakuni' })).toBeVisible()
+    await rasm(sotuvchi, '4c-smena-hisoboti')
+    await kassaga(sotuvchi)  // keyingi qadam smena panelidagi «Smenani yopish» bilan (hisobotda amallar «Kun yakuni»da)
   })
 
   await test.step('sotuvchi yopadi va pulni rahbarga beradi', async () => {
@@ -96,8 +122,8 @@ test('pul topshirish: rahbar → sotuvchi → rahbar; kassir rejimi', async ({ p
     await oyna.getByLabel('Pul qayerda qoladi').selectOption({ label: 'Rahbarga: Rahbar' })
     await summaTer(oyna, ['1', '9', '9', '0', '000'])
     await expect(oyna).toContainText("Farq yo'q")
-    await expect(oyna.getByRole('button', { name: 'Smenani yopish' })).toBeDisabled()  // terminal sverkasi kiritilmagan
-    await oyna.getByLabel('Terminal sverkasi').fill('300000')
+    await expect(oyna.getByRole('button', { name: 'Smenani yopish' })).toBeDisabled()  // terminal hisoboti kiritilmagan
+    await oyna.getByLabel('Terminal hisoboti').fill('300000')
     await expect(oyna).toContainText("Terminal bo'yicha farq yo'q")
     await rasm(sotuvchi, '4-yopish-rahbarga')
     await oyna.getByRole('button', { name: 'Smenani yopish' }).click()
@@ -114,7 +140,7 @@ test('pul topshirish: rahbar → sotuvchi → rahbar; kassir rejimi', async ({ p
   await test.step('«Alohida kassir» rejimi: sozlama va sotuvchi ekrani', async () => {
     await nav(page).getByRole('button', { name: 'Asosiy', exact: true }).click()  // Kassa menyusidan asosiy bo'limlarga
     await nav(page).getByRole('button', { name: 'Sozlama', exact: true }).click()
-    const guruh = nav(page).getByRole('button', { name: 'Salon' })
+    const guruh = nav(page).getByRole('button', { name: 'Salon va xodimlar', exact: true })  // B-36: Kassa — «Salon va xodimlar» guruhida
     if (await guruh.getAttribute('aria-expanded') !== 'true') await guruh.click()
     await nav(page).getByRole('button', { name: 'Kassa', exact: true }).click()
     await page.getByLabel('Alohida kassir').check()

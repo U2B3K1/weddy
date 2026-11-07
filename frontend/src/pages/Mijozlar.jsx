@@ -1,102 +1,154 @@
 import { useCallback, useEffect, useState } from 'react'
 import Salonchilar from './Salonchilar'
 import NavIkona from '../components/NavIkona'
+import KpiFiltr from '../components/KpiFiltr'
 import { Bezak } from '../components/Varaq'
 import { HAFTA, OYLAR, bugunIso, isoOch, kunlarSoni, ustun } from '../components/kalendar/sana'
-import { mijozKarta, mijozOzgartir, mijozQoraRoyxat, mijozlar, sanaMatni, som, xatoMatni } from '../api'
+import { mijozKarta, mijozOzgartir, mijozQoraRoyxat, mijozSonlari, mijozlarSahifa, sanaMatni, som, xatoMatni } from '../api'
 import { ZAKAZ_HOLATLARI } from '../nomlar'
 
-const MANBA = { instagram: 'Instagram', tavsiya: 'Tavsiya', salonchi: 'Salonchi', boshqa: 'Boshqa' }
+const MANBA = { instagram: 'Instagram', telegram: 'Telegram', tavsiya: 'Tavsiya', salonchi: 'Salonchi', boshqa: 'Boshqa' }
+const SAHIFA = 50
+// filtr: '' (hammasi) | 'qora' (qora ro'yxat) | ko'rsatkich kartasi turi — 'yangi', 'toy', 'qarzdor' (faqat rahbar)
+const sorov = (q, filtr, offset) => ({
+  ...(q.trim() ? { q: q.trim() } : {}), ...(filtr === 'qora' ? { qora_royxat: 1 } : filtr ? { tur: filtr } : {}), limit: SAHIFA, offset,
+})
+// Rahbar ko'rsatkich kartalari (maket uslubi): bosilsa ro'yxat shu bo'yicha, yana bosilsa — hammasi
+const KORSATKICHLAR = [
+  { k: '', nom: 'Jami mijozlar', ikon: 'mijoz', rang: 'tilla', son: (s) => s.jami, izoh: (s) => `${s.qora} tasi qora ro'yxatda` },
+  { k: 'yangi', nom: 'Yangi mijozlar', ikon: 'bajarildi', rang: 'yashil', son: (s) => s.yangi, izoh: (s) => `oxirgi ${s.davr} kunda` },
+  { k: 'toy', nom: "Yaqin to'ylar", ikon: 'kun', rang: 'kok', son: (s) => s.toy, izoh: (s) => `to'yi ${s.davr} kun ichida` },
+  { k: 'qarzdor', nom: 'Qarzdorlar', ikon: 'hamyon', rang: 'pushti', son: (s) => s.qarzdor, xavf: (s) => s.qarzdor > 0,
+    izoh: (s) => (s.qarzdor > 0 ? `jami ${som(s.qarz_jami)}` : "qarz yo'q") },
+]
+// «+998942153650» → «+998 94 215 36 50» (boshqa ko'rinishdagi raqam o'zgarmaydi)
+const telefonMatni = (t) => { const m = /^\+998(\d{2})(\d{3})(\d{2})(\d{2})$/.exec(t || ''); return m ? `+998 ${m[1]} ${m[2]} ${m[3]} ${m[4]}` : (t || '') }
 const OLCHAMLAR = [['kokrak', "Ko'krak"], ['bel', 'Bel'], ['son', 'Son'], ['boy', "Bo'y"], ['oyoq_olchami', 'Oyoq kiyim']]
 const holatSinfi = (h) => ({ vaqtinchalik: 'vaqtinchalik', chegirma_kutilmoqda: 'vaqtinchalik', bron: 'bron', berildi: 'berildi', qaytarildi: 'qarz', yopildi: 'qaytarildi', bekor: 'qarz' }[h] || 'bron')
 const boshHarf = (m) => (m.fio || '').trim().charAt(0).toUpperCase() || '#'
 
 // Ekran 14: mijozlar. To'liq ro'yxat faqat rahbarga; sotuvchi kamida 4 ta belgi bilan qidiradi (7.4, Ilova B).
 // Promokodlar bu yerda emas — Sozlama → Narx va chegirma → Promokodlar (qoidalari bilan bir joyda).
-export default function Mijozlar({ rahbar, onZakaz, bolim }) {
+// `onYangiZakaz({ telefon, fio })` (ixtiyoriy, App uzatadi) — mijoz kartasidan oldindan to'ldirilgan Yangi zakaz; berilmasa tugma yo'q
+export default function Mijozlar({ rahbar, onZakaz, bolim, onYangiZakaz }) {
   return (
     <div className="stack">
-      {bolim === 'mijozlar' && <MijozlarRoyxati rahbar={rahbar} onZakaz={onZakaz} />}
+      {bolim === 'mijozlar' && <MijozlarRoyxati rahbar={rahbar} onZakaz={onZakaz} onYangiZakaz={onYangiZakaz} />}
       {bolim === 'salonchilar' && <Salonchilar rahbar={rahbar} />}
     </div>
   )
 }
 
 // Ro'yxat — Katalog va Zakazlar jadvallari bilan bir xil panel: tablar, ikonali qidiruv, jadval
-function MijozlarRoyxati({ rahbar, onZakaz }) {
+function MijozlarRoyxati({ rahbar, onZakaz, onYangiZakaz }) {
   const [q, setQ] = useState('')
-  const [qora, setQora] = useState(false)  // rahbar: faqat qora ro'yxat
+  const [filtr, setFiltr] = useState('')  // rahbar: '' | 'qora' | 'yangi' | 'toy' | 'qarzdor'
+  const [sonlar, setSonlar] = useState(null)
   const [royxat, setRoyxat] = useState([])
+  const [jami, setJami] = useState(0)
   const [tanlangan, setTanlangan] = useState(null)
   const [xato, setXato] = useState('')
+  const [band, setBand] = useState(false)
 
+  // B-32: sahifalab — oxirgi zakaz bo'yicha 50 tadan; «Yana» qolganini qo'shadi (avval jimgina 200/50 ta bilan kesilardi)
   useEffect(() => {
     if (!rahbar && q.trim().length < 4) return undefined
     let bekor = false
     const t = setTimeout(() => {
-      mijozlar({ ...(q.trim() ? { q: q.trim() } : {}), ...(qora ? { qora_royxat: 1 } : {}) })
-        .then((d) => { if (!bekor) { setRoyxat(d); setXato('') } })
+      mijozlarSahifa(sorov(q, filtr, 0))
+        .then((d) => { if (!bekor) { setRoyxat(d.natija); setJami(d.jami); setXato('') } })
         .catch((e) => { if (!bekor) setXato(xatoMatni(e)) })
     }, 300)
     return () => { bekor = true; clearTimeout(t) }
-  }, [q, qora, rahbar, tanlangan])
+  }, [q, filtr, rahbar, tanlangan])
+  useEffect(() => {
+    if (rahbar && !tanlangan) mijozSonlari().then(setSonlar).catch(() => {})
+  }, [rahbar, tanlangan])
+  const yana = () => {
+    setBand(true)
+    mijozlarSahifa(sorov(q, filtr, royxat.length)).then((d) => { setRoyxat([...royxat, ...d.natija]); setJami(d.jami) })
+      .catch((e) => setXato(xatoMatni(e))).finally(() => setBand(false))
+  }
+  const bugun = bugunIso()
 
-  if (tanlangan) return <Karta id={tanlangan} rahbar={rahbar} onOrqaga={() => setTanlangan(null)} onZakaz={onZakaz} />
+  if (tanlangan) return <Karta id={tanlangan} rahbar={rahbar} onOrqaga={() => setTanlangan(null)} onZakaz={onZakaz} onYangiZakaz={onYangiZakaz} />
   const qisqa = !rahbar && q.trim().length < 4
   const korinadigan = qisqa ? [] : royxat
 
+  const nomlar = { yangi: 'Yangi mijozlar', toy: "Yaqin to'ylar", qarzdor: 'Qarzdorlar' }
   return (
-    <section className="blok jadval-panel">
-      <div className="jadval-asboblar">
-        <h3 className="panel-nom">Mijozlar</h3>
-        {rahbar ? (
-          <div className="tezkor-tablar" role="tablist" aria-label="Mijozlar">
-            {[[false, 'Hammasi'], [true, "Qora ro'yxat"]].map(([k, nom]) => (
-              <button key={nom} type="button" role="tab" aria-selected={qora === k} className={qora === k ? 'faol' : ''} onClick={() => setQora(k)}>{nom}</button>
-            ))}
-          </div>
-        ) : <span className="tezkor-tablar" />}
-        <label className="qidiruv-maydon">
-          <NavIkona nom="qidiruv" className="tugma-ikon" />
-          <input type="search" className="jadval-qidiruv" aria-label="Mijoz qidirish" placeholder="Telefon yoki ism" value={q} onChange={(e) => setQ(e.target.value)} />
-        </label>
-      </div>
-      {xato && <p className="xato jadval-bosh">{xato}</p>}
-      {qisqa && <p className="malumot jadval-bosh">Qidirish uchun telefon yoki ismning kamida 4 ta belgisini kiriting.</p>}
-      {!qisqa && !xato && korinadigan.length === 0 && <p className="malumot jadval-bosh">{qora ? "Qora ro'yxatda hech kim yo'q." : 'Mijoz topilmadi.'}</p>}
-      {korinadigan.length > 0 && (
-        <div className="jadval-ora">
-          <table className="zakaz-jadval mijoz-jadval">
-            <thead>
-              <tr><th>Mijoz</th><th className="tor-yashir">To'y sanasi</th><th>Zakazlar</th><th className="ong">Jami</th></tr>
-            </thead>
-            <tbody>
-              {korinadigan.map((m) => (
-                <tr key={m.id} onClick={() => setTanlangan(m.id)}>
-                  <td>
-                    <button type="button" className="zakaz-katak">
-                      <span className={`mijoz-belgi${m.qora_royxat ? ' qora' : ''}`} aria-hidden="true">{boshHarf(m)}</span>
-                      <span className="zakaz-nom">
-                        <b>{m.fio || 'Ismsiz'}{m.qora_royxat && <span className="holat qarz mijoz-qora">Qora ro'yxat</span>}</b>
-                        <small>{m.telefon}</small>
-                      </span>
-                    </button>
-                  </td>
-                  <td className="tor-yashir">{m.toy_sanasi ? sanaMatni(m.toy_sanasi) : <span className="malumot">—</span>}</td>
-                  <td>
-                    <span className="zakaz-nom">
-                      <span>{m.zakazlar_soni} ta</span>
-                      {m.oxirgi_zakaz && <small>oxirgisi {sanaMatni(m.oxirgi_zakaz)}</small>}
-                    </span>
-                  </td>
-                  <td className="ong"><b>{som(m.jami_summa)}</b></td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+    <div className="stack mijoz-sahifa">
+      {rahbar && (
+        <section className="dash-kpi mijoz-kpi kpi-filtrlar" aria-label="Mijozlar ko'rsatkichlari">
+          {KORSATKICHLAR.map((c) => (
+            <KpiFiltr key={c.k || 'jami'} nom={c.nom} ikon={c.ikon} rang={c.rang} son={sonlar ? c.son(sonlar) : null}
+              izoh={sonlar ? c.izoh(sonlar) : ''} xavf={sonlar && c.xavf?.(sonlar)} tanlangan={filtr === c.k}
+              onBos={() => setFiltr(filtr === c.k ? '' : c.k)} />
+          ))}
+        </section>
       )}
-    </section>
+      <section className="blok jadval-panel">
+        <div className="jadval-asboblar">
+          <h3 className="panel-nom">{nomlar[filtr] || 'Mijozlar'}</h3>
+          {rahbar ? (
+            <div className="tezkor-tablar" role="tablist" aria-label="Mijozlar">
+              {[['', 'Hammasi'], ['qora', "Qora ro'yxat"]].map(([k, nom]) => (
+                <button key={nom} type="button" role="tab" aria-selected={filtr === k} className={filtr === k ? 'faol' : ''} onClick={() => setFiltr(k)}>{nom}</button>
+              ))}
+            </div>
+          ) : <span className="tezkor-tablar" />}
+          <label className="qidiruv-maydon">
+            <NavIkona nom="qidiruv" className="tugma-ikon" />
+            <input type="search" className="jadval-qidiruv" aria-label="Mijoz qidirish" placeholder="Telefon yoki ism" value={q} onChange={(e) => setQ(e.target.value)} />
+          </label>
+        </div>
+        {xato && <p className="xato jadval-bosh">{xato}</p>}
+        {qisqa && <p className="malumot jadval-bosh">Qidirish uchun telefon yoki ismning kamida 4 ta belgisini kiriting.</p>}
+        {!qisqa && !xato && korinadigan.length === 0 && (
+          <p className="malumot jadval-bosh">{filtr === 'qora' ? "Qora ro'yxatda hech kim yo'q." : filtr ? `${nomlar[filtr]} yo'q.` : 'Mijoz topilmadi.'}</p>
+        )}
+        {korinadigan.length > 0 && (
+          <div className="jadval-ora">
+            <table className="zakaz-jadval mijoz-jadval">
+              <thead>
+                <tr><th>Mijoz</th><th className="tor-yashir">To'y sanasi</th><th>Zakazlar</th><th className="ong">Jami</th></tr>
+              </thead>
+              <tbody>
+                {korinadigan.map((m) => (
+                  <tr key={m.id} onClick={() => setTanlangan(m.id)}>
+                    <td>
+                      <button type="button" className="zakaz-katak">
+                        <span className={`mijoz-belgi${m.qora_royxat ? ' qora' : ''}`} aria-hidden="true">{boshHarf(m)}</span>
+                        <span className="zakaz-nom">
+                          <b>{m.fio || 'Ismsiz'}{m.qora_royxat && <span className="holat qarz mijoz-qora">Qora ro'yxat</span>}</b>
+                          <small>{telefonMatni(m.telefon)}</small>
+                        </span>
+                      </button>
+                    </td>
+                    <td className="tor-yashir">{m.toy_sanasi ? sanaMatni(m.toy_sanasi) : <span className="malumot">—</span>}</td>
+                    <td>
+                      <span className="zakaz-nom">
+                        <span>{m.zakazlar_soni} ta</span>
+                        {m.oxirgi_zakaz && <small>{m.oxirgi_zakaz > bugun ? 'keyingisi' : 'oxirgisi'} {sanaMatni(m.oxirgi_zakaz)}</small>}
+                      </span>
+                    </td>
+                    <td className="ong"><b>{som(m.jami_summa)}</b></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+        {korinadigan.length > 0 && (
+          <div className="r2-yana jadval-bosh">
+            <span className="malumot">{korinadigan.length} / {jami} ko'rsatildi{jami > korinadigan.length && !rahbar ? ' — aniqroq qidiring' : ''}</span>
+            {jami > korinadigan.length && (
+              <button type="button" className="ikkinchi kichik" disabled={band} onClick={yana}>Yana {Math.min(SAHIFA, jami - korinadigan.length)} ta</button>
+            )}
+          </div>
+        )}
+      </section>
+    </div>
   )
 }
 
@@ -113,7 +165,7 @@ function ToyKuni({ sana }) {
   )
 }
 
-function Karta({ id, rahbar, onOrqaga, onZakaz }) {
+function Karta({ id, rahbar, onOrqaga, onZakaz, onYangiZakaz }) {
   const [m, setM] = useState(null)
   const [f, setF] = useState({})
   const [sabab, setSabab] = useState('')
@@ -128,8 +180,11 @@ function Karta({ id, rahbar, onOrqaga, onZakaz }) {
   }
   if (!m) return <p className="malumot">{xabar.matn || 'Yuklanmoqda…'}</p>
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value })
+  // Ro'yxatda yo'q eski qiymat o'zgartirilmagan bo'lsa yuborilmaydi (server rad etardi, boshqa maydonlar ham saqlanmasdi)
+  const manbaYuboriladi = f.manba !== m.manba || !m.manba || MANBA[m.manba]
   const saqla = () => bajar(() => mijozOzgartir(id, {
-    fio: f.fio || '', qoshimcha_telefon: f.qoshimcha_telefon || '', toy_sanasi: f.toy_sanasi || null, manba: f.manba,
+    fio: f.fio || '', qoshimcha_telefon: f.qoshimcha_telefon || '', toy_sanasi: f.toy_sanasi || null,
+    ...(manbaYuboriladi ? { manba: f.manba || '' } : {}),
     izoh: f.izoh || '', kiyim_olchami: f.kiyim_olchami || '', ...Object.fromEntries(OLCHAMLAR.map(([k]) => [k, f[k] === '' || f[k] == null ? null : Number(f[k])])),
   }), 'Saqlandi.')
   const faol = m.tarix.filter((z) => z.holat !== 'bekor')
@@ -142,20 +197,26 @@ function Karta({ id, rahbar, onOrqaga, onZakaz }) {
         <button className="ikkinchi karta-orqaga" aria-label="Mijozlar ro'yxatiga qaytish" onClick={onOrqaga}><NavIkona nom="chap" className="tugma-ikon" /></button>
         <h2>{m.fio || m.telefon}</h2>
         {m.qora_royxat && <span className="holat qarz">Qora ro'yxat</span>}
+        {/* Qaytgan mijoz: telefon va ism Yangi zakazga o'zi qo'yiladi (qayta terish va xato yo'q) */}
+        {onYangiZakaz && (
+          <button type="button" className="kichik r2m-yangi" onClick={() => onYangiZakaz({ telefon: m.telefon, fio: m.fio || '' })}>
+            <NavIkona nom="qosh" className="tugma-ikon" />Yangi zakaz
+          </button>
+        )}
       </div>
 
       {/* Mijoz varaqasi — zakaz varaqasi bilan bir xil: ism, telefon, to'y kuni, zakazlar va o'lchamlar */}
       <section className="varaq karta-asosiy mijoz-varaq" aria-label="Mijoz ma'lumotlari">
         {m.qora_royxat && <span className="shtamp" aria-hidden="true">Qora ro'yxat</span>}
         {m.fio && <p className="varaq-kimga">{m.fio}</p>}
-        <a className="varaq-telefon" href={`tel:${m.telefon}`}>{m.telefon}</a>
-        {m.qoshimcha_telefon && <a className="varaq-telefon" href={`tel:${m.qoshimcha_telefon}`}>{m.qoshimcha_telefon}</a>}
+        <a className="varaq-telefon" href={`tel:${m.telefon}`}>{telefonMatni(m.telefon)}</a>
+        {m.qoshimcha_telefon && <a className="varaq-telefon" href={`tel:${m.qoshimcha_telefon}`}>{telefonMatni(m.qoshimcha_telefon)}</a>}
         <Bezak />
         <ToyKuni sana={m.toy_sanasi} />
         <div className="mijoz-raqamlar">
           <div><b>{faol.length}</b><span>zakaz</span></div>
           <div><b>{som(faol.reduce((s, z) => s + z.jami, 0))}</b><span>jami</span></div>
-          <div><b>{MANBA[m.manba] || '—'}</b><span>qayerdan keldi</span></div>
+          <div><b>{MANBA[m.manba] || m.manba || '—'}</b><span>qayerdan keldi</span></div>
         </div>
         {olchamlar.length > 0 && (
           <dl className="mijoz-olchamlar">
@@ -168,7 +229,8 @@ function Karta({ id, rahbar, onOrqaga, onZakaz }) {
 
       <div className="karta-ong">
         {xabar.matn && <p className={xabar.turi === 'xato' ? 'xato' : 'malumot'}>{xabar.matn}</p>}
-        <details className="blok amal" open>
+        {/* Tahrir bloki yopiq: ma'lumot varaqada ko'rinib turibdi, telefonda sahifa cho'zilmaydi (B-33) */}
+        <details className="blok amal">
           <summary>Ma'lumotlarni tahrirlash</summary>
           <div className="stack">
             <label>F.I.O.<input value={f.fio || ''} onChange={set('fio')} /></label>
@@ -176,8 +238,10 @@ function Karta({ id, rahbar, onOrqaga, onZakaz }) {
             <div className="libos-narxlar">
               <label>To'y sanasi<input type="date" value={f.toy_sanasi || ''} onChange={set('toy_sanasi')} /></label>
               <label>Qayerdan keldi
-                <select value={f.manba} onChange={set('manba')}>
+                <select value={f.manba || ''} onChange={set('manba')}>
+                  <option value="">— ko'rsatilmagan —</option>
                   {Object.entries(MANBA).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                  {f.manba && !MANBA[f.manba] && <option value={f.manba}>{f.manba} (eski qiymat)</option>}
                 </select>
               </label>
             </div>

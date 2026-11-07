@@ -31,7 +31,7 @@ test("bank solishtirish: karta to'lovlari tarixi — kim, qachon, qaysi zakazga"
   const xatolar = xatolarniKuzat(rahbar)
   await rahbar.setViewportSize({ width: 1280, height: 860 })
   await kirish(rahbar, 'Rahbar', '1111')
-  await nav(rahbar).getByRole('button', { name: 'Hisobot', exact: true }).click()
+  await nav(rahbar).getByRole('button', { name: 'Hisobotlar', exact: true }).click()
   await nav(rahbar).getByRole('button', { name: 'Bank solishtirish', exact: true }).click()
   await expect(rahbar.getByText('Nima uchun:')).toBeVisible()
   const tarix = rahbar.locator('.tasdiq', { hasText: 'Terminal' }).locator('details.bank-tarix')
@@ -46,17 +46,21 @@ test("bank solishtirish: karta to'lovlari tarixi — kim, qachon, qaysi zakazga"
 
   // Dashboard: shapka menyusidagi «Chiqish» panellar ostida qolmaydi (trial — ustini boshqa element yopsa yiqiladi);
   // «Salonni sozlash» → «Yashirish» butun ilovani qora ekranga aylantirmaydi
-  await nav(rahbar).getByRole('button', { name: 'Asosiy', exact: true }).click()  // chap panel hali Hisobot menyusida
+  // zakaz kartasi ochilganda chap panel asosiy menyuga qaytadi (R2) — «Asosiy» bosish shart emas
+  await expect(nav(rahbar).getByRole('button', { name: 'Asosiy', exact: true })).toHaveCount(0)
   await nav(rahbar).getByRole('button', { name: 'Dashboard', exact: true }).click()
   await rahbar.locator('.ustki-xodim').click()
   await rahbar.getByRole('menu').getByRole('menuitem', { name: 'Chiqish' }).click({ trial: true, timeout: 5000 })
   await rahbar.keyboard.press('Escape')
-  const sozlash = rahbar.locator('.boshlash')
+  // «Salonni sozlash» endi qo'ng'iroqcha menyusida (ixcham)
+  await rahbar.getByRole('button', { name: /^Bildirishnomalar/ }).click()
+  const sozlash = rahbar.locator('.xabar-sozlash')
   if (await sozlash.isVisible()) {
     await sozlash.getByRole('button', { name: 'Yashirish' }).click()
     await expect(sozlash).toHaveCount(0)
     await expect(nav(rahbar)).toBeVisible()
   }
+  await rahbar.keyboard.press('Escape')
   expect(xatolar).toEqual([])
   await ctx.close()
 })

@@ -7,25 +7,39 @@ import Jurnal from '../components/Jurnal'
 import NavIkona from '../components/NavIkona'
 import Info from '../components/Info'
 import Oyna from '../components/Oyna'
-import { GURUHLAR, SOZLAMA_BOLIMLAR } from './sozlamaBolimlari'
+import Tasdiq from '../components/Tasdiq'
+import { ESKI_BOLIM, GURUHLAR, SOZLAMA_BOLIMLAR, sozlamaQidir } from './sozlamaBolimlari'
 import {
   smsJurnali, filialOzgartir, filialQosh, filiallar, qurilmaFilial, qurilmaOchirish, qurilmaTasdiq, qurilmalar, salonParol, salonRekvizit, salonRekvizitSaqla, yordamBekor, yordamBer,
-  yordamRuxsati, sozlamalar, sozlamaSaqla, xatoMatni, xodimOzgartir, xodimQosh, xodimTelegramUlash, xodimlarBoshqaruv,
+  yordamRuxsati, sozlamalar, sozlamaSaqla, xatoMatni, guruhla, xodimOzgartir, xodimQosh, xodimTelegramUlash, xodimlarBoshqaruv,
 } from '../api'
 import SummaInput from '../components/SummaInput'
 
 // GET /sozlamalar/ javobidagi faqat o'qiladigan belgilar (integratsiyalardan) saqlashga yuborilmaydi
 const faqatSozlama = ({ fiskal_eslatma: _f, fiskal_izoh: _i, tolov_havolasi: _t, ...qolgan }) => qolgan
 const ROLLAR = [['sotuvchi', 'Sotuvchi'], ['kassir', 'Kassir'], ['rahbar', 'Rahbar']]
+// Rol o'zgarganda nima bo'lishi — tasdiq oynasida (B-07)
+const ROL_IZOH = {
+  rahbar: "hamma bo'limni ko'radi: hisobot, sozlama, tannarx va xodimlar",
+  kassir: "pul qabul qiladi va kassani yuritadi; hisobot va sozlamani ko'rmaydi",
+  sotuvchi: "zakaz oladi; hisobot, sozlama va tannarxni ko'rmaydi",
+}
+// Server vaqti → mahalliy «07.11.2026 02:10» (boshqa joylardagi sana formati bilan bir xil, B-38)
+const vaqtMatni = (v) => {
+  if (!v) return ''
+  const t = new Date(v), n = (x) => String(x).padStart(2, '0')
+  return `${n(t.getDate())}.${n(t.getMonth() + 1)}.${t.getFullYear()} ${n(t.getHours())}:${n(t.getMinutes())}`
+}
 
-// Sozlama bo'limlarining statik ro'yxati — chap paneldagi nav (App.jsx) ham, mazmun ham shu ro'yxatga mos.
-// Pastdagi `bolimlar` massivi bilan bir xil tartibda va nomlarda bo'lishi shart.
+// Sozlama bo'limlarining statik ro'yxati (sozlamaBolimlari.js) — chap paneldagi nav (App.jsx) ham, mazmun ham shu ro'yxatga mos.
+// Pastdagi `bolimlar` massividagi id lar shu ro'yxatdagi bilan bir xil bo'lishi shart.
 
 // 4.16: admin panel. Keng ekranda bo'limlar chap paneldagi Sozlama menyusida (App, akkordeon); telefonda — sahifa tepasidagi ochiladigan menyu.
 export default function Sozlamalar({ menId, bolim, onBolim }) {
   const [s, setS] = useState(null)
   const [xodimlar, setXodimlar] = useState([])
   const [rek, setRek] = useState(null)
+  const [rekAsl, setRekAsl] = useState(null)
   const [qur, setQur] = useState([])
   const [yordam, setYordam] = useState(null)
   const [yangiParol, setYangiParol] = useState('')
@@ -39,10 +53,12 @@ export default function Sozlamalar({ menId, bolim, onBolim }) {
   const [xodimOyna, setXodimOyna] = useState(false)
   // Tor ekranda bo'lim almashish menyusi (keng ekranda bo'limlar chapda doim ko'rinadi).
   const [menuOchiq, setMenuOchiq] = useState(false)
+  const [qidiruv, setQidiruv] = useState('')
+  const [chiqarSurov, setChiqarSurov] = useState(null)  // ro'yxatdan chiqariladigan qurilma
 
   const yukla = useCallback(async () => {
     const [a, b, c, d, e, f] = await Promise.all([sozlamalar(), xodimlarBoshqaruv(), salonRekvizit(), qurilmalar(), yordamRuxsati(), filiallar(true)])
-    setS(a); setAsl(JSON.stringify(a)); setXodimlar(b); setRek(c); setQur(d); setYordam(e); setFil(f.filiallar)
+    setS(a); setAsl(JSON.stringify(a)); setXodimlar(b); setRek(c); setRekAsl(JSON.stringify(c)); setQur(d); setYordam(e); setFil(f.filiallar)
   }, [])
   useEffect(() => { yukla().catch((e) => setXabar({ turi: 'xato', matn: xatoMatni(e) })) }, [yukla])
 
@@ -59,12 +75,26 @@ export default function Sozlamalar({ menId, bolim, onBolim }) {
   const qoida = (i, j) => (e) => set('qaytarish_qoidasi',
     s.qaytarish_qoidasi.map((q, n) => (n === i ? q.map((v, m) => (m === j ? Number(e.target.value) : v)) : q)))
 
-  const saqlash = () => bajar(() => sozlamaSaqla({ ...faqatSozlama(s), shartnoma_bandlari: (s.shartnoma_bandlari || []).filter((b) => b.sarlavha.trim() || b.matn.trim()) }), 'Sozlamalar saqlandi.')
+  // B-37: har bo'limda bitta usul — maydon va almashtirgichlar (rekvizitlar ham) pastdagi umumiy panel orqali saqlanadi;
+  // ro'yxat elementlari (qoida, filial, xodim, qurilma) — har biri o'z tugmasi bilan
+  const sOzgardi = JSON.stringify(s) !== asl
+  const rekOzgardi = rek !== null && JSON.stringify(rek) !== rekAsl
+  const saqlash = () => (rekOzgardi && !String(rek.nomi || '').trim()
+    ? setXabar({ turi: 'xato', matn: "Salon nomi bo'sh bo'lmasligi kerak (Rekvizitlar)." })
+    : bajar(async () => {
+    if (sOzgardi) await sozlamaSaqla({ ...faqatSozlama(s), shartnoma_bandlari: (s.shartnoma_bandlari || []).filter((b) => b.sarlavha.trim() || b.matn.trim()) })
+    // faqat o'zgargan maydonlar: bo'sh qolgan boshqa maydon («yuridik nom» va h.k.) saqlashni to'xtatmasin
+    if (rekOzgardi) {
+      const a = JSON.parse(rekAsl)
+      await salonRekvizitSaqla(Object.fromEntries(Object.entries(rek).filter(([k, v]) => v !== a[k])))
+    }
+  }, rekOzgardi && !sOzgardi ? 'Rekvizitlar saqlandi.' : 'Sozlamalar saqlandi.'))
 
   const bolimlar = [
     {
-      id: 'bandlik', nomi: 'Bron va bandlik',
+      id: 'bandlik', nomi: 'Bron va zalog',
       render: () => (
+        <>
         <section className="blok stack">
           <h3>Bron va bandlik</h3>
           <label>Tozalash uchun bufer kun (kategoriya yoki libosda alohida belgilanmagan bo'lsa)
@@ -77,19 +107,16 @@ export default function Sozlamalar({ menId, bolim, onBolim }) {
             <input type="number" min="1" max="120" value={s.qulf_daqiqa} onChange={son('qulf_daqiqa')} />
           </label>
         </section>
-      ),
-    },
-    {
-      id: 'zalog', nomi: 'Zalog turlari',
-      render: () => (
         <section className="blok stack">
           <h3>Zalog turlari</h3>
+          <p className="malumot">Libos berishda qaysi garovlarni qabul qilasiz.</p>
           {[['zalog_pul', 'Pul'], ['zalog_hujjat', 'Hujjat'], ['zalog_tillo', 'Tillo buyum']].map(([k, nom]) => (
             <label key={k} className="qator">
               <input type="checkbox" checked={s[k]} onChange={(e) => set(k, e.target.checked)} /> {nom}
             </label>
           ))}
         </section>
+        </>
       ),
     },
     {
@@ -120,30 +147,39 @@ export default function Sozlamalar({ menId, bolim, onBolim }) {
         <section className="blok stack">
           <h3>Bekor qilishda avans qaytarish</h3>
           <label>Qoida nimaga qo'llanadi
-            <select value={s.qaytarish_asosi} onChange={(e) => set('qaytarish_asosi', e.target.value)}>
-              <option value="avans">Faqat avansga — oldindan to'langan qoldiq to'liq qaytariladi</option>
+            <select className="r2-tor-select" value={s.qaytarish_asosi} onChange={(e) => set('qaytarish_asosi', e.target.value)}>
+              <option value="avans">Faqat avansga</option>
               <option value="tolangan">Hamma to'langan summaga</option>
             </select>
           </label>
-          {s.qaytarish_qoidasi.map(([kun, foiz], i) => (
-            <div key={i} className="qator">
-              <input type="number" min="0" value={kun} disabled={i === s.qaytarish_qoidasi.length - 1} onChange={qoida(i, 0)} />
-              <span>kun va undan ko'p qolsa —</span>
-              <input type="number" min="0" max="100" value={foiz} onChange={qoida(i, 1)} />
-              <span>%</span>
-            </div>
+          {s.qaytarish_asosi === 'avans' && ('avans_foizi' in s ? <AvansFoizi s={s} set={set} /> : (
+            <p className="malumot">Avansdan keyin oldindan to'langan qoldiq to'liq qaytariladi.</p>
           ))}
+          {/* Qoida — 2 ustunli kichik jadval (avval bitta qator telefonda uchga sinib, sahifani surardi) */}
+          <table className="hisobot r2-qoida">
+            <thead><tr><th>Olib ketishgacha qolgan kun, kamida</th><th className="ong">Qaytariladi, %</th></tr></thead>
+            <tbody>
+              {s.qaytarish_qoidasi.map(([kun, foiz], i) => (
+                <tr key={i}>
+                  <td><input type="number" min="0" value={kun} disabled={i === s.qaytarish_qoidasi.length - 1} onChange={qoida(i, 0)}
+                    aria-label={`${i + 1}-qoida: qolgan kun, kamida`} /></td>
+                  <td className="ong"><input type="number" min="0" max="100" value={foiz} onChange={qoida(i, 1)}
+                    aria-label={`${i + 1}-qoida: qaytariladigan foiz`} /></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
           <p className="malumot">Olib ketishgacha qolgan kunga qarab {s.qaytarish_asosi === 'tolangan' ? "to'langan summaning" : 'avansning'} shu
-            qismi qaytariladi; qolgani «boshqa daromad». Misol: avans 1 mln, qoldiq 4 mln to'langan, qoida 50% —{' '}
+            qismi qaytariladi; qolgani salonda qoladi. Misol: avans 1 mln, qoldiq 4 mln to'langan, qoida 50% —{' '}
             {s.qaytarish_asosi === 'tolangan' ? '2,5 mln' : '4,5 mln'} qaytariladi.</p>
         </section>
       ),
     },
     {
-      id: 'katalog', nomi: 'Liboslar',
+      id: 'katalog', nomi: "Libos qo'shish va manekin",
       render: () => (
         <section className="blok stack">
-          <h3>Liboslar</h3>
+          <h3>Libos qo'shish va manekin</h3>
           <label className="qator">
             <input type="checkbox" checked={s.libos_tasdigi} onChange={(e) => set('libos_tasdigi', e.target.checked)} />
             Sotuvchi qo'shgan libos va aksessuarni rahbar tasdiqlaydi
@@ -255,7 +291,7 @@ export default function Sozlamalar({ menId, bolim, onBolim }) {
               <summary>Oxirgi SMS lar ({sms.xabarlar.length})</summary>
               {sms.xabarlar.slice(0, 20).map((x, i) => (
                 <p key={i} className="qator-matn">
-                  {String(x.vaqt).slice(0, 10)} · {x.telefon} · {x.holat === 'yuborildi' ? 'yuborildi' : x.holat === 'xato' ? `xato: ${x.xato}` : 'kutilmoqda'}
+                  {vaqtMatni(x.vaqt)} · {x.telefon} · {x.holat === 'yuborildi' ? 'yuborildi' : x.holat === 'xato' ? `xato: ${x.xato}` : 'kutilmoqda'}
                 </p>
               ))}
             </details>
@@ -306,7 +342,7 @@ export default function Sozlamalar({ menId, bolim, onBolim }) {
             Yoqilgan (ustama zakaz narxiga avtomatik qo'shiladi)
           </label>
           {s.mavsumiy_narx
-            ? <p className="malumot">Yoqish yoki o'chirish «Sozlamalarni saqlash» bosilgach kuchga kiradi; qoidalar darhol saqlanadi.</p>
+            ? <p className="malumot">Yoqish yoki o'chirish — pastdagi «Saqlash» bilan. Har bir qoida o'z tugmalari bilan saqlanadi.</p>
             : <p className="malumot">O'chirilgan: qoidalar saqlanadi, lekin narxga ta'sir qilmaydi.</p>}
           <MavsumiyNarx />
         </section>
@@ -319,14 +355,14 @@ export default function Sozlamalar({ menId, bolim, onBolim }) {
           <h3>Sotuvchi bonusi</h3>
           <label className="qator">
             <input type="checkbox" checked={s.sotuvchi_bonusi} onChange={(e) => set('sotuvchi_bonusi', e.target.checked)} />
-            Yoqilgan (tushumdan foiz)
+            Yoqilgan (qaytarib olingan zakazlar summasidan foiz)
           </label>
           {s.sotuvchi_bonusi && (
             <>
-              <label>Bonus, tushumdan %
+              <label>Bonus, zakazlar summasidan %
                 <input type="number" min="0" max="100" step="0.5" value={s.bonus_foiz} onChange={son('bonus_foiz')} />
               </label>
-              <p className="malumot">Bonus foyda va zarar hisobotida operatsion xarajatga avtomatik qo'shiladi — xarajat sifatida qayta kiritmang. Har bir sotuvchi summasi: Hisobot → «Sotuvchi bonusi».</p>
+              <p className="malumot">Bonus foydadan avtomatik ayiriladi — xarajat sifatida qayta kiritmang. Har bir sotuvchi summasi: Hisobot → «Sotuvchi bonusi».</p>
             </>
           )}
         </section>
@@ -362,10 +398,10 @@ export default function Sozlamalar({ menId, bolim, onBolim }) {
             «Kelmadi» bosilsa to'lov hisobdan chiqadi va zakaz qoldig'i qayta chiqadi. O'chirilsa o'tkazma tasdiqsiz hisobga olinadi.</p>
           <label className="qator">
             <input type="checkbox" checked={s.terminal_sverkasi} onChange={(e) => set('terminal_sverkasi', e.target.checked)} />
-            Smena yopishda terminal sverkasi
+            Smena yopishda terminal hisobotini solishtirish
           </label>
-          <p className="malumot">Smenada terminal orqali to'lov bo'lsa, yopishda terminaldan chiqarilgan sverka summasi kiritiladi va
-            tizim bilan solishtiriladi; farq bo'lsa rahbarga xabar. O'chirilsa smena sverkasiz yopiladi.</p>
+          <p className="malumot">Smenada terminal orqali to'lov bo'lsa, yopishda terminal chiqarib bergan kunlik hisobot summasi kiritiladi va
+            tizim bilan solishtiriladi; farq bo'lsa rahbarga xabar. O'chirilsa smena solishtirmasdan yopiladi.</p>
           <p className="malumot">To'lovdan keyin mijozga SMS kvitansiya — «SMS eslatma» bo'limida.</p>
         </section>
       ),
@@ -406,14 +442,14 @@ export default function Sozlamalar({ menId, bolim, onBolim }) {
       render: () => <Integratsiyalar />,
     },
     {
-      id: 'rekvizitlar', nomi: 'Rekvizitlar', saqlashsiz: true,
+      id: 'rekvizitlar', nomi: 'Rekvizitlar',
       render: () => !rek ? <p className="malumot">Yuklanmoqda…</p> : (
         <section className="blok stack">
           <h3>Salon va shartnoma rekvizitlari</h3>
-          {[['nomi', 'Salon nomi'], ['yuridik_nom', 'Yuridik nom'], ['stir', 'STIR (9 raqam)'], ['manzil', 'Manzil'], ['telefon', 'Telefon']].map(([k, nom]) => (
+          {[['nomi', 'Salon nomi *'], ['yuridik_nom', 'Yuridik nom'], ['stir', 'STIR (9 raqam)'], ['manzil', 'Manzil'], ['telefon', 'Telefon']].map(([k, nom]) => (
             <label key={k}>{nom}<input value={rek[k] || ''} onChange={(e) => setRek({ ...rek, [k]: e.target.value })} /></label>
           ))}
-          <button className="ikkinchi" onClick={() => bajar(() => salonRekvizitSaqla(rek), 'Rekvizitlar saqlandi.')}>Rekvizitlarni saqlash</button>
+          <p className="malumot">Shartnoma va hujjatlarda shu ma'lumotlar chiqadi. O'zgartirgach — pastdagi «Saqlash».</p>
         </section>
       ),
     },
@@ -433,8 +469,11 @@ export default function Sozlamalar({ menId, bolim, onBolim }) {
             </div>
           ))}
           <div className="stack">
-            <input placeholder="Filial nomi" value={yangiFilial.nomi} maxLength={100} onChange={(e) => setYangiFilial({ ...yangiFilial, nomi: e.target.value })} />
-            <input placeholder="Manzil" value={yangiFilial.manzil} maxLength={300} onChange={(e) => setYangiFilial({ ...yangiFilial, manzil: e.target.value })} />
+            <h4 className="r2-kichik-sarlavha">Yangi filial</h4>
+            <div className="libos-narxlar">
+              <label>Filial nomi *<input placeholder="masalan: Chilonzor" value={yangiFilial.nomi} maxLength={100} onChange={(e) => setYangiFilial({ ...yangiFilial, nomi: e.target.value })} /></label>
+              <label>Manzil<input value={yangiFilial.manzil} maxLength={300} onChange={(e) => setYangiFilial({ ...yangiFilial, manzil: e.target.value })} /></label>
+            </div>
             <button className="ikkinchi" disabled={!yangiFilial.nomi.trim()}
               onClick={() => bajar(() => filialQosh(yangiFilial), "Filial qo'shildi.").then((ok) => ok && setYangiFilial({ nomi: '', manzil: '' }))}>Qo'shish</button>
           </div>
@@ -450,7 +489,7 @@ export default function Sozlamalar({ menId, bolim, onBolim }) {
               </label>
               <p className="malumot">
                 Yoqilsa, har filial qurilmasi o'z smenasini ochadi va to'lov sotuvchi ishlayotgan kassaga yoziladi. O'chirilgan bo'lsa
-                salonda bitta umumiy kassa. «Sozlamalarni saqlash» bosilgach kuchga kiradi; ochiq smenalarni avval yoping.
+                salonda bitta umumiy kassa. Pastdagi «Saqlash» bosilgach kuchga kiradi; ochiq smenalarni avval yoping.
               </p>
             </>
           )}
@@ -458,7 +497,7 @@ export default function Sozlamalar({ menId, bolim, onBolim }) {
       ),
     },
     {
-      id: 'qurilmalar', nomi: 'Qurilmalar', saqlashsiz: true,
+      id: 'qurilmalar', nomi: 'Qurilmalar va parol', saqlashsiz: true,
       render: () => (
         <section className="blok stack">
           <h3>Qurilmalar</h3>
@@ -466,25 +505,29 @@ export default function Sozlamalar({ menId, bolim, onBolim }) {
             <div key={q.id} className="tasdiq">
               <span>
                 <b>{q.nomi}</b> · {q.tasdiqlangan ? 'ishonchli' : <span className="qizil">ruxsat kutmoqda</span>}
-                {q.oxirgi_kirish ? ` · oxirgi kirish ${new Date(q.oxirgi_kirish).toLocaleString('uz-UZ', { dateStyle: 'short', timeStyle: 'short' })}` : ''}
-                <br /><small className="malumot">📱 {q.modeli || "Model noma'lum — qurilmadan keyingi kirishda aniqlanadi"}</small>
+                {q.oxirgi_kirish ? ` · oxirgi kirish ${vaqtMatni(q.oxirgi_kirish)}` : ''}
+                <br /><small className="malumot r2-model"><NavIkona nom="qurilma" className="tugma-ikon" />{q.modeli || "Model noma'lum — qurilmadan keyingi kirishda aniqlanadi"}</small>
               </span>
               {fil.some((f) => f.faol) && (
-                <select value={q.filial || ''} aria-label="Qurilma filiali"
-                  onChange={(e) => bajar(() => qurilmaFilial(q.id, e.target.value ? Number(e.target.value) : null), 'Qurilma filiali saqlandi.')}>
-                  <option value="">Filialga biriktirilmagan</option>
-                  {fil.filter((f) => f.faol || f.id === q.filial).map((f) => <option key={f.id} value={f.id}>{f.nomi}</option>)}
-                </select>
+                <QurilmaFiliali key={`${q.id}-${q.filial}`} q={q} fil={fil}
+                  onSaqla={(filial) => bajar(() => qurilmaFilial(q.id, filial), 'Qurilma filiali saqlandi.')} />
               )}
               <div className="qator">
                 {!q.tasdiqlangan && <button onClick={() => bajar(() => qurilmaTasdiq(q.id), 'Qurilmaga ruxsat berildi.')}>Ruxsat berish</button>}
-                <button className="ikkinchi" onClick={() => bajar(() => qurilmaOchirish(q.id), "Qurilma ro'yxatdan chiqarildi.")}>Chiqarish</button>
+                <button className="ikkinchi" onClick={() => setChiqarSurov(q)}>Chiqarish</button>
               </div>
             </div>
           ))}
+          {chiqarSurov && (
+            <Tasdiq sarlavha={`«${chiqarSurov.nomi}» chiqarilsinmi?`} tugma="Ha, chiqarish"
+              matn="Undagi ochiq sessiyalar darhol yopiladi; qayta kirish uchun salon logini va rahbar ruxsati kerak bo'ladi. Agar bu shu qurilma bo'lsa — siz ham tizimdan chiqasiz."
+              onYop={() => setChiqarSurov(null)}
+              onTasdiq={() => { const q = chiqarSurov; setChiqarSurov(null); bajar(() => qurilmaOchirish(q.id), "Qurilma ro'yxatdan chiqarildi.") }} />
+          )}
           <p className="malumot">Yangi qurilmada salon logini kiritilgach, u shu yerda ruxsat kutadi. Telegram ulagan bo'lsangiz, ruxsatni botdagi tugma yoki qurilma ekranidagi havola/QR orqali ham berasiz. Chiqarilgan qurilmadagi ochiq sessiyalar darhol yopiladi.</p>
-          <div className="qator">
-            <input type="password" placeholder="Yangi salon paroli (kamida 8 belgi)" value={yangiParol} onChange={(e) => setYangiParol(e.target.value)} />
+          <h4 className="r2-kichik-sarlavha">Salon paroli</h4>
+          <div className="qator r2-parol">
+            <label>Yangi salon paroli (kamida 8 belgi)<input type="password" value={yangiParol} autoComplete="new-password" onChange={(e) => setYangiParol(e.target.value)} /></label>
             <button className="ikkinchi" disabled={yangiParol.length < 8}
               onClick={() => bajar(() => salonParol(yangiParol), "Salon paroli o'zgartirildi.").then((ok) => ok && setYangiParol(''))}>O'zgartirish</button>
           </div>
@@ -502,7 +545,7 @@ export default function Sozlamalar({ menId, bolim, onBolim }) {
           </p>
           {yordam.amalda ? (
             <>
-              <p className="ogohlantirish">Ruxsat amalda: {new Date(yordam.tugaydi).toLocaleString('uz-UZ', { dateStyle: 'short', timeStyle: 'short' })} gacha.</p>
+              <p className="ogohlantirish">Ruxsat amalda: {vaqtMatni(yordam.tugaydi)} gacha.</p>
               <button className="xavfli" onClick={() => bajar(yordamBekor, 'Ruxsat bekor qilindi.')}>Ruxsatni bekor qilish</button>
             </>
           ) : (
@@ -536,7 +579,11 @@ export default function Sozlamalar({ menId, bolim, onBolim }) {
     },
   ]
 
-  const joriy = bolimlar.find((b) => b.id === bolim) || bolimlar[0]
+  // 'bosh' — «Barcha sozlamalar»: guruhlar kartalar to'rida (maket uslubi); aks holda tanlangan bo'lim
+  const joriy = bolim === 'bosh'
+    ? { id: 'bosh', nomi: 'Barcha sozlamalar', render: () => <SozlamaMarkazi onTanla={onBolim} /> }
+    : bolimlar.find((b) => b.id === (ESKI_BOLIM[bolim] || bolim)) || bolimlar[0]
+  const topildi = sozlamaQidir(qidiruv)
 
   return (
     <div className="sozlama-joy">
@@ -550,22 +597,112 @@ export default function Sozlamalar({ menId, bolim, onBolim }) {
         </button>
         {menuOchiq && (
           <div className="sozlama-menu-rohat">
+            <div className="sozlama-guruh">
+              <button type="button" className={bolim === 'bosh' ? 'faol' : ''} aria-current={bolim === 'bosh' ? 'page' : undefined}
+                onClick={() => { onBolim('bosh'); setMenuOchiq(false) }}><NavIkona nom="katalog" /><span>Barcha sozlamalar</span></button>
+            </div>
             <BolimRoyxati bolim={bolim} onTanla={(id) => { onBolim(id); setMenuOchiq(false) }} />
+          </div>
+        )}
+      </div>
+      {/* Qidiruv: «PIN», «SMS», «artikul», «filial»… — 20 ta bo'lim ichida adashmaslik uchun (B-36) */}
+      <div className="r2-sozlama-qidiruv">
+        <label className="qidiruv-maydon">
+          <NavIkona nom="qidiruv" className="tugma-ikon" />
+          <input type="search" className="jadval-qidiruv" aria-label="Sozlamadan qidirish" placeholder="Qidirish: PIN, SMS, artikul, filial…"
+            value={qidiruv} onChange={(e) => setQidiruv(e.target.value)} />
+        </label>
+        {qidiruv.trim() && (
+          <div className="r2-qidiruv-natija" role="list" aria-label="Topilgan bo'limlar">
+            {topildi.length === 0 && <p className="malumot">Topilmadi. Boshqacha yozib ko'ring: masalan, «jarima», «parol».</p>}
+            {topildi.map((b) => (
+              <button key={b.id} type="button" role="listitem" onClick={() => { onBolim(b.id); setQidiruv(''); setMenuOchiq(false) }}>
+                <NavIkona nom={b.ikon} /><span>{b.nomi}</span><small>{b.guruh}</small>
+              </button>
+            ))}
           </div>
         )}
       </div>
       {joriy.render()}
       {xabar.matn && <p className={xabar.turi === 'xato' ? 'xato' : 'malumot sozlama-xabar'}>{xabar.matn}</p>}
       {/* Saqlash paneli faqat o'zgarish bo'lganda (professional sozlama sahifalaridagidek); bo'lim almashsa ham turadi */}
-      {JSON.stringify(s) !== asl && (
+      {(sOzgardi || rekOzgardi) && (
         <div className="sozlama-saqlash" role="region" aria-label="Saqlanmagan o'zgarishlar">
           <span>Saqlanmagan o'zgarishlar bor</span>
-          <button type="button" className="ikkinchi kichik" onClick={() => setS(JSON.parse(asl))}>Bekor qilish</button>
+          <button type="button" className="ikkinchi kichik" onClick={() => { setS(JSON.parse(asl)); if (rekAsl) setRek(JSON.parse(rekAsl)) }}>Bekor qilish</button>
           <button type="button" className="kichik" onClick={saqlash}>Saqlash</button>
         </div>
       )}
       {joriy.keyin?.()}
     </div>
+    </div>
+  )
+}
+
+// C-21 (foydalanuvchi qarori): har salon o'zi tanlaydi — qaysi qism «avans» (qoida bo'yicha ushlab qolinishi mumkin),
+// qaysi qism «oldindan to'lov» (bekor qilinganda to'liq qaytariladi). null — birinchi to'lov to'liq avans.
+const MISOL_JAMI = 3_000_000
+function AvansFoizi({ s, set }) {
+  const foiz = s.avans_foizi
+  const avans = foiz ? (MISOL_JAMI * foiz) / 100 : null
+  return (
+    <fieldset className="guruh r3z-avans">
+      <legend>Avans qancha</legend>
+      <label className="qator">
+        <input type="radio" name="avans_foizi" checked={foiz == null} onChange={() => set('avans_foizi', null)} />
+        Birinchi to'lov to'liq avans
+      </label>
+      <label className="qator r3z-foiz">
+        <input type="radio" name="avans_foizi" checked={foiz != null} onChange={() => set('avans_foizi', foiz ?? 30)} />
+        <span>Avans — zakaz summasining</span>
+        <input type="number" min="1" max="100" value={foiz ?? ''} disabled={foiz == null} aria-label="Avans, zakaz summasidan foiz"
+          onChange={(e) => set('avans_foizi', e.target.value === '' ? 30 : Math.min(100, Math.max(1, Number(e.target.value))))} />
+        <span>%, ortig'i to'liq qaytariladi</span>
+      </label>
+      <p className="malumot">
+        {foiz == null
+          ? "Misol: mijoz 3 000 000 lik zakazga birinchi marta 1 500 000 to'lasa — hammasi avans, bekor qilinganda yuqoridagi qoida qo'llanadi; keyingi to'lovlar to'liq qaytariladi."
+          : `Misol: ${guruhla(MISOL_JAMI)} lik zakazda ${foiz}% → avans ${guruhla(avans)}. Mijoz 1 500 000 to'lagan bo'lsa, bekor qilinganda `
+            + (1_500_000 > avans ? `${guruhla(1_500_000 - avans)} to'liq qaytariladi, ${guruhla(avans)} ga yuqoridagi qoida qo'llanadi.` : "hammasi avans — yuqoridagi qoida qo'llanadi.")}
+      </p>
+    </fieldset>
+  )
+}
+
+function QurilmaFiliali({ q, fil, onSaqla }) {
+  const [v, setV] = useState(q.filial ? String(q.filial) : '')
+  return (
+    <div className="qator r2z-qurilma-filial">
+      <select value={v} aria-label="Qurilma filiali" onChange={(e) => setV(e.target.value)}>
+        <option value="">Filialga biriktirilmagan</option>
+        {fil.filter((f) => f.faol || f.id === q.filial).map((f) => <option key={f.id} value={f.id}>{f.nomi}</option>)}
+      </select>
+      <button type="button" className="ikkinchi kichik" disabled={v === (q.filial ? String(q.filial) : '')}
+        onClick={() => onSaqla(v ? Number(v) : null)}>Saqlash</button>
+    </div>
+  )
+}
+
+// «Barcha sozlamalar»: 6 guruh — kartalar to'rida; har qator — bo'limga o'tish (belgi, nom, qisqa izoh)
+function SozlamaMarkazi({ onTanla }) {
+  return (
+    <div className="sozlama-tor" role="group" aria-label="Sozlama bo'limlari">
+      {GURUHLAR.map(({ nomi: g, ikon }) => (
+        <section key={g} className="blok dash-karta sozlama-guruh-karta" aria-label={g}>
+          <div className="dash-karta-bosh"><h3><NavIkona nom={ikon} className="tugma-ikon" />{g}</h3></div>
+          <ul className="sozlama-qatorlar">
+            {SOZLAMA_BOLIMLAR.filter((b) => b.guruh === g).map((b) => (
+              <li key={b.id}>
+                <button type="button" onClick={() => onTanla(b.id)}>
+                  <span className="sozlama-belgi" aria-hidden="true"><NavIkona nom={b.ikon} /></span>
+                  <span className="sozlama-matn"><b>{b.nomi}</b><small>{b.izoh}</small></span>
+                  <NavIkona nom="ong" className="tugma-ikon sozlama-ong" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        </section>
+      ))}
     </div>
   )
 }
@@ -600,6 +737,7 @@ function FilialTahrir({ f, onSaqla }) {
 
 function Xodim({ x, men, onOzgartir }) {
   const [ochiq, setOchiq] = useState(false)
+  const [yangiRol, setYangiRol] = useState(null)
   const [pin, setPin] = useState('')
   const [ism, setIsm] = useState(x.ism)
   const [telefon, setTelefon] = useState(x.telefon || '')
@@ -630,10 +768,17 @@ function Xodim({ x, men, onOzgartir }) {
           <button className="ikkinchi" disabled={!/^\d{4,6}$/.test(pin)}
             onClick={() => onOzgartir({ pin }, 'PIN tiklandi.').then((ok) => ok && setPin(''))}>PIN ni tiklash</button>
           <label>Rol
-            <select value={x.rol} onChange={(e) => onOzgartir({ rol: e.target.value }, "Rol o'zgartirildi.")}>
+            <select value={x.rol} onChange={(e) => e.target.value !== x.rol && setYangiRol(e.target.value)}>
               {ROLLAR.map(([k, nom]) => <option key={k} value={k}>{nom}</option>)}
             </select>
           </label>
+          {yangiRol && (
+            <Tasdiq sarlavha={`${x.ism} — ${ROLLAR.find(([k]) => k === yangiRol)[1]}?`} tugma="Ha, rolni o'zgartirish"
+              xavfli={yangiRol === 'rahbar'}
+              matn={`${x.ism} ${ROLLAR.find(([k]) => k === yangiRol)[1].toLowerCase()} bo'ladi: ${ROL_IZOH[yangiRol]}.`}
+              onYop={() => setYangiRol(null)}
+              onTasdiq={() => { const rol = yangiRol; setYangiRol(null); onOzgartir({ rol }, "Rol o'zgartirildi.") }} />
+          )}
           <button className="ikkinchi" onClick={() => onOzgartir({ faol: !x.faol }, x.faol ? 'Xodim nofaol qilindi.' : 'Xodim faollashtirildi.')}>
             {x.faol ? 'Nofaol qilish' : 'Faollashtirish'}
           </button>
@@ -692,20 +837,23 @@ function XodimForma({ onYuborish }) {
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value })
   return (
     <div className="stack">
-        <label>Ism<input value={f.ism || ''} onChange={set('ism')} /></label>
-        <label>Telefon<input inputMode="tel" value={f.telefon || ''} onChange={set('telefon')} /></label>
+        <label>Ism *<input value={f.ism || ''} onChange={set('ism')} /></label>
+        <label>Telefon<input inputMode="tel" value={f.telefon || ''} placeholder="masalan: +998 90 123 45 67" onChange={set('telefon')} /></label>
         <label>Rol
           <select value={f.rol} onChange={set('rol')}>
             {ROLLAR.map(([k, nom]) => <option key={k} value={k}>{nom}</option>)}
           </select>
         </label>
-        <label>PIN (4–6 raqam)
+        <label>PIN (4–6 raqam) *
           <input type="password" inputMode="numeric" maxLength={6} value={f.pin || ''} onChange={set('pin')} />
         </label>
         <button disabled={!f.ism?.trim() || !/^\d{4,6}$/.test(f.pin || '')}
           onClick={() => onYuborish({ ism: f.ism, telefon: f.telefon || '', rol: f.rol, pin: f.pin }).then((ok) => ok && setF({ rol: 'sotuvchi' }))}>
           Qo'shish
         </button>
+        {(!f.ism?.trim() || !/^\d{4,6}$/.test(f.pin || '')) && (
+          <p className="malumot r2-sabab">To'ldiring: {[!f.ism?.trim() && 'Ism', !/^\d{4,6}$/.test(f.pin || '') && 'PIN (4–6 raqam)'].filter(Boolean).join(', ')}</p>
+        )}
     </div>
   )
 }

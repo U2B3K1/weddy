@@ -1,4 +1,4 @@
-// Ko'rinish: rahbar sahifalari (dashbord, «Kunlik kassa», «Xodimlar nazorati», «Foyda va zarar») keng ekranda va
+// Ko'rinish: rahbar sahifalari (dashbord, «Kunlik kassa», «Xodimlar nazorati», «Oylik foyda») keng ekranda va
 // telefon kengligida — gorizontal sahifa skrolli bo'lmasligi kerak (keng jadval faqat o'z qutisida suriladi).
 // kassa-topshirish.spec.js dan keyin ishlaydi (alifbo tartibi, workers: 1) — o'sha testning smena va to'lovlari ko'rinadi.
 // Skrinshotlar: test-results/korinish/*.png (ko'z bilan tekshirish uchun).
@@ -31,7 +31,7 @@ test('rahbar sahifalari keng ekranda va telefonda', async ({ page }) => {
     await ikkiKenglik(page, '1-dashbord')
   })
 
-  await nav(page).getByRole('button', { name: 'Hisobot', exact: true }).click()
+  await nav(page).getByRole('button', { name: 'Hisobotlar', exact: true }).click()
   for (const [i, nom] of [[2, 'Kunlik kassa'], [3, 'Xodimlar nazorati']]) {
     await test.step(nom, async () => {
       await page.getByLabel('Hisobot turi').selectOption({ label: nom })
@@ -40,9 +40,13 @@ test('rahbar sahifalari keng ekranda va telefonda', async ({ page }) => {
     })
   }
 
-  await test.step('Foyda va zarar', async () => {
-    await nav(page).getByRole('button', { name: 'Foyda va zarar', exact: true }).click()
+  await test.step('Oylik foyda', async () => {
+    await nav(page).getByRole('button', { name: 'Oylik foyda', exact: true }).click()
     await expect(page.getByText('Kirgan pul (avans va qoldiq)')).toBeVisible()
+    // maket uslubi: tepada 4 ko'rsatkich — tushum va foyda o'tgan oyning shu kunigacha bilan taqqoslanadi
+    const kpi = page.getByRole('region', { name: "Oylik foyda ko'rsatkichlari" })
+    await expect(kpi.locator('.dash-kpi-karta')).toHaveCount(4)
+    await expect(kpi.locator('.dash-kpi-karta').first()).toContainText('Tushum')
     await ikkiKenglik(page, '4-foyda-zarar')
   })
 
@@ -61,7 +65,8 @@ test('rahbar sahifalari keng ekranda va telefonda', async ({ page }) => {
     // seed: o'tgan oyda to'langan, shu oyda bekor qilingan zakaz — sotuvchi tushumidan ayiriladi
     await page.getByLabel('Hisobot turi').selectOption({ label: 'Sotuvchilar' })
     await page.getByRole('row', { name: /Sotuvchi/ }).getByRole('button', { name: 'Sotuvchi' }).click()
-    await expect(page.locator('.tafsilot')).toContainText('Bekor qilindi (storno)')
+    // tafsilot — ustunli jadval (B-19); storno «Bekor qilindi» belgisi bilan, «#raqam» zakazga havola
+    await expect(page.locator('.tafsilot')).toContainText('Bekor qilindi')
     await expect(page.locator('.tafsilot')).toContainText("Storno Mijoz")
     await expect(page.locator('.tafsilot')).toContainText("-500 000 so'm")
     await ikkiKenglik(page, '4c-storno')
@@ -135,8 +140,13 @@ test('libos sanog\'i: boshlash, skaner, yakun', async ({ page }) => {
 
   await test.step('yakun: topilmagan libos «yo\'q» bo\'lib chiqadi', async () => {
     await page.getByRole('button', { name: 'Yakunlash' }).click()
+    await page.getByRole('alertdialog').getByRole('button', { name: 'Ha, yakunlash' }).click()  // yakunlash tasdiq bilan (B-24)
     const natija = page.locator('.blok', { hasText: 'Sanoq yakunlandi' })
-    await expect(natija).toContainText("Yo'q (1): E2E-2 Libos E2E-2")
+    // «Yo'q» ro'yxati — jadval (B-24): skaner qilinmagan E2E-2 bor, skaner qilinganlar yo'q. Aniq son tekshirilmaydi —
+    // oldingi spec'lar o'z liboslarini salonda qoldiradi (masalan, `kassa-davomi` QA16 — qaytarilgan zakaz broni arxivni to'sadi)
+    await expect(natija).toContainText(/Yo'q \(\d+\)/)
+    await expect(natija.locator('tbody tr', { hasText: 'E2E-2' })).toContainText('Libos E2E-2')
+    for (const bor of ['E2E-1', 'FT-01', 'FT-02']) await expect(natija.locator('tbody tr', { hasText: bor })).toHaveCount(0)
     await ikkiKenglik(page, '6-sanoq-natija')
   })
   expect(xatolar).toEqual([])
@@ -258,7 +268,7 @@ test('yetkazib beruvchi: libos qisman to\'lab olinadi, qarz to\'lanadi', async (
   await test.step('libos artikuli: sozlamada prefiks va avto raqam, formada «i»', async () => {
     try {
       await nav(page).getByRole('button', { name: 'Sozlama', exact: true }).click()
-      const guruh = nav(page).getByRole('button', { name: "Ko'rinish va xabarlar" })
+      const guruh = nav(page).getByRole('button', { name: 'Liboslar', exact: true })  // B-36: artikul «Liboslar» guruhida
       if (await guruh.getAttribute('aria-expanded') !== 'true') await guruh.click()
       await nav(page).getByRole('button', { name: 'Libos artikuli', exact: true }).click()
       await page.getByLabel('Prefiks').fill('E-')
@@ -327,8 +337,13 @@ test('yetkazib beruvchi: libos qisman to\'lab olinadi, qarz to\'lanadi', async (
     await expect(qator).toContainText("qarz 6 440 000 so'm")
     await qator.getByRole('button', { name: /Istanbul Bridal/ }).click()
     await expect(qator).toContainText('YB-1')
-    await expect(qator).toContainText("TJ Toj Oltin · 3 dona × 100 000 so'm = 300 000 so'm")
-    await expect(qator).toContainText("TJ Toj Oltin · 2 dona × 120 000 so'm = 240 000 so'm")
+    // olingan aksessuarlar — jadval (B-35): har partiya alohida qator, soni × narx = jami
+    const tj = qator.locator('tbody tr', { hasText: 'TJ Toj Oltin' })
+    for (const [soni, narx, jami] of [['3', "100 000 so'm", "300 000 so'm"], ['2', "120 000 so'm", "240 000 so'm"]]) {
+      const katak = tj.filter({ hasText: jami }).locator('td')
+      await expect(katak.nth(2)).toHaveText(soni)
+      await expect(katak.nth(3)).toHaveText(narx)
+    }
     await ikkiKenglik(page, '12-yetkazib-qarz')
     await qator.getByLabel("To'lov summasi").fill('6440000')
     await qator.getByRole('button', { name: "To'lov qilish" }).click()

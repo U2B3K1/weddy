@@ -83,3 +83,26 @@ test('bandlik kalendari: bron tasmasi, kun soni va kun varaqasi', async ({ page 
   await expect(page.getByText("«yoqlibos» bo'yicha libos topilmadi.")).toBeVisible()
   expect(xatolar).toEqual([])
 })
+
+// R2: bo'sh katak bosilsa — Kassa → Yangi zakaz shu kun (1-qadam) va shu libos (2-qadamda tanlangan) bilan ochiladi
+test("bo'sh katak: shu libos va kunga oldindan to'ldirilgan Yangi zakaz", async ({ page }) => {
+  const xatolar = xatolarniKuzat(page)
+  await page.setViewportSize(KENG)
+  await kirish(page, 'Rahbar', '1111')
+  await nav(page).getByRole('button', { name: 'Zakazlar', exact: true }).click()
+  await page.getByRole('tab', { name: 'Bandlik kalendari' }).click()
+  await page.getByLabel('Davr boshi').fill(iso(250))  // uzoq sana — boshqa testlarning bronlari yo'q
+  const katak = page.locator('.bosh-katak').first()
+  await expect(katak).toBeVisible()
+  const nomi = await katak.getAttribute('aria-label')  // «E2E-1 Libos E2E-1, 15 iyul 2027 — yangi zakaz»
+  const [, artikul] = nomi.match(/^(\S+) /)
+  const [, kun] = nomi.match(/, (\d+) /)
+  await katak.click()
+  await expect(nav(page).getByRole('button', { name: 'Yangi zakaz', exact: true })).toHaveAttribute('aria-current', 'page')
+  await expect(page.locator('.varaq-sana').first()).toContainText(kun)
+  const libos = page.locator('ul.liboslar li', { hasText: `${artikul} ` })  // «E2E-1 Libos…» (E2E-10 emas)
+  await expect(libos.getByRole('button', { name: 'Olib tashlash' })).toBeVisible()
+  await suratlar(page, '3-bosh-katak-yangi-zakaz')
+  await libos.getByRole('button', { name: 'Olib tashlash' }).click()  // libos qulfi bo'shaydi
+  expect(xatolar).toEqual([])
+})

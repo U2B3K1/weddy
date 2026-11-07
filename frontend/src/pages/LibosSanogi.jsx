@@ -1,10 +1,13 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { filiallar, sanaMatni, sanoq, sanoqBelgila, sanoqBoshla, sanoqYakunla, xatoMatni } from '../api'
+import Tasdiq from '../components/Tasdiq'
+import { filiallar, sanaMatni, sanoq, sanoqBekor, sanoqBelgila, sanoqBoshla, sanoqYakunla, xatoMatni } from '../api'
 
 const JOY = { mijozda: 'tizimda: mijozda', tamirda: "ta'mirda", tozalashda: 'tozalashda' }
 // Qator libos yoki aksessuar donasi (FT-01) bo'ladi — kalit va belgilash shunga qarab
 const qatorKaliti = (q) => `${q.tur}-${q.libos ?? q.dona}`
 const qatorId = (q) => (q.libos ? { libos: q.libos } : { dona: q.dona })
+// Server vaqti mahalliy vaqt bilan keladi: «07.11.2026 02:10»
+const vaqtMatni = (s) => (s ? `${sanaMatni(s)} ${String(s).slice(11, 16)}` : '')
 const joySinfi = (j) => ({ mijozda: 'qarz', tamirda: 'vaqtinchalik', tozalashda: 'vaqtinchalik' }[j] || 'bron')
 
 // Terilgan qismga mos buyumlar: artikul boshidan mos kelgani oldin, keyin ichida uchragani, keyin nomi bo'yicha;
@@ -45,7 +48,8 @@ export default function LibosSanogi() {
   if (!d) return <p className={xabar.turi === 'xato' ? 'xato' : 'malumot'}>{xabar.matn || 'Yuklanmoqda…'}</p>
   if (d.ochiq) {
     return <OchiqSanoq s={d.ochiq} onYangila={(s) => setD({ ...d, ochiq: s })}
-      onYakun={(s) => { setNatija(s); yukla() }} />
+      onYakun={(s) => { setNatija(s); yukla() }}
+      onBekor={() => { setXabar({ turi: 'ok', matn: "Sanoq bekor qilindi — hech kimga xabar yuborilmadi." }); yukla() }} />
   }
   return (
     <div className="stack">
@@ -71,7 +75,7 @@ export default function LibosSanogi() {
           {d.tarix.map((s) => (
             <div key={s.id} className="tasdiq-qator">
               <div className="tasdiq-matn">
-                <b>{sanaMatni(s.yakunlangan)}{s.filial ? ` · ${s.filial}` : ''} · {s.yakunlagan}</b>
+                <b>{vaqtMatni(s.yakunlangan)}{s.filial ? ` · ${s.filial}` : ''} · {s.yakunlagan}</b>
                 <small>salonda bo'lishi kerak {s.kutilgan}, joyida {s.topilgan}
                   {s.yoq > 0 && <b className="qizil"> · {s.yoq} ta yo'q</b>}
                   {s.ortiqcha > 0 && <span className="qizil"> · {s.ortiqcha} ta qaytgani kiritilmagan</span>}
@@ -85,12 +89,13 @@ export default function LibosSanogi() {
   )
 }
 
-function OchiqSanoq({ s, onYangila, onYakun }) {
+function OchiqSanoq({ s, onYangila, onYakun, onBekor }) {
   const [artikul, setArtikul] = useState('')
   const [xabar, setXabar] = useState({ turi: '', matn: '' })
   const [hammasi, setHammasi] = useState(false)
   const [izoh, setIzoh] = useState('')
   const [band, setBand] = useState(false)
+  const [surov, setSurov] = useState(null)  // 'yakun' | 'bekor' — tasdiq oynasi
   const [aktiv, setAktiv] = useState(-1)  // klaviatura (↑/↓) bilan tanlangan taklif; -1 — Enter terilganini yuboradi (skaner)
   const kiritish = useRef(null)
 
@@ -128,8 +133,13 @@ function OchiqSanoq({ s, onYangila, onYakun }) {
     else if (e.key === 'Escape') { setArtikul(''); setAktiv(-1) }
   }
   const yakunla = async () => {
-    setBand(true)
+    setSurov(null); setBand(true)
     try { onYakun(await sanoqYakunla({ izoh })) } catch (e) { setXabar({ turi: 'xato', matn: xatoMatni(e) }) } finally { setBand(false) }
+  }
+  // Tasodifan boshlangan sanoq: Telegramga «N ta yo'q» degan yolg'on signal ketmasin (B-24)
+  const bekorQil = async () => {
+    setSurov(null); setBand(true)
+    try { await sanoqBekor(); onBekor() } catch (e) { setXabar({ turi: 'xato', matn: xatoMatni(e) }) } finally { setBand(false) }
   }
 
   const salonda = s.qatorlar.filter((q) => q.joy === 'salonda')
@@ -147,7 +157,7 @@ function OchiqSanoq({ s, onYangila, onYakun }) {
         <form className="sanoq-kiritish" onSubmit={skaner}>
           <div className="sanoq-maydon">
             <input ref={kiritish} autoFocus value={artikul} onChange={(e) => { setArtikul(e.target.value); setAktiv(-1) }} onKeyDown={strelka}
-              placeholder="Artikul yoki yorliq (FT-01) — raqamini tering yoki skanerlang" aria-label="Artikul" maxLength={50} autoComplete="off"
+              placeholder="Raqamini tering yoki skanerlang, masalan: L-0012" aria-label="Artikul" maxLength={50} autoComplete="off"
               role="combobox" aria-expanded={taklif.length > 0} aria-controls="sanoq-takliflar" aria-autocomplete="list"
               aria-activedescendant={aktiv >= 0 ? `taklif-${aktiv}` : undefined} />
             {taklif.length > 0 && (
@@ -192,21 +202,37 @@ function OchiqSanoq({ s, onYangila, onYakun }) {
             <div className="tasdiq-tugmalar">
               {q.topildi
                 ? <button className="ikkinchi kichik" onClick={() => belgila({ ...qatorId(q), topildi: false })}>Bekor</button>
-                : <button className="kichik" onClick={() => belgila({ ...qatorId(q), topildi: true })}>Topildi</button>}
+                : <button className="ikkinchi kichik" onClick={() => belgila({ ...qatorId(q), topildi: true })}>Topildi</button>}
             </div>
           </div>
             ))}
           </div>
         ))}
       </section>
-      <section className="blok">
+      <section className="blok stack">
         <h3>Sanoqni yakunlash</h3>
         {salonda.length - topildi > 0 && <p className="ogohlantirish">{salonda.length - topildi} ta buyum hali topilmagan — yakunlasangiz «yo'q» deb rahbarga yuboriladi.</p>}
-        <div className="qator">
-          <input value={izoh} onChange={(e) => setIzoh(e.target.value)} placeholder="Izoh (ixtiyoriy)" aria-label="Izoh" maxLength={300} />
-          <button onClick={yakunla} disabled={band}>Yakunlash</button>
+        <label>Izoh (ixtiyoriy)
+          <input value={izoh} onChange={(e) => setIzoh(e.target.value)} placeholder="masalan: A-2 kimyoviy tozalashda" maxLength={300} />
+        </label>
+        <div className="qator r2-sanoq-tugmalar">
+          <button onClick={() => setSurov('yakun')} disabled={band}>Yakunlash</button>
+          <button className="ikkinchi" onClick={() => setSurov('bekor')} disabled={band}>Sanoqni bekor qilish</button>
         </div>
+        <p className="malumot">Tasodifan boshlangan bo'lsa — bekor qiling: natija saqlanmaydi va hech kimga yuborilmaydi.</p>
       </section>
+      {surov === 'yakun' && (
+        <Tasdiq sarlavha="Sanoq yakunlansinmi?" tugma="Ha, yakunlash" xavfli={false}
+          matn={salonda.length - topildi > 0
+            ? `${salonda.length - topildi} ta buyum topilmagan — rahbarga Telegramda «yo'q» deb yuboriladi. Yakunlangan sanoqqa qayta belgilab bo'lmaydi.`
+            : "Hammasi topildi. Natija rahbarga Telegramda yuboriladi."}
+          onYop={() => setSurov(null)} onTasdiq={yakunla} />
+      )}
+      {surov === 'bekor' && (
+        <Tasdiq sarlavha="Sanoq bekor qilinsinmi?" tugma="Ha, bekor qilish"
+          matn={`Belgilangan ${s.qatorlar.filter((q) => q.topildi).length} ta buyum o'chadi, natija hech kimga yuborilmaydi. Qaytarib bo'lmaydi.`}
+          onYop={() => setSurov(null)} onTasdiq={bekorQil} />
+      )}
     </div>
   )
 }
@@ -215,12 +241,31 @@ function Natija({ s }) {
   const yoq = s.qatorlar.filter((q) => q.joy === 'salonda' && !q.topildi)
   const ortiqcha = s.qatorlar.filter((q) => q.joy === 'mijozda' && q.topildi)
   return (
-    <section className="blok">
+    <section className="blok stack">
       <h3>Sanoq yakunlandi</h3>
       <p>Salonda bo'lishi kerak: <b>{s.kutilgan}</b>, joyida: <b>{s.topilgan}</b>.{!yoq.length && !ortiqcha.length && ' Hammasi joyida.'}</p>
-      {yoq.length > 0 && <p className="ogohlantirish">Yo'q ({yoq.length}): {yoq.map((q) => `${q.artikul} ${q.nomi}`).join(', ')}</p>}
-      {ortiqcha.length > 0 && <p className="ogohlantirish">Tizimda mijozda, lekin javonda ({ortiqcha.length}): {ortiqcha.map((q) => q.artikul).join(', ')} — qaytarilgani kiritilmagan.</p>}
+      {yoq.length > 0 && <NatijaJadval sarlavha={`Yo'q (${yoq.length})`} izoh="salonda bo'lishi kerak edi, lekin topilmadi" qatorlar={yoq} />}
+      {ortiqcha.length > 0 && <NatijaJadval sarlavha={`Tizimda mijozda, lekin javonda (${ortiqcha.length})`} izoh="qaytarilgani tizimga kiritilmagan" qatorlar={ortiqcha} />}
       <small className="malumot">Natija rahbarga Telegramda yuborildi.</small>
     </section>
+  )
+}
+
+// Sanoq natijasidagi ro'yxat — kichik jadval (bitta qizil paragraf o'rniga, B-24)
+function NatijaJadval({ sarlavha, izoh, qatorlar }) {
+  return (
+    <div className="r2-sanoq-natija">
+      <p className="qizil"><b>{sarlavha}</b> <span className="malumot">— {izoh}</span></p>
+      <div className="jadval-ora">
+        <table className="hisobot">
+          <thead><tr><th>Artikul</th><th>Nomi</th><th>Kategoriya</th><th>O'lcham</th></tr></thead>
+          <tbody>
+            {qatorlar.map((q) => (
+              <tr key={qatorKaliti(q)}><td><b>{q.artikul}</b></td><td>{q.nomi}</td><td>{q.kategoriya}</td><td>{q.olcham || '—'}</td></tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
   )
 }
