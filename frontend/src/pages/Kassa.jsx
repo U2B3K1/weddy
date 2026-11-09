@@ -751,13 +751,15 @@ function TolovPOS({ boshZakaz, onTolandi, onSmenaOchish, onZakaz }) {
 function SmenaKorsatkichlari({ s }) {
   const h = s.hisobot
   const chiqim = h.xarajatlar + h.vozvrat_va_inkassatsiya
+  // izoh ikki qatorga o'tsa summa o'rtasidan bo'linmasin («4 050 / 000 so'm») — summa ichida bo'linmaydigan bo'shliq
+  const butun = (n) => som(n).replace(/ /g, ' ')
   return (
     <section className="dash-kpi kpi-filtrlar smena-kpi" aria-label="Smena ko'rsatkichlari">
-      <KpiFiltr nom="Kassada naqd" son={som(h.hisobdagi_qoldiq)} ikon="kassa" rang="tilla" izoh={`kun boshida ${som(h.kun_boshidagi_qoldiq)}`} />
+      <KpiFiltr nom="Kassada naqd" son={som(h.hisobdagi_qoldiq)} ikon="kassa" rang="tilla" izoh={`kun boshida ${butun(h.kun_boshidagi_qoldiq)}`} />
       <KpiFiltr nom="Kirgan naqd" son={som(h.tushum)} ikon="tushum" rang="yashil" izoh="avans + qoldiq + jarima" />
       <KpiFiltr nom="Terminal" son={som(s.terminal_tizimda || 0)} ikon="terminal" rang="kok" izoh="chek bilan solishtiring" />
       <KpiFiltr nom="Chiqim" son={som(chiqim)} ikon="hamyon" rang="pushti"
-        izoh={chiqim ? `xarajat ${som(h.xarajatlar)} · topshirildi ${som(h.vozvrat_va_inkassatsiya)}` : "bugun chiqim yo'q"} />
+        izoh={chiqim ? `xarajat ${butun(h.xarajatlar)} · topshirildi ${butun(h.vozvrat_va_inkassatsiya)}` : "bugun chiqim yo'q"} />
     </section>
   )
 }

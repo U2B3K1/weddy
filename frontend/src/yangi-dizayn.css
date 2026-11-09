@@ -2048,3 +2048,28 @@
 .kirish .xodim-karta { border-color: rgba(255, 255, 255, .14); background: rgba(8, 11, 18, .3); font-weight: 700; }
 .kirish .xodim-karta:hover { border-color: var(--tilla); }
 .kirish-orqaga { border-radius: 999px; font-size: 14px; font-weight: 600; }
+
+/* ---------- Kesilgan matnlar (avtomatik tekshiruv: «…» bilan yashiringan summa, ism va izohlar) ----------
+   ichki.css KPI izohini va ro'yxat matnini bir qatorga majburlab, sig'maganini «…» bilan kesadi — muhim ma'lumot yo'qolmasin */
+/* KPI izohi — ikki qatorgacha (Kassa › Smena hisoboti: «xarajat … · topshirildi …») */
+.ilova .kpi-matn > small { white-space: normal; overflow: hidden; text-overflow: clip; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+/* Dashboard «Diqqat talab» — tor ustunda ism va zakaz ikki qatorgacha */
+.ilova .dash-diqqat .dash-bron-matn :is(b, small) { white-space: normal; text-overflow: clip; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+/* Dashboard «Xodimlar» va «Zakaz va mijoz»: sarlavha yonidagi davr sig'masa ikkinchi qatorga o'tadi (karta chetiga chiqmaydi) */
+.ilova :is(.dash-xodimlar, .dash-zm) .dash-karta-bosh { flex-wrap: wrap; row-gap: 2px; }
+@media (max-width: 767px) {
+  /* KPI kartalari (Dashboard'dagi egasining savollaridan tashqari): belgi kichik va nom yonida, summa kartaning butun enida —
+     ikki ustunli to'rda «41 800 000 so'm» endi «41 800 …» bo'lib kesilmaydi; sig'masa «so'm» keyingi qatorga o'tadi */
+  .ilova .dash-kpi-karta:not([aria-label="Egasining savollari"] *) {
+    display: grid; grid-template-columns: 30px minmax(0, 1fr); align-items: center; align-content: start; gap: 6px 10px; padding: 14px;
+  }
+  .ilova .dash-kpi-karta:not([aria-label="Egasining savollari"] *) .kpi-plitka { width: 30px; height: 30px; border-radius: 10px; }
+  .ilova .dash-kpi-karta:not([aria-label="Egasining savollari"] *) .kpi-plitka .kpi-ikon { width: 17px; height: 17px; }
+  .ilova .dash-kpi-karta:not([aria-label="Egasining savollari"] *) .kpi-matn { display: contents; }
+  .ilova .dash-kpi-karta:not([aria-label="Egasining savollari"] *) .kpi-matn > * { grid-column: 1 / -1; min-width: 0; }
+  .ilova .dash-kpi-karta:not([aria-label="Egasining savollari"] *) .kpi-matn > .kpi-nom { grid-column: 2; grid-row: 1; }
+  .ilova .dash-kpi-karta:not([aria-label="Egasining savollari"] *) .kpi-matn > b { font-size: 20px; white-space: normal; overflow: visible; text-overflow: clip; }
+  .ilova .dash-kpi-karta:not([aria-label="Egasining savollari"] *):has(> .trend-pill) .kpi-nom { padding-right: 58px; }
+  /* Kassa › To'lov qabul: uzun ism («Kamola Abdullayeva») ikki qatorgacha */
+  .ilova .pos-zakaz-mijoz b { white-space: normal; text-overflow: clip; }
+}
