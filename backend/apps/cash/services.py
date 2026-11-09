@@ -325,6 +325,43 @@ def terminal_tizimda(smena):
     return (r['kirim'] or 0) - (r['chiqim'] or 0)
 
 
+def smena_usullari(smena):
+    """Smenadagi tushum (avans, qoldiq, jarima) to'lov usullari bo'yicha — Kassa paneli: «Terminal …  O'tkazma …».
+    Rahbar «kelmadi» degan o'tkazma kirmaydi (tolangan_summa bilan bir xil ta'rif)."""
+    qs = (smena.tolovlar.filter(tur__in=[Tolov.Tur.AVANS, Tolov.Tur.QOLDIQ, Tolov.Tur.JARIMA])
+          .exclude(tasdiq=Tolov.Tasdiq.KELMADI).values('usul').annotate(s=Sum('summa')))
+    return {r['usul']: r['s'] for r in qs}
+
+
+def smena_harakatlari(smena, soni=60):
+    """Kanvas «Pul harakatlari»: smenadagi to'lovlar (hamma usul), yangisi yuqorida. `summa` — kassaga kirgani musbat,
+    chiqqani manfiy; xarajatda modda nomi va tasdiq holati, inkassatsiyada kimga topshirilgani."""
+    from apps.finance.moddalar import modda_nomlari
+    nomlar = None
+    natija = []
+    for t in (smena.tolovlar.select_related('xodim', 'zakaz__mijoz', 'xarajat', 'topshirish__kimga')
+              .order_by('-vaqt', '-id')[:soni]):
+        tavsif = t.get_tur_display()
+        holat = ''
+        if t.zakaz_id:
+            tavsif += f' · #{t.zakaz.raqam} {t.zakaz.mijoz.fio or t.zakaz.mijoz.telefon}'
+        x = getattr(t, 'xarajat', None)
+        if x is not None:
+            nomlar = nomlar or modda_nomlari(smena.salon)
+            tavsif = f'Xarajat · {nomlar.get(x.modda, x.modda)}'
+            holat = x.get_holat_display().lower()
+        tp = getattr(t, 'topshirish', None)
+        if tp is not None:
+            tavsif = f'Topshirildi · {tp.kimga.ism}ga'
+            holat = tp.get_holat_display().lower()
+        if t.tasdiq == Tolov.Tasdiq.KELMADI:
+            holat = 'kelmadi'
+        natija.append({'id': t.id, 'vaqt': t.vaqt, 'tur': t.tur, 'usul': t.usul, 'usul_nomi': t.get_usul_display(),
+                       'tavsif': tavsif, 'izoh': t.izoh, 'xodim': t.xodim.ism, 'holat': holat,
+                       'summa': t.summa if t.tur in Tolov.KIRIM else -t.summa})
+    return natija
+
+
 def kassa_hisobot(smena):
     """Kunlik kassa hisoboti, naqd pul bo'yicha (4.12 jadvali, Ilova C.2)."""
     q = smena.tolovlar.filter(usul=Tolov.Usul.NAQD)

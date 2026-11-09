@@ -359,3 +359,32 @@ class KategoriyaVaJurnalTests(KatalogBase):
         self.assertEqual(self.api(self.malika).get('/api/jurnal/').status_code, 403)
         self.yangi(self.api(self.malika))
         self.assertEqual(len(self.api(self.rahbar).get('/api/jurnal/').json()), 1)
+
+
+class KartaKorsatkichlariTests(KatalogBase):
+    """Kanvas libos kartasi: «Bu oy — N marta» va «Keyingi bron»."""
+
+    def test_bu_oy_va_keyingi_bron(self):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from apps.bookings.tests import libos_yarat
+        from apps.orders.models import Zakaz
+        from apps.orders.services import zakaz_yaratish
+        bugun = timezone.localdate()
+        libos = libos_yarat(self.salon, self.kat, 'K1')
+        # o'tgan zakaz (shu oyda, qaytarilgan) va kelgusi bron; bekor qilingani hisobga kirmaydi
+        kelgusi = bugun + timedelta(days=40)
+        z1 = zakaz_yaratish(salon=self.salon, xodim=self.malika, telefon='+998901', olib_ketish=bugun + timedelta(days=60),
+                            qaytarish=bugun + timedelta(days=61), libos_idlari=[libos.id])
+        Zakaz.objects.filter(id=z1.id).update(holat=Zakaz.Holat.QAYTARILDI, olib_ketish=bugun.replace(day=1),
+                                              qaytarish=bugun.replace(day=1))  # o'tgan sana — to'g'ridan bazada
+        z2 = zakaz_yaratish(salon=self.salon, xodim=self.malika, telefon='+998902', olib_ketish=kelgusi,
+                            qaytarish=kelgusi + timedelta(days=1), libos_idlari=[libos.id])
+        Zakaz.objects.filter(id=z2.id).update(holat=Zakaz.Holat.BRON)
+        d = next(x for x in self.api(self.malika).get('/api/liboslar/').json() if x['id'] == libos.id)
+        self.assertEqual((d['bu_oy'], d['keyingi_bron']), (1, str(kelgusi)))
+        Zakaz.objects.filter(id=z2.id).update(holat=Zakaz.Holat.BEKOR)
+        d = next(x for x in self.api(self.malika).get('/api/liboslar/').json() if x['id'] == libos.id)
+        self.assertIsNone(d['keyingi_bron'])

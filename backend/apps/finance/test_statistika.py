@@ -78,10 +78,14 @@ class StatistikaTests(TestCase):
     def test_libos_samaradorligi(self):
         h = self.h('libos')
         a = self.qator(h, 'A Libos A')
-        self.assertEqual(a[2:5], [1, 2_000_000, 50.0])  # 1 marta berilgan, tushum 2 mln, qoplash 2/4 mln
-        self.assertEqual(a[5], kun(0))
+        self.assertEqual(a[2:6], [1, 2_000_000, 4_000_000, 50.0])  # 1 marta berilgan, tushum 2 mln, tannarx 4 mln, qoplash 2/4
+        self.assertEqual(a[6], kun(0))
         self.assertEqual(self.qator(h, 'C Libos C')[2:4], [0, 0])  # bekor qilingan va kelgusi bron hisobga kirmaydi
         self.assertEqual(h['jami'][3], 3_000_000)
+        # kanvas «Qaysi libos o'zini oqladi»: jami qatorida umumiy tannarx va umumiy qoplash (tannarxi bor liboslar)
+        bor = [q for q in h['qatorlar'] if q[4]]
+        self.assertEqual(h['jami'][4], sum(q[4] for q in bor))
+        self.assertIsNotNone(h['jami'][5])
 
     def test_kategoriya_va_sotuvchi(self):
         k = self.h('kategoriya')
@@ -236,7 +240,9 @@ class HisobotTafsilotTests(StatistikaTests):
         j = c.get(u, {'kalit': self.a.id, 'dan': str(self.dan), 'gacha': str(self.gacha)})
         self.assertEqual((j.status_code, j.data['jami']), (200, 2_000_000))
         self.assertEqual(c.get('/api/hisobotlar/h/kassa/tafsilot/', {'kalit': 1}).status_code, 400)
-        self.assertIn('kalitlar', c.get('/api/hisobotlar/h/libos/', {'dan': str(self.dan), 'gacha': str(self.gacha)}).data)
+        d = c.get('/api/hisobotlar/h/libos/', {'dan': str(self.dan), 'gacha': str(self.gacha)}).data
+        self.assertIn('kalitlar', d)
+        self.assertEqual(len(d['rasmlar']), len(d['kalitlar']))  # kanvas: har libos qatorida rasm (yo'q bo'lsa None)
         c.credentials(HTTP_AUTHORIZATION='Bearer ' + make_staff_token(self.malika))
         self.assertEqual(c.get(u, {'kalit': self.a.id}).status_code, 403)
 
@@ -286,4 +292,4 @@ class LibosBoshKunTests(TestCase):
         tolov_qabul(salon=salon, xodim=xodim, tur=Tolov.Tur.QOLDIQ, summa=1_000_000, zakaz=z)
         libos_berish(salon=salon, xodim=xodim, zakaz=z, zaloglar=[{'turi': 'pul', 'summa': 1_000_000}])
         qator = statistika.libos_samaradorligi(salon, kun(-30), kun(30))['qatorlar'][0]
-        self.assertEqual((qator[5], qator[6]), (kun(0), 0))  # oxirgi marta — bugun, bo'sh kun — 0
+        self.assertEqual((qator[6], qator[7]), (kun(0), 0))  # oxirgi marta — bugun, bo'sh kun — 0

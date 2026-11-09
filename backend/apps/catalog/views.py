@@ -40,6 +40,25 @@ def mijozdagi_liboslar(salon, liboslar=None):
     return dict(qs.order_by('zakaz__qaytarish').values_list('libos_id', 'zakaz__qaytarish'))
 
 
+def ijara_korsatkichlari(salon):
+    """Kanvas libos kartasi: shu oyda necha marta ijaraga chiqqan (olib ketish sanasi shu oyda, bekor va tasdiqsiz
+    bronlar kirmaydi) va eng yaqin kelgusi bron sanasi: ({libos_id: son}, {libos_id: sana})."""
+    from django.db.models import Count, Min
+    from django.utils import timezone
+
+    from apps.finance.reports import oy_chegaralari
+    from apps.orders.models import Zakaz, ZakazPozitsiya
+    H = Zakaz.Holat
+    bugun = timezone.localdate()
+    qs = ZakazPozitsiya.objects.filter(salon=salon)
+    bu_oy = dict(qs.filter(zakaz__holat__in=[H.BRON, H.BERILDI, H.QAYTARILDI, H.YOPILDI],
+                           zakaz__olib_ketish__range=oy_chegaralari(bugun.year, bugun.month))
+                 .values_list('libos_id').annotate(n=Count('id')))
+    keyingi = dict(qs.filter(zakaz__holat__in=[H.VAQTINCHALIK, H.CHEGIRMA_KUTILMOQDA, H.BRON], zakaz__olib_ketish__gte=bugun)
+                   .values_list('libos_id').annotate(s=Min('zakaz__olib_ketish')))
+    return bu_oy, keyingi
+
+
 def libos_json(l, rahbar, request=None, rasmlar=False, mijozda=None):
     """Tannarx faqat rahbarga ko'rinadi (FT-3.5, 3-bo'lim). `mijozda` — `mijozdagi_liboslar()` natijasi (berilmasa
     shu libos uchun so'raladi): mijozda bo'lsa `mijozda: true` va `qaytish` — kelishilgan qaytarish sanasi."""
@@ -127,7 +146,9 @@ class LiboslarView(APIView):
             qs = qs.filter(artikul__icontains=p['q']) | qs.filter(nomi__icontains=p['q'])
         rahbar = _rahbar(request)
         mijozda = mijozdagi_liboslar(request.salon)  # bitta so'rov butun ro'yxat uchun
-        return Response([libos_json(l, rahbar, request, mijozda=mijozda) for l in qs.order_by('artikul')[:300]])
+        bu_oy, keyingi = ijara_korsatkichlari(request.salon)
+        return Response([{**libos_json(l, rahbar, request, mijozda=mijozda), 'bu_oy': bu_oy.get(l.id, 0),
+                          'keyingi_bron': keyingi.get(l.id)} for l in qs.order_by('artikul')[:300]])
 
     def post(self, request):
         if (rad := yozish_taqiqi(request, self)):  # o'zbekcha sabab bilan (C-12)
@@ -341,14 +362,14 @@ class SanoqView(APIView):
         ochiq = ochiq_sanoq(request.salon)
         tarix = (Sanoq.objects.filter(salon=request.salon, yakunlangan__isnull=False)
                  .select_related('filial', 'boshlagan', 'yakunlagan')[:20])
-        return Response({'ochiq': sanoq_json(ochiq, qatorlar=True) if ochiq else None,
+        return Response({'ochiq': sanoq_json(ochiq, qatorlar=True, request=request) if ochiq else None,
                          'tarix': [sanoq_json(s) for s in tarix]})
 
     def post(self, request):
         from apps.tenants.views_filial import sorovdagi_filial
         filial = sorovdagi_filial(request) if request.data.get('filial') else None
         s, err = _bajar(sanoq_boshlash, salon=request.salon, xodim=request.user, filial=filial)
-        return err or Response(sanoq_json(s, qatorlar=True), status=201)
+        return err or Response(sanoq_json(s, qatorlar=True, request=request), status=201)
 
     def delete(self, request):
         sanoq = ochiq_sanoq(request.salon)
@@ -389,7 +410,7 @@ class SanoqBelgilashView(APIView):
                 raise NotFound('Aksessuar donasi topilmadi.')
         q, err = _bajar(belgilash, salon=request.salon, xodim=request.user, sanoq=sanoq, topildi=d['topildi'],
                         libos=libos, dona=dona, artikul=d['artikul'])
-        return err or Response(qator_json(q))
+        return err or Response(qator_json(q, request))
 
 
 class SanoqYakunlashView(APIView):
@@ -401,7 +422,7 @@ class SanoqYakunlashView(APIView):
             raise NotFound("Ochiq sanoq yo'q.")
         izoh = str(request.data.get('izoh') or '')[:300]
         s, err = _bajar(sanoq_yakunlash, salon=request.salon, xodim=request.user, sanoq=sanoq, izoh=izoh)
-        return err or Response(sanoq_json(s, qatorlar=True))
+        return err or Response(sanoq_json(s, qatorlar=True, request=request))
 
 
 class RasmlarView(APIView):

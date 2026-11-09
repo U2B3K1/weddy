@@ -98,6 +98,25 @@ class SalonchilarView(APIView):
 class SalonchiView(APIView):
     permission_classes = [IsStaff, SalonYozishRuxsati]
 
+    def get(self, request, pk):
+        """Kanvas (MijozSalonchiShisha) tafsiloti — faqat rahbarga: statistika va olib kelgan mijozlarining zakazlari."""
+        if request.user.rol != Xodim.Rol.RAHBAR:
+            return Response({'detail': "Salonchi statistikasi faqat rahbarga ko'rinadi."}, status=403)
+        s = Salonchi.objects.filter(salon=request.salon, id=pk).first()
+        if not s:
+            raise NotFound('Salonchi topilmadi.')
+        zz = list(Zakaz.objects.filter(salon=request.salon, salonchi=s).exclude(holat=Zakaz.Holat.BEKOR)
+                  .select_related('mijoz').prefetch_related('pozitsiyalar__libos').order_by('-olib_ketish', '-id'))
+        s.mijozlar_soni = len({z.mijoz_id for z in zz})
+        s.tushum = sum(z.jami for z in zz if z.tolangan_sana)  # ro'yxatdagidek: faqat to'liq to'langan zakazlar
+        d = salonchi_json(s, True)
+        d['zakazlar_soni'] = len(zz)
+        d['oxirgi'] = zz[0].olib_ketish if zz else None
+        d['zakazlar'] = [{'id': z.id, 'raqam': z.raqam, 'mijoz': z.mijoz.fio or z.mijoz.telefon,
+                          'liboslar': ', '.join(p.libos.nomi for p in z.pozitsiyalar.all()),
+                          'olib_ketish': z.olib_ketish, 'qaytarish': z.qaytarish, 'jami': z.jami} for z in zz[:30]]
+        return Response(d)
+
     def patch(self, request, pk):
         s = Salonchi.objects.filter(salon=request.salon, id=pk).first()
         if not s:

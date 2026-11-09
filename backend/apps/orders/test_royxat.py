@@ -73,6 +73,13 @@ class RoyxatTests(TestCase):
         self.assertEqual([z['raqam'] for z in d['olib_ketiladi']], [1])
         self.assertTrue(d['smena']['ochiq'])
 
+    def test_tafsilot_kanvas_maydonlari(self):
+        """Zakaz kartasi (kanvas): yaratilgan vaqti, mijozning to'y sanasi va manbasi."""
+        d = self.api(self.malika).get(f'/api/zakazlar/{self.z.id}/').json()
+        self.assertTrue(d['yaratilgan'])
+        self.assertIn('toy_sanasi', d)
+        self.assertIn('manba', d)
+
     def test_dashbord_faqat_rahbarga(self):
         self.assertEqual(self.api(self.malika).get('/api/dashbord/').status_code, 403)
         d = self.api(self.rahbar).get('/api/dashbord/').json()
@@ -81,6 +88,11 @@ class RoyxatTests(TestCase):
         self.assertEqual(d['shu_oy']['kutilayotgan_daromad'], 2_000_000)
         self.assertEqual(d['shu_oy']['olingan_avans'], 500_000)
         self.assertEqual(d['shu_oy']['hozirgi_daromad'], 500_000)  # kassa usuli: avans olingan kuni tushum
+        # kanvas Dashboard: xodimlar kassasi, qarzdorlar, o'tgan oy (shu kunlargacha) foydasi
+        self.assertEqual(d['xodimlar_kassasi'], [{'ism': self.malika.ism, 'summa': 500_000}])
+        self.assertEqual(d['qarz'], {'soni': 0, 'jami': 0, 'eng_eski_kun': None})
+        self.assertIn('oldingi_oy_foyda', d)
+        self.assertIsNone(self.api(self.rahbar).get('/api/dashbord/', {'davr': 'hafta'}).json()['oldingi_oy_foyda'])
 
 
 class OflaynToplamTests(RoyxatTests):

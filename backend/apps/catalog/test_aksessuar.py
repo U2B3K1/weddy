@@ -100,6 +100,21 @@ class AksessuarQoshishTests(AksBase):
         a = self.api(self.rahbar).get('/api/aksessuarlar/').json()[0]
         self.assertEqual((a['donalar_soni'], a['yaroqli_donalar']), (3, 2))
 
+    def test_royxatda_har_dona_holati_va_tafsilotda_kimda(self):
+        """Kanvas: ro'yxatda har dona rangli katak (bo'sh/bron/mijozda/yo'qolgan), tafsilotda — qaysi zakazda."""
+        z = self.zakaz(aks=[self.fata.id])
+        d1, d2, d3 = self.fata.donalar.order_by('yorliq')
+        AksessuarDona.objects.filter(id=d3.id).update(holat='yoqolgan')
+        c = self.api(self.rahbar)
+        self.assertEqual(c.get('/api/aksessuarlar/').json()[0]['dona_holatlari'], ['bron', 'bosh', 'yoqolgan'])
+        Zakaz.objects.filter(id=z.id).update(holat='berildi')
+        self.assertEqual(c.get('/api/aksessuarlar/').json()[0]['dona_holatlari'], ['mijozda', 'bosh', 'yoqolgan'])
+        t = c.get(f'/api/aksessuarlar/{self.fata.id}/').json()
+        self.assertEqual(t['donalar'][0]['band']['turi'], 'mijozda')
+        self.assertEqual(t['donalar'][0]['band']['zakaz'], z.raqam)
+        self.assertIsNone(t['donalar'][1]['band'])
+        self.assertEqual(t['bu_yil_berildi'], 1)  # olib ketish 2026-yilda, zakaz berilgan
+
     def test_tamir_holati_faqat_tamir_jurnali_orqali(self):
         d = self.fata.donalar.first()
         c = self.api(self.rahbar)

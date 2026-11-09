@@ -51,6 +51,21 @@ def mijoz_json(m, tolik=False):
     return d
 
 
+def _oxirgi_va_qoldiq(mijoz_idlari):
+    """Kanvas jadvali: har mijozning oxirgi zakazi (raqam, holat, libos) va to'lanmagan qoldig'i — sahifa uchun bitta so'rov."""
+    from .views_royxat import TOLANGAN
+    zs = (Zakaz.objects.filter(mijoz_id__in=mijoz_idlari).exclude(holat=Zakaz.Holat.BEKOR).annotate(tolangan_s=TOLANGAN)
+          .prefetch_related('pozitsiyalar__libos').order_by('mijoz_id', '-olib_ketish', '-id'))
+    oxirgi, qoldiq = {}, {}
+    for z in zs:
+        if z.mijoz_id not in oxirgi:
+            poz = next(iter(z.pozitsiyalar.all()), None)
+            oxirgi[z.mijoz_id] = {'id': z.id, 'raqam': z.raqam, 'holat': z.holat, 'olib_ketish': z.olib_ketish,
+                                  'libos': poz.libos.nomi if poz else None}
+        qoldiq[z.mijoz_id] = qoldiq.get(z.mijoz_id, 0) + max(0, z.jami - (z.tolangan_s or 0))
+    return oxirgi, qoldiq
+
+
 class MijozlarView(APIView):
     permission_classes = [IsStaff]
 
@@ -76,7 +91,10 @@ class MijozlarView(APIView):
         if request.query_params.get('sahifa'):  # {natija, jami}: «200 tadan ko'p» xabari va «Yana» uchun
             limit = _butun(request.query_params.get('limit'), kesim, 1, kesim)
             offset = _butun(request.query_params.get('offset'), 0)
-            return Response({'natija': [mijoz_json(m) for m in qs[offset:offset + limit]], 'jami': qs.count()})
+            sahifa = list(qs[offset:offset + limit])
+            oxirgi, qoldiq = _oxirgi_va_qoldiq([m.id for m in sahifa])
+            return Response({'natija': [{**mijoz_json(m), 'oxirgi': oxirgi.get(m.id), 'qoldiq': qoldiq.get(m.id, 0)} for m in sahifa],
+                             'jami': qs.count()})
         return Response([mijoz_json(m) for m in qs[:kesim]])
 
 
@@ -132,10 +150,23 @@ class MijozView(APIView):
 
     def get(self, request, pk):
         m = self._mijoz(request, pk)
-        tarix = m.zakazlar.prefetch_related('pozitsiyalar__libos').order_by('-raqam')[:30]
-        return Response({**mijoz_json(m, tolik=True), 'tarix': [
-            {'id': z.id, 'raqam': z.raqam, 'holat': z.holat, 'olib_ketish': z.olib_ketish, 'jami': z.jami,
-             'liboslar': [p.libos.nomi for p in z.pozitsiyalar.all()]} for z in tarix]})
+        from .views_royxat import TOLANGAN, _libos_rasmi
+        tarix = (m.zakazlar.annotate(tolangan_s=TOLANGAN).prefetch_related('pozitsiyalar__libos__rasmlar')
+                 .select_related('sotuvchi').order_by('-raqam')[:30])
+        birinchi = m.zakazlar.order_by('yaratilgan').select_related('sotuvchi').first()
+
+        def qator(z):
+            poz = next(iter(z.pozitsiyalar.all()), None)
+            tolangan = z.tolangan_s or 0
+            # kanvas jadvali: libos surati va o'lchami, ijara muddati, to'langan va qoldiq
+            return {'id': z.id, 'raqam': z.raqam, 'holat': z.holat, 'olib_ketish': z.olib_ketish, 'qaytarish': z.qaytarish,
+                    'jami': z.jami, 'tolangan': tolangan, 'qoldiq': 0 if z.holat == Zakaz.Holat.BEKOR else max(0, z.jami - tolangan),
+                    'liboslar': [p.libos.nomi for p in z.pozitsiyalar.all()],
+                    'olcham': poz.libos.olcham if poz else None, 'rasm': _libos_rasmi(request, poz.libos) if poz else None}
+        return Response({**mijoz_json(m, tolik=True), 'tarix': [qator(z) for z in tarix],
+                         # kanvas «Profil haqida»: qachon va kim qo'shgan (birinchi zakaz bo'yicha)
+                         'qoshilgan': birinchi.yaratilgan if birinchi else None,
+                         'qoshgan': birinchi.sotuvchi.ism if birinchi and birinchi.sotuvchi_id else None})
 
     def patch(self, request, pk):
         if (rad := yozish_taqiqi(request, self)):  # o'zbekcha sabab bilan (C-12)

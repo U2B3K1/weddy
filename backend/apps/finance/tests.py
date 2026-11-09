@@ -88,6 +88,14 @@ class PnlTests(FinanceBase):
         self.assertEqual(r['rentabellik'], 55.8)
         self.assertEqual(r['kelgusi_avanslar'], 105_000_000)  # 45 ta zakaz hali «bron» — libos berilmagan
         self.assertEqual(r['tasdiqlanmagan_xarajatlar'], 1)
+        # kanvas «Qayerga ketdi»: moddalar nomi bilan, kattasi oldin; jami — kiritilgan xarajatlar
+        m = r['xarajat_moddalari']
+        self.assertEqual(sum(x['summa'] for x in m), r['xarajatlar'])
+        self.assertEqual([x['summa'] for x in m], sorted((x['summa'] for x in m), reverse=True))
+        self.assertTrue(all(x['nomi'] for x in m))
+        # 12 oylik qator: kirdi − chiqdi = sof foyda
+        oyq = next(o for o in reports.oylik_qator(s, 2026, 11) if o['oy'] == '2026-10')
+        self.assertEqual((oyq['kirdi'], oyq['kirdi'] - oyq['chiqdi']), (108_000_000 + 1_200_000, r['sof_foyda']))
 
     def test_s13_tannarxsiz_libos_ogohlantirishi(self):
         libos_yarat(self.salon, self.kat, 'A')  # tannarx kiritilmagan

@@ -203,9 +203,11 @@ class KalendarView(APIView):
         liboslar = (Libos.objects.filter(salon=request.salon)
                     .exclude(holat__in=[Libos.Holat.SOTILDI, Libos.Holat.HISOBDAN_CHIQARILDI, Libos.Holat.ARXIV,
                                         Libos.Holat.TASDIQ_KUTILMOQDA])
-                    .select_related('kategoriya').order_by('kategoriya__tartib', 'artikul'))
+                    .select_related('kategoriya').prefetch_related('rasmlar').order_by('kategoriya__tartib', 'artikul'))
         return Response([
             {'id': l.id, 'artikul': l.artikul, 'nomi': l.nomi, 'kategoriya': l.kategoriya.nomi, 'holat': l.holat,
+             # kanvas: libos qatorida surat va o'lcham
+             'rasm': _birinchi_rasm(request, l), 'olcham': l.olcham,
              'bronlar': sorted(by_libos.get(l.id, []), key=lambda x: x['dan']),
              'primerkalar': primerkalar.get(l.id, [])}
             for l in liboslar])

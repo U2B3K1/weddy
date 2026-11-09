@@ -24,6 +24,7 @@ admin_urlpatterns = [
     path('boshlash/', views_admin.BoshlashView.as_view()),
     path('integratsiyalar/', views_integratsiya.IntegratsiyaView.as_view()),
     path('filiallar/', views_filial.FiliallarView.as_view()),
+    path('filiallar/joriy/', views_filial.JoriyFilialView.as_view()),
     path('filiallar/<int:pk>/', views_filial.FilialView.as_view()),
     path('xodimlar-boshqaruv/', views_admin.XodimlarBoshqaruvView.as_view()),
     path('xodimlar-boshqaruv/<int:pk>/telegram-ulash/', views_admin.XodimTelegramUlashView.as_view()),

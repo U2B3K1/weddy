@@ -92,19 +92,25 @@ def libos_samaradorligi(salon, dan, gacha, kategoriya=None, filial=None, **_):
                       .values_list('libos_id', 'zakaz__olib_ketish').order_by('zakaz__olib_ketish')):
         oxirgi[lid] = min(sana, bugun)  # olib ketish sanasidan oldin berilgan libos kelajak sanada «oxirgi marta» bo'lib qolmasin
     qatorlar = []
+    jami_umumiy = jami_tannarx = 0  # umumiy qoplash: tannarxi kiritilgan liboslar bo'yicha
     for l in _liboslar(salon, kategoriya, filial).select_related('kategoriya').order_by('artikul'):
         jami = umumiy.get(l.id, 0)
+        if l.tannarx:
+            jami_umumiy += jami
+            jami_tannarx += l.tannarx
         qatorlar.append([f'{l.artikul} {l.nomi}', l.kategoriya.nomi, berilgan.get(l.id, 0), davr_tushum.get(l.id, 0),
-                         round(jami / l.tannarx * 100, 1) if l.tannarx else None, oxirgi.get(l.id),
+                         l.tannarx or None, round(jami / l.tannarx * 100, 1) if l.tannarx else None, oxirgi.get(l.id),
                          (bugun - oxirgi[l.id]).days if l.id in oxirgi else None])
     kalitlar = [l.id for l in _liboslar(salon, kategoriya, filial).order_by('artikul')]
-    return {'kalitlar': kalitlar, 'sarlavha': 'Libos samaradorligi',
+    return {'kalitlar': kalitlar, 'sarlavha': "Qaysi libos o'zini oqladi",
             'izoh': ("«Berilgan» va «Ijara narxi bo'yicha» — shu davr: to'liq to'langan zakazlardagi libos ijara narxi "
                      "(chegirma va ustamasiz). «Qoplash (jami)» — butun vaqtdagi ijara narxi / tannarx."),
             'ustunlar': _u(('Libos', 'matn'), ('Kategoriya', 'matn'), ('Berilgan', 'son'), ("Ijara narxi bo'yicha", 'pul'),
-                           ('Qoplash (jami)', 'foiz'), ('Oxirgi berilgan', 'sana'), ("Bo'sh turgan kun", 'son')),
+                           ('Tannarx', 'pul'), ('Qoplash (jami)', 'foiz'), ('Oxirgi berilgan', 'sana'),
+                           ("Bo'sh turgan kun", 'son')),
             'qatorlar': qatorlar,
-            'jami': ['Jami', '', sum(q[2] for q in qatorlar), sum(q[3] for q in qatorlar), None, None, None]}
+            'jami': ['Jami', '', sum(q[2] for q in qatorlar), sum(q[3] for q in qatorlar), jami_tannarx or None,
+                     round(jami_umumiy / jami_tannarx * 100, 1) if jami_tannarx else None, None, None]}
 
 
 def kategoriyalar(salon, dan, gacha, sotuvchi=None, filial=None, **_):
@@ -510,7 +516,7 @@ HISOBOTLAR = {
 
 # Ro'yxat uchun sarlavhalar — hisobotni hisoblamasdan (har bir funksiya javobidagi 'sarlavha' bilan bir xil)
 SARLAVHALAR = {
-    'libos': 'Libos samaradorligi', 'kategoriya': 'Kategoriyalar', 'sotuvchi': 'Sotuvchilar', 'salonchi': 'Salonchilar',
+    'libos': "Qaysi libos o'zini oqladi", 'kategoriya': 'Kategoriyalar', 'sotuvchi': 'Sotuvchilar', 'salonchi': 'Salonchilar',
     'manba': 'Mijoz manbalari', 'zalog': 'Zaloglar',
     'bosh-liboslar': "Qoplamagan va bo'sh liboslar", 'bekor': 'Bekor qilingan zakazlar', 'kechikish': 'Kechikish va jarimalar',
     'xarajat': 'Xarajatlar', 'pul-oqimi': 'Pul oqimi', 'kassa': 'Kunlik kassa', 'nazorat': 'Xodimlar nazorati',

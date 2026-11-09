@@ -116,6 +116,10 @@ class SanoqTests(TestCase):
         self.assertEqual(len(r.data['qatorlar']), 3)
         r = c.post('/api/sanoq/belgilash/', {'artikul': 'A-1'}, format='json')
         self.assertEqual((r.status_code, r.data['topildi']), (200, True))
+        self.assertIsNotNone(r.data['vaqt'])  # kanvas «Oxirgi belgilanganlar» uchun
+        self.assertIn('rasm', r.data)
+        ochiq = c.get('/api/sanoq/').data['ochiq']
+        self.assertEqual(sum(1 for q in ochiq['qatorlar'] if q['vaqt']), 1)
         r = c.post('/api/sanoq/belgilash/', {'artikul': 'Z'}, format='json')
         self.assertEqual(r.status_code, 409)
         r = c.post('/api/sanoq/belgilash/', {'libos': self.a.id, 'topildi': False}, format='json')

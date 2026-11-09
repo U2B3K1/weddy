@@ -175,6 +175,9 @@ class ErtagaVaBoshEkranTests(Asos):
         self.assertEqual([z['id'] for z in self.royxat(holat='ertaga_qaytar')], [b.id])
         s = self.api().get('/api/zakazlar/sonlar/').json()
         self.assertEqual((s['ertaga_olib'], s['ertaga_qaytar']), (1, 1))
+        # sotuvchi bosh sahifasidagi «Ertaga» paneli — xuddi shu ro'yxatlar
+        bosh = self.api().get('/api/bosh-ekran/').json()
+        self.assertEqual(([z['id'] for z in bosh['ertaga_olib']], [z['id'] for z in bosh['ertaga_qaytar']]), ([a.id], [b.id]))
 
     def test_bugun_olib_bir_xil_va_qoldiq(self):
         self.oddiy(1, holat=Zakaz.Holat.VAQTINCHALIK, olib=0, jami=1_500_000)

@@ -281,7 +281,13 @@ class HisobotView(APIView):
         # FT-20.1: faqat shu hisobotga tegishli filtrlar qo'llanadi
         dan, gacha, filtrlar = _davr_va_filtrlar(request, FILTRLAR.get(nom, ()))
         from .statistika import DAVRSIZ
-        return Response({**fn(request.salon, dan, gacha, **filtrlar), 'dan': dan, 'gacha': gacha,
+        natija = fn(request.salon, dan, gacha, **filtrlar)
+        if nom == 'libos':  # kanvas «Qaysi libos o'zini oqladi»: qatorda libos rasmi (kalitlar tartibida)
+            from apps.bookings.views import _birinchi_rasm
+            from apps.catalog.models import Libos
+            liboslar = Libos.objects.filter(salon=request.salon, id__in=natija['kalitlar']).prefetch_related('rasmlar').in_bulk()
+            natija['rasmlar'] = [_birinchi_rasm(request, liboslar[k]) if k in liboslar else None for k in natija['kalitlar']]
+        return Response({**natija, 'dan': dan, 'gacha': gacha,
                          'filtrlar': list(FILTRLAR.get(nom, ())), 'davrsiz': nom in DAVRSIZ})
 
 

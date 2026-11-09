@@ -84,6 +84,26 @@ class OtkazmaTests(Base):
         self.assertEqual(api(self.rahbar).get(f'/api/zakazlar/{self.z.id}/').data['tolovlar'][0]['tasdiq'], 'keldi')
 
 
+class UsullarTests(Base):
+    def test_smena_usullari_panel_uchun(self):
+        """Kassa paneli: smenadagi tushum usullar bo'yicha; «kelmadi» o'tkazma va zalog kirmaydi."""
+        self.tolov(500_000, U.NAQD)
+        self.tolov(300_000, U.KARTA, tur=T.QOLDIQ)
+        t = self.tolov(200_000, U.OTKAZMA, tur=T.QOLDIQ)
+        self.tolov(1_000_000, U.NAQD, tur=T.ZALOG)
+        u = api(self.malika).get('/api/kassa/smena/').data['usullar']
+        self.assertEqual((u.get('naqd'), u.get('karta'), u.get('otkazma')), (500_000, 300_000, 200_000))
+        tugma_ishla(111, f'ot:{t.id}:y')  # rahbar: kelmadi
+        self.assertNotIn('otkazma', api(self.malika).get('/api/kassa/smena/').data['usullar'])
+
+    def test_jadval_qatorida_artikul_va_olcham(self):
+        q = api(self.malika).get('/api/zakazlar/royxat/', {'holat': 'tolov_kutmoqda'}).data
+        r = q if isinstance(q, list) else q.get('natijalar') or q.get('results') or q.get('royxat')
+        z = next(x for x in r if x['id'] == self.z.id)
+        libos = self.z.pozitsiyalar.first().libos
+        self.assertEqual((z['artikul'], z['olcham']), (libos.artikul, libos.olcham))
+
+
 class TerminalTests(Base):
     def test_terminal_sverkasi_majburiy_va_farq(self):
         self.tolov(1_000_000, U.KARTA)

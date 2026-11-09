@@ -147,17 +147,23 @@ def sanoq_bekor(*, salon, xodim, sanoq):
     sanoq.delete()
 
 
-def qator_json(q):
+def qator_json(q, request=None):
+    """Kanvas sanog'i: `vaqt` — qachon belgilangani (Oxirgi belgilanganlar), `rasm` — libos eskizi (request berilsa)."""
+    vaqt = timezone.localtime(q.vaqt) if q.vaqt else None
     if q.libos_id:
+        rasm = None
+        if request is not None:
+            r = next(iter(q.libos.rasmlar.all()), None)
+            rasm = request.build_absolute_uri(r.kichik.url) if r else None
         return {'tur': 'libos', 'libos': q.libos_id, 'dona': None, 'artikul': q.libos.artikul, 'nomi': q.libos.nomi,
                 'kategoriya': q.libos.kategoriya.nomi, 'olcham': q.libos.olcham, 'joy': q.joy,
-                'topildi': q.topildi, 'xodim': q.xodim.ism if q.xodim_id else None}
+                'topildi': q.topildi, 'xodim': q.xodim.ism if q.xodim_id else None, 'vaqt': vaqt, 'rasm': rasm}
     return {'tur': 'aksessuar', 'libos': None, 'dona': q.dona_id, 'artikul': q.dona.yorliq, 'nomi': q.dona.aksessuar.nomi,
             'kategoriya': q.dona.aksessuar.kategoriya.nomi, 'olcham': '', 'joy': q.joy,
-            'topildi': q.topildi, 'xodim': q.xodim.ism if q.xodim_id else None}
+            'topildi': q.topildi, 'xodim': q.xodim.ism if q.xodim_id else None, 'vaqt': vaqt, 'rasm': None}
 
 
-def sanoq_json(sanoq, qatorlar=False):
+def sanoq_json(sanoq, qatorlar=False, request=None):
     # Vaqt mahalliy vaqtda: UTC da 07.11 02:10 dagi sanoq «06.11» bo'lib ko'rinardi (frontend sanani kesib oladi)
     d = {'id': sanoq.id, 'filial': sanoq.filial.nomi if sanoq.filial_id else None,
          'boshlagan': sanoq.boshlagan.ism, 'boshlangan': timezone.localtime(sanoq.boshlangan),
@@ -166,6 +172,6 @@ def sanoq_json(sanoq, qatorlar=False):
          'izoh': sanoq.izoh, 'kutilgan': sanoq.kutilgan, 'topilgan': sanoq.topilgan, 'yoq': sanoq.yoq,
          'ortiqcha': sanoq.ortiqcha}
     if qatorlar:
-        d['qatorlar'] = [qator_json(q) for q in sanoq.qatorlar.select_related(
-            'libos__kategoriya', 'dona__aksessuar__kategoriya', 'xodim')]
+        d['qatorlar'] = [qator_json(q, request) for q in sanoq.qatorlar.select_related(
+            'libos__kategoriya', 'dona__aksessuar__kategoriya', 'xodim').prefetch_related('libos__rasmlar')]
     return d

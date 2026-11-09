@@ -73,6 +73,12 @@ class SalonchiTests(TestCase):
         d = {x['ism']: x for x in self.api(self.rahbar).get('/api/salonchilar/').json()}
         self.assertEqual((d['Madina']['mijozlar_soni'], d['Madina']['tushum']), (2, 2_000_000))  # ikkinchisi hali to'lanmagan
         self.assertEqual((d['Zarina']['mijozlar_soni'], d['Zarina']['tushum']), (0, 0))
+        # kanvas tafsiloti: shu salonchi olib kelgan mijozlarning zakazlari (eng yangisi tepada), faqat rahbarga
+        self.assertEqual(c.get(f'/api/salonchilar/{s.id}/').status_code, 403)
+        t = self.api(self.rahbar).get(f'/api/salonchilar/{s.id}/').json()
+        self.assertEqual((t['mijozlar_soni'], t['tushum'], t['zakazlar_soni'], len(t['zakazlar'])), (2, 2_000_000, 2, 2))
+        self.assertEqual(t['zakazlar'][0]['liboslar'], 'Libos B')  # bir xil sanada — keyingisi (id) tepada
+        self.assertEqual(t['oxirgi'], '2026-11-10')
 
     def test_tahrirlash_nofaol_va_zakazga_belgilash(self):
         s = Salonchi.objects.create(salon=self.salon, ism='Madina')

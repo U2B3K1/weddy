@@ -188,9 +188,18 @@ def kelgusi_avanslar(salon, filial=None):
 def foyda_zarar(salon, yil, oy, filial=None):
     """Oylik foyda va zarar (Ilova B), kassa usulida — `foyda()` + oy holati."""
     boshi, oxiri = oy_chegaralari(yil, oy)
+    fd = foyda(salon, boshi, oxiri, filial)
+    from .moddalar import modda_nomlari
+    nomlar = modda_nomlari(salon)
+    # «Qayerga ketdi» (kanvas FoydaShisha): tasdiqlangan xarajatlar moddalar bo'yicha, kattasi oldin
+    moddalar = {**fd['togridan_togri_moddalar']}
+    for k, v in fd['operatsion_moddalar'].items():
+        moddalar[k] = moddalar.get(k, 0) + v
     return {
         'oy': f'{yil}-{oy:02d}', 'filial': filial,
-        **foyda(salon, boshi, oxiri, filial),
+        **fd,
+        'xarajat_moddalari': [{'kod': k, 'nomi': nomlar.get(k, k), 'summa': v}
+                              for k, v in sorted(moddalar.items(), key=lambda x: -x[1])],
         **libos_investitsiyasi(salon, filial),
         **libos_xaridi(salon, boshi, oxiri, filial),
         'yetkazib_qarz': yetkazib_qarz(salon),
@@ -346,10 +355,13 @@ def taqqoslash(salon, yil, oy, filial=None, bugun=None):
 
 
 def oylik_qator(salon, yil, oy, soni=12, filial=None):
-    """Oxirgi `soni` oy: tushum va sof foyda (dashborddagi 12 oylik grafik, 6.5)."""
+    """Oxirgi `soni` oy: tushum va sof foyda (dashborddagi 12 oylik grafik, 6.5); `kirdi` — kirgan pul va jarimalar,
+    `chiqdi` — qaytarilgan, kelmagan, xarajat va bonus (kirdi − chiqdi = sof foyda; «Oylik foyda» jadvali)."""
     natija = []
     for n in range(-(soni - 1), 1):
         y, m = _oy_siljit(yil, oy, n)
         r = foyda(salon, *oy_chegaralari(y, m), filial)
-        natija.append({'oy': f'{y}-{m:02d}', 'tushum': r['tushum'], 'sof_foyda': r['sof_foyda']})
+        kirdi = r['kirim'] + r['jarimalar']
+        natija.append({'oy': f'{y}-{m:02d}', 'tushum': r['tushum'], 'sof_foyda': r['sof_foyda'],
+                       'kirdi': kirdi, 'chiqdi': kirdi - r['sof_foyda']})
     return natija

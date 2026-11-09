@@ -43,6 +43,10 @@ class MijozTests(TestCase):
         d = self.api(self.rahbar).get('/api/mijozlar/').json()
         self.assertEqual([(m['zakazlar_soni'], m['jami_summa'], m['oxirgi_zakaz']) for m in d],
                          [(2, 2_000_000, '2026-12-20'), (0, 0, None)])
+        # kanvas jadvali (sahifalab): oxirgi zakaz raqami/holati/libosi va to'lanmagan qoldiq (bekor kirmaydi)
+        s = self.api(self.rahbar).get('/api/mijozlar/', {'sahifa': 1}).json()['natija']
+        self.assertEqual((s[0]['oxirgi']['olib_ketish'], s[0]['oxirgi']['libos'] is not None, s[0]['qoldiq']), ('2026-12-20', True, 2_000_000))
+        self.assertEqual((s[1]['oxirgi'], s[1]['qoldiq']), (None, 0))
 
     def test_sotuvchi_qidiradi(self):
         c = self.api(self.malika)
@@ -54,6 +58,11 @@ class MijozTests(TestCase):
         c = self.api(self.malika)
         d = c.get(f'/api/mijozlar/{self.m.id}/').json()
         self.assertEqual((d['fio'], d['tarix'][0]['raqam'], d['tarix'][0]['liboslar']), ('Dilnoza Karimova', 1, ['Libos A']))
+        # kanvas: zakaz jadvalida to'langan va qoldiq, profilda qachon/kim qo'shgan
+        t = d['tarix'][0]
+        self.assertEqual((t['tolangan'], t['qoldiq'], t['qoldiq'] + t['tolangan']), (0, t['jami'], t['jami']))
+        self.assertEqual(d['qoshgan'], self.malika.ism)
+        self.assertTrue(d['qoshilgan'])
         r = c.patch(f'/api/mijozlar/{self.m.id}/', {'toy_sanasi': '2026-11-11', 'manba': 'instagram', 'kokrak': 88,
                                                     'bel': 66, 'son': 94, 'boy': 165, 'oyoq_olchami': 37}, format='json')
         self.assertEqual(r.status_code, 200, r.content)

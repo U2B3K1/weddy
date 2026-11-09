@@ -49,9 +49,11 @@ class YetkazibBeruvchiView(_Ruxsat, APIView):
     def get(self, request, pk):
         yb = _yb(request, pk)
         d = yetkazib_beruvchi_json(yb, holati(request.salon, [yb.id]).get(yb.id))
+        from apps.bookings.views import _birinchi_rasm  # kanvas: libos eskizi bilan
         d['liboslar'] = [{'id': l.id, 'artikul': l.artikul, 'nomi': l.nomi, 'tannarx': l.tannarx, 'holat': l.holat,
-                          'holat_nomi': l.get_holat_display(), 'sana': l.yaratilgan.date()}
-                         for l in Libos.objects.filter(salon=request.salon, yetkazib_beruvchi=yb).order_by('-yaratilgan')]
+                          'holat_nomi': l.get_holat_display(), 'sana': l.yaratilgan.date(), 'rasm': _birinchi_rasm(request, l)}
+                         for l in Libos.objects.filter(salon=request.salon, yetkazib_beruvchi=yb)
+                         .prefetch_related('rasmlar').order_by('-yaratilgan')]
         d['aksessuarlar'] = [{**partiya_json(p), 'aksessuar_id': p.aksessuar_id, 'kod': p.aksessuar.kod,
                               'nomi': p.aksessuar.nomi}
                              for p in AksessuarPartiya.objects.filter(salon=request.salon, yetkazib_beruvchi=yb)

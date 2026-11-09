@@ -49,6 +49,19 @@ class ZalogTekshiruviTests(Base):
         d = self.m.get('/api/kassa/zaloglar/').data
         self.assertEqual([(z['turi'], z['joyida']) for z in d['zaloglar']], [('hujjat', None), ('tillo', None)])
         self.assertEqual(self.m.get('/api/kassa/smena/').data['zalog_tekshirilmagan'], 2)
+        # kanvas: qaytarish sharti (libos mijozda — qaytarilganda) va seyfdagi pul zaloglar jami
+        self.assertEqual(d['zaloglar'][0]['shart'], 'Libos A qaytarilganda')
+        self.assertEqual(d['pul'], {'soni': 1, 'jami': 300_000})
+
+    def test_smena_harakatlari(self):
+        """Kanvas «Pul harakatlari»: smenadagi to'lovlar, kirgani musbat, chiqqani manfiy; yangisi yuqorida."""
+        d = self.m.get('/api/kassa/smena/').data
+        h = d['harakatlar']
+        self.assertEqual(len(h), 4)  # 3 avans + 1 pul zalog (hujjat va tillo to'lov emas)
+        self.assertTrue(all(x['summa'] > 0 for x in h))
+        self.assertIn('#', h[-1]['tavsif'])
+        self.assertTrue(d['ochilgan'])
+        self.assertEqual(d['topshiriqlarim'], [])
 
     def test_belgilash_va_yoq_bolsa_rahbarga_xabar(self):
         z1, z2 = self.m.get('/api/kassa/zaloglar/').data['zaloglar']

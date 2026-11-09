@@ -43,8 +43,10 @@ class YetkazibBeruvchiTests(TestCase):
         self.assertEqual(self.c.post(f"/api/yetkazib-beruvchilar/{self.yb['id']}/tolovlar/",
                                      {'summa': 6_000_000, 'izoh': 'naqd berildi'}).status_code, 201)
         self.assertEqual(self.holat()['qarz'], 0)
+        self.assertEqual(self.holat()['oxirgi_tolov']['summa'], 6_000_000)  # kanvas «Oxirgi to'lov» — eng so'nggisi
         d = self.c.get(f"/api/yetkazib-beruvchilar/{self.yb['id']}/").data
         self.assertEqual(([l['artikul'] for l in d['liboslar']], len(d['tolovlar'])), (['Y2', 'Y1'], 3))
+        self.assertIn('rasm', d['liboslar'][0])
         b = timezone.localdate()
         self.assertEqual(reports.foyda_zarar(self.salon, b.year, b.month)['yetkazib_qarz'], 0)
 

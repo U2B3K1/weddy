@@ -71,9 +71,15 @@ class SmenaHolatiView(APIView):
             'yuborilgan': [services.topshiriq_json(t) for t in smena.topshiriqlar.filter(
                 kimdan=men, holat=KassaTopshirish.Holat.KUTILMOQDA).select_related('kimdan', 'kimga')],
             'hisobot': services.kassa_hisobot(smena),
+            'usullar': services.smena_usullari(smena),  # tushum to'lov usullari bo'yicha (panelda Terminal, O'tkazma)
             # sverka o'chirilgan bo'lsa 0 — yopish oynasida terminal maydoni chiqmaydi
             'terminal_tizimda': services.terminal_tizimda(smena) if sozlama(request.salon).terminal_sverkasi else 0,
             'zalog_tekshirilmagan': tekshiruv.tekshirilmaganlar_soni(smena),
+            # kanvas: «smena 09:02 dan», «Pul harakatlari», «Bugungi topshirish» (mening so'rovlarim, holati bilan)
+            'ochilgan': smena.ochilgan, 'ochgan': smena.ochgan.ism,
+            'harakatlar': services.smena_harakatlari(smena),
+            'topshiriqlarim': [services.topshiriq_json(t) for t in smena.topshiriqlar.filter(
+                kimdan=men, smena_yopishda=False).select_related('kimdan', 'kimga').order_by('-yaratilgan')[:5]],
             **umumiy,
         })
 
@@ -288,7 +294,7 @@ class ZaloglarView(APIView):
         smena = self._smena(request)
         if not smena:
             return Response({'ochiq': False, 'zaloglar': []})
-        return Response({'ochiq': True, 'zaloglar': tekshiruv.zalog_royxati(smena)})
+        return Response({'ochiq': True, 'zaloglar': tekshiruv.zalog_royxati(smena), 'pul': tekshiruv.pul_zaloglar(smena)})
 
     def post(self, request):
         if not SalonYozishRuxsati().has_permission(request, self):

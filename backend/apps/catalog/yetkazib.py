@@ -35,7 +35,12 @@ def holati(salon, yb_idlar=None):
     natija = {}
 
     def qator(yid):
-        return natija.setdefault(yid, {'liboslar_soni': 0, 'aksessuar_donalar': 0, 'xarid': 0, 'tolangan': 0, 'qarz': 0})
+        return natija.setdefault(yid, {'liboslar_soni': 0, 'aksessuar_donalar': 0, 'xarid': 0, 'tolangan': 0, 'qarz': 0,
+                                       'oxirgi_tolov': None})
+    # kanvas «Oxirgi to'lov» ko'rsatkichi: har yetkazib beruvchining eng so'nggi to'lovi
+    for yid, sana, summa in tolovlar.order_by('-sana', '-id').values_list('yetkazib_beruvchi', 'sana', 'summa'):
+        if qator(yid)['oxirgi_tolov'] is None:
+            natija[yid]['oxirgi_tolov'] = {'sana': sana, 'summa': summa}
     for r in liboslar.values('yetkazib_beruvchi').annotate(n=Count('id'), s=Sum('tannarx')):
         q = qator(r['yetkazib_beruvchi'])
         q['liboslar_soni'], q['xarid'] = r['n'], q['xarid'] + (r['s'] or 0)
@@ -55,7 +60,7 @@ def jami_qarz(salon):
 
 
 def yetkazib_beruvchi_json(yb, h=None):
-    h = h or {'liboslar_soni': 0, 'aksessuar_donalar': 0, 'xarid': 0, 'tolangan': 0, 'qarz': 0}
+    h = h or {'liboslar_soni': 0, 'aksessuar_donalar': 0, 'xarid': 0, 'tolangan': 0, 'qarz': 0, 'oxirgi_tolov': None}
     return {'id': yb.id, 'nomi': yb.nomi, 'telefon': yb.telefon, 'izoh': yb.izoh, **h}
 
 

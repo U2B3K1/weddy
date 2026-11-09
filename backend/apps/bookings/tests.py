@@ -155,6 +155,7 @@ class KalendarTests(TestCase):
     def test_bron_zakaz_sanalari_va_bufer_bilan(self):
         r = self.c.get('/api/bronlar/kalendar/?dan=2026-11-01&gacha=2026-11-30').json()
         self.assertEqual([l['artikul'] for l in r], ['A', 'B'])
+        self.assertTrue({'rasm', 'olcham'} <= set(r[0]))  # kanvas: libos qatorida surat va o'lcham
         bron = r[0]['bronlar'][0]
         self.assertEqual((bron['dan'], bron['gacha'], bron['band_gacha']), ('2026-11-10', '2026-11-12', '2026-11-13'))
         self.assertEqual((bron['zakaz_raqami'], bron['mijoz'], bron['turi']), (1, 'Dilnoza', 'vaqtinchalik'))

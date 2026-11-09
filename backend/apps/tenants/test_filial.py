@@ -53,6 +53,24 @@ class FilialTests(TestCase):
         self.assertEqual(self.r.post('/api/filiallar/', {'nomi': 'B'}, format='json').status_code, 201)
         self.assertEqual(self.r.patch(f'/api/filiallar/{a.id}/', {'faol': True}, format='json').status_code, 409)
 
+    def test_joriy_filial_yuqori_paneldan(self):
+        """Yuqori paneldagi tanlov: so'rov kelgan qurilmaning filiali almashadi; faqat rahbar; qurilmasiz — 409."""
+        a, b = self.filial('Chilonzor'), self.filial('Yunusobod')
+        r = self.api(self.rahbar, self.qurilma)
+        self.assertEqual(r.get('/api/filiallar/').data['joriy'], None)
+        j = r.patch('/api/filiallar/joriy/', {'filial': b.id}, format='json')
+        self.assertEqual((j.status_code, j.data['joriy']), (200, b.id))
+        self.qurilma.refresh_from_db()
+        self.assertEqual(self.qurilma.filial_id, b.id)
+        self.assertEqual(r.get('/api/filiallar/').data['joriy'], b.id)
+        self.assertEqual(r.patch('/api/filiallar/joriy/', {'filial': None}, format='json').data['joriy'], None)  # filialsiz
+        self.assertEqual(r.patch('/api/filiallar/joriy/', {'filial': 99999}, format='json').status_code, 404)
+        a.faol = False
+        a.save()
+        self.assertEqual(r.patch('/api/filiallar/joriy/', {'filial': a.id}, format='json').status_code, 404)  # nofaol
+        self.assertEqual(self.api(self.malika, self.qurilma).patch('/api/filiallar/joriy/', {'filial': b.id}, format='json').status_code, 403)
+        self.assertEqual(self.r.patch('/api/filiallar/joriy/', {'filial': b.id}, format='json').status_code, 409)  # qurilma tokeni yo'q
+
     def test_qurilma_filiali_zakaz_va_libosga_yoziladi(self):
         f = self.filial()
         j = self.r.patch(f'/api/qurilmalar/{self.qurilma.id}/', {'filial': f.id}, format='json')

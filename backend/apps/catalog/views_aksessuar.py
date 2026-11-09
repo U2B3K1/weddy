@@ -25,19 +25,53 @@ def aksessuar_rasm_json(a, request):
     return {'rasm': url(a.rasm_kichik), 'rasm_katta': url(a.rasm)}
 
 
-def aksessuar_json(request, a, rahbar, donalar=False):
-    """Tannarx faqat rahbarga ko'rinadi (FT-3.5)."""
+def dona_bandligi(donalar):
+    """Har dona hozir kimda: {dona_id: {'turi': 'mijozda'|'bron', 'zakaz': raqam, 'mijoz': fio, 'sana': boshlanish}}.
+    Mijozga berilgan zakaz (BERILDI) ustun; aks holda eng yaqin kelgusi bron. Yakunlangan zakazlar hisobga olinmaydi."""
+    from apps.bookings.models import AksessuarBron
+    natija = {}
+    for b in (AksessuarBron.kelgusi().filter(dona__in=donalar).select_related('zakaz__mijoz').order_by('oraliq')):
+        mijozda = b.zakaz_id and b.zakaz.holat == 'berildi'
+        if b.dona_id in natija and not (mijozda and natija[b.dona_id]['turi'] != 'mijozda'):
+            continue
+        natija[b.dona_id] = {'turi': 'mijozda' if mijozda else 'bron', 'zakaz': b.zakaz.raqam if b.zakaz_id else None,
+                             'mijoz': (b.zakaz.mijoz.fio or b.zakaz.mijoz.telefon) if b.zakaz_id else '', 'sana': b.oraliq.lower}
+    return natija
+
+
+def dona_holati(x, band):
+    """Ro'yxatdagi rangli katak uchun: ta'mir/yo'qolgan/arxiv — dona holati; bo'sh dona band bo'lsa — bron yoki mijozda."""
+    if x.holat != AksessuarDona.Holat.BOSH:
+        return x.holat
+    return band[x.id]['turi'] if x.id in band else 'bosh'
+
+
+def aksessuar_json(request, a, rahbar, donalar=False, band=None):
+    """Tannarx faqat rahbarga ko'rinadi (FT-3.5). `band` — dona_bandligi() natijasi (ro'yxatda hamma aksessuar uchun bitta so'rov)."""
     d = a.donalar.all()
+    if band is None:
+        band = dona_bandligi(list(d))
     j = {'id': a.id, 'nomi': a.nomi, 'kod': a.kod, 'kategoriya': a.kategoriya.nomi,
          'kategoriya_id': a.kategoriya_id, 'ijara_narxi': a.ijara_narxi, 'holat': a.holat,
          'donalar_soni': len(d), 'yaroqli_donalar': sum(1 for x in d if x.holat == AksessuarDona.Holat.BOSH),
+         # kanvas: har dona rangli katak — bo'sh, bron, mijozda, ta'mirda, yo'qolgan (arxiv ko'rsatilmaydi)
+         'dona_holatlari': [dona_holati(x, band) for x in d if x.holat != AksessuarDona.Holat.ARXIV],
          'qoshgan': a.qoshgan.ism if a.qoshgan else None,
          **aksessuar_rasm_json(a, request),
          'manekin': aksessuar_manekin_json(a, request)}
     if donalar:
         ochiq = {t.dona_id: t for t in DonaTamiri.objects.filter(dona__in=d, tugagan__isnull=True)}
         j['donalar'] = [{'id': x.id, 'yorliq': x.yorliq, 'holat': x.holat, 'filial': x.filial_id,
+                         'band': band.get(x.id),
                          'tamir': dona_tamir_json(ochiq[x.id]) if x.id in ochiq else None} for x in d]
+    if donalar:  # kanvas tafsiloti: shu yil necha marta ijaraga berilgan (bekor va tasdiqsiz zakazlarsiz)
+        from django.utils import timezone
+
+        from apps.orders.models import Zakaz, ZakazAksessuar
+        H = Zakaz.Holat
+        j['bu_yil_berildi'] = ZakazAksessuar.objects.filter(
+            dona__aksessuar=a, zakaz__holat__in=[H.BRON, H.BERILDI, H.QAYTARILDI, H.YOPILDI],
+            zakaz__olib_ketish__year=timezone.localdate().year).count()
     if rahbar:
         j['tannarx'] = a.tannarx
         if donalar:  # qaysi donalar kimdan va necha pulga olingani
@@ -86,7 +120,9 @@ class AksessuarlarView(APIView):
         if not _rahbar(request) or request.query_params.get('faol') == '1':
             qs = qs.exclude(holat=Aksessuar.Holat.ARXIV)
         rahbar = _rahbar(request)
-        return Response([aksessuar_json(request, a, rahbar) for a in qs])
+        qs = list(qs)
+        band = dona_bandligi([x for a in qs for x in a.donalar.all()])
+        return Response([aksessuar_json(request, a, rahbar, band=band) for a in qs])
 
     def post(self, request):
         if (rad := yozish_taqiqi(request, self)):  # o'zbekcha sabab bilan (C-12)

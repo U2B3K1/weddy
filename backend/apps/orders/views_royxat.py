@@ -65,7 +65,9 @@ def _jadval_qatori(request, z):
         tolangan = tolangan_summa(z)
     return {**_qisqa(z), 'tolangan': tolangan, 'qoldiq': max(0, z.jami - tolangan),
             'bron_muddati': getattr(z, 'bron_muddati_s', None) if z.holat in AVANSSIZ else None,
-            'rasm': _libos_rasmi(request, poz.libos) if poz else None}
+            'rasm': _libos_rasmi(request, poz.libos) if poz else None,
+            # Kassa → To'lov qabul chekida (maket): birinchi libosning artikuli va o'lchami
+            'artikul': poz.libos.artikul if poz else None, 'olcham': poz.libos.olcham if poz else None}
 
 
 def eslatmalar(salon, bugun):
@@ -287,6 +289,8 @@ class ZakazTafsilotView(APIView):
         return Response({
             **_qisqa(z), 'asosiy_narx': z.asosiy_narx, 'ustama': z.ustama, 'ustama_foiz': z.ustama_foiz, 'chegirma': z.chegirma,
             'tolangan': tolangan, 'qoldiq': z.jami - tolangan, 'bron_muddati': bron_muddati,
+            # kanvas kartasi: «Yaratildi … · sotuvchi», mijoz qatorida to'y sanasi va manba
+            'yaratilgan': z.yaratilgan, 'toy_sanasi': z.mijoz.toy_sanasi, 'manba': z.mijoz.get_manba_display() if z.mijoz.manba else '',
             # xronologik tartib (A-30)
             'tolovlar': [{'id': t.id, 'tur': t.tur, 'tur_nomi': t.get_tur_display(), 'summa': t.summa, 'usul': t.usul,
                           'usul_nomi': t.get_usul_display(), 'xodim': t.xodim.ism, 'tasdiq': t.tasdiq,
@@ -352,6 +356,9 @@ class BoshEkranView(APIView):
             'olib_ketiladi': z('bugun_olib'),
             'qaytariladi': z('bugun_qaytar'),
             'kechikkan': z('kechikkan'),
+            # kanvas «Ertaga» paneli: ertaga olib ketadigan va qaytaradiganlar (sotuvchi kechqurun tayyorlaydi)
+            'ertaga_olib': z('ertaga_olib'),
+            'ertaga_qaytar': z('ertaga_qaytar'),
             'smena': {'ochiq': bool(smena), 'id': smena.id if smena else None},
         })
 
@@ -438,6 +445,19 @@ class RahbarDashbordView(APIView):
             salon=salon, holat=Xarajat.Holat.KUTILMOQDA, sana__range=(davr_dan, bugun), **zf).aggregate(s=Sum('summa'))['s'] or 0
         oxirgi_smena = Smena.objects.filter(salon=salon, yopilgan__isnull=False).order_by('-yopilgan').first()
         from apps.cash.nazorat import dashbord_nazorati
+        # Kanvas Dashboard (egasining savollari): «Bu oy qancha ishladim» — o'tgan oyning xuddi shu kunlarigacha foyda bilan;
+        # «Qarzdorlar» — QarzdorlarView bilan bir xil ta'rif; «Xodimlar» — davrda kim kassaga qancha pul qabul qildi
+        oldingi_oy_foyda = None
+        if davr == 'oy':
+            o_oxiri = davr_dan - timedelta(days=1)
+            o_boshi = o_oxiri.replace(day=1)
+            oldingi_oy_foyda = _davr_bloki(salon, o_boshi, o_boshi.replace(day=min(bugun.day, o_oxiri.day)), filial)['taxminiy_sof_foyda']
+        from django.db.models import Min
+        qz = Zakaz.objects.filter(salon=salon, holat=Zakaz.Holat.QAYTARILDI, qaytarish_akti__qarz__gt=0, **zf).aggregate(
+            soni=Count('id'), jami=Sum('qaytarish_akti__qarz'), eng_eski=Min('qaytarish_akti__sana'))
+        xodimlar_kassasi = [{'ism': r['xodim__ism'], 'summa': r['s']} for r in Tolov.objects.filter(
+            reports.tolov_filiali(filial), Tolov.HAQIQIY, salon=salon, vaqt__date__range=(davr_dan, bugun),
+            tur__in=[Tolov.Tur.AVANS, Tolov.Tur.QOLDIQ, Tolov.Tur.JARIMA]).values('xodim__ism').annotate(s=Sum('summa')).order_by('-s')[:5]]
         # FT-19.5: o'chirilgan funksiya ko'rsatkichi chiqmaydi
         tugayotgan = (Promokod.objects.filter(salon=salon, holat=Promokod.Holat.FAOL, tugash__gte=bugun,
                                               tugash__lte=bugun + timedelta(days=7)).count()
@@ -468,6 +488,9 @@ class RahbarDashbordView(APIView):
                 'otkazmalar': Tolov.objects.filter(salon=salon, tasdiq=Tolov.Tasdiq.KUTILMOQDA).count(),
             },
             'shu_oy': shu_oy,
+            'oldingi_oy_foyda': oldingi_oy_foyda,
+            'qarz': {'soni': qz['soni'], 'jami': qz['jami'] or 0, 'eng_eski_kun': (bugun - qz['eng_eski']).days if qz['eng_eski'] else None},
+            'xodimlar_kassasi': xodimlar_kassasi,
             'nazorat': dashbord_nazorati(salon, bugun),  # egasining uch savoli: kamomad, diqqat, liboslar joyidami
             'ogohlantirishlar': {
                 'tannarxsiz_liboslar': Libos.objects.filter(salon=salon, tannarx__isnull=True,

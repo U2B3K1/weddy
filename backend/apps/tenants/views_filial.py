@@ -80,6 +80,22 @@ class FiliallarView(APIView):
         return Response(filial_json(f), status=201)
 
 
+class JoriyFilialView(APIView):
+    """PATCH {filial: id | null} — shu qurilma qaysi filialda ishlashi (yuqori paneldagi filial tanlovi).
+    Sozlama → Qurilmalar'dagi biriktirish bilan bir xil amal, faqat so'rov kelgan qurilmaning o'ziga; rahbar."""
+    permission_classes = [IsRahbar, SalonYozishRuxsati]
+
+    def patch(self, request):
+        qid = getattr(request, 'qurilma_id', None)
+        q = IshonchliQurilma.objects.filter(id=qid, salon=request.salon, faol=True).first() if qid else None
+        if not q:
+            return Response({'detail': "Bu qurilma ro'yxatda yo'q — filialni Sozlama → Qurilmalar orqali biriktiring."}, status=409)
+        q.filial = sorovdagi_filial(request)
+        q.save(update_fields=['filial'])
+        jurnalga_yoz(request.salon, request.user, 'qurilma_filiali', q.nomi, '', q.filial.nomi if q.filial else 'filialsiz')
+        return Response({'joriy': q.filial_id})
+
+
 class FilialView(APIView):
     permission_classes = [IsRahbar, SalonYozishRuxsati]
 

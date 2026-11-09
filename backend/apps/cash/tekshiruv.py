@@ -14,7 +14,8 @@ SAQLANADI = (Zalog.Holat.SAQLANMOQDA, Zalog.Holat.USHLAB_QOLINDI)
 def _zaloglar(smena):
     """Salonda saqlanayotgan hujjat va tillo zaloglar. Filial kassasida — shu filial zakazlarining zaloglari."""
     qs = (Zalog.objects.filter(salon=smena.salon, holat__in=SAQLANADI).exclude(turi=Zalog.Turi.PUL)
-          .select_related('zakaz__mijoz').order_by('yorliq', 'id'))
+          .select_related('zakaz__mijoz', 'zakaz__qaytarish_akti').prefetch_related('zakaz__pozitsiyalar__libos')
+          .order_by('yorliq', 'id'))
     return qs.filter(zakaz__filial_id=smena.filial_id) if smena.filial_id else qs
 
 
@@ -24,10 +25,30 @@ def zalog_royxati(smena):
     natija = []
     for z in _zaloglar(smena):
         tavsif = f'{z.hujjat_turi} № {z.hujjat_raqami}' if z.turi == Zalog.Turi.HUJJAT else f'{z.tavsif}, {z.ogirlik_gr} g'
-        natija.append({'id': z.id, 'yorliq': z.yorliq, 'turi': z.turi, 'tavsif': tavsif, 'zakaz_id': z.zakaz_id,
-                       'zakaz_raqami': z.zakaz.raqam, 'mijoz': z.zakaz.mijoz.fio or z.zakaz.mijoz.telefon,
-                       'joyida': belgilar.get(z.id)})
+        natija.append({'id': z.id, 'yorliq': z.yorliq, 'turi': z.turi, 'turi_nomi': z.get_turi_display(), 'tavsif': tavsif,
+                       'zakaz_id': z.zakaz_id, 'zakaz_raqami': z.zakaz.raqam, 'mijoz': z.zakaz.mijoz.fio or z.zakaz.mijoz.telefon,
+                       'olingan': z.olingan, 'shart': qaytarish_sharti(z.zakaz), 'joyida': belgilar.get(z.id)})
     return natija
+
+
+def qaytarish_sharti(zakaz):
+    """Kanvas «Qaytarish sharti»: libos qaytgach yoki qarz to'langach zalog mijozga qaytariladi."""
+    from apps.orders.models import Zakaz
+    akt = getattr(zakaz, 'qaytarish_akti', None) if zakaz.holat == Zakaz.Holat.QAYTARILDI else None
+    if akt is not None and akt.qarz:
+        return f"qarz {akt.qarz:,} to'langanda".replace(',', ' ')
+    nomlar = [p.libos.nomi for p in zakaz.pozitsiyalar.all()]
+    return f"{', '.join(nomlar) or 'libos'} qaytarilganda"
+
+
+def pul_zaloglar(smena):
+    """Kanvas «Pul zaloglar» ko'rsatkichi: salonda (seyfda) saqlanayotgan pul zaloglar soni va jami."""
+    from django.db.models import Count, Sum
+    qs = Zalog.objects.filter(salon=smena.salon, holat__in=SAQLANADI, turi=Zalog.Turi.PUL)
+    if smena.filial_id:
+        qs = qs.filter(zakaz__filial_id=smena.filial_id)
+    r = qs.aggregate(soni=Count('id'), jami=Sum('summa'))
+    return {'soni': r['soni'], 'jami': r['jami'] or 0}
 
 
 def tekshirilmaganlar_soni(smena):
@@ -79,6 +100,7 @@ def smenani_tuzatish(*, salon, rahbar, smena, fakt_qoldiq=None, izoh=None):
 
 def smena_json(s):
     return {'id': s.id, 'sana': s.sana, 'ochgan': s.ochgan.ism, 'filial': s.filial.nomi if s.filial_id else None,
+            'ochilgan': s.ochilgan,  # kanvas «Vaqt» ustuni: 09:02 – 20:15 (yopilgan — vaqt)
             'boshlangich_qoldiq': s.boshlangich_qoldiq, 'hisobdagi_qoldiq': s.hisobdagi_qoldiq, 'fakt_qoldiq': s.fakt_qoldiq,
             'farq': s.farq, 'izoh': s.izoh, 'yopilgan': s.yopilgan,
             'zalog_tekshirilmagan': s.zalog_tekshirilmagan, 'zalog_yoq': s.zalog_yoq,
@@ -96,4 +118,4 @@ def yopishda_zalog_hisobi(smena):
     return ''
 
 
-__all__ = ['zalog_royxati', 'zalogni_belgilash', 'smenani_tuzatish', 'smena_json', 'yopishda_zalog_hisobi', 'timezone']
+__all__ = ['zalog_royxati', 'pul_zaloglar', 'qaytarish_sharti', 'zalogni_belgilash', 'smenani_tuzatish', 'smena_json', 'yopishda_zalog_hisobi', 'timezone']
