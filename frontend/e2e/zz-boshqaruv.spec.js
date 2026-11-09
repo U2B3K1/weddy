@@ -73,7 +73,7 @@ test('hisobot: ikki zalog hisoboti bitta — «Zaloglar», ostida turi bo\'yicha
   const xatolar = xatolarniKuzat(page)
   await kirish(page, 'Rahbar', '1111')
   await bolim(page, 'Hisobotlar')
-  await nav(page).getByRole('button', { name: 'Umumiy hisobot', exact: true }).click()
+  await page.getByRole('tab', { name: 'Umumiy hisobot', exact: true }).click()
   const tur = page.getByLabel('Hisobot turi')
   await expect(tur.locator('option', { hasText: 'Zalog statistikasi' })).toHaveCount(0)
   await expect(tur.locator('option', { hasText: 'Zaloglar reestri' })).toHaveCount(0)
@@ -88,11 +88,9 @@ test('hisobot: ikki zalog hisoboti bitta — «Zaloglar», ostida turi bo\'yicha
 test('sozlama: rekvizitlar umumiy «Saqlash» paneli orqali (B-37); kassada «sverka» yo\'q', async ({ page }) => {
   const xatolar = xatolarniKuzat(page)
   await kirish(page, 'Rahbar', '1111')
-  const sozlama = async (guruh, nom) => {
-    if (await nav(page).getByRole('button', { name: 'Sozlama', exact: true }).isVisible()) await bolim(page, 'Sozlama')
-    const g = nav(page).getByRole('button', { name: guruh, exact: true })
-    if (await g.getAttribute('aria-expanded') !== 'true') await g.click()
-    await nav(page).getByRole('button', { name: nom, exact: true }).click()
+  const sozlama = async (_guruh, nom) => {  // bo'limlar Sozlama sahifasidagi chap ro'yxatda (Ndiz)
+    await bolim(page, 'Sozlama')
+    await page.getByRole('navigation', { name: 'Sozlama menyusi' }).getByRole('button', { name: nom, exact: true }).click()
   }
   await sozlama('Salon va xodimlar', 'Kassa')
   await expect(page.getByText('Smena yopishda terminal hisobotini solishtirish')).toBeVisible()
@@ -128,7 +126,7 @@ test("mijoz kartasidan «Yangi zakaz» — Kassa › Yangi zakaz ochiladi", asyn
   await expect(page.getByRole('heading', { name: 'Storno Mijoz' })).toBeVisible()
   await page.locator('.karta-bosh').getByRole('button', { name: 'Yangi zakaz' }).click()
   await expect(page.getByRole('heading', { name: 'Storno Mijoz' })).toHaveCount(0)
-  await expect(nav(page).getByRole('button', { name: 'Yangi zakaz', exact: true })).toHaveAttribute('aria-current', 'page')
+  await expect(page.getByRole('tab', { name: 'Yangi zakaz', exact: true })).toHaveAttribute('aria-selected', 'true')
   expect(xatolar).toEqual([])
 })
 
@@ -184,7 +182,7 @@ test("C-11: Kunlik kassa va Xodimlar nazoratida «Seyf farqi» ustuni", async ({
   const xatolar = xatolarniKuzat(page)
   await kirish(page, 'Rahbar', '1111')
   await bolim(page, 'Hisobotlar')
-  await nav(page).getByRole('button', { name: 'Umumiy hisobot', exact: true }).click()
+  await page.getByRole('tab', { name: 'Umumiy hisobot', exact: true }).click()
   // ustunlar serverdan (davrda smena bo'lmasa jadval chizilmaydi); jadval bo'lsa — sarlavhada ham
   const kassa = await apiSorov(page, 'GET', '/hisobotlar/h/kassa/')
   expect(kassa.ustunlar.map((u) => u.nom)).toContain('Seyf farqi')
@@ -201,9 +199,7 @@ test("C-21: Sozlama › Avans qaytarish — «Avans qancha» (foiz va misol), um
   const xatolar = xatolarniKuzat(page)
   await kirish(page, 'Rahbar', '1111')
   await bolim(page, 'Sozlama')
-  const g = nav(page).getByRole('button', { name: 'Zakaz qoidalari', exact: true })
-  if (await g.getAttribute('aria-expanded') !== 'true') await g.click()
-  await nav(page).getByRole('button', { name: 'Avans qaytarish', exact: true }).click()
+  await page.getByRole('navigation', { name: 'Sozlama menyusi' }).getByRole('button', { name: 'Avans qaytarish', exact: true }).click()
   const avans = page.locator('fieldset', { hasText: 'Avans qancha' })
   await expect(avans.getByLabel("Birinchi to'lov to'liq avans")).toBeChecked()
   await avans.getByRole('radio').nth(1).check()

@@ -18,7 +18,8 @@ export default function Tasdiq({ sarlavha, matn, tugma = 'Tasdiqlash', xavfli = 
     window.addEventListener('keydown', esc)
     return () => window.removeEventListener('keydown', esc)
   }, [fokus])
-  // body'ga chiqariladi: shisha (backdrop-filter) bloklar ichida `position: fixed` ota blokka bog'lanib, oyna kichrayib qolardi
+  // Ilova ildiziga (.ilova) chiqariladi: shisha (backdrop-filter) bloklar ichida `position: fixed` ota blokka bog'lanib,
+  // oyna kichrayib qolardi. body emas — .ilova ichida yangi dizayn tokenlari (shrift, ranglar) oynaga ham tushadi.
   return createPortal(
     <div className="oyna-parda" onClick={onYop}>
       <div className="oyna" role="alertdialog" aria-modal="true" aria-label={sarlavha} onClick={(e) => e.stopPropagation()}>
@@ -30,6 +31,6 @@ export default function Tasdiq({ sarlavha, matn, tugma = 'Tasdiqlash', xavfli = 
         </div>
       </div>
     </div>,
-    document.body,
+    document.querySelector('.ilova') || document.body,
   )
 }

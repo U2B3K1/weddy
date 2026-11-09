@@ -40,12 +40,12 @@ test('sotuvchi: zakazdan smena yopilishigacha', async ({ page }) => {
 
   let raqam
   await test.step('yangi zakaz: sana → libos → mijoz', async () => {
-    await nav(page).getByRole('button', { name: 'Yangi zakaz', exact: true }).click()
+    await page.getByRole('tab', { name: 'Yangi zakaz', exact: true }).click()
     await kunniBos(page, iso(20))
     await kunniBos(page, iso(22))
     await page.getByRole('button', { name: 'Davom etish — liboslarni tanlash' }).click()
     await page.locator('ul.liboslar li', { hasText: 'E2E-1' }).getByRole('button', { name: "Qo'shish" }).click()
-    await expect(page.locator('.zakaz-jami .varaq-jami')).toContainText("1 000 000 so'm")
+    await expect(page.locator('.zakaz-jami .yz-jami')).toContainText('1 000 000')  // «Zakaz xulosasi» — Jami ijara (kanvas)
     await page.getByRole('button', { name: 'Davom etish', exact: true }).click()
     await page.getByLabel('Mijoz telefoni').fill(telefon)
     await page.getByLabel('Mijoz telefoni').blur()
@@ -62,8 +62,8 @@ test('sotuvchi: zakazdan smena yopilishigacha', async ({ page }) => {
     await page.getByRole('button', { name: 'Avans qabul qilish' }).click()
     const chek = page.getByRole('region', { name: "To'lov" })
     await expect(chek).toContainText(`#${raqam}`)
-    await chek.getByRole('button', { name: /^To'liq:/ }).click()
-    await chek.getByRole('button', { name: "Qabul qilish · 1 000 000 so'm" }).click()
+    await chek.getByRole('button', { name: /^To'liq \d/ }).click()
+    await chek.getByRole('button', { name: "1 000 000 so'm qabul qilish" }).click()
     await expect(chek.getByText("To'lov qabul qilindi")).toBeVisible()
   })
 

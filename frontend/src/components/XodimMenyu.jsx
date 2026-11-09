@@ -6,7 +6,8 @@ import { smenaHolati, som } from '../api'
 // Xodim menyusi: belgi (profil rasmi yoki ismning bosh harfi) bosilsa — salon nomi, profil rasmi va «Ilovadan chiqish».
 // Kompyuterda yuqori panelda ism va rol bilan; telefonda (`ixcham`) shapkada faqat doira belgi.
 // `onKassa` (ixtiyoriy) — smenada naqd bilan chiqmoqchi bo'lganda «Kassaga o'tish» tugmasi shu bo'limni ochadi.
-export default function XodimMenyu({ xodim, rol, onChiqish, onRasm, onRasmOchir, onKassa, ixcham = false }) {
+// `yon` — chap panel pastida faqat «Chiqish» tugmasi (smena ogohlantirishi bilan); xodim belgisi va menyusi yuqori panelda.
+export default function XodimMenyu({ xodim, rol, onChiqish, onRasm, onRasmOchir, onKassa, ixcham = false, yon = false }) {
   const [ochiq, setOchiq] = useState(false)
   const [rasmXato, setRasmXato] = useState('')
   const [yuklanmoqda, setYuklanmoqda] = useState(false)
@@ -43,6 +44,21 @@ export default function XodimMenyu({ xodim, rol, onChiqish, onRasm, onRasmOchir,
   }
   const harf = (xodim.ism || '?').trim().charAt(0).toUpperCase()
 
+  if (yon) {
+    return (
+      <div className="ustki-joy yon-joy">
+        <button type="button" className="yon-chiqish" disabled={tekshirilmoqda} onClick={chiqishBos}>
+          <NavIkona nom="chiqish" className="tugma-ikon" />Chiqish
+        </button>
+        {ogoh && (
+          <ChiqishOgohlantirish {...ogoh} onYop={ogohYop}
+            onKassa={onKassa && (() => { setOgoh(null); onKassa() })}
+            onChiqish={() => { setOgoh(null); onChiqish() }} />
+        )}
+      </div>
+    )
+  }
+
   return (
     <div className="ustki-joy" ref={joy}>
       <button type="button" className={ixcham ? 'shapka-xodim' : 'ustki-xodim'} aria-expanded={ochiq} aria-haspopup="menu"
@@ -55,7 +71,8 @@ export default function XodimMenyu({ xodim, rol, onChiqish, onRasm, onRasmOchir,
       </button>
       {ochiq && (
         <div className="ustki-menyu" role="menu">
-          <p className="malumot">{ixcham && <><b>{xodim.ism}</b>{xodim.ism?.trim() !== rol && ` · ${rol}`}<br /></>}{xodim.salon}</p>
+          {/* salon nomi bu yerda ham ortiqcha (foydalanuvchi) — telefonda faqat kim kirgani */}
+          {ixcham && <p className="malumot"><b>{xodim.ism}</b>{xodim.ism?.trim() !== rol && ` · ${rol}`}</p>}
           {/* profil rasmi — kirish ekranidagi kartochkada va shapkada ko'rinadi */}
           <button type="button" role="menuitem" disabled={yuklanmoqda} onClick={() => fayl.current?.click()}>
             <NavIkona nom="kamera" className="tugma-ikon" />
@@ -84,7 +101,8 @@ export default function XodimMenyu({ xodim, rol, onChiqish, onRasm, onRasmOchir,
   )
 }
 
-// «Siz hali smenadasiz» — Tasdiq oynasi uslubida (body'ga chiqariladi: shapka shishasi ichida `fixed` kichrayib qolmasin)
+// «Siz hali smenadasiz» — Tasdiq oynasi uslubida. Ilova ildiziga (.ilova) chiqariladi: shapka shishasi ichida `fixed`
+// kichrayib qolmasin, body'da esa yangi dizayn tokenlari (shrift, ranglar) tushmaydi.
 function ChiqishOgohlantirish({ naqd, yolgiz, onKassa, onChiqish, onYop }) {
   const asosiy = useRef(null)
   useEffect(() => {
@@ -111,7 +129,7 @@ function ChiqishOgohlantirish({ naqd, yolgiz, onKassa, onChiqish, onYop }) {
         </div>
       </div>
     </div>,
-    document.body,
+    document.querySelector('.ilova') || document.body,
   )
 }
 

@@ -50,9 +50,9 @@ test('yangi zakaz: har qadam ikki kenglikda', async ({ page }) => {
   await suratlar(page, '0-aksessuar-rasm')
 
   await nav(page).getByRole('button', { name: 'Kassa', exact: true }).click()  // «Yangi zakaz» — Kassa menyusida
-  await nav(page).getByRole('button', { name: 'Yangi zakaz', exact: true }).click()
-  // qadamlar (Sana — Libos — Mijoz) zakaz varaqasi kartochkasi ichida, tepada
-  await expect(page.locator('aside.varaq > ol.zakaz-ip').first()).toBeVisible()
+  await page.getByRole('tab', { name: 'Yangi zakaz', exact: true }).click()
+  // qadamlar (Sana — Libos tanlash — Mijoz va tasdiq) — kanvasdagidek tepada, alohida panelda
+  await expect(page.locator('.yz-qadamlar > ol.zakaz-ip').first()).toBeVisible()
   await suratlar(page, '1-sana-bosh')
   await kunniBos(page, iso(40))
   await kunniBos(page, iso(41))
@@ -119,7 +119,7 @@ test('yangi zakaz: har qadam ikki kenglikda', async ({ page }) => {
   const qidiruv = page.getByRole('searchbox', { name: 'Zakaz qidirish' }).first()
   await qidiruv.fill('Storno Mijoz')
   await qidiruv.press('Enter')
-  await page.locator('.zakaz-katak', { hasText: 'Storno Mijoz' }).first().click()
+  await page.locator('.zakaz-jadval tbody tr', { hasText: 'Storno Mijoz' }).first().click()  // ism — «Mijoz» ustunida (kanvas)
   await expect(page.locator('.karta-asosiy .shtamp')).toHaveText('Bekor qilindi')
   await suratlar(page, '7-karta-bekor')
   expect(xatolar).toEqual([])

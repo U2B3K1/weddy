@@ -1,13 +1,17 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { chegirmaSorovlari, xarajatlar } from '../api'
 import { Tasdiqlar } from '../pages/BoshEkran'
+import FilialTanlov from './FilialTanlov'
 import NavIkona from './NavIkona'
 import TelegramBlok from './TelegramBlok'
 import XodimMenyu from './XodimMenyu'
 
+const OYLAR = ['yanvar', 'fevral', 'mart', 'aprel', 'may', 'iyun', 'iyul', 'avgust', 'sentabr', 'oktabr', 'noyabr', 'dekabr']
+const bugunMatn = () => { const d = new Date(); return `${d.getDate()} ${OYLAR[d.getMonth()]}, ${d.getFullYear()}` }
+
 // Kontent ustidagi yuqori panel (barcha sahifalarda): chapda sahifa nomi, o'ngda zakaz qidiruvi,
 // bildirishnomalar (rahbarga: qaror kutayotganlar va ogohlantirishlar) va xodim menyusi.
-export default function UstkiPanel({ sarlavha, izoh, xodim, rahbar, xabarlar, sozlash, qarorSoni, onQarorOzgardi, onQidir, onBolim, onChiqish, onRasm, onRasmOchir, onKassa }) {
+export default function UstkiPanel({ sarlavha, izoh, xulosa, xulosaRef, amal, xodim, rahbar, xabarlar, sozlash, qarorSoni, onQarorOzgardi, onQidir, onBolim, onChiqish, onRasm, onRasmOchir, onKassa, onFilialOzgardi }) {
   const [q, setQ] = useState('')
   const [ochiq, setOchiq] = useState(null) // 'xabar' | null
   const joy = useRef(null)
@@ -43,6 +47,9 @@ export default function UstkiPanel({ sarlavha, izoh, xodim, rahbar, xabarlar, so
       <div className="ustki-nom">
         <h1>{sarlavha}</h1>
         {izoh && <p>{izoh}</p>}
+        {/* Kanvas: sarlavha ostida bir qatorli xulosa — statik (App) yoki sahifaning o'zi qo'yadi (BoshXulosa, ref orqali) */}
+        <div className="ustki-xulosa" ref={xulosaRef}>{xulosa && <span>{xulosa}</span>}</div>
+        {amal}
       </div>
       <form className="qidiruv-maydon ustki-qidiruv" role="search"
         onSubmit={(e) => { e.preventDefault(); if (q.trim()) { onQidir(q.trim()); setQ('') } }}>
@@ -98,6 +105,9 @@ export default function UstkiPanel({ sarlavha, izoh, xodim, rahbar, xabarlar, so
           </div>
         )}
       </div>
+      {/* Salon nomi o'rnida — shu qurilma filiali (rahbar almashtiradi); bugungi sana — ma'lumot belgisi */}
+      <FilialTanlov rahbar={rahbar} ochiq={ochiq === 'filial'} onOch={(o) => setOchiq(o ? 'filial' : null)} onOzgardi={onFilialOzgardi} />
+      <span className="ustki-pill"><NavIkona nom="kalendar" />{bugunMatn()}</span>
       {/* onKassa — smenada naqd puli bor xodim «Chiqish»ni bossa ogohlantirishdagi «Kassaga o'tish» (A-19, D3) */}
       <XodimMenyu xodim={xodim} rol={rol} onChiqish={onChiqish} onRasm={onRasm} onRasmOchir={onRasmOchir} onKassa={onKassa} />
     </header>

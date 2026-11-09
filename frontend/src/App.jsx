@@ -1,4 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
+import { BoshAmal } from './components/BoshJoy'
+import { BoshJoyi } from './components/boshJoyi'
 import { bildirishnomalar, boshlash, boshlashYop, dashbord, me, oflaynKesh, oflaynToplam, profilRasmOchir, profilRasmYukla, saqlangan, som, tarmoqXatosi, xatoMatni } from './api'
 import BoshEkran from './pages/BoshEkran'
 import Tasdiq from './components/Tasdiq'
@@ -61,6 +63,11 @@ export default function App() {
   const [bosh, setBosh] = useState(null)
   // Telefonda nav chapdan chiqadigan menyu: shapkadagi tugma ochadi, bo'lim tanlanganda yopiladi.
   const [menyu, setMenyu] = useState(false)
+  const [filialKalit, setFilialKalit] = useState(0) // yuqori panelda filial almashtirilganda sahifa qayta yuklanadi
+  // Bo'lim boshidagi joylar (xulosa va o'ngdagi tugma) — sahifalar BoshXulosa/BoshAmal bilan to'ldiradi
+  const [xulosaJoy, setXulosaJoy] = useState(null)
+  const [amalJoy, setAmalJoy] = useState(null)
+  const boshJoyi = useMemo(() => ({ xulosa: xulosaJoy, amal: amalJoy }), [xulosaJoy, amalJoy])
   // «Davom etyapsizmi?» — chiqish vaqti (ms) yoki null; faollikRef — taymerni qayta boshlash (oynadagi «Davom etish»)
   const [uxlayapti, setUxlayapti] = useState(null)
   const faollikRef = useRef(null)
@@ -211,8 +218,9 @@ export default function App() {
     }
     if (k === 'kalendar') { k = 'zakazlar'; setZakazlarBolim('bandlik') }
     if (k === 'zakazlar') setZakazId(null)
-    // Kassa / Hisobotlar / Sozlamaga kirilsa chap panel o'sha bo'lim menyusiga o'tadi; Sozlamada tanlangan bo'lim guruhi ochiladi
-    setNavRejim(['kassa', 'hisobotlar', 'sozlamalar'].includes(k) ? k : null)
+    // Shisha uslubi (Ndiz): chap panel doim asosiy bo'limlarda. Kassa va Hisobotlar bo'limlari — sahifa tepasidagi ikonkali tablar,
+    // Sozlama bo'limlari — Sozlama sahifasining o'zidagi chap ro'yxat (Sozlamalar.jsx, .sozlama-yon)
+    setNavRejim(null)
     if (k === 'sozlamalar') {
       const b = ich || sozlamaBolim
       setSozlamaGuruh(SOZLAMA_BOLIMLAR.find((x) => x.id === b)?.guruh || GURUHLAR[0].nomi)
@@ -290,12 +298,43 @@ export default function App() {
     og.tugayotgan_promokodlar > 0 && { matn: `${og.tugayotgan_promokodlar} ta promokod muddati 7 kun ichida tugaydi`, soni: 1, bolim: 'sozlamalar:promokod', tur: 'yopildi' },
   ].filter(Boolean)
   const hozir = new Date()
-  const KUN = ['Yakshanba', 'Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma', 'Shanba']
-  const OY = ['yanvar', 'fevral', 'mart', 'aprel', 'may', 'iyun', 'iyul', 'avgust', 'sentabr', 'oktabr', 'noyabr', 'dekabr']
   const soat = hozir.getHours()
-  const panelNomi = sahifa === 'bosh' ? `${soat < 11 ? 'Xayrli tong' : soat < 18 ? 'Xayrli kun' : 'Xayrli kech'}, ${xodim.ism}`
-    : Object.fromEntries(bolimlar)[sahifa]
-  const panelIzoh = sahifa === 'bosh' && !rahbar ? `${KUN[hozir.getDay()]}, ${hozir.getDate()}-${OY[hozir.getMonth()]}` : null
+  const salom = soat < 11 ? 'Xayrli tong' : soat < 18 ? 'Xayrli kun' : 'Xayrli kech'
+  // Rahbar bosh sahifasi — maketdagidek ikki qatorli salom (birinchisi och tilla)
+  // Bo'lim boshi kanvasdagidek (foydalanuvchi: «har bo'limda har xil, kanvas bilan ishlanmagan»): sarlavha — ochiq tabning nomi,
+  // ostida bir qatorli xulosa. `null` xulosa — sahifaning o'zi hisoblab qo'yadi (BoshXulosa: zakaz va libos sonlari).
+  const BOSH = {
+    'zakazlar:royxat': ['Zakazlar', null],
+    'zakazlar:bandlik': ['Bandlik kalendari', 'Qaysi libos qachon band — bir qarashda'],
+    'katalog:liboslar': ['Liboslar', null],
+    'katalog:aksessuarlar': ['Aksessuarlar', "Fata, toj, taqinchoq — har dona o'z yorlig'i bilan hisobda"],
+    'katalog:sanoq': ["Libos sanog'i", "Javondagini belgilang — yo'qolgan yoki zakazsiz berilgan buyum shu yerda ko'rinadi"],
+    'katalog:yetkazib': ['Yetkazib beruvchilar', 'Libos va aksessuar kimdan olingan, kimga qancha qarz qoldi'],
+    'mijozlar:mijozlar': ['Mijozlar', "Kim qachon to'y qiladi, kimda qoldiq yoki qarz bor"],
+    'mijozlar:salonchilar': ['Salonchilar', 'Mijoz olib keladigan makiyaj ustalari va salonlar'],
+    'hisobotlar:hisobot': ['Umumiy hisobot', "Egasining savollari: qaysi libos o'zini oqladi, xodimlar qanday ishladi, kim qarzdor"],
+    'hisobotlar:pnl': ['Oylik foyda', "Kassa usuli: pul kirgan kuni — tushum, qaytarilgan pul — qaytarilgan kuni ayiriladi"],
+    'hisobotlar:xarajat': ['Xarajatlar', "Pul qayerga ketdi — moddalar bo'yicha"],
+    'hisobotlar:bonus': ['Sotuvchi bonusi', "Sotuvchilarga zakazlardan hisoblangan foizli mukofot"],
+    'hisobotlar:bank': ['Bank solishtirish', "Bankka tushgan pul tizimdagi to'lovlar bilan solishtiriladi"],
+    // Kassa tablari (kanvas KassaBolimShisha): sarlavha «Kassa», ostida tab nima uchunligi
+    'kassa:xarajat': ['Kassa', 'Xarajat — kassadan chiqqan pul, modda va izoh bilan'],
+    'kassa:inkassatsiya': ['Kassa', 'Pul topshirish — kassadagi naqdni rahbarga yoki keyingi kassirga'],
+    'kassa:zalog': ['Kassa', 'Saqlanayotgan zaloglar — smena yopilishidan oldin seyf bilan solishtiring'],
+    'kassa:hisobot': ['Kassa', 'Smena hisoboti — naqd pul qayerdan keldi va qayerga ketdi'],
+    'kassa:tarix': ['Kassa', 'Smenalar tarixi — har smenaning yakuni, farqlar va tuzatishlar'],
+    sozlamalar: ['Sozlama', 'Salon qoidalari bir marta sozlanadi — kassa, zakaz va hisobotlar shunga amal qiladi'],
+  }
+  const bosh2 = BOSH[ichki && !(sahifa === 'zakazlar' && zakazId) ? `${sahifa}:${ichki.joriy}` : sahifa]
+  const panelNomi = sahifa === 'bosh'
+    ? (rahbar ? <><span className="salom-birinchi">{salom},</span>{' '}<br />{xodim.ism}!</> : <><span className="salom-birinchi">{salom},</span> {xodim.ism}</>)
+    : bosh2?.[0] || Object.fromEntries(bolimlar)[sahifa]
+  const panelXulosa = bosh2?.[1] || null
+  // Rahbar Dashboard'ida salomdan keyin izoh ham, «Yangi zakaz» tugmasi ham yo'q (foydalanuvchi: «kerak emas», 2026-11-09) —
+  // yangi zakaz «Tezkor amallar» va Kassa orqali ochiladi
+  const panelIzoh = sahifa === 'bosh'
+    ? null
+    : sahifa === 'kassa' && !bosh2 ? kassaRoyxat.find(([id]) => id === kassaBolim)?.[1] || null : null
   // «Salonni sozlash» — qo'ng'iroqcha menyusining tepasida ixcham: progress va qolgan qadamlar (bosh sahifada emas)
   const sozlash = rahbar && bosh?.korsatilsin && bosh.qadamlar ? {
     bajarilgan: bosh.qadamlar.filter((q) => q.bajarildi).length, jami: bosh.qadamlar.length,
@@ -327,23 +366,34 @@ export default function App() {
       )}
       {!onlayn && <p className="ogohlantirish obuna-banner" role="status">Internet yo'q: faqat ko'rish rejimi. Kiritilganlar sahifada qoladi — aloqa tiklangach davom eting.</p>}
       {/* C-14: aloqa uzilsa joriy sahifa olib tashlanmaydi (forma holati yo'qolmasin) — saqlangan ma'lumot ustida chiqadi */}
-      <>
+      <BoshJoyi.Provider value={boshJoyi}>
       <main>
-        <UstkiPanel sarlavha={panelNomi} izoh={panelIzoh} xodim={xodim} rahbar={rahbar} xabarlar={xabarlar} sozlash={sozlash}
+        <UstkiPanel sarlavha={panelNomi} izoh={panelIzoh} xulosa={panelXulosa} xulosaRef={setXulosaJoy} xodim={xodim} rahbar={rahbar} xabarlar={xabarlar} sozlash={sozlash}
           qarorSoni={rahbar ? t : null} onQarorOzgardi={() => dashbord('oy', '').then(setXabarD).catch(() => {})}
           onBolim={xabargaOt} onChiqish={chiqish} onRasm={rasmYukla} onRasmOchir={rasmOchir} onKassa={() => setSahifa('kassa:hisobot')}
-          onQidir={(q) => { setQidiruv({ q, n: Date.now() }); setZakazlarBolim('royxat'); setSahifa('zakazlar') }} />
+          onQidir={(q) => { setQidiruv({ q, n: Date.now() }); setZakazlarBolim('royxat'); setSahifa('zakazlar') }}
+          onFilialOzgardi={() => setFilialKalit((k) => k + 1)} />
         {!onlayn && <section className="oflayn-qatlam" aria-label="Saqlangan ma'lumot"><Oflayn /></section>}
-        {ichki && ichki.royxat.length > 1 && !(sahifa === 'zakazlar' && zakazId) && (
-          <div className={`ichki-segment${navTekis && navRejim === sahifa ? ' faqat-telefon' : ''}`} role="tablist" ref={segmentRef}>
-            {ichki.royxat.map(([id, nomi]) => (
-              <button key={id} type="button" role="tab" aria-selected={ichki.joriy === id} className={ichki.joriy === id ? 'faol' : ''}
-                onClick={() => ichki.tanla(id)}>{nomi}</button>
-            ))}
-          </div>
+        {/* Kanvas: tablar chapda, bo'limning asosiy tugmasi o'ngda (sahifa BoshAmal bilan qo'yadi) */}
+        <div className="bolim-qator">
+          {ichki && ichki.royxat.length > 1 && !(sahifa === 'zakazlar' && zakazId) && (
+            <div className={`ichki-segment${navTekis && navRejim === sahifa ? ' faqat-telefon' : ''}`} role="tablist" ref={segmentRef}>
+              {ichki.royxat.map(([id, nomi, ikon]) => (
+                <button key={id} type="button" role="tab" aria-selected={ichki.joriy === id} className={ichki.joriy === id ? 'faol' : ''}
+                  onClick={() => ichki.tanla(id)}>{ikon && <NavIkona nom={ikon} />}{nomi}</button>
+              ))}
+            </div>
+          )}
+          <div className="bolim-amal" ref={setAmalJoy} />
+        </div>
+        {sahifa === 'zakazlar' && zakazlarBolim === 'bandlik' && !zakazId && (
+          <BoshAmal><button type="button" className="bosh-tugma" disabled={faqatKorish} title={faqatKorish ? YOPIQ_SABAB : undefined}
+            onClick={() => yangiZakazga()}><NavIkona nom="qosh" className="tugma-ikon" />Yangi zakaz</button></BoshAmal>
         )}
+        {/* Filial almashganda sahifa ma'lumoti (kassa, filtrlar) yangi filial bo'yicha qayta yuklanadi */}
+        <Fragment key={filialKalit}>
         {sahifa === 'bosh' && (
-          <BoshEkran key={boshTab?.n} rahbar={rahbar} onZakaz={zakaz} onKassa={() => setSahifa('kassa')} tab={boshTab}
+          <BoshEkran key={boshTab?.n} rahbar={rahbar} pulOladi={pulOladi} onZakaz={zakaz} onKassa={() => setSahifa('kassa')} tab={boshTab}
             yuqori={rahbar ? (orta) => <Dashbord orta={orta} onZakaz={zakaz}
               onBolim={(b) => { if (b === 'libos:qosh') { setSahifa('katalog:liboslar'); setLibosQosh(true) } else setSahifa(b) }} /> : null} tasdiqSoni={t} onBolim={setSahifa} />
         )}
@@ -362,6 +412,7 @@ export default function App() {
         )}
         {sahifa === 'hisobotlar' && rahbar && <Hisobotlar bolim={hisobotlarBolim} onZakaz={zakaz} onBolim={setSahifa} />}
         {sahifa === 'sozlamalar' && rahbar && <Sozlamalar menId={xodim.id} bolim={sozlamaBolim} onBolim={(b) => setSahifa(`sozlamalar:${b}`)} />}
+        </Fragment>
       </main>
       {/* Telefon: pastki panel — eng ko'p ishlatiladigan bo'limlar, qolgani «Ko'proq» menyusida */}
       <nav className="tab-bar" aria-label="Asosiy bo'limlar">
@@ -388,7 +439,7 @@ export default function App() {
       <nav className={`pastki ${menyu ? 'ochiq' : ''}`} aria-label="Bo'limlar">
         <div className="nav-brend">
           <svg viewBox="-60 -40 640 640" aria-hidden="true"><path d={BELGI_D} fill="currentColor" /></svg>
-          <span className="nav-brend-matn"><b>LIBOSA</b>{xodim.salon && <small>{xodim.salon}</small>}</span>
+          <span className="nav-brend-matn"><b>LIBOSA</b></span>{/* salon nomi bu yerda ortiqcha (foydalanuvchi) — xodim menyusida bor */}
         </div>
         {navTekis && !menyu ? (
           <div className="nav-asosiy nav-sozlama">
@@ -449,8 +500,13 @@ export default function App() {
             ))}
           </div>
         )}
+        {/* Shisha uslubi: chap panel pastida faqat «Chiqish» — keng ekranda (CSS); xodim belgisi va menyusi yuqori panelda */}
+        <div className="yon-past">
+          <XodimMenyu xodim={xodim} rol={rolNomi} onChiqish={chiqish} onRasm={rasmYukla} onRasmOchir={rasmOchir} yon
+            onKassa={() => setSahifa('kassa:hisobot')} />
+        </div>
       </nav>
-      </>
+      </BoshJoyi.Provider>
     </div>
   )
 }

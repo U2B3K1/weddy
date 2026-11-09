@@ -17,12 +17,18 @@ const BELGI = {
   kun: (<><rect x="3" y="4" width="18" height="18" rx="2" /><path d="M16 2v4M8 2v4M3 10h18" /></>),
   libos: (<><path d="M9 3c1 1.5 2 2 3 2s2-.5 3-2M9 3 8 6l2 6h4l2-6-1-3" /><path d="M10 12c-1 4-3 7-6 9 3 1 5 1.5 8 1.5s5-.5 8-1.5c-3-2-5-5-6-9" /></>),
   mijoz: (<><circle cx="9" cy="8" r="3.5" /><path d="M2 21a7 7 0 0 1 14 0" /><path d="M16 4.5a3.5 3.5 0 0 1 0 7M22 21a7 7 0 0 0-4-6.3" /></>),
+  yuk: (<><path d="M2.5 6.5h11v9h-11Z" /><path d="M13.5 9.5h4l3 3.2v2.8h-7" /><circle cx="7" cy="17" r="1.8" /><circle cx="17" cy="17" r="1.8" /></>),
+  toj: (<><path d="M3 8l4.5 4L12 5l4.5 7L21 8l-2 11H5Z" /><path d="M5 19h14" /></>),
   tamir: (<path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.8-3.8a6 6 0 0 1-7.9 7.9l-6.9 6.9a2.1 2.1 0 0 1-3-3l6.9-6.9a6 6 0 0 1 7.9-7.9Z" />),
   filtr: (<path d="M3 4h18l-7 8.5V19l-4 2v-8.5Z" />),
   tushum: (<><path d="M22 7l-8.5 8.5-5-5L2 17" /><path d="M16 7h6v6" /></>),
   terminal: (<><rect x="2" y="5" width="20" height="14" rx="2" /><path d="M2 10h20M6 15h4" /></>),
   son: (<path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18" />),
   foiz: (<><path d="M19 5 5 19" /><circle cx="6.5" cy="6.5" r="2.5" /><circle cx="17.5" cy="17.5" r="2.5" /></>),
+  // Kassa (kanvas): hujjat zalog, tillo buyum, bank ko'chirmasi
+  hujjat: (<><rect x="3" y="5" width="18" height="14" rx="2" /><circle cx="8.5" cy="11" r="2" /><path d="M5.5 16c.6-1.5 1.7-2.2 3-2.2s2.4.7 3 2.2M14 10h4M14 14h3" /></>),
+  uzuk: (<><path d="M9 3h6l2 3-5 4-5-4Z" /><circle cx="12" cy="15.5" r="5.5" /></>),
+  bank: (<><path d="M3 10 12 4l9 6" /><path d="M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 21h18" /></>),
 }
 export const Belgi = ({ nom, className = 'dash-karta-ikon' }) => (
   <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
@@ -41,7 +47,9 @@ export function Qatorlar({ royxat, onZakaz, ong, kop = 4 }) {
         {korinadi.map((z) => (
           <li key={z.id}>
             <button type="button" onClick={() => onZakaz(z.id)}>
-              <span className="dash-avatar" aria-hidden="true">{bosHarf(z.mijoz)}</span>
+              {/* kanvas: qatorda libos surati (bo'lmasa — mijoz bosh harflari) */}
+              {z.rasm ? <span className="dash-avatar rasmli" aria-hidden="true"><img src={z.rasm} alt="" loading="lazy" /></span>
+                : <span className="dash-avatar" aria-hidden="true">{bosHarf(z.mijoz)}</span>}
               <span className="dash-bron-matn">
                 <b>{z.mijoz}</b>
                 <small>#{z.raqam} · {(z.liboslar || []).join(', ') || '—'}</small>

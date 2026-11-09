@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
 import Halqa from '../components/Halqa'
 import LibosSiluet from '../components/LibosSiluet'
-import NavIkona from '../components/NavIkona'
 import TushumChizigi from '../components/TushumChizigi'
-import { dashbord, dashbordPanel, filiallar, som, xatoMatni } from '../api'
+import { dashbord, dashbordPanel, filiallar, som, xatoMatni, zakazlarSahifa } from '../api'
 import { OYLAR, isoOch } from '../components/kalendar/sana'
 
 // KPI va savol belgilari — ixcham stroke SVG (Lucide uslubi), yangi bog'liqlik talab qilmaydi.
@@ -24,12 +23,12 @@ const Ikona = ({ nom, className = 'kpi-ikon' }) => (
   </svg>
 )
 // Qorong'i yuza uchun dataviz validatordan o'tgan tilla (bitta qator — legenda kerak emas, sarlavha nomlaydi)
-const GRAFIK_RANG = '#B9833A'
+const GRAFIK_RANG = '#F3BF70'  // shisha uslubi: yorqin tilla (to'q shisha ustida kontrast yetarli)
 const DAVRLAR = [7, 30, 90]
+const qisqaSumma = (n) => (Math.abs(n) >= 1e7 ? `${(n / 1e6).toLocaleString('uz-UZ', { maximumFractionDigits: 1 })} mln so'm` : som(n))
+// «1–9 noy» (bir oy ichida) yoki «28 okt – 3 noy»
+const davrQisqa = (dan, gacha) => { const a = isoOch(dan), b = isoOch(gacha); return a.m === b.m ? `${a.d}–${b.d} ${OYLAR[b.m].slice(0, 3).toLowerCase()}` : `${qisqaSana(dan)} – ${qisqaSana(gacha)}` }
 const qisqaSana = (iso) => { const s = isoOch(iso); return `${s.d} ${OYLAR[s.m].slice(0, 3).toLowerCase()}` }
-const mln = (n) => (Math.abs(n) >= 1e6 ? `${(n / 1e6).toLocaleString('uz-UZ', { maximumFractionDigits: 1 })} mln` : som(n))
-const bosHarf = (ism) => (ism || '?').trim().split(/\s+/).slice(0, 2).map((s) => s[0]).join('').toUpperCase()
-const HOLAT = { bron: ['Bron', 'bron'], vaqtinchalik: ['Avanssiz', 'vaqt'], chegirma_kutilmoqda: ['Chegirma kutilmoqda', 'vaqt'] }
 
 // Taqqoslash belgisi: oldingi teng davrga nisbatan. Oldingi davr 0 bo'lsa foiz ma'nosiz — «yangi».
 function Trend({ foiz, oldingi }) {
@@ -56,38 +55,129 @@ function Kpi({ ikon, rang, nom, qiymat, trend, izoh, title }) {
   )
 }
 
-// Egasining uch savoli (oxirgi 7 kun): kassada kamomad bormi, nima diqqat talab qiladi, liboslar joyidami.
-// Har karta «hammasi joyida» yoki aniq kim/qancha — batafsili Hisobot → «Kunlik kassa» / «Xodimlar nazorati» va Liboslar → «Sanoq».
-function Nazorat({ n }) {
-  const diqqat = [
-    n.topshiriqlar > 0 && `${n.topshiriqlar} ta pul topshirig'i tasdiqlanmagan`,
-    n.otkazmalar > 0 && `${n.otkazmalar} ta o'tkazma «keldimi?» kutmoqda`,
-    n.kelmadi_soni > 0 && `${n.kelmadi_soni} ta o'tkazma kelmadi (${som(n.kelmadi_summa)})`,
-    n.terminal_farq !== 0 && `terminal farqi ${som(n.terminal_farq)}`,
-  ].filter(Boolean)
-  const s = n.sanoq
-  const libosMuammo = !!s && (s.yoq > 0 || s.ortiqcha > 0)
-  const savollar = [
-    { nom: 'Kassada kamomad', ikon: 'qalqon', muammo: !!n.kamomad, javob: n.kamomad ? som(n.kamomad) : "Yo'q",
-      izoh: n.kamomad_xodimlar.length ? n.kamomad_xodimlar.map((x) => `${x.ism} ${som(x.summa)}`).join(', ') : `oxirgi ${n.kun} kunda hammasi to'g'ri topshirilgan`,
-      title: `Oxirgi ${n.kun} kunda xodimlar pulni topshirganda yoki smenani yopganda kam chiqqan naqd. Batafsil: Hisobotlar → «Kunlik kassa».` },
-    { nom: 'Diqqat', ikon: 'diqqat', muammo: diqqat.length > 0, javob: diqqat.length ? `${diqqat.length} ta` : 'Hammasi joyida',
-      izoh: diqqat.length ? diqqat.join('; ') : "tasdiqlanmagan pul va farq yo'q",
-      title: "Rahbar qarori yoki tekshiruvi kerak bo'lgan pul harakatlari. Tasdiqlar — Kassa bo'limida va Telegramda." },
-    { nom: 'Liboslar joyidami', ikon: 'yorliq', muammo: libosMuammo, javob: !s ? 'Sanalmagan' : s.yoq > 0 ? `${s.yoq} ta yo'q` : 'Joyida',
-      izoh: !s ? 'Liboslar → «Sanoq»da istalgan vaqtda tekshiring' : `oxirgi sanoq ${s.kun_oldin ? `${s.kun_oldin} kun oldin` : 'bugun'}${s.ortiqcha ? `, ${s.ortiqcha} ta qaytgani kiritilmagan` : ''}`,
-      title: "Oxirgi libos sanog'i natijasi: javonda bo'lishi kerak bo'lgan, lekin topilmagan liboslar — zakazsiz ijara yoki yo'qolgan." },
+// Kanvas (MainShisha) 1-qator — egasining savollari: qancha ishladim, kassada kamomad bormi, xodimlar nima kutmoqda, kim qarzdor.
+// Batafsili: Oylik foyda, Hisobotlar → «Kunlik kassa», qo'ng'iroqcha menyusidagi qarorlar, Umumiy hisobot → qarzdorlar.
+function EgasiSavollari({ d }) {
+  const n = d.nazorat
+  const foyda = d.shu_oy.taxminiy_sof_foyda
+  const oldF = d.oldingi_oy_foyda
+  const foyz = oldF ? Math.round(((foyda - oldF) * 100) / Math.abs(oldF)) : null
+  const t = d.tasdiq_kutmoqda
+  const qarorlar = t.chegirmalar + t.xarajatlar + t.liboslar + t.otkazmalar
+  const qarorIzoh = [t.chegirmalar && `${t.chegirmalar} ta chegirma so'rovi`, t.xarajatlar && `${t.xarajatlar} ta xarajat`,
+    t.liboslar && `${t.liboslar} ta yangi libos`, t.otkazmalar && `${t.otkazmalar} ta o'tkazma`].filter(Boolean).join(', ')
+  return (
+    <section className="dash-kpi" aria-label="Egasining savollari">
+      <Kpi ikon="tushum" rang="tilla" nom="Bu oy qancha ishladim" qiymat={qisqaSumma(foyda)}
+        trend={foyz != null ? <Trend foiz={foyz} oldingi={oldF} /> : null}
+        izoh={oldF != null ? `o'tgan oy: ${qisqaSumma(oldF)}` : 'sof foyda, kassa usulida'}
+        title={`Shu oydagi sof foyda: ${som(foyda)}${oldF != null ? `; o'tgan oyning shu kunlarigacha: ${som(oldF)}` : ''}. Kassa usuli: kirgan pul minus xarajat va bonus — batafsili Hisobotlar → «Oylik foyda».`} />
+      {n && (
+        <Kpi ikon="qalqon" rang={n.kamomad ? 'qizil' : 'yashil'} nom="Kassada kamomad" qiymat={n.kamomad ? qisqaSumma(n.kamomad) : "Yo'q"}
+          trend={<span className={`trend-pill ${n.kamomad ? 'tushish' : 'osish'}`}>{n.kun} kun</span>}
+          izoh={n.kamomad_xodimlar.length ? n.kamomad_xodimlar.map((x) => `${x.ism} ${som(x.summa)}`).join(', ') : `oxirgi ${n.kun} kunda farq yo'q`}
+          title={`Oxirgi ${n.kun} kunda xodimlar pulni topshirganda yoki smenani yopganda kam chiqqan naqd. Batafsil: Hisobotlar → «Kunlik kassa».`} />
+      )}
+      <Kpi ikon="diqqat" rang="sariq" nom="Xodimlar nazorati" qiymat={qarorlar ? `${qarorlar} ta qaror` : "Qaror yo'q"}
+        trend={qarorlar ? <span className="trend-pill yangi">yangi</span> : null}
+        izoh={qarorIzoh || 'tasdiq kutayotgan narsa yo\'q'}
+        title="Rahbar qarori kerak: chegirma so'rovlari, xarajatlar, yangi liboslar, o'tkazmalar — qo'ng'iroqcha menyusida hal qilinadi." />
+      <Kpi ikon="mijoz" rang="qizil" nom="Qarzdorlar" qiymat={d.qarz.jami ? qisqaSumma(d.qarz.jami) : "Yo'q"}
+        izoh={d.qarz.soni ? `${d.qarz.soni} mijoz · ${d.qarz.eng_eski_kun} kun` : "qarz yo'q"}
+        title="Libos qaytarilgandan keyin to'lanmagan jarima va zarar (Umumiy hisobot → qarzdorlar)." />
+    </section>
+  )
+}
+
+const bosHarflar = (ism) => (ism || '?').trim().split(/\s+/).slice(0, 2).map((s) => s[0]).join('').toUpperCase()
+
+// Kanvas «Diqqat talab»: kechikkan zakazlar, tez bo'shab qoladigan avanssiz bronlar, «keldimi?» kutayotgan o'tkazmalar
+function DiqqatTalab({ n, onZakaz, onBolim }) {
+  const [q, setQ] = useState(null)
+  const [hozir] = useState(() => Date.now())
+  useEffect(() => {
+    Promise.all([zakazlarSahifa({ holat: 'kechikkan', limit: 3, offset: 0 }), zakazlarSahifa({ holat: 'vaqtinchalik', limit: 20, offset: 0 })])
+      .then(([k, v]) => setQ({ kech: k.natija, vaqt: v.natija.filter((z) => z.bron_muddati)
+        .sort((a, b) => String(a.bron_muddati).localeCompare(String(b.bron_muddati))).slice(0, 2) }))
+      .catch(() => setQ({ kech: [], vaqt: [] }))
+  }, [])
+  const bugun = new Date(new Date(hozir).toDateString()).getTime()
+  const qatorlar = q ? [
+    ...q.kech.map((z) => ({ id: z.id, nom: z.mijoz, izoh: `#${z.raqam} · ${z.liboslar[0] || 'libos'} kechikdi`, tur: 'qarz',
+      belgi: `${Math.max(1, Math.round((bugun - new Date(z.qaytarish).getTime()) / 86400000))} kun` })),
+    ...q.vaqt.map((z) => {
+      const soat = Math.max(1, Math.ceil((new Date(z.bron_muddati).getTime() - hozir) / 3600000))
+      return { id: z.id, nom: z.mijoz, izoh: `#${z.raqam} · ${z.liboslar[0] || 'libos'} · avans yo'q`, tur: 'vaqt', belgi: soat < 48 ? `${soat} soat` : `${Math.round(soat / 24)} kun` }
+    }),
+    ...(n?.otkazmalar ? [{ kalit: 'otkazma', nom: "O'tkazma tasdig'i", izoh: `${n.otkazmalar} ta to'lov «keldimi?» kutmoqda`, tur: 'kok', belgi: 'kassa', bolim: 'kassa' }] : []),
+  ].slice(0, 4) : []
+  return (
+    <section className="blok dash-karta dash-bronlar dash-diqqat" aria-label="Diqqat talab">
+      <KartaBosh nom="Diqqat talab" ikon="diqqat">
+        <button type="button" className="havola" onClick={() => onBolim?.('zakazlar')}>Barchasi →</button>
+      </KartaBosh>
+      {q && qatorlar.length === 0 && <p className="malumot">Hammasi joyida: kechikkan zakaz ham, bo'shab qoladigan bron ham yo'q.</p>}
+      {qatorlar.length > 0 && (
+        <ul className="dash-bron-royxat">
+          {qatorlar.map((x) => (
+            <li key={x.id || x.kalit}>
+              <button type="button" onClick={() => (x.id ? onZakaz?.(x.id) : onBolim?.(x.bolim))}>
+                <span className="dash-avatar" aria-hidden="true">{x.id ? bosHarflar(x.nom) : <Ikona nom="kassa" />}</span>
+                <span className="dash-bron-matn"><b>{x.nom}</b><small>{x.izoh}</small></span>
+                <span className="dash-bron-ong"><span className={`holat-pill ${x.tur}`}>{x.belgi}</span></span>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  )
+}
+
+// «Liboslar joyidami?» (egasining savoli) — Liboslar holati kartasi ostida oxirgi sanoq natijasi
+function Sanoq({ s }) {
+  const muammo = !!s && (s.yoq > 0 || s.ortiqcha > 0)
+  return (
+    <p className={`dash-sanoq${muammo ? ' muammo' : ''}`} title="Oxirgi libos sanog'i: javonda bo'lishi kerak, lekin topilmagan liboslar. Liboslar → «Sanoq».">
+      {!s ? 'Sanoq: hali sanalmagan' : `Oxirgi sanoq ${s.kun_oldin ? `${s.kun_oldin} kun oldin` : 'bugun'}: ${s.yoq ? `${s.yoq} ta yo'q` : 'hammasi joyida'}${s.ortiqcha ? `, ${s.ortiqcha} ta qaytgani kiritilmagan` : ''}`}
+    </p>
+  )
+}
+
+// Kanvas «Zakaz va mijoz»: davrdagi yangi zakazlar va mijozlar (oldingi teng davr bilan), o'rtacha chek
+function ZakazVaMijoz({ p, d }) {
+  const qatorlar = [
+    ['Yangi zakazlar', p.zakazlar.soni, <Trend key="z" foiz={p.zakazlar.ozgarish_foiz} oldingi={p.zakazlar.oldingi} />],
+    ['Yangi mijozlar', p.mijozlar.yangi, <Trend key="m" foiz={p.mijozlar.ozgarish_foiz} oldingi={p.mijozlar.oldingi_yangi} />],
+    ["O'rtacha chek", som(d.shu_oy.ortacha_chek), null],
   ]
   return (
-    <div className="dash-nazorat" role="region" aria-label={`Nazorat, oxirgi ${n.kun} kun`}>
-      {savollar.map((q) => (
-        <div key={q.nom} className={`dash-savol${q.muammo ? ' muammo' : ''}`} title={q.title}>
-          <span className="dash-savol-nom"><Ikona nom={q.ikon} />{q.nom}</span>
-          <b>{q.javob}</b>
-          <small>{q.izoh}</small>
-        </div>
-      ))}
-    </div>
+    <section className="blok dash-karta dash-zm" aria-label="Zakaz va mijoz">
+      <KartaBosh nom="Zakaz va mijoz" ikon="zakaz"><span className="malumot">{p.kun} kun</span></KartaBosh>
+      <ul className="dash-zm-royxat">
+        {qatorlar.map(([nom, qiymat, trend]) => <li key={nom}><span>{nom}</span><b>{qiymat}</b>{trend}</li>)}
+      </ul>
+    </section>
+  )
+}
+
+// Kanvas «Xodimlar»: davrda kim kassaga qancha pul qabul qildi (eng ko'pi — to'liq chiziq)
+function XodimlarKassasi({ royxat, davr }) {
+  const eng = Math.max(1, ...royxat.map((x) => x.summa))
+  return (
+    <section className="blok dash-karta dash-xodimlar" aria-label="Xodimlar">
+      <KartaBosh nom="Xodimlar" ikon="mijoz"><span className="malumot">kassaga · {davr}</span></KartaBosh>
+      {royxat.length === 0 ? <p className="malumot">Bu davrda kassaga pul qabul qilinmagan.</p> : (
+        <ul className="dash-xodim-royxat">
+          {royxat.map((x) => (
+            <li key={x.ism}>
+              <span>{x.ism}</span><b>{som(x.summa)}</b>
+              <span className="dash-xodim-chiziq" aria-hidden="true"><span style={{ width: `${Math.round((x.summa * 100) / eng)}%` }} /></span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   )
 }
 
@@ -158,23 +248,7 @@ export default function Dashbord({ orta = null, onBolim, onZakaz }) {
   return (
     <>
       {!p || !d ? (xato ? <p className="xato">{xato}</p> : <div className="dash-kpi dashbord-skelet skelet-kpi" aria-busy="true" />) : (
-        <section className="dash-kpi" aria-label="Bugungi holat">
-          <Kpi ikon="tushum" rang="tilla" nom="Tushum" qiymat={mln(p.tushum.jami)}
-            trend={<Trend foiz={p.tushum.ozgarish_foiz} oldingi={p.tushum.oldingi_jami} />}
-            izoh={<>bugun kassaga {mln(d.bugun.tushum_jami)}{d.bugun.smena_ochiq ? '' : ' · kassa yopiq'}</>}
-            title={`Kirgan pul (avans va qoldiq), mijozga qaytarilgani ayirilgan — «Oylik foyda»dagi tushum bilan bir xil ta'rif. Oldingi ${p.kun} kunda: ${som(p.tushum.oldingi_jami)}.`} />
-          <Kpi ikon="zakaz" rang="yashil" nom="Yangi zakazlar" qiymat={p.zakazlar.soni}
-            trend={<Trend foiz={p.zakazlar.ozgarish_foiz} oldingi={p.zakazlar.oldingi} />}
-            izoh={<>olinadigan qoldiq {mln(d.shu_oy.qolgan_summa)}</>}
-            title={`Birinchi to'lovi shu davrda olingan zakazlar. Oldingi ${p.kun} kunda: ${p.zakazlar.oldingi}. Pastda — bronlarning hali to'lanmagan qoldig'i.`} />
-          <Kpi ikon="libos" rang="kok" nom="Bo'sh liboslar" qiymat={<>{lib.bosh}<span className="kpi-jami"> / {lib.jami}</span></>}
-            izoh={<>{lib.mijozda} tasi mijozda · keyingi 30 kun {d.oldinda.bandlik_foiz}% band</>}
-            title="Hozir ijaraga berish mumkin bo'lgan liboslar (mijozda, tozalashda va ta'mirdagilar kirmaydi)." />
-          <Kpi ikon="mijoz" rang="pushti" nom="Mijozlar" qiymat={p.mijozlar.jami}
-            trend={<Trend foiz={p.mijozlar.ozgarish_foiz} oldingi={p.mijozlar.oldingi_yangi} />}
-            izoh={<>{p.mijozlar.yangi} ta yangi mijoz</>}
-            title={`Birinchi zakazi shu davrda ochilgan mijozlar. Oldingi ${p.kun} kunda: ${p.mijozlar.oldingi_yangi}.`} />
-        </section>
+        <EgasiSavollari d={d} />
       )}
 
       {orta}
@@ -208,7 +282,7 @@ export default function Dashbord({ orta = null, onBolim, onZakaz }) {
 
           <section className="blok dash-karta dash-mashhur" aria-label="Eng ko'p ijaraga berilgan liboslar">
             <KartaBosh nom="Eng ko'p ijaraga berilgan" ikon="libos">
-              <button type="button" className="havola" onClick={() => onBolim?.('hisobotlar')}>Hisobot →</button>
+              <button type="button" className="havola" onClick={() => onBolim?.('katalog')}>Barchasi →</button>
             </KartaBosh>
             {p.top_liboslar.length === 0 ? <p className="malumot">Hali ijaraga berilgan libos yo'q.</p> : (
               <ol className="dash-mashhur-tor">
@@ -227,53 +301,11 @@ export default function Dashbord({ orta = null, onBolim, onZakaz }) {
             )}
           </section>
 
-          <section className="blok dash-karta dash-bronlar" aria-label="Yaqin bronlar">
-            <KartaBosh nom="Yaqin bronlar" ikon="zakaz">
-              <button type="button" className="havola" aria-label={`Barcha zakazlar, ${p.yaqin_bronlar.jami} ta yaqin bron`}
-                onClick={() => onBolim?.('zakazlar')}>{p.yaqin_bronlar.jami} ta →</button>
-            </KartaBosh>
-            {p.yaqin_bronlar.royxat.length === 0 ? <p className="malumot">Kelgusi bron yo'q.</p> : (
-              <ul className="dash-bron-royxat">
-                {p.yaqin_bronlar.royxat.slice(0, 5).map((b) => {
-                  const [hnom, hsinf] = HOLAT[b.holat] || [b.holat, '']
-                  return (
-                    <li key={b.id}>
-                      <button type="button" onClick={() => onZakaz?.(b.id)}>
-                        <span className="dash-avatar" aria-hidden="true">{bosHarf(b.mijoz)}</span>
-                        <span className="dash-bron-matn">
-                          <b>{b.mijoz}</b>
-                          <small>#{b.raqam} · {b.libos || '—'}{b.qoldiq > 0 ? ` · qoldiq ${mln(b.qoldiq)}` : ''}</small>
-                        </span>
-                        <span className="dash-bron-ong">
-                          <em>{qisqaSana(b.olib_ketish)}</em>
-                          <span className={`holat-pill ${hsinf}`}>{hnom}</span>
-                        </span>
-                      </button>
-                    </li>
-                  )
-                })}
-              </ul>
-            )}
-          </section>
+          <DiqqatTalab n={d.nazorat} onZakaz={onZakaz} onBolim={onBolim} />
           </div>
 
           <div className="dash-qator dash-qator-3">
-          {p.filiallar.length > 0 ? (
-            <section className="blok dash-karta dash-filiallar" aria-label="Filiallar bo'yicha">
-              <KartaBosh nom="Filiallar bo'yicha" ikon="joy" />
-              <ul className="dash-filial-royxat">
-                {p.filiallar.map((f) => (
-                  <li key={f.id}>
-                    <Ikona nom="joy" className="dash-filial-ikon" />
-                    <span>{f.nomi}</span>
-                    <small>{f.zakazlar} zakaz</small>
-                    <b>{mln(f.tushum)}</b>
-                    <Trend foiz={f.ozgarish_foiz} oldingi={null} />
-                  </li>
-                ))}
-              </ul>
-            </section>
-          ) : <KassaBugun b={d.bugun} onBolim={onBolim} />}
+          <KassaBugun b={d.bugun} onBolim={onBolim} />
 
           <section className="blok dash-karta dash-holat" aria-label="Liboslar holati">
             <KartaBosh nom="Liboslar holati" ikon="yorliq" />
@@ -290,26 +322,11 @@ export default function Dashbord({ orta = null, onBolim, onZakaz }) {
                 ))}
               </ul>
             </div>
+            <Sanoq s={d.nazorat?.sanoq} />
           </section>
 
-          {d.nazorat && (
-            <section className="blok dash-karta dash-nazorat-karta" aria-label="Egasining savollari">
-              <KartaBosh nom="Nazorat" ikon="qalqon"><span className="malumot">oxirgi {d.nazorat.kun} kun</span></KartaBosh>
-              <Nazorat n={d.nazorat} />
-            </section>
-          )}
-
-          <section className="blok dash-karta dash-tez" aria-label="Tezkor amallar">
-            <KartaBosh nom="Tezkor amallar" />
-            <div className="dash-tez-tor">
-              {[['kassa:yangi', 'yangi', 'Yangi zakaz'], ['kassa:tolov', 'kassa', "To'lov qabul"],
-                ['libos:qosh', 'katalog', "Libos qo'shish"], ['hisobotlar', 'hisobotlar', 'Hisobotlar']].map(([b, ikon, nom]) => (
-                <button key={b} type="button" className="dash-tez-tugma" onClick={() => onBolim?.(b)}>
-                  <NavIkona nom={ikon} /><span>{nom}</span>
-                </button>
-              ))}
-            </div>
-          </section>
+          <ZakazVaMijoz p={p} d={d} />
+          <XodimlarKassasi royxat={d.xodimlar_kassasi || []} davr={davrQisqa(d.davr.dan, d.davr.gacha)} />
           </div>
         </div>
       )}

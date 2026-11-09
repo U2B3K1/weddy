@@ -1,20 +1,26 @@
 import { Fragment, useEffect, useRef, useState } from 'react'
 import Info from '../components/Info'
 import NavIkona from '../components/NavIkona'
+import Tasma from '../components/Tasma'
 import Xarajatlar from '../components/Xarajatlar'
-import OylikGrafik from '../components/OylikGrafik'
+import { BoshAmal } from '../components/BoshJoy'
+import { OYLAR } from '../components/kalendar/sana'
 import OyTanlash from '../components/OyTanlash'
 import Tasdiq from '../components/Tasdiq'
 import {
   bankHolati, bankKirit, bonusHisobot, filiallar, hisobot, hisobotTafsilot, hisobotlarRoyxati, kategoriyalar,
   oylikQator, oyniOch, oyniYop, pnl, pnlTafsilot, som, xatoMatni, xodimlarBoshqaruv,
-  sanaMatni,
+  sanaMatni, guruhla,
 } from '../api'
 import SummaInput from '../components/SummaInput'
 import KpiFiltr from '../components/KpiFiltr'
+import { Belgi } from '../components/ZakazQatorlari'
 
 const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 
+// Ko'rsatkich kartasida katta summa qisqa: «62,3 mln» (to'liq summa — jadval jami qatorida)
+const kpiQiymat = (v, tur) => (tur === 'pul' && typeof v === 'number' && Math.abs(v) >= 1e7
+  ? `${(v / 1e6).toLocaleString('ru-RU', { maximumFractionDigits: 1 })} mln` : korsat(v, tur))
 const korsat = (v, tur) => {
   if (v === null || v === undefined || v === '') return '—'
   if (tur === 'pul') return som(v)
@@ -51,7 +57,7 @@ function HisobotKorsatkichlari({ h, oldingi, kunlar }) {
       {ustunlar.map((u, i) => {
         const oldin = oldingi?.jami?.[u.j]
         return (
-          <KpiFiltr key={u.nom} nom={u.nom} son={korsat(h.jami[u.j], u.tur)} ikon={u.tur === 'pul' ? 'kassa' : 'son'} rang={KPI_RANG[i]}
+          <KpiFiltr key={u.nom} nom={u.nom} son={kpiQiymat(h.jami[u.j], u.tur)} ikon={u.tur === 'pul' ? 'kassa' : 'son'} rang={KPI_RANG[i]}
             izoh={typeof oldin === 'number' ? `oldingi ${kunlar} kunda ${korsat(oldin, u.tur)}` : 'davr bo\'yicha jami'}
             trend={<Taqqos hozir={h.jami[u.j]} oldin={oldin} nomi={`Oldingi ${kunlar} kunga nisbatan`} />} />
         )
@@ -67,6 +73,8 @@ const GURUHLAR = [
   ['Kassa va xodimlar', ['kassa', 'nazorat', 'sotuvchi', 'chegirma', 'zalog']],
   ['Liboslar va mijozlar', ['libos', 'kategoriya', 'bandlik', 'bosh-liboslar', 'manba', 'salonchi']],
 ]
+// Kanvas «Nima bo'yicha»: eng ko'p ochiladigan uch hisobot tugmada (qolganlari — yonidagi ro'yxatda)
+const TEZKOR = [['libos', 'Liboslar'], ['nazorat', 'Xodimlar'], ['pul-oqimi', 'Pul oqimi']]
 // Keng hisobotlarda standart holatda asosiy ustunlar; qolganlari «Batafsil» bilan (ustun nomi bo'yicha, shu tartibda)
 // C-11: seyf farqi ham asosiy — smenalar orasida seyfdan kamaygan pul
 const ASOSIY_USTUNLAR = { kassa: ['Sana', 'Xodim', "Kassada bo'lishi kerak", 'Sanaldi', 'Farq', 'Seyf farqi'] }
@@ -100,7 +108,7 @@ function TushumEslatma({ onBolim }) {
 function HisobotBolim({ onZakaz, onBolim }) {
   const [bugun] = useState(() => new Date())
   const [royxat, setRoyxat] = useState([])
-  const [kalit, setKalit] = useState('pul-oqimi')
+  const [kalit, setKalit] = useState('libos')  // kanvas: standart — «Qaysi libos o'zini oqladi»
   const [dan, setDan] = useState(() => { const d = new Date(); d.setDate(1); return iso(d) })
   const [gacha, setGacha] = useState(() => iso(new Date()))
   const [h, setH] = useState(null)
@@ -110,6 +118,7 @@ function HisobotBolim({ onZakaz, onBolim }) {
   const [kats, setKats] = useState([])
   const [xodimlar, setXodimlar] = useState([])
   const [batafsil, setBatafsil] = useState(false)
+  const [oraliq, setOraliq] = useState(false)  // davr tanlovida «Boshqa oraliq» — sana maydonlari ko'rinadi
   const [oldingi, setOldingi] = useState(null)  // oldingi teng davr (ko'rsatkichlardagi taqqoslash uchun)
   useEffect(() => {
     kategoriyalar().then((k) => setKats(k.filter((x) => x.turi === 'libos'))).catch(() => {})
@@ -131,7 +140,7 @@ function HisobotBolim({ onZakaz, onBolim }) {
   useEffect(() => {
     let bekor = false
     hisobot(kalit, dan, gacha, { kategoriya: filtr.kategoriya || undefined, sotuvchi: filtr.sotuvchi || undefined, filial: filtr.filial || undefined })
-      .then((d) => { if (!bekor) { setH(d); setTaf(null); setXato('') } })
+      .then((d) => { if (!bekor) { setH({ ...d, kalit }); setTaf(null); setXato('') } })
       .catch((e) => { if (!bekor) { setH(null); setXato(xatoMatni(e)) } })
     return () => { bekor = true }
   }, [kalit, dan, gacha, filtr])
@@ -161,45 +170,40 @@ function HisobotBolim({ onZakaz, onBolim }) {
   const zakazUstuni = h?.zakazlar ? h.ustunlar.findIndex((u) => u.nom === 'Zakaz') : -1
   const uzunIzoh = (h?.izoh || '').length > 140
 
+  const tanla = (k) => { setKalit(k); setBatafsil(false) }
+  const davrIndeks = DAVRLAR.findIndex(([, f]) => f(bugun).map(iso).join() === `${dan},${gacha}`)
+  const qolda = oraliq || davrIndeks < 0
+  const libosKorinish = h?.kalit === 'libos' && h.kalitlar && h.qatorlar.length > 0
+
+  // Jadval ostidagi umumiy qism: qatorni bosish izohi, tafsilot, tushum eslatmasi
+  const pastki = h && (
+    <>
+      {h.qoshimcha && <Qoshimcha q={h.qoshimcha} />}
+      {h.kalitlar && h.qatorlar.length > 0 && !taf && <p className="malumot">Qatorni bosing — shu davrda to'liq to'langan zakazlari ochiladi.</p>}
+      {taf && <Tafsilot taf={taf} kalit={kalit} onZakaz={onZakaz} />}
+      {TUSHUM_EMAS.has(kalit) && h.qatorlar.length > 0 && <TushumEslatma onBolim={onBolim} />}
+    </>
+  )
+
   return (
-    <section className="blok jadval-panel hisobot-sahifa">
-      {/* Sarlavhaning o'zi — hisobot tanlovi; ostida bitta ixcham filtr qatori: davr, sanalar, kerak bo'lsa kategoriya/sotuvchi/filial */}
-      <div className="hisobot-bosh">
-        <div className="r2-hisobot-tanlov">
-          <label className="hisobot-turi">
-            <select value={kalit} aria-label="Hisobot turi" onChange={(e) => { setKalit(e.target.value); setBatafsil(false) }}>
-              {guruhlar.filter(([, r]) => r.length).map(([nom, r]) => (
-                <optgroup key={nom} label={nom}>
-                  {r.map((x) => <option key={x.kalit} value={x.kalit}>{x.sarlavha}</option>)}
-                </optgroup>
-              ))}
-            </select>
-            <NavIkona nom="ong" className="tugma-ikon" />
-          </label>
-          {uzunIzoh && <Info nom={h.sarlavha}>{h.izoh}</Info>}
+    <div className="stack hisobot-sahifa hisobot-umumiy">
+      {/* kanvas (HisobotBolimShisha): «Nima bo'yicha» — asosiy hisobotlar tugmada, qolganlari ro'yxatda; o'ngda davr */}
+      <div className="hisobot-asbob">
+        <span className="malumot">Nima bo'yicha:</span>
+        <div className="hisobot-chiplar" role="group" aria-label="Asosiy hisobotlar">
+          {TEZKOR.filter(([k]) => royxat.some((x) => x.kalit === k)).map(([k, nom]) => (
+            <button key={k} type="button" className={kalit === k ? 'faol' : ''} aria-pressed={kalit === k} onClick={() => tanla(k)}>{nom}</button>
+          ))}
         </div>
-        {h?.izoh && !uzunIzoh && <p className="malumot">{h.izoh}</p>}
-      </div>
-      <div className="jadval-asboblar hisobot-filtr">
-        {davrsiz ? <span className="malumot r2-davrsiz">Hozirgi holat — davrga bog'liq emas</span> : (
-          <>
-            <div className="tezkor-tablar" role="group" aria-label="Davr">
-              {DAVRLAR.map(([nom, fn], i) => {
-                const [a, b] = fn(bugun)
-                // Faqat birinchi mos davr belgilanadi (chorak boshida «Shu oy» va «Shu chorak» bir xil oraliq);
-                // qo'lda kiritilgan oraliqda hech biri tanlanmaydi
-                const faol = i === DAVRLAR.findIndex(([, f]) => f(bugun).map(iso).join() === `${dan},${gacha}`)
-                return <button key={nom} type="button" className={faol ? 'faol' : ''} aria-pressed={faol}
-                  onClick={() => { setDan(iso(a)); setGacha(iso(b)) }}>{nom}</button>
-              })}
-            </div>
-            <div className="davr-sanalar" role="group" aria-label="Sanalar">
-              <input type="date" aria-label="Boshlanish sanasi" value={dan} max={gacha} onChange={(e) => e.target.value && setDan(e.target.value)} />
-              <span aria-hidden="true">–</span>
-              <input type="date" aria-label="Tugash sanasi" value={gacha} min={dan} onChange={(e) => e.target.value && setGacha(e.target.value)} />
-            </div>
-          </>
-        )}
+        <label className="hisobot-boshqa">
+          <select value={kalit} aria-label="Hisobot turi" onChange={(e) => tanla(e.target.value)}>
+            {guruhlar.filter(([, r]) => r.length).map(([nom, r]) => (
+              <optgroup key={nom} label={nom}>
+                {r.map((x) => <option key={x.kalit} value={x.kalit}>{x.sarlavha}</option>)}
+              </optgroup>
+            ))}
+          </select>
+        </label>
         {h?.filtrlar?.includes('kategoriya') && (
           <select className="kichik-tanlov" value={filtr.kategoriya} aria-label="Kategoriya" onChange={(e) => setFiltr({ ...filtr, kategoriya: e.target.value })}>
             <option value="">Barcha kategoriyalar</option>
@@ -218,60 +222,175 @@ function HisobotBolim({ onZakaz, onBolim }) {
             {fil.map((f) => <option key={f.id} value={f.id}>{f.nomi}</option>)}
           </select>
         )}
-        {asosiy && h?.qatorlar.length > 0 && (
-          <button type="button" className="ikkinchi kichik" aria-pressed={batafsil} onClick={() => setBatafsil(!batafsil)}>
-            {batafsil ? 'Qisqa' : 'Batafsil'}
-          </button>
-        )}
+        <div className="hisobot-davr">
+          {davrsiz ? <span className="malumot r2-davrsiz">Hozirgi holat — davrga bog'liq emas</span> : (
+            <>
+              <select className="kichik-tanlov" aria-label="Davr" value={qolda ? 'oraliq' : String(davrIndeks)}
+                onChange={(e) => {
+                  if (e.target.value === 'oraliq') return setOraliq(true)
+                  const [a, b] = DAVRLAR[Number(e.target.value)][1](bugun)
+                  setOraliq(false); setDan(iso(a)); setGacha(iso(b))
+                }}>
+                {DAVRLAR.map(([nom], i) => <option key={nom} value={i}>{nom}</option>)}
+                <option value="oraliq">Boshqa oraliq…</option>
+              </select>
+              {qolda && (
+                <div className="davr-sanalar" role="group" aria-label="Sanalar">
+                  <input type="date" aria-label="Boshlanish sanasi" value={dan} max={gacha} onChange={(e) => e.target.value && setDan(e.target.value)} />
+                  <span aria-hidden="true">–</span>
+                  <input type="date" aria-label="Tugash sanasi" value={gacha} min={dan} onChange={(e) => e.target.value && setGacha(e.target.value)} />
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </div>
-      {xato && <p className="xato jadval-bosh">{xato}</p>}
+      {xato && <p className="xato">{xato}</p>}
       {h && (
         <div className="hisobot-ich" role="region" aria-label={h.sarlavha}>
-          {h.qatorlar.length > 0 && <HisobotKorsatkichlari h={h} oldingi={davrsiz ? null : oldingiMos} kunlar={kunlar} />}
-          {h.qatorlar.length === 0 ? <p className="malumot">{davrsiz ? "Hozircha yozuv yo'q." : "Bu davrda ma'lumot yo'q."}</p> : (
-            <div className="hisobot-ora">
-              <table className="hisobot">
-                <thead>
-                  <tr>{ustunlar.map((j) => <th key={h.ustunlar[j].nom} className={h.ustunlar[j].tur === 'matn' ? '' : 'ong'}>{h.ustunlar[j].nom}</th>)}</tr>
-                </thead>
-                <tbody>
-                  {h.qatorlar.map((q, i) => (
-                    <tr key={i} className={h.kalitlar ? `bosiladi ${taf?.i === i ? 'ochiq' : ''}` : undefined}
-                      onClick={h.kalitlar ? () => och(i) : undefined}>
-                      {ustunlar.map((j) => {
-                        const v = q[j]
-                        const tur = h.ustunlar[j].tur
-                        return (
-                          <td key={j} className={`${tur === 'matn' ? '' : 'ong'} ${typeof v === 'number' && v < 0 ? 'qizil' : ''}`}>
-                            {j === 0 && h.kalitlar
-                              ? <button type="button" className="havola" aria-expanded={taf?.i === i}>{korsat(v, tur)}</button>
-                              : j === zakazUstuni && h.zakazlar[i] && onZakaz
-                                ? <button type="button" className="havola" onClick={(e) => { e.stopPropagation(); onZakaz(h.zakazlar[i]) }}>{korsat(v, tur)}</button>
-                                : korsat(v, tur)}
-                          </td>
-                        )
-                      })}
-                    </tr>
-                  ))}
-                </tbody>
-                {h.jami && (
-                  <tfoot>
-                    <tr>{ustunlar.map((j) => {
-                      const v = h.jami[j]
-                      return <td key={j} className={h.ustunlar[j].tur === 'matn' ? '' : 'ong'}>{v === null || v === '' ? '' : korsat(v, h.ustunlar[j].tur)}</td>
-                    })}</tr>
-                  </tfoot>
+          {libosKorinish ? (
+            <LibosQoplash h={h} oldingi={davrsiz ? null : oldingiMos} kunlar={kunlar} taf={taf} och={och}>{pastki}</LibosQoplash>
+          ) : (
+            <>
+              {h.qatorlar.length > 0 && <HisobotKorsatkichlari h={h} oldingi={davrsiz ? null : oldingiMos} kunlar={kunlar} />}
+              <section className="blok jadval-panel hisobot-panel">
+                <div className="hisobot-panel-bosh">
+                  <h3>{h.sarlavha}</h3>
+                  {uzunIzoh && <Info nom={h.sarlavha}>{h.izoh}</Info>}
+                  {asosiy && h.qatorlar.length > 0 && (
+                    <button type="button" className="ikkinchi kichik" aria-pressed={batafsil} onClick={() => setBatafsil(!batafsil)}>
+                      {batafsil ? 'Qisqa' : 'Batafsil'}
+                    </button>
+                  )}
+                </div>
+                {h.izoh && !uzunIzoh && <p className="malumot hisobot-izoh">{h.izoh}</p>}
+                {h.qatorlar.length === 0 ? <p className="malumot">{davrsiz ? "Hozircha yozuv yo'q." : "Bu davrda ma'lumot yo'q."}</p> : (
+                  <Tasma className="hisobot-ora" pastki={110}>
+                    <table className="hisobot">
+                      <thead>
+                        <tr>{ustunlar.map((j) => <th key={h.ustunlar[j].nom} className={h.ustunlar[j].tur === 'matn' ? '' : 'ong'}>{h.ustunlar[j].nom}</th>)}</tr>
+                      </thead>
+                      <tbody>
+                        {h.qatorlar.map((q, i) => (
+                          <tr key={i} className={h.kalitlar ? `bosiladi ${taf?.i === i ? 'ochiq' : ''}` : undefined}
+                            onClick={h.kalitlar ? () => och(i) : undefined}>
+                            {ustunlar.map((j) => {
+                              const v = q[j]
+                              const tur = h.ustunlar[j].tur
+                              return (
+                                <td key={j} className={`${tur === 'matn' ? '' : 'ong'} ${typeof v === 'number' && v < 0 ? 'qizil' : ''}`}>
+                                  {j === 0 && h.kalitlar
+                                    ? <button type="button" className="havola" aria-expanded={taf?.i === i}>{korsat(v, tur)}</button>
+                                    : j === zakazUstuni && h.zakazlar[i] && onZakaz
+                                      ? <button type="button" className="havola" onClick={(e) => { e.stopPropagation(); onZakaz(h.zakazlar[i]) }}>{korsat(v, tur)}</button>
+                                      : korsat(v, tur)}
+                                </td>
+                              )
+                            })}
+                          </tr>
+                        ))}
+                      </tbody>
+                      {h.jami && (
+                        <tfoot>
+                          <tr>{ustunlar.map((j) => {
+                            const v = h.jami[j]
+                            return <td key={j} className={h.ustunlar[j].tur === 'matn' ? '' : 'ong'}>{v === null || v === '' ? '' : korsat(v, h.ustunlar[j].tur)}</td>
+                          })}</tr>
+                        </tfoot>
+                      )}
+                    </table>
+                  </Tasma>
                 )}
-              </table>
-            </div>
+                {pastki}
+              </section>
+            </>
           )}
-          {h.qoshimcha && <Qoshimcha q={h.qoshimcha} />}
-          {h.kalitlar && h.qatorlar.length > 0 && !taf && <p className="malumot">Qatorni bosing — shu davrda to'liq to'langan zakazlari ochiladi.</p>}
-          {taf && <Tafsilot taf={taf} kalit={kalit} onZakaz={onZakaz} />}
-          {TUSHUM_EMAS.has(kalit) && h.qatorlar.length > 0 && <TushumEslatma onBolim={onBolim} />}
         </div>
       )}
-    </section>
+    </div>
+  )
+}
+
+// Kanvas «Qaysi libos o'zini oqladi»: qoplash bo'yicha saralangan, qatorda rasm, nom, artikul · kategoriya.
+// Backend ustunlari: 0 Libos, 1 Kategoriya, 2 Berilgan, 3 Ijara narxi, 4 Tannarx, 5 Qoplash, 6 Oxirgi, 7 Bo'sh kun.
+const raqam = (n) => (n || 0).toLocaleString('ru-RU')
+const qisqaPul = (n) => (Math.abs(n) >= 1e7 ? `${(n / 1e6).toLocaleString('ru-RU', { maximumFractionDigits: 1 })} mln` : raqam(n))
+function LibosQoplash({ h, oldingi, kunlar, taf, och, children }) {
+  const j = h.jami || []
+  const old = oldingi?.jami
+  const tartib = h.qatorlar.map((_, i) => i).sort((a, b) => (h.qatorlar[b][5] ?? -1) - (h.qatorlar[a][5] ?? -1))
+  const oqlagan = h.qatorlar.filter((q) => q[5] >= 100).length
+  const tannarxli = h.qatorlar.filter((q) => q[4]).length
+  const nomi = `Oldingi ${kunlar} kunga nisbatan`
+  return (
+    <>
+      <section className="dash-kpi kpi-filtrlar hisobot-kpi" aria-label="Hisobot ko'rsatkichlari">
+        <KpiFiltr nom="Ijaralar" son={raqam(j[2])} ikon="libos" rang="tilla" izoh={`${h.qatorlar.length} ta libos`}
+          trend={<Taqqos hozir={j[2]} oldin={old?.[2]} nomi={nomi} />} />
+        <KpiFiltr nom="Ijara tushumi" son={qisqaPul(j[3] || 0)} ikon="tushum" rang="yashil" izoh="shu liboslardan"
+          trend={<Taqqos hozir={j[3]} oldin={old?.[3]} nomi={nomi} />} />
+        <KpiFiltr nom="Tannarx" son={j[4] ? qisqaPul(j[4]) : '—'} ikon="hamyon" rang="kok"
+          izoh={tannarxli < h.qatorlar.length ? `${tannarxli} ta libosda kiritilgan` : 'sotib olingan narx'} />
+        <KpiFiltr nom="O'rtacha qoplash" son={j[5] == null ? '—' : `${Math.round(j[5])}%`} ikon="foiz" rang="pushti"
+          izoh={`${oqlagan} tasi o'zini oqladi`} />
+      </section>
+      <section className="blok jadval-panel hisobot-panel">
+        <div className="hisobot-panel-bosh"><h3>{h.sarlavha}</h3><span className="malumot">qoplash bo'yicha saralangan</span></div>
+        <Tasma className="hisobot-ora" pastki={110}>
+          <table className="hisobot libos-qoplash">
+            <thead>
+              <tr><th>Libos</th><th className="ong">Ijaralar</th><th className="ong">Tushum</th><th className="ong">Tannarx</th><th>Qoplash</th></tr>
+            </thead>
+            <tbody>
+              {tartib.map((i) => {
+                const q = h.qatorlar[i]
+                const [sku, ...nom] = String(q[0]).split(' ')
+                return (
+                  <tr key={h.kalitlar[i]} className={`bosiladi ${taf?.i === i ? 'ochiq' : ''}`} onClick={() => och(i)}>
+                    <td>
+                      <span className="mk-libos">
+                        <span className="mk-rasm" aria-hidden="true">{h.rasmlar?.[i] ? <img src={h.rasmlar[i]} alt="" loading="lazy" /> : <NavIkona nom="katalog" />}</span>
+                        <span className="zakaz-nom">
+                          <button type="button" className="havola" aria-expanded={taf?.i === i}>{nom.join(' ') || sku}</button>
+                          <small>{sku} · {q[1]}</small>
+                        </span>
+                      </span>
+                    </td>
+                    <td className="ong">{q[2]}</td>
+                    <td className="ong">{raqam(q[3])}</td>
+                    <td className="ong lq-tannarx">{q[4] ? raqam(q[4]) : '—'}</td>
+                    <td><Qoplash f={q[5]} /></td>
+                  </tr>
+                )
+              })}
+            </tbody>
+            <tfoot>
+              <tr><td>Jami</td><td className="ong">{raqam(j[2])}</td><td className="ong">{raqam(j[3])}</td>
+                <td className="ong">{j[4] ? raqam(j[4]) : '—'}</td>
+                <td><span className="qoplash"><span aria-hidden="true" /><b>{j[5] == null ? '—' : `${Math.round(j[5])}%`}</b></span></td></tr>
+            </tfoot>
+          </table>
+        </Tasma>
+        <p className="izoh-q">
+          <NavIkona nom="yordam" className="tugma-ikon" />
+          <span>Qoplash = libosdan butun vaqtda tushgan ijara ÷ uning sotib olingan narxi. Chiziqdagi oq belgi — 100%: undan o'tsa,
+            libos o'z narxini qaytargan, qolgani foyda. Ijaralar va tushum — tanlangan davr, to'liq to'langan zakazlar bo'yicha.</span>
+        </p>
+        {children}
+      </section>
+    </>
+  )
+}
+
+// Qoplash chizig'i: shkala 300% gacha, oq belgi — 100% (kanvasdagidek); 100% dan yuqori — yashil, past — qizil
+function Qoplash({ f }) {
+  if (f == null) return <span className="malumot">tannarx yo'q</span>
+  const yaxshi = f >= 100
+  return (
+    <span className="qoplash">
+      <span className={`qoplash-chiziq ${yaxshi ? 'yashil' : 'qizil'}`} aria-hidden="true"><i style={{ width: `${Math.min(100, f / 3)}%` }} /></span>
+      <b className={yaxshi ? 'qoplash-yashil' : 'qoplash-qizil'}>{Math.round(f)}%</b>
+    </span>
   )
 }
 
@@ -330,10 +449,37 @@ function Tafsilot({ taf, kalit, onZakaz }) {
   )
 }
 
-// Oylik foyda (foyda va zarar) — oy tanlash, filial bo'yicha, oyni yopish/ochish (6.2, FT-18.2) va 12 oylik grafik.
+// Oylik foyda (kanvas FoydaShisha) — oy tugmalari, 3 ko'rsatkich, «Qayerdan keldi, qayerga ketdi», foyda sharsharasi,
+// oxirgi 6 oy grafigi va oylar jadvali. Filial bo'yicha, oyni yopish/ochish (6.2), qator tafsiloti (FT-18.2) saqlanadi.
+const oySiljit = (oy, n) => { const [y, m] = oy.split('-').map(Number); const d = new Date(y, m - 1 + n, 1); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}` }
+// «Noyabr, 1–9» (joriy oy), «Oktabr» (shu yil), «Dekabr 2025» (boshqa yil)
+const oyYorliq = (oy, joriy) => {
+  const [y, m] = oy.split('-').map(Number)
+  if (oy === joriy) return `${OYLAR[m - 1]}, 1–${new Date().getDate()}`
+  return y === Number(joriy.slice(0, 4)) ? OYLAR[m - 1] : `${OYLAR[m - 1]} ${y}`
+}
+const mlnQ = (n) => (n === 0 ? '0' : `${(Math.round((n / 1e6) * 10) / 10).toLocaleString('ru-RU')} mln`)
+// Ulushlar «eng katta qoldiq» usulida — guruh ichida jami doim 100%
+function ulushlar(qiymatlar, jami) {
+  if (!jami) return qiymatlar.map(() => 0)
+  const x = qiymatlar.map((v) => (v / jami) * 100)
+  const b = x.map((v) => Math.floor(v))
+  let qol = 100 - b.reduce((a, v) => a + v, 0)
+  x.map((v, i) => [v - Math.floor(v), i]).sort((a, c) => c[0] - a[0]).forEach(([, i]) => { if (qol > 0) { b[i] += 1; qol -= 1 } })
+  return b
+}
+// Yaxlit shkala qadami: 1, 2, 2.5, 5 × 10ⁿ (taxminan 4 bo'lak)
+const yaxlitQadam = (oraliq) => {
+  const xom = oraliq / 4 || 1
+  const d = 10 ** Math.floor(Math.log10(xom))
+  const n = xom / d
+  return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * d
+}
+
 function PnlBolim({ grafikka, onBolim }) {
+  const [joriy] = useState(() => OyTanlash.joriy())
   const [hisobot, setHisobot] = useState(null)
-  const [oy, setOy] = useState(() => OyTanlash.joriy())
+  const [oy, setOy] = useState(joriy)
   const [fil, setFil] = useState([])
   const [pnlFilial, setPnlFilial] = useState('')
   const [oylik, setOylik] = useState(null)
@@ -349,14 +495,30 @@ function PnlBolim({ grafikka, onBolim }) {
     setXato('')
     try { await fn(); setHisobot(await pnl(oy, pnlFilial)) } catch (e) { setXato(xatoMatni(e)) }
   }
-  const filialNomi = pnlFilial ? fil.find((f) => String(f.id) === String(pnlFilial))?.nomi || 'filial' : ''
+  const tezkor = [0, -1, -2, -3].map((n) => oySiljit(joriy, n))
   return (
-    <div className="stack hisobot-sahifa">
-      {xato && <p className="xato">{xato}</p>}
-      <section className="blok stack">
-        <div className="r2-pnl-bosh">
-          <h3>Oylik foyda</h3>
-          <OyTanlash value={oy} onChange={setOy} />
+    <div className="stack hisobot-sahifa foyda-sahifa">
+      {/* kanvas: o'ng tepada — oy holati (yopish / qayta ochish) */}
+      {hisobot && (
+        <BoshAmal>
+          {hisobot.yopilgan
+            ? <button type="button" className="bosh-tugma ikkinchi-bosh" onClick={amal(() => oyniOch(oy))}><NavIkona nom="qaytar" className="tugma-ikon" />Oyni qayta ochish</button>
+            : <button type="button" className="bosh-tugma ikkinchi-bosh" onClick={() => setOyniYopSurov(true)}><NavIkona nom="qalqon" className="tugma-ikon" />Oyni yopish</button>}
+        </BoshAmal>
+      )}
+      {oyniYopSurov && (
+        <Tasdiq sarlavha={`${OyTanlash.nomi(oy)} yopilsinmi?`} tugma="Ha, oyni yopish"
+          matn="Yopilgan oy ma'lumotlarini faqat rahbar o'zgartira oladi. Keyin «Oyni qayta ochish» orqali ochish mumkin."
+          onYop={() => setOyniYopSurov(false)} onTasdiq={() => { setOyniYopSurov(false); amal(() => oyniYop(oy))() }} />
+      )}
+      <div className="hisobot-asbob">
+        <div className="hisobot-chiplar" role="group" aria-label="Oy">
+          {tezkor.map((o) => (
+            <button key={o} type="button" className={oy === o ? 'faol' : ''} aria-pressed={oy === o} onClick={() => setOy(o)}>{oyYorliq(o, joriy)}</button>
+          ))}
+        </div>
+        <div className="hisobot-davr">
+          <OyTanlash value={oy} onChange={setOy} yorliq="Boshqa oy" />
           {fil.length > 0 && (
             <select value={pnlFilial} aria-label="Filial" className="kichik-tanlov" onChange={(e) => setPnlFilial(e.target.value)}>
               <option value="">Butun salon</option>
@@ -364,54 +526,36 @@ function PnlBolim({ grafikka, onBolim }) {
             </select>
           )}
         </div>
-        {pnlFilial && <p className="malumot">Filial natijasi: filialga biriktirilmagan (umumiy) xarajatlar, liboslar va zakazlar bu ko'rinishga kirmaydi.</p>}
-        {hisobot && <Pnl r={hisobot} filial={pnlFilial} onBolim={onBolim} />}
-        {hisobot && (hisobot.yopilgan ? (
-          <div className="stack">
-            <p className="malumot">Bu oy yopilgan: ma'lumotlarini faqat rahbar o'zgartira oladi.</p>
-            <button className="ikkinchi" onClick={amal(() => oyniOch(oy))}>Oyni qayta ochish</button>
-          </div>
-        ) : (
-          <>
-            <button className="ikkinchi" onClick={() => setOyniYopSurov(true)}>Oyni yopish</button>
-            {oyniYopSurov && (
-              <Tasdiq sarlavha={`${OyTanlash.nomi(oy)} yopilsinmi?`} tugma="Ha, oyni yopish"
-                matn="Yopilgan oy ma'lumotlarini faqat rahbar o'zgartira oladi. Keyin «Oyni qayta ochish» orqali ochish mumkin."
-                onYop={() => setOyniYopSurov(false)} onTasdiq={() => { setOyniYopSurov(false); amal(() => oyniYop(oy))() }} />
-            )}
-          </>
-        ))}
-      </section>
-      {oylik && (
-        <section className="blok r2-pnl-grafik" ref={grafikRef}>
-          <h3>Oxirgi 12 oy{filialNomi ? ` · ${filialNomi}` : ''}</h3>
-          <OylikGrafik sarlavha="Foyda" qator={oylik} kalit="sof_foyda" />
-          <p className="malumot">Ustun ustiga olib boring yoki bosing — o'sha oy summasi. Aniq raqamlar — yuqorida (oyni tanlang).</p>
-        </section>
-      )}
+      </div>
+      {xato && <p className="xato">{xato}</p>}
+      {pnlFilial && <p className="malumot">Filial natijasi: filialga biriktirilmagan (umumiy) xarajatlar, liboslar va zakazlar bu ko'rinishga kirmaydi.</p>}
+      {hisobot?.yopilgan && <p className="malumot">Bu oy yopilgan: ma'lumotlarini faqat rahbar o'zgartira oladi.</p>}
+      {hisobot && <Pnl r={hisobot} oyNom={oyYorliq(oy, joriy)} filial={pnlFilial} onBolim={onBolim} />}
+      {oylik && <FoydaOylar oylik={oylik} oy={oy} joriy={joriy} onOy={setOy} grafikRef={grafikRef} />}
+      {hisobot && <PnlQoshimcha r={hisobot} />}
     </div>
   )
 }
 
-// Tushumning taqqoslanayotgan davrga nisbatan o'zgarishi (FT-18.1); asos 0 bo'lsa foiz hisoblanmaydi
-const ozgarish = (hozir, oldin) => {
-  if (!oldin) return hozir ? 'yangi' : '—'
-  const f = Math.round(((hozir - oldin) / oldin) * 100)
-  return `${f > 0 ? '+' : ''}${f}%`
-}
-
-function Pnl({ r, filial, onBolim }) {
-  // Kassa usuli: pul kirgan kun tushum. FT-18.2: hisoblanmaydigan qatorni bosganda uni tashkil qilgan yozuvlar ochiladi
-  const qatorlar = [
-    { nom: 'Kirgan pul (avans va qoldiq)', v: r.kirim, kalit: 'kirim' },
-    { nom: 'Mijozlarga qaytarilgan', izoh: 'bekor qilingan zakazlar', v: -r.qaytarilgan, kalit: 'qaytarilgan' },
-    { nom: "Kelmagan o'tkazmalar", izoh: "rahbar «kelmadi» degan kuni", v: -r.kelmadi, kalit: 'kelmadi', yashir: !r.kelmadi },
-    { nom: 'Tushum', v: r.tushum, oralik: true },
-    { nom: 'Jarimalar', v: r.jarimalar, kalit: 'jarima' },
-    { nom: 'Xarajatlar', v: -r.xarajatlar, kalit: 'xarajat' },
-    { nom: 'Sotuvchi bonusi', v: -r.sotuvchi_bonusi, kalit: 'bonus', yashir: !r.sotuvchi_bonusi },
-    { nom: r.sof_foyda < 0 ? 'Zarar' : 'Foyda', v: r.sof_foyda, yakuniy: true },
-  ].filter((q) => !q.yashir).map((q, i) => ({ ...q, raqam: i + 1 }))
+function Pnl({ r, oyNom, filial, onBolim }) {
+  // Kassa usuli: pul kirgan kun tushum. Kirdi − chiqdi = sof foyda (jarima kirdi, qaytarilgan/kelmagan/xarajat/bonus chiqdi)
+  const kirdi = [
+    { nom: 'Avans va qoldiq', v: r.kirim, kalit: 'kirim' },
+    { nom: 'Kechikish va boshqa jarimalar', v: r.jarimalar, kalit: 'jarima' },
+  ].filter((x) => x.v)
+  const moddalar = r.xarajat_moddalari ? r.xarajat_moddalari.map((m) => ({ nom: m.nomi, v: m.summa, kalit: 'xarajat' }))
+    : [{ nom: 'Xarajatlar', v: r.xarajatlar, kalit: 'xarajat' }]
+  const chiqdi = [
+    { nom: 'Mijozlarga qaytarilgan', v: r.qaytarilgan, kalit: 'qaytarilgan' },
+    { nom: "Kelmagan o'tkazmalar", v: r.kelmadi, kalit: 'kelmadi' },
+    ...moddalar,
+    { nom: 'Sotuvchi bonusi', v: r.sotuvchi_bonusi, kalit: 'bonus' },
+  ].filter((x) => x.v)
+  const K = kirdi.reduce((a, x) => a + x.v, 0)
+  const C = chiqdi.reduce((a, x) => a + x.v, 0)
+  const F = K - C
+  const kirU = ulushlar(kirdi.map((x) => x.v), K)
+  const chiU = ulushlar(chiqdi.map((x) => x.v), C)
   const [taf, setTaf] = useState(null)
   const [tafOy, setTafOy] = useState(`${r.oy}/${filial}`)
   if (tafOy !== `${r.oy}/${filial}`) { setTafOy(`${r.oy}/${filial}`); setTaf(null) } // oy almashsa tafsilot yopiladi
@@ -419,23 +563,29 @@ function Pnl({ r, filial, onBolim }) {
     if (taf?.qator === kalit) return setTaf(null)
     pnlTafsilot(r.oy, kalit, filial).then(setTaf).catch(() => setTaf(null))
   }
-  const t = r.taqqos
+  const otgan = r.taqqos?.otgan_oy
   const taqqosNomi = (x) => `${OyTanlash.nomi(x.oy)}${x.gacha_kun ? `, 1–${x.gacha_kun}` : ''}`
-  const otgan = t?.otgan_oy
+  const band = (x, i, foiz, chiq) => (
+    <div className="fy-band" key={`${x.kalit}-${x.nom}-${i}`}>
+      <div className="fy-band-yuqori">
+        <button type="button" className="pnl-havola" aria-expanded={taf?.qator === x.kalit} onClick={() => och(x.kalit)}>{x.nom}</button>
+        <b>{chiq ? '− ' : ''}{raqam(x.v)}</b>
+      </div>
+      <div className="fy-band-pastki">
+        <span className={`fy-chiziq${chiq ? ' qizil' : ''}`} aria-hidden="true"><i style={{ width: `${foiz}%` }} /></span>
+        <em>{foiz}%</em>
+      </div>
+    </div>
+  )
   return (
     <>
-      {/* Egasining birinchi savoli bir qarashda (maket uslubi): tushum, xarajat, foyda — o'tgan oyning shu kunigacha bilan */}
-      <section className="dash-kpi kpi-filtrlar pnl-kpi" aria-label="Oylik foyda ko'rsatkichlari">
-        <KpiFiltr nom="Tushum" son={som(r.tushum)} ikon="tushum" rang="tilla"
-          izoh={otgan ? `${taqqosNomi(otgan)}: ${som(otgan.tushum)}` : 'pul kirgan kun bo\'yicha'}
-          trend={otgan && <Taqqos hozir={r.tushum} oldin={otgan.tushum} nomi={`${taqqosNomi(otgan)} bilan`} />} />
-        <KpiFiltr nom="Xarajatlar" son={som(r.xarajatlar)} ikon="hamyon" rang="pushti"
-          izoh={r.sotuvchi_bonusi ? `+ bonus ${som(r.sotuvchi_bonusi)}` : 'tasdiqlanganlari'} />
-        <KpiFiltr nom={r.sof_foyda < 0 ? 'Zarar' : 'Foyda'} son={som(r.sof_foyda)} ikon="kassa" rang="yashil" xavf={r.sof_foyda < 0}
-          izoh={otgan ? `${taqqosNomi(otgan)}: ${som(otgan.sof_foyda)}` : 'tushum − xarajat'}
+      {/* Egasining birinchi savoli bir qarashda: qancha kirdi, qancha chiqdi, nima qoldi — o'tgan oyning shu kunigacha bilan */}
+      <section className="dash-kpi kpi-filtrlar pnl-kpi fy-kpi" aria-label="Oylik foyda ko'rsatkichlari">
+        <KpiFiltr nom="Kirgan pul" son={som(K)} ikon="hamyon" rang="tilla" izoh="avans, qoldiq va jarimalar" />
+        <KpiFiltr nom="Chiqqan pul" son={som(C)} ikon="chiqdi" rang="qizil" izoh={K ? `kirgan pulning ${Math.round((C / K) * 100)}%` : 'xarajat, qaytarilgan va bonus'} />
+        <KpiFiltr nom={F < 0 ? 'Zarar' : 'Sof foyda'} son={som(F)} ikon="tushum" rang="yashil" xavf={F < 0}
+          izoh={otgan ? `${taqqosNomi(otgan)}: ${som(otgan.sof_foyda)}` : 'kirdi − chiqdi'}
           trend={otgan && <Taqqos hozir={r.sof_foyda} oldin={otgan.sof_foyda} nomi={`${taqqosNomi(otgan)} bilan`} />} />
-        <KpiFiltr nom="Foyda ulushi" son={r.rentabellik === null ? '—' : `${r.rentabellik}%`} ikon="foiz" rang="kok"
-          izoh="har 100 so'm tushumdan" />
       </section>
       {r.tannarxsiz_liboslar > 0 && (
         <p className="ogohlantirish r2-ogoh">
@@ -449,85 +599,248 @@ function Pnl({ r, filial, onBolim }) {
           {onBolim && <button type="button" className="havola" onClick={() => onBolim('hisobotlar:xarajat')}>Ko'rsatish</button>}
         </p>
       )}
-      <table className="jadval pnl"><tbody>
-        {qatorlar.map((q) => (
-          <tr key={q.raqam} className={q.yakuniy ? 'pnl-yakuniy' : q.oralik ? 'pnl-oralik' : ''}>
-            <td>
-              <span className="pnl-raqam">{q.raqam}</span>
-              {q.oralik || q.yakuniy ? <b>{q.nom}</b> : q.kalit
-                ? <button type="button" className="pnl-havola" aria-expanded={taf?.qator === q.kalit} onClick={() => och(q.kalit)}>{q.nom}</button> : q.nom}
-              {q.izoh && <span className="pnl-izoh">{q.izoh}</span>}
-            </td>
-            <td className={q.yakuniy && q.v < 0 ? 'qizil' : undefined}>{q.oralik || q.yakuniy ? <b>{som(q.v)}</b> : som(q.v)}</td>
-          </tr>
-        ))}
-      </tbody></table>
-      {taf && (
-        <div className="tafsilot">
-          <b>{taf.sarlavha} — {taf.qatorlar.length} ta yozuv</b>
-          {taf.qatorlar.length === 0 ? <p className="malumot">Bu oyda yozuv yo'q.</p> : (
-            <table className="jadval"><tbody>
-              {taf.qatorlar.map((q, i) => (
-                <tr key={i} className="kichik-qator"><td>{q.sana ? `${sanaMatni(q.sana)} · ` : ''}{q.matn}</td><td>{som(q.summa)}</td></tr>
-              ))}
-              <tr><td><b>Jami</b></td><td><b>{som(taf.jami)}</b></td></tr>
-            </tbody></table>
+      <div className="fy-ikki">
+        <section className="blok hisobot-panel" aria-label="Qayerdan keldi, qayerga ketdi">
+          <div className="hisobot-panel-bosh"><h3>Qayerdan keldi, qayerga ketdi</h3><span className="malumot">{oyNom}</span></div>
+          <div className="fy-guruh">
+            <p className="fy-guruh-bosh kirdi"><span>Kirdi</span><span>{som(K)}</span></p>
+            {kirdi.length ? kirdi.map((x, i) => band(x, i, kirU[i], false)) : <p className="malumot fy-bosh-izoh">Bu oyda pul kirmagan.</p>}
+          </div>
+          <div className="fy-guruh">
+            <p className="fy-guruh-bosh chiqdi"><span>Chiqdi</span><span>− {som(C)}</span></p>
+            {chiqdi.length ? chiqdi.map((x, i) => band(x, i, chiU[i], true)) : <p className="malumot fy-bosh-izoh">Bu oyda pul chiqmagan.</p>}
+          </div>
+          <div className={`fy-natija${F < 0 ? ' zarar' : ''}`}><span>{F < 0 ? 'Zarar' : 'Sof foyda'}</span><b>{som(F)}</b></div>
+          <p className="malumot">Zalog hisobga kirmaydi — u mijozning puli, qaytariladi. Foizlar — o'z guruhi ichida. Nomni bosing — yozuvlari ochiladi.</p>
+          {taf && (
+            <div className="tafsilot">
+              <b>{taf.sarlavha} — {taf.qatorlar.length} ta yozuv</b>
+              {taf.qatorlar.length === 0 ? <p className="malumot">Bu oyda yozuv yo'q.</p> : (
+                <table className="jadval"><tbody>
+                  {taf.qatorlar.map((q, i) => (
+                    <tr key={i} className="kichik-qator"><td>{q.sana ? `${sanaMatni(q.sana)} · ` : ''}{q.matn}</td><td>{som(q.summa)}</td></tr>
+                  ))}
+                  <tr><td><b>Jami</b></td><td><b>{som(taf.jami)}</b></td></tr>
+                </tbody></table>
+              )}
+            </div>
           )}
-        </div>
-      )}
-      <p className="malumot">Hisob pul kirgan kun bo'yicha: avans olingan kuni, qoldiq to'langan kuni tushumga kiradi. Zalog kirmaydi.</p>
-      {r.kelgusi_avanslar > 0 && (
-        <p className="malumot">
-          Libosi hali berilmagan zakazlardan olingan pul: <b>{som(r.kelgusi_avanslar)}</b> (bugungi holat) — tushumga kirgan,
-          lekin zakaz bekor bo'lsa qoidaga ko'ra qaytarilishi mumkin.
-        </p>
-      )}
-      {r.rentabellik !== null && (
-        <p className="malumot">
-          Foyda ulushi: tushumning {r.rentabellik}%
-          <Info nom="Foyda ulushi">Har 100 so'm tushumdan qancha foyda qolgani. Liboslarga sarflangan pul bu yerda ayirilmaydi —
-            u keyingi oylarda o'zini qoplaydi; qanchasi qoplangani «Libos samaradorligi» hisobotida.</Info>
-        </p>
-      )}
-      {r.libos_xaridi > 0 && (
-        <p>
-          Shu oy libos va aksessuarlar uchun to'landi: {som(r.libos_xaridi)}{r.libos_xaridi_soni > 0 ? ` (${r.libos_xaridi_soni} ta yangi libos)` : ''}. Qo'lingizda qolgan pul:{' '}
-          <b className={r.sof_foyda - r.libos_xaridi < 0 ? 'qizil' : ''}>{som(r.sof_foyda - r.libos_xaridi)}</b>
-          <span className="malumot"> — foyda minus xarid. Libos va aksessuar foydadan ayirilmaydi: keyingi oylarda o'zini qoplaydi.</span>
-        </p>
-      )}
-      {r.yetkazib_qarz > 0 && (
-        <p className="malumot">Yetkazib beruvchilarga qarz (bugungi holat): <b className="qizil">{som(r.yetkazib_qarz)}</b> — Liboslar → «Yetkazib beruvchilar».</p>
-      )}
-      {r.investitsiya > 0 && (
-        <p className="malumot">
-          Liboslarga sarflangan pul: {som(r.investitsiya)} · shundan qoplangan {som(r.investitsiya_qoplagan)} (<b>{r.qoplash_foiz}%</b>)
-        </p>
-      )}
-      {t && (
-        <div className="stack r2-taqqos">
-          <table className="jadval"><tbody>
-            {[['otgan_oy', "O'tgan oy"], ['otgan_yil', "O'tgan yil"]].map(([k, nom]) => (
-              <tr key={k} className="kichik-qator">
-                <td>{nom} ({taqqosNomi(t[k])}): tushum {som(t[k].tushum)}, foyda {som(t[k].sof_foyda)}</td>
-                <td>{ozgarish(r.tushum, t[k].tushum)}</td>
-              </tr>
-            ))}
-          </tbody></table>
-          {t.qisman && <p className="malumot">Oy hali tugamagan — tushum o'tgan oylarning shu kungacha bo'lgan qismi bilan solishtirildi.</p>}
-        </div>
-      )}
+        </section>
+        <Sharshara K={K} chiqdi={chiqdi} F={F} oyNom={oyNom} jarima={r.jarimalar} />
+      </div>
     </>
   )
+}
+
+// «Foyda qanday hosil bo'ldi» — sharshara: kirdi → har bir chiqim pastga → sof foyda. Chiqimlar 4 tadan ko'p bo'lsa,
+// kichiklari «Boshqa»ga yig'iladi. Zararda sof foyda ustuni noldan pastga (qizil).
+function Sharshara({ K, chiqdi, F, oyNom, jarima }) {
+  if (!K) {
+    return (
+      <section className="blok hisobot-panel fy-sharshara" aria-label="Foyda qanday hosil bo'ldi">
+        <div className="hisobot-panel-bosh"><h3>Foyda qanday hosil bo'ldi</h3><span className="malumot">{oyNom}</span></div>
+        <p className="malumot">Bu oyda pul kirmagan — grafik chizilmaydi.</p>
+      </section>
+    )
+  }
+  const tartibli = [...chiqdi].sort((a, b) => b.v - a.v)
+  const asosiy = tartibli.length > 4 ? tartibli.slice(0, 3) : tartibli
+  const qolgan = tartibli.length > 4 ? tartibli.slice(3).reduce((a, x) => a + x.v, 0) : 0
+  const bosqich = qolgan ? [...asosiy.map((x) => [x.nom, x.v]), ['Boshqa', qolgan]] : asosiy.map((x) => [x.nom, x.v])
+  const qadam = yaxlitQadam(K - Math.min(0, F))
+  const yuqori = Math.ceil(K / qadam) * qadam
+  const quyi = F < 0 ? -Math.ceil(-F / qadam) * qadam : 0
+  const f = (v) => Math.round(((v - quyi) / (yuqori - quyi)) * 1000) / 10
+  const belgilar = []
+  for (let v = quyi; v <= yuqori + 1; v += qadam) belgilar.push({ b: f(v), m: mlnQ(v), asos: v === 0 })
+  const ulush = ulushlar(bosqich.map(([, v]) => v).concat(Math.max(F, 0)), K)
+  let tepa = K
+  const ustunlar = [{ nom: 'Kirdi', ulush: '100%', past: f(0), boy: f(K) - f(0), tepa: f(K), m: mlnQ(K), tur: 'kirdi' }]
+  bosqich.forEach(([nom, v], k) => {
+    const past = tepa - v
+    ustunlar.push({ nom, ulush: `${ulush[k]}%`, past: f(past), boy: f(tepa) - f(past), tepa: f(tepa), m: `− ${mlnQ(v)}`, tur: 'chiqdi' })
+    tepa = past
+  })
+  ustunlar.push(F >= 0
+    ? { nom: 'Sof foyda', ulush: `${ulush[ulush.length - 1]}%`, past: f(0), boy: f(F) - f(0), tepa: f(F), m: mlnQ(F), tur: 'foyda' }
+    : { nom: 'Zarar', ulush: '', past: f(F), boy: f(0) - f(F), tepa: f(0), m: `− ${mlnQ(-F)}`, tur: 'zarar' })
+  const eng = tartibli[0]
+  return (
+    <section className="blok hisobot-panel fy-sharshara" aria-label="Foyda qanday hosil bo'ldi">
+      <div className="hisobot-panel-bosh"><h3>Foyda qanday hosil bo'ldi</h3><span className="malumot">{oyNom} · so'm</span></div>
+      <figure className="sh-figura" role="img" aria-label={`${oyNom}: kirdi ${mlnQ(K)}, chiqdi ${mlnQ(K - F)}, ${F < 0 ? 'zarar' : 'sof foyda'} ${mlnQ(Math.abs(F))}`}>
+        <div className="sh-quti">
+          {belgilar.map((b) => <div key={b.b} className={`sh-chiziq${b.asos ? ' asos' : ''}`} style={{ bottom: `${b.b}%` }}><span>{b.m}</span></div>)}
+          <div className="sh-ustunlar">
+            {ustunlar.map((u, i) => (
+              <div key={`${u.nom}-${i}`} className={`sh-ustun ${u.tur}`}>
+                <i style={{ bottom: `${u.past}%`, height: `${u.boy}%` }} />
+                <span className="sh-yorliq" style={{ bottom: `calc(${u.tepa}% + 6px)` }}>{u.m}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="sh-nomlar" aria-hidden="true">
+          {ustunlar.map((u, i) => <span key={`${u.nom}-${i}`}>{u.nom}{u.ulush && <small>{u.ulush}</small>}</span>)}
+        </div>
+      </figure>
+      <div className="fy-xulosa">
+        <p><NavIkona nom="foiz" className="tugma-ikon" /><span>Har 100 so'm kirgan puldan <b>{Math.max(0, Math.round((F / K) * 100))} so'm</b> {F < 0 ? 'ham qolmadi — oy zararda.' : "foyda bo'lib qoldi."}</span></p>
+        {eng && <p><NavIkona nom="hamyon" className="tugma-ikon" /><span>Eng katta chiqim — <b>{eng.nom.toLowerCase()}</b>: kirgan pulning {Math.round((eng.v / K) * 100)}%.</span></p>}
+        {jarima > 0 && <p><NavIkona nom="soat" className="tugma-ikon" /><span>Jarimalar kirgan pulga <b>{som(jarima)}</b> qo'shdi.</span></p>}
+      </div>
+    </section>
+  )
+}
+
+// Pastki qator (kanvas): «Oxirgi 6 oy» chiziqli grafigi (to'liq oylar) va «Oylar bo'yicha» jadvali — oyni bosib tanlash
+function FoydaOylar({ oylik, oy, joriy, onOy, grafikRef }) {
+  const toliq = oylik.filter((o) => o.oy < joriy).slice(-6)
+  const jadval = [...oylik].slice(-6).reverse()
+  const X0 = 64, X1 = 540, Y0 = 214, Y1 = 20
+  const kirdi = (o) => o.kirdi ?? o.tushum
+  const maks = Math.max(1, ...toliq.map(kirdi))
+  const minF = Math.min(0, ...toliq.map((o) => o.sof_foyda))
+  const qadam = yaxlitQadam(maks - minF)
+  const yuqori = Math.ceil(maks / qadam) * qadam
+  const quyi = minF < 0 ? -Math.ceil(-minF / qadam) * qadam : 0
+  const qx = toliq.length > 1 ? (X1 - X0) / (toliq.length - 1) : 0
+  const xy = (v, i) => [X0 + i * qx, Y0 - ((v - quyi) / (yuqori - quyi)) * (Y0 - Y1)]
+  const chegaraY = (y) => (quyi === 0 ? Math.min(Y0, y) : y)
+  const silliq = (pts) => pts.map((p, i) => {
+    if (i === 0) return `M${p[0].toFixed(1)},${p[1].toFixed(1)}`
+    const p0 = pts[i - 2] || pts[i - 1], p1 = pts[i - 1], p3 = pts[i + 1] || p
+    // salbiy qiymat bo'lmasa egri chiziq nol chizig'idan pastga «sakramasin»
+    const c1 = [p1[0] + (p[0] - p0[0]) / 6, chegaraY(p1[1] + (p[1] - p0[1]) / 6)]
+    const c2 = [p[0] - (p3[0] - p1[0]) / 6, chegaraY(p[1] - (p3[1] - p1[1]) / 6)]
+    return `C${[...c1, ...c2, ...p].map((z) => z.toFixed(1)).join(',')}`
+  }).join(' ')
+  const kp = toliq.map((o, i) => xy(kirdi(o), i))
+  const fp = toliq.map((o, i) => xy(o.sof_foyda, i))
+  const nolY = xy(0, 0)[1]
+  const yop = (d) => `${d} L${X1},${nolY} L${X0},${nolY} Z`
+  const tanI = toliq.findIndex((o) => o.oy === oy)
+  const panjara = []
+  for (let v = quyi; v <= yuqori + 1; v += qadam) panjara.push(v)
+  const oyQisqa = (o) => OYLAR[Number(o.slice(5, 7)) - 1]
+  return (
+    <div className="fy-pastki">
+      <section className="blok hisobot-panel" aria-label="Oxirgi 6 oy" ref={grafikRef}>
+        <div className="hisobot-panel-bosh">
+          <h3>Oxirgi 6 oy</h3>
+          <span className="fy-belgilar"><span><i className="kirdi" />Kirdi</span><span><i className="foyda" />Sof foyda</span></span>
+        </div>
+        <p className="malumot">{tanI >= 0 ? `${OyTanlash.nomi(oy)} ajratilgan — boshqa oyni tepadagi tugmalar yoki jadvaldan tanlang.`
+          : 'Joriy oy hali tugamagani uchun grafikda yo\'q — to\'liq oylardan birini tanlang.'}</p>
+        {toliq.length < 2 ? <p className="malumot">Grafik uchun kamida ikki to'liq oy kerak.</p> : (
+          <figure className="fy-grafik">
+            <svg viewBox="0 0 560 250" role="img" aria-label={`${toliq.map((o) => `${oyQisqa(o.oy)}: kirdi ${mlnQ(kirdi(o))}, foyda ${mlnQ(o.sof_foyda)}`).join('; ')}`}>
+              <defs>
+                <linearGradient id="fy-kirdi-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style={{ stopColor: 'var(--tilla)', stopOpacity: 0.34 }} /><stop offset="1" style={{ stopColor: 'var(--tilla)', stopOpacity: 0 }} /></linearGradient>
+                <linearGradient id="fy-foyda-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" style={{ stopColor: 'var(--yaxshi)', stopOpacity: 0.28 }} /><stop offset="1" style={{ stopColor: 'var(--yaxshi)', stopOpacity: 0 }} /></linearGradient>
+              </defs>
+              {panjara.map((v) => {
+                const y = xy(v, 0)[1]
+                return (
+                  <g key={v}>
+                    <line x1={X0} y1={y} x2={X1} y2={y} className={v === 0 ? 'fy-nol' : 'fy-panjara'} />
+                    <text x={X0 - 10} y={y + 4} textAnchor="end" className="fy-o">{mlnQ(v)}</text>
+                  </g>
+                )
+              })}
+              {toliq.map((o, i) => <text key={o.oy} x={X0 + i * qx} y={238} textAnchor="middle" className="fy-o">{oyQisqa(o.oy)}</text>)}
+              {tanI >= 0 && <rect x={kp[tanI][0] - 30} y={Y1} width="60" height={Y0 - Y1} rx="10" className="fy-tanlangan" />}
+              <path d={yop(silliq(kp))} fill="url(#fy-kirdi-g)" />
+              <path d={yop(silliq(fp))} fill="url(#fy-foyda-g)" />
+              <path d={silliq(kp)} className="fy-chiziq-kirdi" />
+              <path d={silliq(fp)} className="fy-chiziq-foyda" />
+              {kp.map(([x, y], i) => <circle key={`k${i}`} cx={x} cy={y} r="3.5" className="fy-nuqta-kirdi" />)}
+              {fp.map(([x, y], i) => <circle key={`f${i}`} cx={x} cy={y} r="3.5" className="fy-nuqta-foyda" />)}
+            </svg>
+            {tanI >= 0 && (
+              <div className="fy-izoh-oyna" style={{ left: `${(kp[tanI][0] / 560) * 100}%`, top: `${(kp[tanI][1] / 250) * 100}%` }}>
+                <b>{OyTanlash.nomi(oy)}</b>
+                <span className="kirdi">Kirdi: {som(kirdi(toliq[tanI]))}</span>
+                <span className="foyda">Sof foyda: {som(toliq[tanI].sof_foyda)}</span>
+              </div>
+            )}
+          </figure>
+        )}
+      </section>
+      <section className="blok hisobot-panel" aria-label="Oylar bo'yicha">
+        <div className="hisobot-panel-bosh"><h3>Oylar bo'yicha</h3><span className="malumot">oyni bosing</span></div>
+        <div className="hisobot-ora">
+          <table className="fy-oylar">
+            <thead><tr><th>Oy</th><th>Kirdi</th><th>Chiqdi</th><th>Sof foyda</th><th>Ulush</th></tr></thead>
+            <tbody>
+              {jadval.map((o) => {
+                const k = kirdi(o)
+                const c = o.chiqdi ?? k - o.sof_foyda
+                return (
+                  <tr key={o.oy} className={o.oy === oy ? 'tanlandi' : undefined}>
+                    <td><button type="button" className="fy-oy-tugma" aria-pressed={o.oy === oy} onClick={() => onOy(o.oy)}>{oyYorliq(o.oy, joriy)}</button></td>
+                    <td>{mlnQ(k)}</td>
+                    <td className="fy-qizil">{mlnQ(c)}</td>
+                    <td className={o.sof_foyda < 0 ? 'fy-qizil' : 'fy-yashil'}>{mlnQ(o.sof_foyda)}</td>
+                    <td><span className={`fy-ulush${o.sof_foyda < 0 ? ' zarar' : ''}`}>{k ? `${Math.round((o.sof_foyda / k) * 100)}%` : '—'}</span></td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+        <p className="malumot">Ulush — kirgan pulning qancha qismi foyda bo'lib qoldi.</p>
+      </section>
+    </div>
+  )
+}
+
+// Foyda ostidagi qo'shimcha ma'lumotlar: kelgusi avanslar, libos xaridi, qarzlar, investitsiya, o'tgan yil bilan taqqos
+function PnlQoshimcha({ r }) {
+  const t = r.taqqos
+  const taqqosNomi = (x) => `${OyTanlash.nomi(x.oy)}${x.gacha_kun ? `, 1–${x.gacha_kun}` : ''}`
+  const qatorlar = [
+    r.kelgusi_avanslar > 0 && ['Libosi hali berilmagan zakazlardan olingan pul', som(r.kelgusi_avanslar),
+      "bugungi holat: tushumga kirgan, lekin zakaz bekor bo'lsa qoidaga ko'ra qaytarilishi mumkin"],
+    r.libos_xaridi > 0 && ['Shu oy libos va aksessuar xaridi', som(r.libos_xaridi),
+      r.libos_xaridi_soni > 0 ? `${r.libos_xaridi_soni} ta yangi libos; foydadan ayirilmaydi — keyingi oylarda o'zini qoplaydi` : "foydadan ayirilmaydi — keyingi oylarda o'zini qoplaydi"],
+    r.libos_xaridi > 0 && ["Qo'lingizda qolgan pul", som(r.sof_foyda - r.libos_xaridi), 'foyda minus xarid', r.sof_foyda - r.libos_xaridi < 0],
+    r.yetkazib_qarz > 0 && ['Yetkazib beruvchilarga qarz', som(r.yetkazib_qarz), 'bugungi holat — Liboslar › «Yetkazib beruvchilar»', true],
+    r.investitsiya > 0 && ['Liboslarga sarflangan pul', som(r.investitsiya), `shundan qoplangan ${som(r.investitsiya_qoplagan)} (${r.qoplash_foiz}%)`],
+    t?.otgan_yil && ["O'tgan yil", som(t.otgan_yil.sof_foyda), `${taqqosNomi(t.otgan_yil)}: tushum ${som(t.otgan_yil.tushum)} · bu oy ${ozgarish(r.tushum, t.otgan_yil.tushum)}`],
+  ].filter(Boolean)
+  return (
+    <section className="blok hisobot-panel fy-qoshimcha" aria-label="Qo'shimcha">
+      <div className="hisobot-panel-bosh"><h3>Bilish foydali</h3><span className="malumot">hisob pul kirgan kun bo'yicha</span></div>
+      {qatorlar.map(([nom, v, izoh, qizil]) => (
+        <div key={nom} className="fy-q-qator">
+          <span><b>{nom}</b>{izoh && <small>{izoh}</small>}</span>
+          <b className={qizil ? 'fy-qizil' : undefined}>{v}</b>
+        </div>
+      ))}
+      <p className="malumot">Avans olingan kuni, qoldiq to'langan kuni tushumga kiradi. Zalog kirmaydi.
+        {t?.qisman && ' Oy hali tugamagan — taqqoslash o\'tgan oylarning shu kungacha bo\'lgan qismi bilan.'}</p>
+    </section>
+  )
+}
+
+// Tushumning taqqoslanayotgan davrga nisbatan o'zgarishi (FT-18.1); asos 0 bo'lsa foiz hisoblanmaydi
+const ozgarish = (hozir, oldin) => {
+  if (!oldin) return hozir ? 'yangi' : '—'
+  const f = Math.round(((hozir - oldin) / oldin) * 100)
+  return `${f > 0 ? '+' : ''}${f}%`
 }
 
 const USUL = { karta: 'Terminal', otkazma: "O'tkazma", click: 'Click', payme: 'Payme' }
 
 // FT-12.12: rahbar oyiga bir marta bank ko'chirmasidagi summani kiritadi; tizim farqni ko'rsatadi, komissiya xarajatga yoziladi.
+// Kanvas (KassaBankShisha): tepada 5 ko'rsatkich, bitta jadval — usul, tizimda, komissiya, kutilgan sof, bank ko'chirmasi, farq;
+// ko'chirma va komissiya qatorning o'zida kiritiladi, farq jonli hisoblanadi, «Solishtirishni saqlash» o'zgarganlarini yozadi.
 function Bank({ onZakaz }) {
   const [oy, setOy] = useState(() => OyTanlash.joriy())
   const [d, setD] = useState(null)
   const [f, setF] = useState({})
+  const [band, setBand] = useState(false)
   const [xabar, setXabar] = useState({ turi: '', matn: '' })
 
   useEffect(() => {
@@ -536,70 +849,105 @@ function Bank({ onZakaz }) {
     return () => { bekor = true }
   }, [oy])
 
-  const saqla = async (usul) => {
-    setXabar({ turi: '', matn: '' })
-    const u = d.usullar.find((x) => x.usul === usul)
+  const qatorlar = (d?.usullar || []).map((u) => {
+    const k = f[`${u.usul}_k`] ?? (u.kochirma ?? '')
+    const m = f[`${u.usul}_m`] ?? (u.komissiya ?? '')
+    const kom = Number(m) || 0
+    const kutilgan = u.tizimda - kom
+    return { ...u, k, m, kom, kutilgan, farq: k === '' ? null : Number(k) - kutilgan,
+      ozgardi: f[`${u.usul}_k`] !== undefined || f[`${u.usul}_m`] !== undefined }
+  })
+  const jami = (fn) => qatorlar.reduce((a, q) => a + (fn(q) || 0), 0)
+  const kiritilgan = qatorlar.filter((q) => q.k !== '')
+  const J = { tizim: jami((q) => q.tizimda), kom: jami((q) => q.kom), kutilgan: jami((q) => q.kutilgan),
+    bank: kiritilgan.length ? jami((q) => (q.k === '' ? 0 : Number(q.k))) : null,
+    farq: kiritilgan.length ? kiritilgan.reduce((a, q) => a + q.farq, 0) : null }
+  const ozgarganlar = qatorlar.filter((q) => q.ozgardi && q.k !== '')
+  // ko'rsatkich kartasida katta summa qisqa («22,5 mln»); aniq summa — jadvalning jami qatorida
+  const qisqa = (v) => (Math.abs(v) >= 1e7 ? `${(v / 1e6).toLocaleString('ru-RU', { maximumFractionDigits: 1 })} mln` : guruhla(v))
+
+  const saqla = async () => {
+    setXabar({ turi: '', matn: '' }); setBand(true)
     try {
-      setD(await bankKirit({
-        oy, usul,
-        kochirma_summa: Number(f[`${usul}_k`] ?? u.kochirma ?? 0),
-        komissiya: Number(f[`${usul}_m`] ?? u.komissiya ?? 0),
-      }))
-      setF({})
-      setXabar({ turi: 'ok', matn: `${USUL[usul]}: saqlandi.` })
-    } catch (e) { setXabar({ turi: 'xato', matn: xatoMatni(e) }) }
+      let natija = d
+      for (const q of ozgarganlar) natija = await bankKirit({ oy, usul: q.usul, kochirma_summa: Number(q.k), komissiya: q.kom })
+      setD(natija); setF({})
+      setXabar({ turi: 'ok', matn: `Saqlandi: ${ozgarganlar.map((q) => USUL[q.usul]).join(', ')}.` })
+    } catch (e) { setXabar({ turi: 'xato', matn: xatoMatni(e) }) } finally { setBand(false) }
   }
+  const farqPill = (v) => (v == null ? <span className="malumot">—</span>
+    : <span className={`kassa-pill ${v === 0 ? 'yashil' : 'qizil'}`}>{v === 0 ? '0' : `${v > 0 ? '+' : '−'}${guruhla(Math.abs(v))}`}</span>)
 
   return (
-    <section className="blok stack">
-      <div className="r2-pnl-bosh">
-        <h3>Bank ko'chirmasi bilan solishtirish</h3>
-        <OyTanlash value={oy} onChange={setOy} />
-      </div>
-      {/* Nima uchun kerak — egasi tushunishi uchun oddiy tilda */}
-      <div className="bank-izoh">
-        <p><b>Nima uchun:</b> karta, Click va Payme orqali to'langan pul kassaga emas, bank hisobingizga tushadi.
-          Sotuvchi «karta bilan to'ladi» deb yozgan pul haqiqatan kelganini faqat bank ko'chirmasi ko'rsatadi.</p>
-        <p><b>Qanday:</b> oyni tanlang, bank ilovasidan shu oy uchun har bir usul bo'yicha kelgan summani va bank olgan
-          komissiyani yozib, «Saqlash»ni bosing. Tizim sotuvchilar yozgan to'lovlar bilan solishtiradi.</p>
-        <p><b>Farq chiqsa:</b> to'lov noto'g'ri usulda yozilgan (masalan, naqd o'rniga karta) yoki pul kelmagan —
-          shu oyning to'lovlarini tekshiring. Komissiya avtomatik «Bank komissiyasi» xarajati bo'lib yoziladi.</p>
-      </div>
-      {xabar.matn && <p className={xabar.turi === 'xato' ? 'xato' : 'malumot'} role="status">{xabar.matn}</p>}
-      {d && d.usullar.map((u) => (
-        <div key={u.usul} className="tasdiq">
-          <span>
-            <b>{USUL[u.usul]}</b> · tizimda: {som(u.tizimda)}
-            {u.farq !== null && (u.farq === 0
-              ? <> · <b className="yashil">mos keldi ✓</b></>
-              : <> · <b className="qizil">{u.farq < 0 ? `bankka ${som(-u.farq)} kam tushgan` : `bankka ${som(u.farq)} ortiq tushgan`}</b></>)}
-          </span>
-          <div className="r2-bank-qator">
-            <label>Ko'chirmadagi summa
-              <SummaInput value={f[`${u.usul}_k`] ?? u.kochirma ?? ''} onChange={(e) => setF({ ...f, [`${u.usul}_k`]: e.target.value })} />
-            </label>
-            <label>Bank komissiyasi
-              <SummaInput value={f[`${u.usul}_m`] ?? u.komissiya ?? ''} onChange={(e) => setF({ ...f, [`${u.usul}_m`]: e.target.value })} />
-            </label>
-            <button className="ikkinchi kichik" onClick={() => saqla(u.usul)}>Saqlash</button>
+    <div className="stack hisobot-sahifa bank-sahifa">
+      <section className="dash-kpi kpi-filtrlar bank-kpi" aria-label="Bank ko'rsatkichlari">
+        <KpiFiltr nom="Tizimdagi tushum" son={qisqa(J.tizim)} ikon="tushum" rang="tilla" izoh="naqdsiz to'lovlar" />
+        <KpiFiltr nom="Komissiya" son={qisqa(J.kom)} ikon="foiz" rang="kok" izoh="bank ushlab qolgan" />
+        <KpiFiltr nom="Kutilgan sof" son={qisqa(J.kutilgan)} ikon="bajarildi" rang="yashil" izoh="tushum − komissiya" />
+        <KpiFiltr nom="Bank ko'chirmasi" son={J.bank == null ? '—' : qisqa(J.bank)} ikon="bank" rang="pushti" izoh={J.bank == null ? 'hali kiritilmagan' : `${kiritilgan.length} usul bo'yicha`} />
+        <KpiFiltr nom="Farq" son={J.farq == null ? '—' : `${J.farq > 0 ? '+' : J.farq < 0 ? '−' : ''}${qisqa(Math.abs(J.farq))}`} ikon="diqqat" rang="yashil"
+          xavf={J.farq != null && J.farq !== 0} izoh={J.farq == null ? 'ko\'chirma kiritilgach' : J.farq === 0 ? 'mos keldi' : 'tekshiring'} />
+      </section>
+      <section className="blok kassa-panel" aria-label="To'lov usullari bo'yicha">
+        <div className="kassa-panel-bosh"><h3><NavIkona nom="bank" className="tugma-ikon" />To'lov usullari bo'yicha</h3>
+          <OyTanlash value={oy} onChange={setOy} /></div>
+        {d && qatorlar.length === 0 && <p className="malumot">Bu oyda naqdsiz to'lov yo'q.</p>}
+        {qatorlar.length > 0 && (
+          <div className="hisobot-ora">
+            <table className="kassa-jadval bank-jadval">
+              <thead><tr><th>To'lov usuli</th><th className="ong">Tizimda</th><th className="ong">Komissiya</th><th className="ong">Kutilgan sof</th>
+                <th className="ong">Bank ko'chirmasi</th><th className="ong">Farq</th></tr></thead>
+              <tbody>
+                {qatorlar.map((q) => (
+                  <tr key={q.usul}>
+                    <td><b>{USUL[q.usul]}</b></td>
+                    <td className="ong">{guruhla(q.tizimda)}</td>
+                    <td className="ong"><SummaInput className="bank-input" aria-label={`${USUL[q.usul]} — bank komissiyasi`} value={q.m}
+                      onChange={(e) => setF({ ...f, [`${q.usul}_m`]: e.target.value })} /></td>
+                    <td className="ong">{guruhla(q.kutilgan)}</td>
+                    <td className="ong"><SummaInput className="bank-input" aria-label={`${USUL[q.usul]} — bank ko'chirmasi`} value={q.k}
+                      onChange={(e) => setF({ ...f, [`${q.usul}_k`]: e.target.value })} /></td>
+                    <td className="ong">{farqPill(q.farq)}</td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr><td>Jami</td><td className="ong">{guruhla(J.tizim)}</td><td className="ong">{guruhla(J.kom)}</td><td className="ong">{guruhla(J.kutilgan)}</td>
+                  <td className="ong">{J.bank == null ? '—' : guruhla(J.bank)}</td><td className="ong">{farqPill(J.farq)}</td></tr>
+              </tfoot>
+            </table>
           </div>
-          <TolovTarixi tolovlar={u.tolovlar || []} onZakaz={onZakaz} />
+        )}
+        <div className="bank-oxir">
+          <p className="izoh-q"><NavIkona nom="yordam" className="tugma-ikon" /><span>Farq = bank ko'chirmasi − (tizimdagi tushum − komissiya). Ko'chirmadagi summani
+            yozing — farq o'zi hisoblanadi. Komissiya avtomatik «Bank komissiyasi» xarajati bo'lib yoziladi.</span></p>
+          <button type="button" disabled={!ozgarganlar.length || band} onClick={saqla}>Solishtirishni saqlash</button>
         </div>
-      ))}
-      <p className="malumot">Hisob: ko'chirmadagi summa − (tizimda yozilgan to'lovlar − komissiya).</p>
-    </section>
+        {xabar.matn && <p className={xabar.turi === 'xato' ? 'xato' : 'malumot'} role="status">{xabar.matn}</p>}
+      </section>
+      {/* Nima uchun kerak — egasi tushunishi uchun oddiy tilda; farq chiqsa — har usulning to'lovlar tarixi */}
+      <section className="blok kassa-panel" aria-label="To'lovlar tarixi">
+        <div className="kassa-panel-bosh"><h3><NavIkona nom="tarix" className="tugma-ikon" />Farq chiqsa — to'lovlar tarixi</h3></div>
+        <div className="bank-izoh">
+          <p><b>Nima uchun:</b> karta, Click va Payme orqali to'langan pul kassaga emas, bank hisobingizga tushadi.
+            Sotuvchi «karta bilan to'ladi» deb yozgan pul haqiqatan kelganini faqat bank ko'chirmasi ko'rsatadi.</p>
+          <p><b>Farq chiqsa:</b> to'lov noto'g'ri usulda yozilgan (masalan, naqd o'rniga karta) yoki pul kelmagan — quyidagi tarixdan qidiring.</p>
+        </div>
+        {qatorlar.map((q) => <TolovTarixi key={q.usul} nom={USUL[q.usul]} tolovlar={q.tolovlar || []} onZakaz={onZakaz} />)}
+      </section>
+    </div>
   )
 }
 
 // Shu usulda yozilgan to'lovlar: kim, qachon, qaysi zakazga — farq chiqsa qaysi to'lov shubhali ekanini topish uchun
 const vaqtMatni = (v) => { const t = new Date(v); return `${sanaMatni(iso(t))} ${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}` }
-function TolovTarixi({ tolovlar, onZakaz }) {
-  if (tolovlar.length === 0) return <p className="malumot">Bu oyda shu usulda to'lov yozilmagan.</p>
+function TolovTarixi({ nom, tolovlar, onZakaz }) {
+  if (tolovlar.length === 0) return <p className="malumot">{nom}: bu oyda to'lov yozilmagan.</p>
   const xodimlar = {}
   for (const t of tolovlar) if (t.tasdiq !== 'kelmadi') xodimlar[t.xodim] = (xodimlar[t.xodim] || 0) + t.summa
   return (
     <details className="bank-tarix">
-      <summary>To'lovlar tarixi ({tolovlar.length}) — kim, qachon, qaysi zakazga</summary>
+      <summary>{nom}: to'lovlar tarixi ({tolovlar.length}) — kim, qachon, qaysi zakazga</summary>
       <p className="malumot">{Object.entries(xodimlar).map(([ism, s]) => `${ism}: ${som(s)}`).join(' · ')}</p>
       <div className="hisobot-ora">
         <table className="hisobot">
@@ -624,6 +972,8 @@ function TolovTarixi({ tolovlar, onZakaz }) {
 }
 
 // FT-15.1: oy oxirida har bir sotuvchi uchun tayyor bonus summasi (funksiya sozlamalarda yoqiladi).
+// Kanvas (HisobotBonusShisha): 4 ko'rsatkich; chapda «Sotuvchilar bo'yicha» (qator ochilsa — zakazlari), o'ngda «Formula» (tanlangan
+// sotuvchi: ijara × stavka = bonus) va «Qoidalar».
 function Bonus({ onBolim }) {
   const [oy, setOy] = useState(() => OyTanlash.joriy())
   const [d, setD] = useState(null)
@@ -639,8 +989,8 @@ function Bonus({ onBolim }) {
   // O'chiq bo'lsa — bo'sh holat paneli: nima ekani va qayerda yoqiladi (B-22)
   if (d && !d.yoqilgan) {
     return (
-      <section className="blok stack r2-bosh-holat">
-        <h3>Sotuvchi bonusi o'chirilgan</h3>
+      <section className="blok stack r2-bosh-holat bonus-ochiq-emas">
+        <h3 className="sanoq-panel-nom"><NavIkona nom="sovga" className="tugma-ikon" />Sotuvchi bonusi o'chirilgan</h3>
         <p className="malumot">Yoqilsa, har oy har bir sotuvchi uchun tayyor bonus summasi shu yerda chiqadi: to'ydan keyin
           libos qaytarib olingan zakazlardan siz belgilagan foiz. Bonus foydadan avtomatik ayiriladi.</p>
         {onBolim
@@ -649,42 +999,95 @@ function Bonus({ onBolim }) {
       </section>
     )
   }
+  const sotuvchilar = d ? [...d.sotuvchilar].sort((a, b) => b.bonus - a.bonus) : []
+  const zakazlar = sotuvchilar.reduce((s, q) => s + q.zakazlar, 0)
+  const ijara = sotuvchilar.reduce((s, q) => s + q.tushum, 0)
+  const foiz = d ? Number(d.foiz) : 0
+  const formula = sotuvchilar.find((q) => q.id === ochiq) || sotuvchilar.find((q) => q.zakazlar > 0)
   return (
-    <section className="blok stack">
-      <div className="r2-pnl-bosh">
-        <h3>Sotuvchi bonusi</h3>
-        <OyTanlash value={oy} onChange={setOy} />
-      </div>
-      {xato && <p className="xato">{xato}</p>}
+    <div className="stack">
       {d && (
-        <div className="hisobot-ora">
-          <table className="hisobot">
-            <thead><tr><th>Sotuvchi</th><th className="ong">Zakazlar</th><th className="ong">Zakazlar summasi</th><th className="ong">Bonus ({Number(d.foiz)}%)</th></tr></thead>
-            <tbody>
-              {d.sotuvchilar.map((q) => (
-                <Fragment key={q.id}>
-                  <tr>
-                    <td>{q.zakazlar > 0
-                      ? <button className="havola-tugma" aria-expanded={ochiq === q.id} onClick={() => setOchiq(ochiq === q.id ? null : q.id)}>{q.ism}</button>
-                      : q.ism}</td>
-                    <td className="ong">{q.zakazlar}</td><td className="ong">{som(q.tushum)}</td><td className="ong">{som(q.bonus)}</td>
-                  </tr>
-                  {ochiq === q.id && q.zakaz_royxati.map((z) => (
-                    <tr key={z.zakaz_id} className="kichik-qator">
-                      <td>#{z.raqam} · {z.mijoz} · qaytarildi {sanaMatni(z.qaytarilgan)}</td><td />
-                      <td className="ong">{som(z.summa)}</td><td className="ong">{som(z.bonus)}</td>
-                    </tr>
-                  ))}
-                </Fragment>
-              ))}
-            </tbody>
-            <tfoot><tr><td>Jami</td><td /><td /><td className="ong">{som(d.jami)}</td></tr></tfoot>
-          </table>
-        </div>
+        <section className="dash-kpi libos-kpi" aria-label="Bonus ko'rsatkichlari">
+          <KpiFiltr nom="Hisobga kirgan zakazlar" son={zakazlar} ikon="hujjat" rang="kok" izoh="libos shu oyda qaytarilgan" />
+          <KpiFiltr nom="Ular bo'yicha ijara" son={guruhla(ijara)} ikon="hamyon" rang="tilla" izoh="zakazlar summasi" />
+          <KpiFiltr nom="Bonus stavkasi" son={`${foiz}%`} ikon="foiz" rang="pushti"
+            pastki={onBolim ? <button type="button" className="kpi-pastki" onClick={() => onBolim('sozlamalar:bonus')}>Sozlamada</button> : <small>Sozlamada</small>} />
+          <KpiFiltr nom="Jami bonus" son={guruhla(d.jami)} ikon="bajarildi" rang="yashil" izoh="foydadan ayiriladi" />
+        </section>
       )}
-      <p className="malumot">Bonus xizmat to'liq ko'rsatilgan zakazlardan: to'ydan keyin libos shu oyda qaytarib olingan. Qaytarilgan zakaz bekor qilinmaydi,
-        shuning uchun bonus keyin kamaymaydi. Sotuvchi ismini bosing — har bir zakaz va undan chiqqan bonus ko'rinadi.
-        Bonus foydadan avtomatik ayiriladi.</p>
-    </section>
+      <div className="xarajat-ikki">
+        <section className="blok xarajat-panel" aria-label="Sotuvchilar bo'yicha">
+          <div className="sanoq-panel-bosh">
+            <h3 className="sanoq-panel-nom"><Belgi nom="mijoz" className="tugma-ikon" />Sotuvchilar bo'yicha</h3>
+            <OyTanlash value={oy} onChange={(v) => { setOy(v); setOchiq(null) }} />
+          </div>
+          {xato && <p className="xato">{xato}</p>}
+          {d && (
+            <table className="soz-jadval bonus-jadval">
+              <thead><tr><th>Sotuvchi</th><th className="ong">Zakazlar</th><th className="ong">Ijara</th><th className="ong">Stavka</th><th className="ong">Bonus</th></tr></thead>
+              <tbody>
+                {sotuvchilar.map((q) => (
+                  <Fragment key={q.id}>
+                    <tr className={ochiq === q.id ? 'tanlangan' : ''}>
+                      <td>{q.zakazlar > 0
+                        ? (
+                          <button type="button" className="bonus-ism" aria-expanded={ochiq === q.id} onClick={() => setOchiq(ochiq === q.id ? null : q.id)}>
+                            <NavIkona nom="ong" className={`tugma-ikon bonus-chevron${ochiq === q.id ? ' ochiq' : ''}`} />
+                            <span className="soz-avatar" aria-hidden="true">{q.ism.split(/\s+/).slice(0, 2).map((s) => s[0]).join('').toUpperCase()}</span>
+                            <b>{q.ism}</b>
+                          </button>
+                        )
+                        : <span className="bonus-ism"><span className="bonus-chevron-joy" /><span className="soz-avatar" aria-hidden="true">{q.ism[0]?.toUpperCase()}</span><b>{q.ism}</b></span>}</td>
+                      <td className="ong">{q.zakazlar}</td><td className="ong">{guruhla(q.tushum)}</td><td className="ong">{foiz}%</td>
+                      <td className="ong"><b className="bonus-summa">{guruhla(q.bonus)}</b></td>
+                    </tr>
+                    {ochiq === q.id && (
+                      <tr className="bonus-ichki"><td colSpan={5}>
+                        <table className="soz-jadval">
+                          <thead><tr><th>Zakaz</th><th>Mijoz</th><th>Qaytdi</th><th className="ong">Ijara</th><th className="ong">Bonus</th></tr></thead>
+                          <tbody>
+                            {q.zakaz_royxati.map((z) => (
+                              <tr key={z.zakaz_id}>
+                                <td><b>#{z.raqam}</b></td><td>{z.mijoz}</td><td className="soz-mute">{sanaMatni(z.qaytarilgan)}</td>
+                                <td className="ong">{guruhla(z.summa)}</td><td className="ong"><b className="bonus-summa">{guruhla(z.bonus)}</b></td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </td></tr>
+                    )}
+                  </Fragment>
+                ))}
+              </tbody>
+              <tfoot><tr><td>Jami</td><td className="ong">{zakazlar}</td><td className="ong">{guruhla(ijara)}</td><td className="ong">{foiz}%</td>
+                <td className="ong"><b className="bonus-summa">{guruhla(d.jami)}</b></td></tr></tfoot>
+            </table>
+          )}
+          <p className="aks-t-izoh"><NavIkona nom="yordam" className="tugma-ikon" />Sotuvchi ismini bosing — har bir zakaz va undan chiqqan bonus ko'rinadi.</p>
+        </section>
+        <div className="sanoq-ustun">
+          {formula && (
+            <section className="blok xarajat-panel" aria-label="Formula">
+              <div className="sanoq-panel-bosh"><h3 className="sanoq-panel-nom"><Belgi nom="son" className="tugma-ikon" />Formula</h3><small>{formula.ism}</small></div>
+              <div className="bonus-formula">
+                <small>{guruhla(formula.tushum)} × {foiz}% =</small>
+                <b>{som(formula.bonus)}</b>
+              </div>
+              <div className="aks-t-q"><span>Foydadan ayiriladi</span><b>zakaz qaytgan oyda, o'zi</b></div>
+              <p className="soz-izoh">Bonusni berganingizda xarajatga qayta yozmang — u allaqachon hisobda.</p>
+            </section>
+          )}
+          <section className="blok xarajat-panel" aria-label="Qoidalar">
+            <h3 className="sanoq-panel-nom"><NavIkona nom="hujjat" className="tugma-ikon" />Qoidalar</h3>
+            <ul className="bonus-qoidalar">
+              <li>Bonus shu oyda <b>libosi qaytarib olingan</b> zakazlardan hisoblanadi.</li>
+              <li>Qaytarilgan zakaz bekor qilinmaydi — bonus keyin kamaymaydi.</li>
+              <li>Bonus foydadan avtomatik ayiriladi — «Oylik foyda» da alohida qator.</li>
+            </ul>
+            {onBolim && <button type="button" className="havola" onClick={() => onBolim('sozlamalar:bonus')}>Stavkani o'zgartirish — Sozlama →</button>}
+          </section>
+        </div>
+      </div>
+    </div>
   )
 }

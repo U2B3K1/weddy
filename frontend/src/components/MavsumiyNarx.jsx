@@ -11,19 +11,45 @@ function QoidaTahrir({ q, onSaqla }) {
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value })
   const tayyor = f.nomi.trim() && Number(f.foiz) > 0 && (!!f.boshlanish === !!f.tugash) && (f.boshlanish || q.hafta_kunlari)
   return (
-    <details className="amal">
-      <summary>Tahrirlash</summary>
-      <div className="stack">
-        <label>Nomi<input value={f.nomi} maxLength={100} onChange={set('nomi')} /></label>
-        <label>Ustama, %<input type="number" min="1" max="500" value={f.foiz} onChange={set('foiz')} /></label>
-        <div className="qator keng">
-          <label>Boshlanish<input type="date" value={f.boshlanish} onChange={set('boshlanish')} /></label>
-          <label>Tugash<input type="date" value={f.tugash} min={f.boshlanish || undefined} onChange={set('tugash')} /></label>
-        </div>
-        <button className="ikkinchi" disabled={!tayyor}
+    <div className="stack soz-tahrir">
+      <label>Nomi<input value={f.nomi} maxLength={100} onChange={set('nomi')} /></label>
+      <label>Ustama, %<input type="number" min="1" max="500" value={f.foiz} onChange={set('foiz')} /></label>
+      <div className="qator keng">
+        <label>Boshlanish<input type="date" value={f.boshlanish} onChange={set('boshlanish')} /></label>
+        <label>Tugash<input type="date" value={f.tugash} min={f.boshlanish || undefined} onChange={set('tugash')} /></label>
+      </div>
+      <div className="soz-tugmalar">
+        <button type="button" className="kichik" disabled={!tayyor}
           onClick={() => onSaqla({ nomi: f.nomi.trim(), foiz: f.foiz, boshlanish: f.boshlanish || null, tugash: f.tugash || null })}>Saqlash</button>
       </div>
-    </details>
+    </div>
+  )
+}
+
+// Kanvas qatori: «nom · +10% · kunlar» va holat; o'ngda Tahrirlash / O'chirish / Olib tashlash
+function QoidaQator({ q, bajar, onOlibTashla }) {
+  const [tahrir, setTahrir] = useState(false)
+  return (
+    <div className={`tasdiq soz-royxat-q${q.faol ? '' : ' bajarilgan'}`}>
+      <div className="soz-qator">
+        <span className="soz-matn">
+          <b>
+            {q.nomi} · +{Number(q.foiz)}%
+            {q.boshlanish && ` · ${sanaMatni(q.boshlanish)} – ${sanaMatni(q.tugash)}`}
+            {q.hafta_kunlari && ` · ${q.hafta_kunlari.map((k) => KUNLAR[k]).join(', ')}`}
+          </b>
+          <small>{q.faol ? "yoqilgan — mos kunda zakaz narxiga qo'shiladi" : "o'chirilgan — narxga ta'sir qilmaydi"}</small>
+        </span>
+        <span className="soz-ong">
+          <button type="button" className="havola" aria-expanded={tahrir} onClick={() => setTahrir(!tahrir)}>Tahrirlash</button>
+          <button type="button" className="havola soz-mute-havola" onClick={() => bajar(() => mavsumiyOzgartir(q.id, { faol: !q.faol }), q.faol ? "Qoida o'chirildi." : 'Qoida yoqildi.')}>
+            {q.faol ? "O'chirish" : 'Yoqish'}
+          </button>
+          <button type="button" className="havola soz-mute-havola" onClick={onOlibTashla}>Olib tashlash</button>
+        </span>
+      </div>
+      {tahrir && <QoidaTahrir q={q} onSaqla={(b) => bajar(() => mavsumiyOzgartir(q.id, b), 'Qoida saqlandi.').then((ok) => ok && setTahrir(false))} />}
+    </div>
   )
 }
 
@@ -54,35 +80,17 @@ export default function MavsumiyNarx() {
   }), "Qoida qo'shildi.").then((ok) => { if (ok) { setF(BOSH); setKunlar([]) } })
 
   return (
-    <div className="stack">
-      {xabar.matn && <p className={xabar.turi === 'xato' ? 'xato' : 'malumot'}>{xabar.matn}</p>}
-      <h4 className="r2z-qoidalar">Qoidalar</h4>
-      {qoidalar.length === 0 && <p className="malumot">Qoida yo'q — ustama qo'shilmaydi.</p>}
-      {qoidalar.map((q) => (
-        <div key={q.id} className={`tasdiq ${q.faol ? '' : 'bajarilgan'}`}>
-          <span>
-            <b>{q.nomi}</b> · +{Number(q.foiz)}%
-            {q.boshlanish && ` · ${sanaMatni(q.boshlanish)} – ${sanaMatni(q.tugash)}`}
-            {q.hafta_kunlari && ` · ${q.hafta_kunlari.map((k) => KUNLAR[k]).join(', ')}`}
-            {!q.faol && " · o'chirilgan"}
-          </span>
-          <div className="qator">
-            <button className="ikkinchi kichik" onClick={() => bajar(() => mavsumiyOzgartir(q.id, { faol: !q.faol }), q.faol ? "Qoida o'chirildi." : 'Qoida yoqildi.')}>
-              {q.faol ? "O'chirish" : 'Yoqish'}
-            </button>
-            <button className="ikkinchi kichik" onClick={() => setOlibTashla(q)}>Olib tashlash</button>
-          </div>
-          <QoidaTahrir key={`${q.nomi}-${q.foiz}-${q.boshlanish}-${q.tugash}`} q={q}
-            onSaqla={(b) => bajar(() => mavsumiyOzgartir(q.id, b), 'Qoida saqlandi.')} />
-        </div>
-      ))}
+    <>
+      {xabar.matn && <p className={xabar.turi === 'xato' ? 'xato' : 'soz-izoh'}>{xabar.matn}</p>}
+      {qoidalar.length === 0 && <p className="soz-izoh">Qoida yo'q — ustama qo'shilmaydi.</p>}
+      {qoidalar.map((q) => <QoidaQator key={q.id} q={q} bajar={bajar} onOlibTashla={() => setOlibTashla(q)} />)}
       {olibTashla && (
         <Tasdiq sarlavha={`«${olibTashla.nomi}» qoidasi olib tashlansinmi?`} tugma="Ha, olib tashlash"
           matn="Qaytarib bo'lmaydi. Vaqtincha to'xtatish uchun «O'chirish» yetarli — qoida saqlanib qoladi."
           onYop={() => setOlibTashla(null)}
           onTasdiq={() => { const q = olibTashla; setOlibTashla(null); bajar(() => mavsumiyOchir(q.id), 'Qoida olib tashlandi.') }} />
       )}
-      <details className="amal">
+      <details className="amal soz-qosh-details">
         <summary>Qoida qo'shish</summary>
         <div className="stack">
           <label>Nomi *<input value={f.nomi} maxLength={100} placeholder="masalan: To'y mavsumi" onChange={set('nomi')} /></label>
@@ -105,6 +113,6 @@ export default function MavsumiyNarx() {
             !((f.boshlanish && f.tugash) || (!f.boshlanish && !f.tugash && kunlar.length > 0)) && 'ikkala sana yoki hafta kunlari'].filter(Boolean).join(', ')}</p>}
         </div>
       </details>
-    </div>
+    </>
   )
 }

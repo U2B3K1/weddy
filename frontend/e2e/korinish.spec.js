@@ -27,7 +27,7 @@ test('rahbar sahifalari keng ekranda va telefonda', async ({ page }) => {
   await kirish(page, 'Rahbar', '1111')
 
   await test.step('dashbord', async () => {
-    await expect(page.getByRole('region', { name: /^Nazorat/ })).toBeVisible()
+    await expect(page.getByRole('region', { name: 'Egasining savollari' })).toBeVisible()
     await ikkiKenglik(page, '1-dashbord')
   })
 
@@ -41,12 +41,14 @@ test('rahbar sahifalari keng ekranda va telefonda', async ({ page }) => {
   }
 
   await test.step('Oylik foyda', async () => {
-    await nav(page).getByRole('button', { name: 'Oylik foyda', exact: true }).click()
-    await expect(page.getByText('Kirgan pul (avans va qoldiq)')).toBeVisible()
-    // maket uslubi: tepada 4 ko'rsatkich — tushum va foyda o'tgan oyning shu kunigacha bilan taqqoslanadi
+    await page.getByRole('tab', { name: 'Oylik foyda', exact: true }).click()
+    // kanvas (FoydaShisha): «Qayerdan keldi, qayerga ketdi» — kirdi va chiqdi guruhlari, sharshara grafigi
+    await expect(page.getByRole('region', { name: 'Qayerdan keldi, qayerga ketdi' }).getByRole('button', { name: 'Avans va qoldiq' })).toBeVisible()
+    await expect(page.getByRole('region', { name: "Foyda qanday hosil bo'ldi" })).toBeVisible()
+    // tepada 3 ko'rsatkich: kirgan, chiqqan, sof foyda (o'tgan oyning shu kunigacha bilan taqqoslanadi)
     const kpi = page.getByRole('region', { name: "Oylik foyda ko'rsatkichlari" })
-    await expect(kpi.locator('.dash-kpi-karta')).toHaveCount(4)
-    await expect(kpi.locator('.dash-kpi-karta').first()).toContainText('Tushum')
+    await expect(kpi.locator('.dash-kpi-karta')).toHaveCount(3)
+    await expect(kpi.locator('.dash-kpi-karta').first()).toContainText('Kirgan pul')
     await ikkiKenglik(page, '4-foyda-zarar')
   })
 
@@ -54,13 +56,14 @@ test('rahbar sahifalari keng ekranda va telefonda', async ({ page }) => {
     // seed'da bonus o'chiq — jadvalni ko'rish uchun vaqtincha 5% yoqiladi
     await apiSorov(page, 'PATCH', '/sozlamalar/', { sotuvchi_bonusi: true, bonus_foiz: '5' })
     try {
-      await nav(page).getByRole('button', { name: 'Sotuvchi bonusi', exact: true }).click()
-      await expect(page.getByRole('columnheader', { name: 'Bonus (5%)' })).toBeVisible()
+      await page.getByRole('tab', { name: 'Sotuvchi bonusi', exact: true }).click()
+      await expect(page.getByRole('region', { name: "Bonus ko'rsatkichlari" })).toContainText('5%')  // kanvas: stavka — ko'rsatkich kartasida
+      await expect(page.getByRole('columnheader', { name: 'Stavka' })).toBeVisible()
       await ikkiKenglik(page, '4b-sotuvchi-bonusi')
     } finally {
       await apiSorov(page, 'PATCH', '/sozlamalar/', { sotuvchi_bonusi: false, bonus_foiz: '0' })
     }
-    await nav(page).getByRole('button', { name: 'Umumiy hisobot', exact: true }).click()
+    await page.getByRole('tab', { name: 'Umumiy hisobot', exact: true }).click()
     await ikkiKenglik(page, '4c-umumiy-hisobot')
     // seed: o'tgan oyda to'langan, shu oyda bekor qilingan zakaz — sotuvchi tushumidan ayiriladi
     await page.getByLabel('Hisobot turi').selectOption({ label: 'Sotuvchilar' })
@@ -75,15 +78,12 @@ test('rahbar sahifalari keng ekranda va telefonda', async ({ page }) => {
   await test.step('kirgach manzilda #kirish qolmaydi; ichki bo\'limlar bir joyda', async () => {
     expect(new URL(page.url()).hash).toBe('')
     const segment = page.locator('.ichki-segment')
-    await expect(segment).toBeHidden()  // Hisobot bo'limlari chap panelda
-    await nav(page).getByRole('button', { name: 'Asosiy' }).click()
-    await expect(segment).toBeVisible()  // chap panel asosiy menyuda — bo'limlar tepada qaytadi
+    await expect(segment).toBeVisible()  // Hisobot bo'limlari — sahifa tepasidagi tablar; chap panel doim asosiy menyuda (Ndiz)
     await nav(page).getByRole('button', { name: 'Sozlama', exact: true }).click()
-    await expect(page.locator('.sozlama-menu')).toBeHidden()  // Sozlama menyusi chap panelda
+    await expect(page.getByRole('navigation', { name: 'Sozlama menyusi' })).toBeVisible()  // Sozlama bo'limlari sahifaning o'zida chapda; chap panel asosiy menyuda (Ndiz)
+    await expect(page.locator('.sozlama-menu')).toBeHidden()  // keng ekranda ☰ menyu kerak emas
     await page.waitForLoadState('networkidle')
     await page.screenshot({ path: 'test-results/korinish/4d-sozlama-keng.png', fullPage: true })
-    await nav(page).getByRole('button', { name: 'Asosiy' }).click()
-    await expect(page.locator('.sozlama-menu')).toBeVisible()
   })
 
   await test.step('zakaz kartasi keng ekranda', async () => {
@@ -191,10 +191,10 @@ test('to\'liq chegirmali (0 so\'m) bron kassada to\'lovsiz tasdiqlanadi', async 
   await apiSorov(page, 'POST', '/kassa/smena/ochish/', { boshlangich_qoldiq: 0 })
   try {
     await nav(page).getByRole('button', { name: 'Kassa', exact: true }).click()
-    await nav(page).getByRole('button', { name: "To'lov qabul", exact: true }).click()
+    await page.getByRole('tab', { name: "To'lov qabul", exact: true }).click()
     await page.locator('.pos-zakaz', { hasText: 'Bepul Kelin' }).click()
     const chek = page.getByRole('region', { name: "To'lov" })
-    await expect(chek).toContainText("Jami0 so'm")
+    await expect(chek).toContainText("Ijara summasi:0 so'm")  // chek yozuvlari kanvasdagidek («Ijara summasi:»)
     await ikkiKenglik(page, '8-bepul-bron-kassada')
     await chek.getByRole('button', { name: /^Bronni tasdiqlash/ }).click()
     await expect(page.locator('.pos-zakaz', { hasText: 'Bepul Kelin' })).toHaveCount(0)
@@ -268,9 +268,7 @@ test('yetkazib beruvchi: libos qisman to\'lab olinadi, qarz to\'lanadi', async (
   await test.step('libos artikuli: sozlamada prefiks va avto raqam, formada «i»', async () => {
     try {
       await nav(page).getByRole('button', { name: 'Sozlama', exact: true }).click()
-      const guruh = nav(page).getByRole('button', { name: 'Liboslar', exact: true })  // B-36: artikul «Liboslar» guruhida
-      if (await guruh.getAttribute('aria-expanded') !== 'true') await guruh.click()
-      await nav(page).getByRole('button', { name: 'Libos artikuli', exact: true }).click()
+      await page.getByRole('navigation', { name: 'Sozlama menyusi' }).getByRole('button', { name: 'Libos artikuli', exact: true }).click()  // B-36: «Liboslar» guruhida
       await page.getByLabel('Prefiks').fill('E-')
       await page.getByLabel("Raqam avtomatik qo'yilsin").check()
       await page.getByLabel('Sanoq nechidan boshlansin').fill('5')
@@ -280,13 +278,12 @@ test('yetkazib beruvchi: libos qisman to\'lab olinadi, qarz to\'lanadi', async (
       await expect(page.getByText('Sozlamalar saqlandi.')).toBeVisible()
       await ikkiKenglik(page, '13-artikul-sozlama')
 
-      await nav(page).getByRole('button', { name: 'Asosiy', exact: true }).click()  // Sozlama menyusida ham «Liboslar» bo'limi bor
       await nav(page).getByRole('button', { name: 'Liboslar', exact: true }).click()
       await page.getByRole('tab', { name: "Ro'yxat" }).click()
       await page.getByRole('button', { name: 'Libos qo\'shish' }).click()
       const oyna = page.getByRole('dialog')
       await expect(oyna.getByLabel('Artikul')).toHaveAttribute('placeholder', 'avtomatik: E-005')
-      await oyna.getByRole('button', { name: 'Izoh' }).first().click()
+      await oyna.locator('label', { hasText: /^Artikul/ }).getByRole('button', { name: 'Izoh' }).click()  // kanvas tartibi: Nomi, keyin Artikul
       await expect(oyna.getByRole('note')).toContainText("tizim keyingi raqamni o'zi beradi: E-005")
       await page.screenshot({ path: 'test-results/korinish/14-artikul-info.png' })
       await oyna.getByLabel('Nomi').fill('Avto libos')  // artikul bo'sh qoldiriladi
@@ -316,7 +313,7 @@ test('yetkazib beruvchi: libos qisman to\'lab olinadi, qarz to\'lanadi', async (
 
   await test.step('yangi partiya qimmatroq: 2 dona × 120 000, to\'lanmadi', async () => {
     await page.getByRole('button', { name: /Toj Oltin/ }).click()
-    const t = page.locator('.tafsilot-qator')
+    const t = page.locator('.aks-tafsilot')  // kanvas: tanlangan aksessuar o'ng panelda
     await t.getByText("Dona qo'shish", { exact: true }).click()
     await t.getByLabel('Soni').fill('2')
     await t.getByLabel('Bir dona narxi').fill('120000')
@@ -334,19 +331,20 @@ test('yetkazib beruvchi: libos qisman to\'lab olinadi, qarz to\'lanadi', async (
   await test.step('qarz ko\'rinadi va to\'lanadi', async () => {
     await page.getByRole('tab', { name: 'Yetkazib beruvchilar' }).click()
     const qator = page.locator('.yetkazib-qator', { hasText: 'Istanbul Bridal' })
-    await expect(qator).toContainText("qarz 6 440 000 so'm")
+    await expect(qator).toContainText('6 440 000')  // «Kimdan olamiz»: qarz qizil summa
     await qator.getByRole('button', { name: /Istanbul Bridal/ }).click()
-    await expect(qator).toContainText('YB-1')
+    const hisob = page.getByRole('region', { name: 'Istanbul Bridal hisobi' })  // kanvas: tanlangani o'ng panelda
+    await expect(hisob).toContainText('YB-1')
     // olingan aksessuarlar — jadval (B-35): har partiya alohida qator, soni × narx = jami
-    const tj = qator.locator('tbody tr', { hasText: 'TJ Toj Oltin' })
+    const tj = hisob.locator('tbody tr', { hasText: 'TJ Toj Oltin' })
     for (const [soni, narx, jami] of [['3', "100 000 so'm", "300 000 so'm"], ['2', "120 000 so'm", "240 000 so'm"]]) {
       const katak = tj.filter({ hasText: jami }).locator('td')
       await expect(katak.nth(2)).toHaveText(soni)
       await expect(katak.nth(3)).toHaveText(narx)
     }
     await ikkiKenglik(page, '12-yetkazib-qarz')
-    await qator.getByLabel("To'lov summasi").fill('6440000')
-    await qator.getByRole('button', { name: "To'lov qilish" }).click()
+    await hisob.getByLabel("To'lov summasi").fill('6440000')
+    await hisob.getByRole('button', { name: "To'lov yozish" }).click()
     await expect(qator).toContainText("qarz yo'q")
   })
   expect(xatolar).toEqual([])

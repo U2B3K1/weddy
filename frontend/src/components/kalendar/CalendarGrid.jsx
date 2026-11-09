@@ -4,7 +4,7 @@ import { HAFTA, OYLAR, haftalar, iso, isoOch, kunQosh, oyKunlari, oyQosh } from 
 const QADAM = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -7, ArrowDown: 7 }
 
 // Klaviatura: strelkalar — kun/hafta, PageUp/PageDown — oy. Faqat bitta kun Tab bilan tanlanadi (roving tabindex).
-export default function CalendarGrid({ y, m, dan, gacha, bugun, fokus, klaviatura, yon, onTanla, onFokus }) {
+export default function CalendarGrid({ y, m, dan, gacha, bugun, fokus, klaviatura, yon, onTanla, onFokus, boshSoni }) {
   const jadval = useRef(null)
   // Olib ketish tanlangach, kursor/fokus turgan kungacha oraliq oldindan ko'rsatiladi
   const [ustida, setUstida] = useState(null)
@@ -64,6 +64,7 @@ export default function CalendarGrid({ y, m, dan, gacha, bugun, fokus, klaviatur
                     onClick={() => { if (!otgan) { onFokus(k); onTanla(k) } }} onKeyDown={(e) => tugma(e, k)}
                     onMouseEnter={() => setUstida(k)} onFocus={() => setUstida(k)}>
                     <span className="kuz-raqam">{Number(k.slice(8))}</span>
+                    {!otgan && boshSoni && boshSoni(k) != null && <small className="kuz-bosh-son">{boshSoni(k)} bo'sh</small>}
                   </button>
                 </td>
               )

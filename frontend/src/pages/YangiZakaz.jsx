@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Info from '../components/Info'
 import Vitrina from '../components/Vitrina'
 import NavIkona from '../components/NavIkona'
@@ -7,7 +7,9 @@ import { SalonchiForma } from './Salonchilar'
 import Manekin from '../components/Manekin'
 import CalendarPage from '../components/kalendar/CalendarPage'
 import { Bezak, Muhr, VaraqSana } from '../components/Varaq'
-import { aksessuarManekinSaqla, boshAksessuarlar, filiallar, boshLiboslar, kategoriyalar, mijozQidir, qulf, qulfOchir, manekinSaqla, salonchiQosh, salonchilar, saqlangan, som, ustamaFoiz, zakazYarat } from '../api'
+import { BoshXulosa } from '../components/BoshJoy'
+import { kunQosh } from '../components/kalendar/sana'
+import { kalendar, aksessuarManekinSaqla, boshAksessuarlar, filiallar, boshLiboslar, kategoriyalar, mijozQidir, qulf, qulfOchir, manekinSaqla, salonchiQosh, salonchilar, saqlangan, som, guruhla, ustamaFoiz, zakazYarat } from '../api'
 import SummaInput from '../components/SummaInput'
 
 // Yangi zakaz: 1) sana, 2) libos tanlash, 3) mijoz va saqlash (4-bo'lim). O'ngda (telefonda pastda) zakaz
@@ -39,7 +41,11 @@ const vaqtMatni = (s) => {
   return `${n(t.getDate())}.${n(t.getMonth() + 1)}.${t.getFullYear()} ${n(t.getHours())}:${n(t.getMinutes())}`
 }
 const kunlar = (a, b) => Math.round((Date.parse(b) - Date.parse(a)) / 86400000) + 1
-const QADAMLAR = ['Sana', 'Libos', 'Mijoz']
+const QADAMLAR = ['Sana', 'Libos tanlash', 'Mijoz va tasdiq']  // kanvas nomlari
+const OYQ = ['yan', 'fev', 'mar', 'apr', 'may', 'iyun', 'iyul', 'avg', 'sen', 'okt', 'noy', 'dek']
+const sanaMatniQisqa = (iso) => { const [, m, d] = iso.split('-').map(Number); return `${d} ${OYQ[m - 1]}` }
+const OYU = ['yanvar', 'fevral', 'mart', 'aprel', 'may', 'iyun', 'iyul', 'avgust', 'sentabr', 'oktabr', 'noyabr', 'dekabr']
+const sanaUzun = (iso) => { if (!iso) return '—'; const [, m, d] = iso.split('-').map(Number); return `${d} ${OYU[m - 1]}` }
 // Bron muddati: «bugun 21:06», «ertaga 21:06» yoki «03.11.2026 21:06»
 const muddatMatni = (s) => {
   const t = new Date(s), n = (x) => String(x).padStart(2, '0'), soat = `${n(t.getHours())}:${n(t.getMinutes())}`
@@ -107,6 +113,11 @@ function YangiZakazForma({ onTayyor, onTolov, boshlangich }) {
   const [qadam, setQadam] = useState(q0.qadam || 1) // 1 Sana → 2 Libos → 3 Mijoz
   const [dan, setDan] = useState(q0.dan || '')
   const [gacha, setGacha] = useState(q0.gacha || '')
+  // Kanvas: kalendar kunlarida «N bo'sh» — 90 kunlik bandlik bir marta olinadi
+  const [bandlik, setBandlik] = useState(null)
+  useEffect(() => { const b = bugunIso(); kalendar(b, kunQosh(b, 89)).then(setBandlik).catch(() => {}) }, [])
+  const boshSoni = useCallback((k) => (bandlik
+    ? bandlik.filter((l) => l.holat === 'bosh' && !l.bronlar.some((b) => k >= b.dan && k <= b.band_gacha)).length : null), [bandlik])
   const [telefon, setTelefon] = useState(q0.telefon || '')
   const [mijoz, setMijoz] = useState(null)
   const [fio, setFio] = useState(q0.fio || '')
@@ -366,16 +377,38 @@ function YangiZakazForma({ onTayyor, onTolov, boshlangich }) {
   }
 
   const sanaTayyor = dan && gacha && gacha >= dan
+  // Kanvas: kalendar kunlarida «N bo'sh» va tanlangan oraliqqa bo'sh liboslar soni — 90 kunlik bandlik bir marta olinadi
+  const oraliqBosh = bandlik && sanaTayyor
+    ? bandlik.filter((l) => l.holat === 'bosh' && l.bronlar.every((b) => b.band_gacha < dan || b.dan > gacha)).length : null
+  const qadamIzoh = [sanaTayyor ? `${sanaMatniQisqa(dan)} – ${sanaMatniQisqa(gacha)} · ${kunlar(dan, gacha)} kun` : 'olib ketish va qaytarish',
+    tanlangan.length ? `${tanlangan.length} ta libos tanlandi` : "bo'shlari ko'rsatiladi", 'telefon, zalog, saqlash']
   const davom = qadam === 2 ? () => { setXabar(''); setQadam(3) } : saqlash
   return (
     <div className="stack">
+      <BoshXulosa>{qadam === 1 ? "Avval sana — keyin faqat shu kunlarga bo'sh liboslar ko'rsatiladi"
+        : qadam === 2 ? "Faqat tanlangan kunlarga bo'sh liboslar" : "Oxirgi qadam: mijoz ma'lumoti va saqlash"}</BoshXulosa>
+      {/* Qadamlar — kanvasdagidek tepada, keng shisha panelda; o'tilgan qadamga bosib qaytiladi */}
+      <section className="blok yz-qadamlar" aria-label="Zakaz qadamlari">
+        <ol className="zakaz-ip" aria-label="Qadamlar">
+          {QADAMLAR.map((n, i) => {
+            const q = i + 1
+            const ichi = <><span className="ip-tugun" aria-hidden="true">{q < qadam ? '✓' : q}</span>
+              <span className="ip-matn"><b>{n}</b><small>{qadamIzoh[i]}</small></span></>
+            return (
+              <li key={n} className={q === qadam ? 'joriy' : q < qadam ? 'otdi' : ''} aria-current={q === qadam ? 'step' : undefined}>
+                {q < qadam ? <button type="button" onClick={() => { setXabar(''); setQadam(q) }}>{ichi}</button> : <span>{ichi}</span>}
+              </li>
+            )
+          })}
+        </ol>
+      </section>
       {xabar && <p className="xato">{xabar}</p>}
 
       <div className="zakaz-joy">
         <div className="stack">
           {qadam === 1 && (
             <section className="blok">
-              <CalendarPage dan={dan} gacha={gacha} onTanla={(d, g) => { setDan(d); setGacha(g) }} />
+              <CalendarPage dan={dan} gacha={gacha} onTanla={(d, g) => { setDan(d); setGacha(g) }} boshSoni={boshSoni} />
               {sanaTayyor && kunlar(dan, gacha) > UZOQ_IJARA_KUN && (
                 <p className="ogohlantirish">Ijara {kunlar(dan, gacha)} kun — odatdagidan uzoq. Qaytarish kuni to'g'ri tanlanganini tekshiring.</p>
               )}
@@ -456,12 +489,15 @@ function YangiZakazForma({ onTayyor, onTolov, boshlangich }) {
                   <li key={l.id} className={`${yopiq ? 'band' : ''} ${tanlandi ? 'tanlandi' : ''}`}>
                     <span className="libos-rasm">
                       {l.rasm ? <img className="eskiz" src={l.rasm} alt="" /> : <span className="eskiz bosh-eskiz"><LibosSiluet /></span>}
+                      {/* kanvas: rasm ustida holat yorlig'i (bo'sh yoki band) */}
+                      <span className={`yz-holat ${yopiq ? 'band' : 'bosh'}`}>{l.qulflangan ? 'Rasmiylashtirilmoqda' : l.band ? 'Band' : "Bo'sh"}</span>
                       {tanlandi && <span className="tanlov-belgi" aria-hidden="true">✓</span>}
                     </span>
                     <span className="matn-ustun">
-                      <span className="libos-nom"><b>{l.artikul}</b> {l.nomi}</span>
-                      <span className="libos-narx">{som(l.ijara_narxi)}</span>
-                      <span className="malumot">{[l.kategoriya, l.olcham, l.rang].filter(Boolean).join(', ')}</span>
+                      {/* DOM tartibi «artikul nom» (qidiruv va testlar), ko'rinishda — nom chapda, artikul o'ngda (kanvas) */}
+                      <span className="libos-nom"><b>{l.artikul}</b> <span className="yz-nom">{l.nomi}</span></span>
+                      <span className="malumot">{[l.kategoriya, l.olcham && `o'lcham ${l.olcham}`, l.rang].filter(Boolean).join(' · ')}</span>
+                      <span className="libos-narx"><b>{som(l.ijara_narxi)}</b> / ijara</span>
                     </span>
                     {l.qulflangan && <em>Hozir boshqa sotuvchi rasmiylashtiryapti</em>}
                     {l.band && (
@@ -474,7 +510,7 @@ function YangiZakazForma({ onTayyor, onTolov, boshlangich }) {
                       <button type="button" className="ikkinchi kichik" onClick={() => setManekin(l)}>Manekinda</button>
                     )}
                     {!yopiq && (
-                      <button className={`kichik ${tanlandi ? '' : 'ikkinchi'}`} onClick={() => tanlash(l)}>
+                      <button className="kichik ikkinchi yz-qosh" onClick={() => tanlash(l)}>
                         {tanlandi ? 'Olib tashlash' : "Qo'shish"}
                       </button>
                     )}
@@ -522,37 +558,50 @@ function YangiZakazForma({ onTayyor, onTolov, boshlangich }) {
           </>)}
 
           {qadam === 3 && (
-            <section className="blok">
-              <h3>Mijoz</h3>
-              <label>Mijoz telefoni
-                <input value={telefon} inputMode="tel" placeholder="+998 90 123 45 67"
-                  onChange={(e) => telefonOzgar(e.target.value)} onBlur={mijozniTekshir} />
+            <section className="blok yz-mijoz">
+              <h3 className="sanoq-panel-nom"><NavIkona nom="mijozlar" className="tugma-ikon" />Mijoz</h3>
+              <label className="yz-tel"><span>Mijoz telefoni</span>
+                <span className="yz-tel-maydon">
+                  <NavIkona nom="telefon" className="tugma-ikon" />
+                  <input value={telefon} inputMode="tel" placeholder="+998 90 123 45 67" aria-label="Mijoz telefoni"
+                    onChange={(e) => telefonOzgar(e.target.value)} onBlur={mijozniTekshir} />
+                </span>
               </label>
               {telefon && telefonRaqamlari(telefon) < 9 && <p className="malumot">Raqam to'liq emas: masalan, +998 90 123 45 67.</p>}
+              {joriyMijoz && !joriyMijoz.yangi && (
+                // kanvas: mavjud mijoz kartasi — avatar, ism, zakazlari soni va yorliq
+                <div className={`yz-mavjud${joriyMijoz.qora_royxat ? ' qora' : ''}`}>
+                  <span className="soz-avatar" aria-hidden="true">{(joriyMijoz.fio || '?').trim().split(/\s+/).slice(0, 2).map((s) => s[0]).join('').toUpperCase()}</span>
+                  <span className="soz-matn">
+                    <b>{joriyMijoz.fio || 'Ismsiz mijoz'}</b>
+                    <small>
+                      {joriyMijoz.qora_royxat ? `Qora ro'yxat: ${joriyMijoz.qora_royxat_sabab}` : `${joriyMijoz.tarix.length} ta zakaz`}
+                      {joriyMijoz.olchamlar && Object.values(joriyMijoz.olchamlar).some((v) => v != null) && (
+                        <> · o'lchamlar: {[joriyMijoz.olchamlar.kokrak, joriyMijoz.olchamlar.bel, joriyMijoz.olchamlar.son].map((v) => v ?? '—').join('/')}{joriyMijoz.olchamlar.boy ? `, bo'y ${joriyMijoz.olchamlar.boy}` : ''}</>
+                      )}
+                    </small>
+                  </span>
+                  <span className={`soz-holat ${joriyMijoz.qora_royxat ? 'qizil' : 'yashil'}`}>{joriyMijoz.qora_royxat ? "Qora ro'yxat" : 'Mavjud mijoz'}</span>
+                </div>
+              )}
               {joriyMijoz?.yangi && (
                 <label><span>Yangi mijoz — F.I.O. <span className="majburiy" aria-hidden="true">*</span></span>
                   <input value={fio} required aria-invalid={ismKerak || undefined} autoComplete="off" onChange={(e) => setFio(e.target.value)} />
                 </label>
               )}
-              {joriyMijoz && !joriyMijoz.yangi && (
-                <div className={joriyMijoz.qora_royxat ? 'ogohlantirish' : 'malumot'}>
-                  {joriyMijoz.qora_royxat && <b>Qora ro'yxat: {joriyMijoz.qora_royxat_sabab}. </b>}
-                  {joriyMijoz.fio}, oldingi zakazlar: {joriyMijoz.tarix.length}
-                  {joriyMijoz.olchamlar && Object.values(joriyMijoz.olchamlar).some((v) => v != null) && (
-                    <>. O'lchamlar: {[joriyMijoz.olchamlar.kokrak, joriyMijoz.olchamlar.bel, joriyMijoz.olchamlar.son].map((v) => v ?? '—').join('/')}{joriyMijoz.olchamlar.boy ? `, bo'y ${joriyMijoz.olchamlar.boy}` : ''}</>
-                  )}
+              {joriyMijoz?.yangi && !salonchi && (
+                <div className="yz-maydon">
+                  <span className="yz-yorliq" id="yz-manba">Qayerdan bildi?</span>
+                  <div className="hisobot-chiplar yz-chiplar" role="radiogroup" aria-labelledby="yz-manba">
+                    {[['instagram', 'Instagram'], ['tavsiya', 'Tanish tavsiyasi'], ['telegram', 'Telegram'], ['boshqa', 'Boshqa']].map(([k, nom]) => (
+                      <button key={k} type="button" role="radio" aria-checked={manba === k} className={manba === k ? 'faol' : ''} onClick={() => setManba(k)}>{nom}</button>
+                    ))}
+                  </div>
                 </div>
               )}
-              {joriyMijoz?.yangi && !salonchi && (
-                <label>Mijoz qayerdan keldi
-                  <select value={manba} onChange={(e) => setManba(e.target.value)}>
-                    <option value="instagram">Instagram</option><option value="tavsiya">Tavsiya</option><option value="boshqa">Boshqa</option>
-                  </select>
-                </label>
-              )}
-              <label>Salonchi (makiyaj ustasi)
-                <select value={salonchi} onChange={(e) => setSalonchi(e.target.value)}>
-                  <option value="">— yo'q —</option>
+              <label>Salonchi (ixtiyoriy)
+                <select value={salonchi} aria-label="Salonchi (makiyaj ustasi)" onChange={(e) => setSalonchi(e.target.value)}>
+                  <option value="">Tanlanmagan</option>
                   {salonchiRoyxat.map((s) => <option key={s.id} value={s.id}>{s.ism}{s.salon_nomi ? `, ${s.salon_nomi}` : ''}</option>)}
                 </select>
                 <Info nom="Salonchi">Mijozni olib kelgan yoki tavsiya qilgan makiyaj ustasi. Unga komissiya hisoblanmaydi — faqat «Salonchilar» hisobotida kim qancha mijoz olib kelgani ko'rinadi.</Info>
@@ -585,43 +634,83 @@ function YangiZakazForma({ onTayyor, onTolov, boshlangich }) {
               }} />
           )}
         </div>
+        {qadam === 1 ? (
         <aside className="zakaz-jami varaq" aria-label="Zakaz varaqasi">
-          {/* Qadamlar — varaq tepasida, tilla ip ustidagi tugunlar; o'tilgan qadamga bosib qaytiladi */}
-          <ol className="zakaz-ip" aria-label="Qadamlar">
-            {QADAMLAR.map((n, i) => {
-              const q = i + 1
-              const ichi = <><span className="ip-tugun" aria-hidden="true">{q < qadam ? '✓' : q}</span>{n}</>
-              return (
-                <li key={n} className={q === qadam ? 'joriy' : q < qadam ? 'otdi' : ''} aria-current={q === qadam ? 'step' : undefined}>
-                  {q < qadam ? <button type="button" onClick={() => { setXabar(''); setQadam(q) }}>{ichi}</button> : <span>{ichi}</span>}
-                </li>
-              )
-            })}
-          </ol>
-          {mijozNomi && qadam === 3 && <p className="varaq-kimga">{mijozNomi}</p>}
+          <h3 className="yz-varaq-nom"><NavIkona nom="hujjat" className="tugma-ikon" />Zakaz varaqasi</h3>
           <VaraqSana dan={dan} gacha={gacha} />
-          {qadam >= 2 && (<>
-            <Bezak />
-            {royxat || <p className="varaq-izoh">Libos hali tanlanmagan.</p>}
-            <div className="varaq-jami"><span>Jami{tanlangan.length > 0 ? `, ${tanlangan.length} ta libos` : ''}</span><b>{som(jami)}</b></div>
-          </>)}
+          {/* kanvas: tanlangan kunlar uchun bo'sh liboslar */}
+          {oraliqBosh != null && (
+            <p className={`yz-bosh${oraliqBosh ? '' : ' yoq'}`}>{oraliqBosh
+              ? `${sanaMatniQisqa(dan)} – ${sanaMatniQisqa(gacha)} uchun ${oraliqBosh} ta libos bo'sh`
+              : "Bu kunlarga bo'sh libos yo'q — boshqa sana tanlang"}</p>
+          )}
           <div className="zakaz-tugmalar">
-            {qadam === 1 ? (
-              <button disabled={!sanaTayyor} onClick={() => { setXabar(''); setQadam(2) }}>Davom etish — liboslarni tanlash</button>
-            ) : (<>
-              <button className="ikkinchi" onClick={() => setQadam(qadam - 1)}>Orqaga</button>
-              <button onClick={davom} disabled={saqlanmoqda || tanlangan.length === 0
-                || (qadam === 3 && (!telefon || !joriyMijoz || joriyMijoz.qora_royxat || ismKerak))}>
-                {qadam === 2 ? 'Davom etish' : saqlanmoqda ? 'Saqlanmoqda…' : 'Zakazni saqlash'}
-              </button>
-            </>)}
+            <button disabled={!sanaTayyor} onClick={() => { setXabar(''); setQadam(2) }}>Davom etish — liboslarni tanlash</button>
           </div>
+        </aside>
+        ) : (
+        // Kanvas (YangiZakaz/YangiZakazMijoz): 2-qadamda «Zakaz xulosasi», 3-qadamda «Zakaz qisqacha» — sanalar, tanlanganlar, jami
+        <aside className="zakaz-jami yz-xulosa" aria-label={qadam === 2 ? 'Zakaz xulosasi' : 'Zakaz qisqacha'}>
+          <div className="sanoq-panel-bosh">
+            <h3 className="sanoq-panel-nom"><NavIkona nom="zakazlar" className="tugma-ikon" />{qadam === 2 ? 'Zakaz xulosasi' : 'Zakaz qisqacha'}</h3>
+            {tanlangan.length > 0 && <span className="soz-holat tilla">{tanlangan.length} ta libos</span>}
+          </div>
+          {qadam === 3 && tanlangan[0] && (
+            <div className="yz-bosh-libos">
+              {tanlangan[0].rasm ? <img src={tanlangan[0].rasm} alt="" /> : <span className="varaq-siluet"><LibosSiluet /></span>}
+              <span><b>{tanlangan[0].nomi}</b><small>{[tanlangan[0].artikul, tanlangan[0].kategoriya, tanlangan[0].olcham && `o'lcham ${tanlangan[0].olcham}`].filter(Boolean).join(' · ')}</small></span>
+            </div>
+          )}
+          {mijozNomi && qadam === 3 && <p className="yz-kimga">Mijoz: <b>{mijozNomi}</b></p>}
+          <div className={`yz-sanalar${qadam === 2 ? ' quti' : ''}`}>
+            <div><span>Olib ketish</span><b>{sanaUzun(dan)}</b></div>
+            <div><span>Qaytarish</span><b>{sanaUzun(gacha)}</b></div>
+            {qadam === 2 && <div><span>Muddat</span><b>{kunlar(dan, gacha)} kun · <button type="button" className="havola" onClick={() => setQadam(1)}>o'zgartirish</button></b></div>}
+          </div>
+          {qadam === 2 && (
+            royxat ? (
+              <ul className="varaq-royxat yz-tanlanganlar">
+                {tanlangan.map((l) => (
+                  <li key={l.id}>
+                    {l.rasm ? <img src={l.rasm} alt="" /> : <span className="varaq-siluet"><LibosSiluet /></span>}
+                    <span className="soz-matn"><b>{l.nomi}</b><small>{l.artikul}{l.olcham ? ` · o'lcham ${l.olcham}` : ''}</small></span>
+                    <span className="varaq-narx">{guruhla(l.ijara_narxi)}</span>
+                    <button type="button" className="yz-olib" aria-label={`${l.artikul} ${l.nomi}: olib tashlash`} onClick={() => tanlash(l)}><NavIkona nom="yop" className="tugma-ikon" /></button>
+                  </li>
+                ))}
+                {aksessuarlar.filter((a) => aksSoni[a.id] > 0).map((a) => (
+                  <li key={`a${a.id}`} className="varaq-aks">
+                    <span className="soz-matn"><b>{a.nomi} × {aksSoni[a.id]}</b><small>{a.kod}</small></span>
+                    <span className="varaq-narx">{guruhla(a.ijara_narxi * aksSoni[a.id])}</span>
+                  </li>
+                ))}
+              </ul>
+            ) : <p className="soz-izoh">Libos hali tanlanmagan.</p>
+          )}
+          <div className="yz-hisob">
+            <div><span>Ijara summasi</span><b>{som(asosiy)}</b></div>
+            {ustama.foiz > 0 && <div><span>Ustama {ustama.foiz}% ({ustama.nomi || 'mavsumiy'})</span><b>{som(ustamaSumma)}</b></div>}
+          </div>
+          <div className="yz-jami"><span>Jami ijara</span><b>{guruhla(jami)}</b></div>
+          {qadam === 3 && <p className="yz-izoh"><NavIkona nom="soat" className="tugma-ikon" />Saqlangach libos vaqtinchalik band bo'ladi. Avans olingach — bron.</p>}
+          <div className="zakaz-tugmalar yz-tugmalar">
+            <button className="pos-tugma" onClick={davom} disabled={saqlanmoqda || tanlangan.length === 0
+              || (qadam === 3 && (!telefon || !joriyMijoz || joriyMijoz.qora_royxat || ismKerak))}>
+              {qadam === 2 ? 'Davom etish' : saqlanmoqda ? 'Saqlanmoqda…' : 'Zakazni saqlash'}
+              <NavIkona nom={qadam === 2 ? 'ong' : 'bajarildi'} className="tugma-ikon" />
+            </button>
+            <button className="ikkinchi" onClick={() => setQadam(qadam - 1)}>
+              <NavIkona nom="chap" className="tugma-ikon" />{qadam === 2 ? 'Sanaga qaytish' : 'Liboslarga qaytish'}
+            </button>
+          </div>
+          {qadam === 2 && <p className="yz-izoh"><NavIkona nom="yordam" className="tugma-ikon" />«Qo'shish» bosilganda libos siz uchun vaqtincha qulflanadi — boshqa sotuvchi uni ololmaydi.</p>}
           {/* o'chiq «Zakazni saqlash» sababi — tugma ostida */}
           {qadam === 3 && ismKerak && <p className="zakaz-sabab" role="status">Yangi mijozning ismini yozing</p>}
           {qadam === 3 && telefon && !joriyMijoz && telefonRaqamlari(telefon) >= 9 && (
             <p className="zakaz-sabab" role="status">{toliqRaqam(telefon) || faqatRaqam(telefon) === qidirilgan ? 'Mijoz tekshirilmoqda…' : 'Mijozni tekshirish uchun telefon maydonidan chiqing'}</p>
           )}
         </aside>
+        )}
       </div>
     </div>
   )

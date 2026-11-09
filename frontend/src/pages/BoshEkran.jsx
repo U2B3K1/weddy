@@ -1,14 +1,17 @@
 import { useCallback, useEffect, useState } from 'react'
 import Tasdiq from '../components/Tasdiq'
-import { boglandim, boshEkran, chegirmaMiqdori, chegirmaQaror, qarzdorlar, sanaMatni, som, xarajatQaror, xatoMatni, zakazlarRoyxat, zakazTafsilot } from '../api'
+import { boglandim, boshEkran, chegirmaMiqdori, chegirmaQaror, guruhla, qarzdorlar, sanaMatni, som, xarajatQaror, xatoMatni, zakazlarRoyxat, zakazTafsilot } from '../api'
 import SummaInput from '../components/SummaInput'
 import { Belgi, Qatorlar } from '../components/ZakazQatorlari'
+import KpiFiltr from '../components/KpiFiltr'
+import NavIkona from '../components/NavIkona'
+import { BoshAmal, BoshXulosa } from '../components/BoshJoy'
 
 // FT-1.2: bosh sahifa. «Bugungi ishlar» — har tur alohida karta (qarorlar, bugun olib ketadi, qaytaradi, kechikkan,
 // qo'ng'iroq, qarzdorlar, qoldiq): faqat ish bor bo'lsa chiqadi; xuddi shu turlar qo'ng'iroqchada ham (A-08, A-09).
 // `yuqori` — rahbar dashbordi: (bugungiIshlar) => <Dashbord orta={…} />, panel kun varaqasi va grafiklar orasiga qo'yiladi.
 // `tab` — qo'ng'iroqchadan kelgan tur ({ tab, n }): o'sha karta belgilanadi va unga suriladi (A-09).
-export default function BoshEkran({ onZakaz, onKassa, rahbar, yuqori, tab: boshTab }) {
+export default function BoshEkran({ onZakaz, onKassa, onBolim, rahbar, yuqori, tab: boshTab, pulOladi = true }) {
   const [d, setD] = useState(null)
   const [xato, setXato] = useState('')
   const [qarz, setQarz] = useState(null)
@@ -35,6 +38,11 @@ export default function BoshEkran({ onZakaz, onKassa, rahbar, yuqori, tab: boshT
     return () => clearTimeout(t)
   }, [tanlanganTur])
   const [bugunMs] = useState(() => Date.now())  // kechikkan kunlarini sanash uchun (render ichida Date chaqirilmasin)
+
+  if (!rahbar) {
+    return <XodimBosh d={d} xato={xato} qoldiqlar={qoldiqlar} pulOladi={pulOladi} onZakaz={onZakaz} onKassa={onKassa} onBolim={onBolim}
+      onYangila={yukla} boshTab={boshTab} bugunMs={bugunMs} />
+  }
 
   // Bugungi ishlar — har tur alohida karta (faqat ish bor bo'lsa chiqadi). Qo'ng'iroqchadagi xabarlar ham shu turlar.
   const eslatmaSoni = d?.eslatmalar ? d.eslatmalar.filter((e) => !e.boglangan).length : 0
@@ -242,3 +250,128 @@ function Eslatma({ e, onZakaz, onBajarildi }) {
 
 const OYQ = ['yan', 'fev', 'mar', 'apr', 'may', 'iyn', 'iyl', 'avg', 'sen', 'okt', 'noy', 'dek']
 const sanaQisqa = (iso) => { const [, m, d] = String(iso).split('-').map(Number); return `${d} ${OYQ[m - 1]}` }
+
+// Xodim bosh sahifasi (kanvas SotuvchiShisha / SotuvchiKassirShisha): 4 ko'rsatkich; chapda «Bugungi ishlar» jadvali
+// (beriladi, qaytadi, kechikdi — har qatorda keyingi amal), o'ngda «Ertaga» va «Qo'ng'iroq qilish».
+// Alohida kassir rejimida sotuvchi pul olmaydi: qoldiqli zakazda «To'lov kutilmoqda» — mijoz kassaga boradi.
+const KUNLAR = ['Yakshanba', 'Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma', 'Shanba']
+const OYLAR_T = ['yanvar', 'fevral', 'mart', 'aprel', 'may', 'iyun', 'iyul', 'avgust', 'sentabr', 'oktabr', 'noyabr', 'dekabr']
+const HOLAT_RANG = { vaqtinchalik: ['ogoh', 'vaqtinchalik'], chegirma_kutilmoqda: ['ogoh', 'chegirma kutilmoqda'], bron: ['tilla', 'bron'], berildi: ['kok', 'mijozda'] }
+
+function XodimBosh({ d, xato, qoldiqlar, pulOladi, onZakaz, onKassa, onBolim, onYangila, boshTab, bugunMs }) {
+  const hozir = new Date(bugunMs)
+  const kun = (iso) => Math.max(1, Math.floor((bugunMs - new Date(`${iso}T00:00:00`).getTime()) / 864e5))
+  const ishlar = d ? [
+    ...d.olib_ketiladi.map((z) => ({ z, tur: 'olib' })),
+    ...d.qaytariladi.map((z) => ({ z, tur: 'qaytar' })),
+    ...d.kechikkan.map((z) => ({ z, tur: 'kech' })),
+  ] : []
+  const ertaga = d ? [...(d.ertaga_olib || []).map((z) => ({ z, tur: 'olib' })), ...(d.ertaga_qaytar || []).map((z) => ({ z, tur: 'qaytar' }))] : []
+  const eslatmaSoni = d?.eslatmalar ? d.eslatmalar.filter((e) => !e.boglangan).length : 0
+  const qoldiqli = d ? d.olib_ketiladi.filter((z) => z.qoldiq > 0) : []
+  const birinchi = (r) => r[0]?.mijoz || ''
+  const amal = ({ z, tur }) => {
+    if (tur === 'kech') return ['Qo\'ng\'iroq', false]
+    if (tur === 'qaytar') return ['Qabul qilish', false]
+    if (z.qoldiq > 0) return pulOladi ? (z.holat === 'bron' ? ['To\'lov va berish', false] : ['Avans olish', false]) : ['To\'lov kutilmoqda', true]
+    return ['Libosni berish', false]
+  }
+  return (
+    <div className="bosh-sahifa xodim-bosh">
+      <BoshAmal>
+        <button type="button" className="bosh-tugma" onClick={() => onBolim?.('yangi')}><NavIkona nom="qosh" className="tugma-ikon" />Yangi zakaz</button>
+      </BoshAmal>
+      <BoshXulosa>{`${KUNLAR[hozir.getDay()]}, ${hozir.getDate()} ${OYLAR_T[hozir.getMonth()]}${d ? ` · bugun ${ishlar.length} ta ish` : ''}`}</BoshXulosa>
+      {!pulOladi && (
+        <p className="xodim-kassir-izoh"><NavIkona nom="yordam" className="tugma-ikon" /><span><b>Bu salonda pulni kassir qabul qiladi.</b> To'lov kerak bo'lgan
+          zakazlar «To'lov kutilmoqda» deb turadi — mijozni kassaga yo'naltiring. To'lov tushgach, libosni bera olasiz.</span></p>
+      )}
+      {d?.smena && !d.smena.ochiq && pulOladi && (
+        <div className="ogohlantirish qator-ogoh">
+          <span>Smena ochiq emas — to'lov qabul qilib bo'lmaydi.</span>
+          <button className="ikkinchi kichik" onClick={onKassa}>Kassaga o'tish</button>
+        </div>
+      )}
+      {d && (
+        <section className="dash-kpi libos-kpi" aria-label="Bugungi ko'rsatkichlar">
+          <KpiFiltr nom="Bugun beriladi" son={d.olib_ketiladi.length} ikon="chiqdi" rang="tilla" izoh={d.olib_ketiladi.length ? `birinchisi: ${birinchi(d.olib_ketiladi)}` : "bugun yo'q"} />
+          <KpiFiltr nom="Bugun qaytadi" son={d.qaytariladi.length} ikon="qaytdi" rang="kok" izoh={d.qaytariladi.length ? (d.qaytariladi[0].liboslar || [])[0] || birinchi(d.qaytariladi) : "bugun yo'q"} />
+          <KpiFiltr nom="Kechikkan" son={d.kechikkan.length} ikon="soat" rang="pushti" xavf={d.kechikkan.length > 0} izoh={d.kechikkan.length ? "qo'ng'iroq qiling" : "kechikkan yo'q"} />
+          {pulOladi
+            ? <KpiFiltr nom="Olinadigan qoldiq" son={guruhla(qoldiqli.reduce((s, z) => s + z.qoldiq, 0))} ikon="kassa" rang="sariq" izoh={qoldiqli.length ? `${qoldiqli.length} ta zakazda · bugun` : "bugun qoldiq yo'q"} />
+            : <KpiFiltr nom="To'lov kutilmoqda" son={qoldiqli.length} ikon="kassa" rang="sariq" izoh="mijoz kassaga boradi" />}
+        </section>
+      )}
+      <section className="bugungi-ishlar xodim-ishlar" aria-label="Bugungi ishlar">
+        {xato && <p className="xato">{xato}</p>}
+        {!d && !xato && <div className="blok dash-karta ish-yuklanmoqda"><p className="malumot">Yuklanmoqda…</p></div>}
+        {d && ishlar.length === 0 && ertaga.length === 0 && eslatmaSoni === 0 && (
+          <div className="blok ish-bosh"><Belgi nom="bajarildi" /><span><b>Bugun shoshilinch ish yo'q.</b> Olib ketish, qaytarish va qo'ng'iroqlar paydo bo'lsa shu yerda va qo'ng'iroqchada chiqadi.</span></div>
+        )}
+        {d && (ishlar.length > 0 || ertaga.length > 0 || eslatmaSoni > 0) && (
+          <div className="xodim-tor">
+            {ishlar.length > 0 ? (
+              <section id="ish-bugun" className={`blok ish-karta xodim-jadval${['olib', 'qaytar', 'kech'].includes(boshTab?.tab) ? ' belgilangan' : ''}`} aria-label={`Bugungi ishlar jadvali: ${ishlar.length}`}>
+                <h3 className="sanoq-panel-nom"><Belgi nom="kun" className="tugma-ikon" />Bugungi ishlar</h3>
+                <table className="soz-jadval xodim-ish-jadval">
+                  <thead><tr><th>Ish</th><th>Mijoz</th><th>Libos</th><th className="ong">Qoldiq</th><th className="ong">Amal</th></tr></thead>
+                  <tbody>
+                    {ishlar.map((ish) => {
+                      const { z, tur } = ish
+                      const [hr, hn] = tur === 'kech' ? ['qizil', `${kun(z.qaytarish)} kun kechikdi`] : HOLAT_RANG[z.holat] || ['yopiq', z.holat_nomi || z.holat]
+                      const [tugma, kutish] = amal(ish)
+                      return (
+                        <tr key={`${tur}-${z.id}`} className={tur === 'kech' ? 'kech' : ''}>
+                          <td>
+                            <b className="xodim-vaqt">{tur === 'kech' ? kunOyQisqa(z.qaytarish) : 'Bugun'}</b>
+                            <small className="xodim-tur"><Belgi nom={tur === 'olib' ? 'chiqdi' : tur === 'qaytar' ? 'qaytdi' : 'soat'} className="tugma-ikon" />{tur === 'olib' ? 'Beriladi' : tur === 'qaytar' ? 'Qaytadi' : 'Kechikdi'}</small>
+                          </td>
+                          <td><span className="soz-matn"><b>{z.mijoz}</b><small>#{z.raqam} · <span className={`xodim-holat ${hr}`}>{hn}</span></small></span></td>
+                          <td>
+                            <span className="xodim-libos">
+                              {z.rasm ? <img src={z.rasm} alt="" loading="lazy" /> : <span className="sanoq-plitka" aria-hidden="true"><Belgi nom="libos" className="tugma-ikon" /></span>}
+                              <span className="soz-matn"><b>{(z.liboslar || [])[0] || '—'}</b>{z.olcham && <small>o'lcham {z.olcham}</small>}</span>
+                            </span>
+                          </td>
+                          <td className="ong">{z.qoldiq > 0 ? <b className={tur === 'kech' ? 'qizil' : 'tilla-matn'}>{guruhla(z.qoldiq)}</b> : <span className="soz-mute">to'liq</span>}</td>
+                          <td className="ong">{kutish
+                            ? <span className="soz-holat ogoh">{tugma}</span>
+                            : <button type="button" className="ikkinchi kichik xodim-amal" onClick={() => onZakaz(z.id)}>{tugma}</button>}</td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </section>
+            ) : <div className="blok ish-bosh"><Belgi nom="bajarildi" /><span><b>Bugun berish va qaytarish yo'q.</b></span></div>}
+            <div className="xodim-ong">
+              {ertaga.length > 0 && (
+                <section className="blok ish-karta xodim-panel" aria-label={`Ertaga: ${ertaga.length}`}>
+                  <div className="sanoq-panel-bosh"><h3 className="sanoq-panel-nom"><Belgi nom="kun" className="tugma-ikon" />Ertaga</h3><small>{ertaga.length} ta</small></div>
+                  {ertaga.map(({ z, tur }) => (
+                    <button key={`${tur}-${z.id}`} type="button" className="xodim-ertaga" onClick={() => onZakaz(z.id)}>
+                      {z.rasm ? <img src={z.rasm} alt="" loading="lazy" /> : <span className="sanoq-plitka" aria-hidden="true"><Belgi nom="libos" className="tugma-ikon" /></span>}
+                      <span className="soz-matn"><b>{z.mijoz}</b><small>{tur === 'olib' ? 'olib ketadi' : 'qaytaradi'} · {(z.liboslar || [])[0] || '—'}</small></span>
+                      <span className="soz-holat yopiq">#{z.raqam}</span>
+                    </button>
+                  ))}
+                </section>
+              )}
+              {eslatmaSoni > 0 && (
+                <section id="ish-eslatma" className={`blok ish-karta xodim-panel${boshTab?.tab === 'eslatma' ? ' belgilangan' : ''}`} aria-label={`Qo'ng'iroq qilish: ${eslatmaSoni}`}>
+                  <div className="sanoq-panel-bosh"><h3 className="sanoq-panel-nom"><Belgi nom="telefon" className="tugma-ikon" />Qo'ng'iroq qilish</h3><small>{eslatmaSoni} ta</small></div>
+                  <div className="eslatmalar">{d.eslatmalar.map((e) => <Eslatma key={`${e.tur}-${e.zakaz_id}`} e={e} onZakaz={onZakaz} onBajarildi={onYangila} />)}</div>
+                </section>
+              )}
+              {qoldiqlar.length > 0 && pulOladi && (
+                <p className="xodim-qoldiq-izoh">Yana {qoldiqlar.length} ta zakazda qoldiq bor — libos berilayotganda olinadi.{' '}
+                  <button type="button" className="havola" onClick={() => onBolim?.('zakazlar')}>Zakazlar →</button></p>
+              )}
+            </div>
+          </div>
+        )}
+      </section>
+    </div>
+  )
+}
+const kunOyQisqa = (iso) => { const [, m, d] = String(iso).split('-').map(Number); return `${d} ${OYQ[m - 1]}` }

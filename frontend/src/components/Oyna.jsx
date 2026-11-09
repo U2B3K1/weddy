@@ -8,7 +8,8 @@ const FOKUSLANADI = 'a[href], button:not([disabled]), input:not([disabled]):not(
 // Yopish: «×» — darhol; fon yoki Escape — formaga biror narsa kiritilgan bo'lsa avval so'raydi («Kiritilganlar o'chadi»),
 // aks holda tasodifiy bosish to'ldirilgan formani yo'qotardi. Fokus oyna ichida aylanadi (Tab), yopilgach uni ochgan
 // tugmaga qaytadi. Props (sarlavha, onYop, children, keng) o'zgarmagan — boshqa bo'limlar ham shu oynani ishlatadi.
-export default function Oyna({ sarlavha, onYop, children, keng = false }) {
+// `yon` — o'ng tomondan to'liq balandlikdagi panel (kanvas «Libos qo'shish»); `izoh`, `ikon` — sarlavha ostida izoh va chapda belgi plitkasi.
+export default function Oyna({ sarlavha, onYop, children, keng = false, yon = false, izoh, ikon }) {
   const ref = useRef(null)
   const ozgardi = useRef(false)  // oyna ichidagi maydonga biror narsa kiritildimi (input/change hodisalari)
   const [soraladi, setSoraladi] = useState(false)
@@ -55,12 +56,13 @@ export default function Oyna({ sarlavha, onYop, children, keng = false }) {
   useEffect(() => { if (soraladi) davomRef.current?.focus() }, [soraladi])
 
   return (
-    <div className="oyna-parda" onClick={ehtiyotYop}>
-      <div className={`oyna${keng ? ' oyna-keng' : ''}`} role="dialog" aria-modal="true" aria-label={sarlavha} ref={ref}
+    <div className={`oyna-parda${yon ? ' oyna-parda-yon' : ''}`} onClick={ehtiyotYop}>
+      <div className={`oyna${keng ? ' oyna-keng' : ''}${yon ? ' oyna-yon' : ''}`} role="dialog" aria-modal="true" aria-label={sarlavha} ref={ref}
         onClick={(e) => e.stopPropagation()}
         onInput={() => { ozgardi.current = true }} onChange={() => { ozgardi.current = true }}>
         <div className="oyna-bosh">
-          <h3>{sarlavha}</h3>
+          {ikon && <span className="soz-plitka" aria-hidden="true"><NavIkona nom={ikon} className="tugma-ikon" /></span>}
+          {izoh ? <div className="oyna-bosh-matn"><h3>{sarlavha}</h3><p>{izoh}</p></div> : <h3>{sarlavha}</h3>}
           <button type="button" className="ikkinchi kichik oyna-yop" aria-label="Yopish" onClick={() => yopRef.current()}><NavIkona nom="yop" className="tugma-ikon" /></button>
         </div>
         {soraladi && (

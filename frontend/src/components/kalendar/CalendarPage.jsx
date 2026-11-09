@@ -8,7 +8,8 @@ import './kalendar.css'
 
 // Yangi zakaz sanasi: 1-bosish — olib ketish, 2-bosish — qaytarish kuni.
 // Fon — ko'rsatilayotgan oy faslining oltin chiziqli rasmi (mavzular.js); u kalendar turgan blokning (Sana) o'ziga xira yoyiladi.
-export default function CalendarPage({ dan, gacha, onTanla }) {
+// `boshSoni(iso)` (ixtiyoriy) — kanvas: kun ostida «N bo'sh» (shu kunga bo'sh liboslar soni)
+export default function CalendarPage({ dan, gacha, onTanla, boshSoni }) {
   const bugun = bugunIso()
   const [korinish, setKorinish] = useState(() => { const s = isoOch(dan || bugun); return { y: s.y, m: s.m } })
   const [yon, setYon] = useState(0) // animatsiya yo'nalishi
@@ -41,7 +42,7 @@ export default function CalendarPage({ dan, gacha, onTanla }) {
       <div className="kuz-ichi">
         <CalendarHeader y={y} m={m} onOy={almash} onYil={(n) => almash(n * 12)} />
         <CalendarGrid key={`${y}-${m}`} y={y} m={m} dan={dan} gacha={gacha} bugun={bugun} fokus={fokus}
-          klaviatura={klaviatura} yon={yon} onTanla={tanla} onFokus={fokusla} />
+          klaviatura={klaviatura} yon={yon} onTanla={tanla} onFokus={fokusla} boshSoni={boshSoni} />
         <TanlovPaneli dan={dan} gacha={gacha} onTozala={(k) => (k === 'dan' ? onTanla('', '') : onTanla(dan, ''))} />
       </div>
     </section>

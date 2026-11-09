@@ -1,8 +1,10 @@
-import { useCallback, useEffect, useState } from 'react'
+import { Fragment, useCallback, useEffect, useState } from 'react'
 import {
   aksessuarlar, kategoriyalar, promokodOzgartir, promokodYarat, promokodlar, salonchilar, som, xatoMatni,
 } from '../api'
 import SummaInput from '../components/SummaInput'
+import NavIkona from '../components/NavIkona'
+import { Yorliq } from '../components/SozlamaUI'
 
 const HOLAT = {
   faol: 'Faol', rejalashtirilgan: 'Rejalashtirilgan', muddati_otgan: "Muddati o'tgan", limiti_tugagan: 'Limiti tugagan',
@@ -19,8 +21,10 @@ const qiymatMatni = (p) => {
 // 4.18: promokodlar — faqat rahbar yaratadi va boshqaradi; har kod bo'yicha statistika (FT-21.11).
 export default function Promokodlar() {
   const [royxat, setRoyxat] = useState([])
-  const [filtr, setFiltr] = useState('faol')
+  const [filtr, setFiltr] = useState('hammasi')
   const [xabar, setXabar] = useState({ turi: '', matn: '' })
+  const [forma, setForma] = useState(false)
+  const [ochiq, setOchiq] = useState(null)
 
   const yukla = useCallback(() => promokodlar().then(setRoyxat), [])
   useEffect(() => { yukla().catch((e) => setXabar({ turi: 'xato', matn: xatoMatni(e) })) }, [yukla])
@@ -37,52 +41,78 @@ export default function Promokodlar() {
 
   const korinadigan = royxat.filter((p) => (filtr === 'hammasi' ? p.holat !== 'arxiv' : p.holat === filtr))
 
+  // Kanvas: «Kodlar» sarlavhasi, o'ngda holat filtri va «Promokod yaratish»; kodlar — jadval, qator bosilsa tafsilot va amallar
   return (
-    <div className="stack">
-      {xabar.matn && <p className={xabar.turi === 'xato' ? 'xato' : 'malumot'}>{xabar.matn}</p>}
-      <PromokodForma onYuborish={(b) => bajar(() => promokodYarat(b),
-        (r) => (r.kodlar.length === 1 ? `Kod yaratildi: ${r.kodlar[0]}` : `${r.kodlar.length} ta kod yaratildi: ${r.kodlar.join(', ')}`))} />
-      <select value={filtr} onChange={(e) => setFiltr(e.target.value)}>
-        <option value="hammasi">Hammasi (arxivsiz)</option>
-        {Object.entries(HOLAT).map(([k, nom]) => <option key={k} value={k}>{nom}</option>)}
-      </select>
-      {korinadigan.length === 0 && <p className="malumot">Bu holatda kod yo'q.</p>}
-      {korinadigan.map((p) => (
-        <div key={p.id} className={`blok stack ${['faol', 'rejalashtirilgan'].includes(p.holat) ? '' : 'bajarilgan'}`}>
-          <div>
-            <b>{p.kod}</b> · {qiymatMatni(p)} · {HOLAT[p.holat]}
-            {p.tugashiga_kun !== null && p.holat === 'faol' && ` · tugashiga ${p.tugashiga_kun} kun`}
-          </div>
-          <p className="malumot">
-            {p.turi === 'bir_martalik' ? 'Bir martalik' : `Ko'p martalik${p.limit ? `, limit ${p.limit}` : ''}`}
-            {p.boshlanish || p.tugash ? ` · ${p.boshlanish || '…'} – ${p.tugash || 'muddatsiz'}` : ' · muddatsiz'}
-            {p.min_summa ? ` · min. ${som(p.min_summa)}` : ''}
-            {p.maks_chegirma ? ` · maks. ${som(p.maks_chegirma)}` : ''}
-            {p.kategoriyalar.length > 0 ? ` · ${p.kategoriyalar.join(', ')}` : ''}
-            {p.hafta_kunlari ? ` · ${p.hafta_kunlari.map((k) => KUNLAR[k]).join(', ')}` : ''}
-            {p.salonchi ? ` · salonchi: ${p.salonchi}` : ''}
-          </p>
-          <p className="malumot">
-            Ishlatilgan: {p.ishlatilgan} · chegirma: {som(p.chegirma_jami)} · tushum: {som(p.tushum)}
-            {' '}· yangi mijoz: {p.yangi_mijozlar} · qaytgan: {p.qaytgan_mijozlar}
-            {p.sotuvchilar.length > 0 && ` · ${p.sotuvchilar.join(', ')}`}
-          </p>
-          {p.izoh && <p className="malumot">{p.izoh}</p>}
-          <div className="qator">
-            {p.holat === 'toxtatilgan' || p.holat === 'arxiv' ? (
-              <button className="ikkinchi kichik" onClick={() => bajar(() => promokodOzgartir(p.id, { holat: 'faol' }), 'Kod yoqildi.')}>Yoqish</button>
-            ) : (
-              <button className="ikkinchi kichik" onClick={() => bajar(() => promokodOzgartir(p.id, { holat: 'toxtatilgan' }), "Kod to'xtatildi.")}>To'xtatish</button>
-            )}
-            {p.holat !== 'arxiv' && (
-              <button className="ikkinchi kichik" onClick={() => bajar(() => promokodOzgartir(p.id, { holat: 'arxiv' }), 'Kod arxivlandi.')}>Arxivlash</button>
-            )}
-            <Uzaytirish p={p} bajar={bajar} />
-          </div>
-        </div>
-      ))}
+    <div className="soz-kodlar">
+      <div className="soz-kichik-bosh soz-kodlar-bosh">
+        <h3>Kodlar</h3>
+        <select className="soz-tanlov" aria-label="Kod holati" value={filtr} onChange={(e) => setFiltr(e.target.value)}>
+          <option value="hammasi">Hammasi (arxivsiz)</option>
+          {Object.entries(HOLAT).map(([k, nom]) => <option key={k} value={k}>{nom}</option>)}
+        </select>
+        <button type="button" className="ikkinchi kichik" aria-expanded={forma} onClick={() => setForma(!forma)}>{forma ? 'Yopish' : 'Promokod yaratish'}</button>
+      </div>
+      {xabar.matn && <p className={xabar.turi === 'xato' ? 'xato' : 'soz-izoh'}>{xabar.matn}</p>}
+      {forma && <PromokodForma onYuborish={(b) => bajar(() => promokodYarat(b),
+        (r) => (r.kodlar.length === 1 ? `Kod yaratildi: ${r.kodlar[0]}` : `${r.kodlar.length} ta kod yaratildi: ${r.kodlar.join(', ')}`)).then((ok) => { if (ok) setForma(false); return ok })} />}
+      {korinadigan.length === 0 ? <p className="soz-izoh">Bu holatda kod yo'q.</p> : (
+        <table className="soz-jadval soz-kod-jadval">
+          <thead><tr><th>Kod</th><th className="ong">Chegirma</th><th>Muddat</th><th className="ong">Ishlatildi</th><th>Holat</th></tr></thead>
+          <tbody>
+            {korinadigan.map((p) => (
+              <Fragment key={p.id}>
+                <tr className={`soz-bosiladi${ochiq === p.id ? ' ochiq' : ''}`} tabIndex={0} aria-expanded={ochiq === p.id}
+                  onClick={() => setOchiq(ochiq === p.id ? null : p.id)} onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && (e.preventDefault(), setOchiq(ochiq === p.id ? null : p.id))}>
+                  <td><span className="soz-kod"><NavIkona nom="yorliq" className="tugma-ikon" />{p.kod}</span></td>
+                  <td className="ong">{qiymatMatni(p)}</td>
+                  <td className="soz-mute">{muddatMatni(p)}</td>
+                  <td className="ong">{p.limit ? `${p.ishlatilgan} / ${p.limit}` : p.ishlatilgan || '—'}</td>
+                  <td><Yorliq tur={HOLAT_RANG[p.holat]}>{HOLAT[p.holat]}</Yorliq></td>
+                </tr>
+                {ochiq === p.id && (
+                  <tr className="soz-kod-tafsilot"><td colSpan={5}>
+                    <p className="soz-izoh">
+                      {p.turi === 'bir_martalik' ? 'Bir martalik' : `Ko'p martalik${p.limit ? `, limit ${p.limit}` : ''}`}
+                      {p.min_summa ? ` · min. ${som(p.min_summa)}` : ''}
+                      {p.maks_chegirma ? ` · maks. ${som(p.maks_chegirma)}` : ''}
+                      {p.kategoriyalar.length > 0 ? ` · ${p.kategoriyalar.join(', ')}` : ''}
+                      {p.hafta_kunlari ? ` · ${p.hafta_kunlari.map((k) => KUNLAR[k]).join(', ')}` : ''}
+                      {p.salonchi ? ` · salonchi: ${p.salonchi}` : ''}
+                      {p.tugashiga_kun !== null && p.holat === 'faol' ? ` · tugashiga ${p.tugashiga_kun} kun` : ''}
+                    </p>
+                    <p className="soz-izoh">
+                      Chegirma: {som(p.chegirma_jami)} · tushum: {som(p.tushum)} · yangi mijoz: {p.yangi_mijozlar} · qaytgan: {p.qaytgan_mijozlar}
+                      {p.sotuvchilar.length > 0 && ` · ${p.sotuvchilar.join(', ')}`}
+                    </p>
+                    {p.izoh && <p className="soz-izoh">{p.izoh}</p>}
+                    <div className="soz-tugmalar">
+                      {p.holat === 'toxtatilgan' || p.holat === 'arxiv' ? (
+                        <button className="ikkinchi kichik" onClick={() => bajar(() => promokodOzgartir(p.id, { holat: 'faol' }), 'Kod yoqildi.')}>Yoqish</button>
+                      ) : (
+                        <button className="ikkinchi kichik" onClick={() => bajar(() => promokodOzgartir(p.id, { holat: 'toxtatilgan' }), "Kod to'xtatildi.")}>To'xtatish</button>
+                      )}
+                      {p.holat !== 'arxiv' && (
+                        <button className="ikkinchi kichik" onClick={() => bajar(() => promokodOzgartir(p.id, { holat: 'arxiv' }), 'Kod arxivlandi.')}>Arxivlash</button>
+                      )}
+                      <Uzaytirish p={p} bajar={bajar} />
+                    </div>
+                  </td></tr>
+                )}
+              </Fragment>
+            ))}
+          </tbody>
+        </table>
+      )}
     </div>
   )
+}
+
+const HOLAT_RANG = { faol: 'yashil', rejalashtirilgan: 'kok', muddati_otgan: 'yopiq', limiti_tugagan: 'ogoh', toxtatilgan: 'yopiq', arxiv: 'yopiq' }
+const OY = ['yan', 'fev', 'mar', 'apr', 'may', 'iyun', 'iyul', 'avg', 'sen', 'okt', 'noy', 'dek']
+const qisqaSana = (s) => { const [, m, d] = String(s).split('-'); return `${Number(d)} ${OY[Number(m) - 1]}` }
+const muddatMatni = (p) => {
+  if (!p.boshlanish && !p.tugash) return p.salonchi ? 'doimiy · salonchi' : 'doimiy'
+  return `${p.boshlanish ? qisqaSana(p.boshlanish) : '…'} – ${p.tugash ? qisqaSana(p.tugash) : 'muddatsiz'}`
 }
 
 function Uzaytirish({ p, bajar }) {
@@ -145,8 +175,8 @@ function PromokodForma({ onYuborish }) {
   }
 
   return (
-    <details className="blok amal">
-      <summary>Promokod yaratish</summary>
+    <div className="soz-tahrir soz-promo-forma">
+      <h4 className="r2-kichik-sarlavha">Yangi promokod</h4>
       <div className="stack">
         <label>Nechta kod
           <input type="number" min="1" max="500" value={f.soni} onChange={set('soni')} />
@@ -228,6 +258,6 @@ function PromokodForma({ onYuborish }) {
         <label>Izoh<input value={f.izoh || ''} maxLength={300} onChange={set('izoh')} /></label>
         <button disabled={!tayyor} onClick={yubor}>Yaratish</button>
       </div>
-    </details>
+    </div>
   )
 }

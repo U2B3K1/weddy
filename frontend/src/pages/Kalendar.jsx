@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { kalendar, xatoMatni } from '../api'
 import NavIkona from '../components/NavIkona'
+import KpiFiltr from '../components/KpiFiltr'
+import LibosSiluet from '../components/LibosSiluet'
 import { HAFTA, OYLAR, bugunIso, isoOch, kunQosh, kunlarSoni, ustun } from '../components/kalendar/sana'
 
 // Tayyor davrlar; «dan» va «gacha» sanalari bilan istalgan davr (3 oygacha — server chegarasi) tanlanadi
@@ -117,9 +119,35 @@ export default function Kalendar({ onZakaz, onYangi }) {
     guruhlar[guruhlar.length - 1].liboslar.push(l)
   }
   // «Kun» ko'rinishida varaq doim ochiq; boshqa davrga o'tilsa tanlangan kun yopiladi
-  const varaqKuni = korinish === 'kun' ? dan : kunlar.includes(tanlangan) ? tanlangan : null
+  const varaqKuni = korinish === 'kun' ? dan : kunlar.includes(tanlangan) ? tanlangan : kunlar.includes(bugun) ? bugun : dan
+  // Kanvas (BandlikShisha) ko'rsatkichlari: davrdagi band ulushi, bo'sh libos-kunlar, vaqtinchalik bronlar, tozalashdagilar
+  const xulosa = useMemo(() => {
+    const rows = qatorlar || []
+    let band = 0, bufer = 0
+    const vaqt = new Set()
+    for (const l of rows) for (const k of kunlar) {
+      const h = kunHolati(l, k)
+      if (!h) continue
+      if (h.turi === 'bufer') bufer++
+      else { band++; if (h.turi === 'vaqtinchalik') vaqt.add(h.b.zakaz_id ?? `${l.id}-${h.b.dan}`) }
+    }
+    const jami = rows.length * kunlar.length
+    return { foiz: jami ? Math.round((band * 100) / jami) : 0, bosh: jami - band - bufer, vaqt: vaqt.size,
+      tozalash: rows.filter((l) => l.holat === 'tozalashda').length, tamir: rows.filter((l) => l.holat === 'tamirda').length }
+  }, [qatorlar, kunlar])
+  const davrSoz = { kun: 'shu kuni', hafta: 'shu hafta', oy: 'shu oyda' }[korinish] || 'shu davrda'
 
   return (
+    <div className="bandlik-sahifa">
+    {qatorlar && (
+      <section className="dash-kpi bandlik-kpi" aria-label="Bandlik ko'rsatkichlari">
+        <KpiFiltr nom={`Band (${davrSoz})`} son={`${xulosa.foiz}%`} ikon="kun" rang="tilla" izoh={`${hammasi.length} libosdan`} />
+        <KpiFiltr nom="Bo'sh libos-kunlar" son={xulosa.bosh} ikon="bajarildi" rang="yashil" izoh={`${davrSoz} berish mumkin`} />
+        <KpiFiltr nom="Vaqtinchalik bron" son={xulosa.vaqt} ikon="soat" rang="sariq" izoh="avans hali olinmagan" />
+        <KpiFiltr nom="Tozalash va ta'mir" son={xulosa.tozalash + xulosa.tamir} ikon="tamir" rang="kok" izoh={`tozalash ${xulosa.tozalash} · ta'mir ${xulosa.tamir}`} />
+      </section>
+    )}
+    <div className="bandlik-tor">
     <section className="blok jadval-panel kalendar-sahifa">
       <div className="jadval-asboblar">
         <h3 className="panel-nom">Bandlik</h3>
@@ -146,11 +174,14 @@ export default function Kalendar({ onZakaz, onYangi }) {
             value={q} onChange={(e) => setQ(e.target.value)} />
         </label>
       </div>
+      {/* legenda — kanvasdagidek jadval ustida */}
+      <p className="bandlik-izoh">
+        <span><i className="izoh-band" /> bron (avans olingan)</span>
+        <span><i className="izoh-vaqtinchalik" /> vaqtinchalik bron</span>
+        <span><i className="izoh-bufer" /> tozalash kuni</span>
+        {hammasi.some((l) => l.primerkalar?.length) && <span><i className="primerka-belgi">P</i> primerka</span>}
+      </p>
       {xato && <p className="xato jadval-bosh">{xato}</p>}
-      {varaqKuni && (
-        <KunVaraq kun={varaqKuni} qatorlar={hammasi} onZakaz={onZakaz}
-          onYop={korinish === 'kun' ? null : () => setTanlangan(null)} />
-      )}
       {qatorlar !== null && korinadi.length === 0 ? (
         <p className="malumot jadval-bosh">{qidiruv ? `«${q}» bo'yicha libos topilmadi.` : "Hali libos yo'q."}</p>
       ) : (
@@ -185,8 +216,14 @@ export default function Kalendar({ onZakaz, onYangi }) {
                 {g.liboslar.map((l) => { const bol = bolaklar(l, kunlar); const birinchi = bol.find(yangiMumkin)?.dan; return (
                   <tr key={l.id} className={l.holat !== 'bosh' ? 'libos-band' : ''}>
                     <th className="libos-katak" scope="row">
-                      <b>{l.artikul}</b>
-                      <small>{l.holat !== 'bosh' ? <em>{l.holat === 'tamirda' ? "ta'mirda" : 'tozalashda'}</em> : l.nomi}</small>
+                      <span className="libos-katak-ichi">
+                        {/* kanvas: libos surati (bo'lmasa — siluet) */}
+                        <span className="bandlik-rasm" aria-hidden="true">{l.rasm ? <img src={l.rasm} alt="" loading="lazy" /> : <LibosSiluet />}</span>
+                        <span className="libos-katak-matn">
+                          <b>{l.nomi}</b>
+                          <small>{l.holat !== 'bosh' ? <em>{l.holat === 'tamirda' ? "ta'mirda" : 'tozalashda'}</em> : `${l.artikul}${l.olcham ? ` · ${l.olcham}` : ''}`}</small>
+                        </span>
+                      </span>
                     </th>
                     {bol.map((s) => (
                       <td key={s.dan} colSpan={s.son}
@@ -211,13 +248,15 @@ export default function Kalendar({ onZakaz, onYangi }) {
           </table>
         </div>
       )}
-      <p className="bandlik-izoh">
-        <span><i className="izoh-band" /> bron (avans olingan)</span>
-        <span><i className="izoh-vaqtinchalik" /> vaqtinchalik bron</span>
-        <span><i className="izoh-bufer" /> tozalash kuni</span>
-        {hammasi.some((l) => l.primerkalar?.length) && <span><i className="primerka-belgi">P</i> primerka</span>}
-      </p>
     </section>
+    {varaqKuni && qatorlar && (
+      <aside className="blok dash-karta bandlik-yon" aria-label="Tanlangan kun">
+        <KunVaraq kun={varaqKuni} qatorlar={hammasi} onZakaz={onZakaz} bugun={bugun}
+          onYop={korinish === 'kun' || !tanlangan ? null : () => setTanlangan(null)} />
+      </aside>
+    )}
+    </div>
+    </div>
   )
 }
 
@@ -235,7 +274,7 @@ function Tasma({ s, onZakaz }) {
 const BOLIMLAR = [['olib', 'Olib ketadi'], ['qaytar', 'Qaytaradi'], ['ijara', 'Ijarada'], ['tozalash', 'Tozalashda']]
 
 // Kun varaqasi: shu kungi ish zakaz bo'yicha (bitta zakazdagi bir nechta libos — bitta qatorda)
-function KunVaraq({ kun, qatorlar, onZakaz, onYop }) {
+function KunVaraq({ kun, qatorlar, onZakaz, onYop, bugun }) {
   const guruh = Object.fromEntries(BOLIMLAR.map(([k]) => [k, new Map()]))
   let bosh = 0
   for (const l of qatorlar) {
@@ -251,9 +290,16 @@ function KunVaraq({ kun, qatorlar, onZakaz, onYop }) {
   return (
     <div className="kun-varaq" role="region" aria-label={`${d} ${oy(m)} kuni`}>
       <div className="kun-varaq-bosh">
-        <h4><b>{d}</b> {oy(m)} <em>{hafta(kun)[1].toLowerCase()}</em></h4>
+        <h4><b>{d}</b> {oy(m)} <em>{hafta(kun)[1].toLowerCase()}{kun === bugun ? ', bugun' : ''}</em></h4>
         <span className="kun-varaq-xulosa">{bosh} libos bo'sh</span>
         {onYop && <button type="button" className="ikkinchi kichik" onClick={onYop}>Yopish</button>}
+      </div>
+      {/* kanvas: kun bo'yicha to'rt son */}
+      <div className="kun-qutilar">
+        <div><small>Beriladi</small><b>{guruh.olib.size}</b></div>
+        <div><small>Qaytadi</small><b>{guruh.qaytar.size}</b></div>
+        <div><small>Tozalashga</small><b>{guruh.tozalash.size}</b></div>
+        <div className="yashil"><small>Bo'sh qoladi</small><b>{bosh}</b></div>
       </div>
       {bor.length === 0 ? (
         <p className="malumot">Bu kuni bron yo'q — hamma libos bo'sh.</p>

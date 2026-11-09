@@ -1,19 +1,20 @@
-import { useCallback, useEffect, useState } from 'react'
+import { Fragment, useCallback, useEffect, useState } from 'react'
 import Integratsiyalar from '../components/Integratsiyalar'
 import MavsumiyNarx from '../components/MavsumiyNarx'
 import TayyorChegirmalar from '../components/TayyorChegirmalar'
 import Promokodlar from './Promokodlar'
 import Jurnal from '../components/Jurnal'
 import NavIkona from '../components/NavIkona'
-import Info from '../components/Info'
+import Sahifali from '../components/Sahifalash'
 import Oyna from '../components/Oyna'
 import Tasdiq from '../components/Tasdiq'
+import { BoshAmal } from '../components/BoshJoy'
+import { Almash, BelgiKarta, Qadam, RadioKarta, SPanel, SQator, Yorliq } from '../components/SozlamaUI'
 import { ESKI_BOLIM, GURUHLAR, SOZLAMA_BOLIMLAR, sozlamaQidir } from './sozlamaBolimlari'
 import {
   smsJurnali, filialOzgartir, filialQosh, filiallar, qurilmaFilial, qurilmaOchirish, qurilmaTasdiq, qurilmalar, salonParol, salonRekvizit, salonRekvizitSaqla, yordamBekor, yordamBer,
   yordamRuxsati, sozlamalar, sozlamaSaqla, xatoMatni, guruhla, xodimOzgartir, xodimQosh, xodimTelegramUlash, xodimlarBoshqaruv,
 } from '../api'
-import SummaInput from '../components/SummaInput'
 
 // GET /sozlamalar/ javobidagi faqat o'qiladigan belgilar (integratsiyalardan) saqlashga yuborilmaydi
 const faqatSozlama = ({ fiskal_eslatma: _f, fiskal_izoh: _i, tolov_havolasi: _t, ...qolgan }) => qolgan
@@ -30,11 +31,29 @@ const vaqtMatni = (v) => {
   const t = new Date(v), n = (x) => String(x).padStart(2, '0')
   return `${n(t.getDate())}.${n(t.getMonth() + 1)}.${t.getFullYear()} ${n(t.getHours())}:${n(t.getMinutes())}`
 }
+const boshHarf = (ism) => String(ism || '?').trim().split(/\s+/).slice(0, 2).map((s) => s.charAt(0).toUpperCase()).join('')
 
-// Sozlama bo'limlarining statik ro'yxati (sozlamaBolimlari.js) — chap paneldagi nav (App.jsx) ham, mazmun ham shu ro'yxatga mos.
-// Pastdagi `bolimlar` massividagi id lar shu ro'yxatdagi bilan bir xil bo'lishi shart.
+// Kanvas (SozlamaBolimShisha): bo'lim tanlansa uning GURUHI bir sahifada — har bo'lim alohida panel. Panellar tartibi kanvasdagidek
+// (chap ro'yxat tartibi sozlamaBolimlari.js da); ichki massiv — yonma-yon ikki panel.
+const PANEL_TARTIBI = {
+  'Zakaz qoidalari': ['bandlik', 'kechikish', 'qaytarish', 'shartnoma'],
+  'Narx va chegirma': ['promokod', 'chegirmalar', 'mavsumiy'],
+  Liboslar: ['katalog', 'artikul'],
+  'Salon va xodimlar': ['xodimlar', 'kassa', 'bonus', ['rekvizitlar', 'filiallar']],
+  "Ko'rinish va xabarlar": ['integratsiyalar', 'sms', 'dashbord'],
+  Xavfsizlik: ['qurilmalar', 'yordam', 'jurnal'],
+}
+const ZALOG = [
+  ['zalog_pul', 'Pul', 'Naqd yoki karta — libos qaytgach qaytariladi'],
+  ['zalog_hujjat', 'Hujjat', 'Pasport nusxasi yoki ID karta'],
+  ['zalog_tillo', 'Tillo buyum', "Uzuk, bilaguzuk — qarz yopilguncha ushlanadi"],
+]
+const foizRang = (f) => (Number(f) >= 100 ? 'yashil' : Number(f) <= 0 ? 'qizil' : 'tilla')
 
-// 4.16: admin panel. Keng ekranda bo'limlar chap paneldagi Sozlama menyusida (App, akkordeon); telefonda — sahifa tepasidagi ochiladigan menyu.
+// Sozlama bo'limlarining statik ro'yxati (sozlamaBolimlari.js) — chap ro'yxat ham, mazmun ham shu ro'yxatga mos.
+// Pastdagi `panellar` dagi kalitlar shu ro'yxatdagi id lar bilan bir xil bo'lishi shart.
+
+// 4.16: admin panel. Keng ekranda bo'limlar sahifaning o'zida chapda; telefonda — sahifa tepasidagi ochiladigan menyu.
 export default function Sozlamalar({ menId, bolim, onBolim }) {
   const [s, setS] = useState(null)
   const [xodimlar, setXodimlar] = useState([])
@@ -43,14 +62,17 @@ export default function Sozlamalar({ menId, bolim, onBolim }) {
   const [qur, setQur] = useState([])
   const [yordam, setYordam] = useState(null)
   const [yangiParol, setYangiParol] = useState('')
+  const [parolOchiq, setParolOchiq] = useState(false)
   const [fil, setFil] = useState([])
   const [sms, setSms] = useState(null)
   useEffect(() => { smsJurnali().then(setSms).catch(() => {}) }, [])
   const [yangiFilial, setYangiFilial] = useState({ nomi: '', manzil: '' })
+  const [filialForma, setFilialForma] = useState(false)
   const [xabar, setXabar] = useState({ turi: '', matn: '' })
   // Serverdagi holat — o'zgarish bor-yo'qligini bilish uchun (saqlash paneli faqat o'zgarishda chiqadi)
   const [asl, setAsl] = useState(null)
   const [xodimOyna, setXodimOyna] = useState(false)
+  const [bandOchiq, setBandOchiq] = useState(null)  // tahrirlanayotgan shartnoma bandi
   // Tor ekranda bo'lim almashish menyusi (keng ekranda bo'limlar chapda doim ko'rinadi).
   const [menuOchiq, setMenuOchiq] = useState(false)
   const [qidiruv, setQidiruv] = useState('')
@@ -62,6 +84,16 @@ export default function Sozlamalar({ menId, bolim, onBolim }) {
   }, [])
   useEffect(() => { yukla().catch((e) => setXabar({ turi: 'xato', matn: xatoMatni(e) })) }, [yukla])
 
+  // Bo'lim tanlanganda: guruh sahifasida shu panelga o'tadi (guruhning birinchi bo'limi — sahifa boshiga)
+  const yuklandi = s !== null
+  useEffect(() => {
+    if (!yuklandi || bolim === 'bosh') return
+    const id = ESKI_BOLIM[bolim] || bolim
+    const g = SOZLAMA_BOLIMLAR.find((b) => b.id === id)?.guruh
+    if (!g || PANEL_TARTIBI[g].flat()[0] === id) window.scrollTo(0, 0)
+    else document.getElementById(`soz-${id}`)?.scrollIntoView({ block: 'start' })
+  }, [bolim, yuklandi])
+
   const bajar = async (fn, ok) => {
     setXabar({ turi: '', matn: '' })
     try { await fn(); setXabar({ turi: 'ok', matn: ok }); await yukla(); return true } catch (e) {
@@ -71,9 +103,12 @@ export default function Sozlamalar({ menId, bolim, onBolim }) {
 
   if (!s) return <p className="malumot">{xabar.matn || 'Yuklanmoqda…'}</p>
   const set = (k, v) => setS({ ...s, [k]: v })
-  const son = (k) => (e) => set(k, e.target.value === '' ? '' : Number(e.target.value))
   const qoida = (i, j) => (e) => set('qaytarish_qoidasi',
     s.qaytarish_qoidasi.map((q, n) => (n === i ? q.map((v, m) => (m === j ? Number(e.target.value) : v)) : q)))
+  const vaqt = (k) => String(s[k] || '').slice(0, 5)
+  const bandlar = s.shartnoma_bandlari || []
+  const setBand = (i, k, v) => set('shartnoma_bandlari', bandlar.map((x, n) => (n === i ? { ...x, [k]: v } : x)))
+  const faolFilial = fil.some((f) => f.faol)
 
   // B-37: har bo'limda bitta usul — maydon va almashtirgichlar (rekvizitlar ham) pastdagi umumiy panel orqali saqlanadi;
   // ro'yxat elementlari (qoida, filial, xodim, qurilma) — har biri o'z tugmasi bilan
@@ -82,7 +117,7 @@ export default function Sozlamalar({ menId, bolim, onBolim }) {
   const saqlash = () => (rekOzgardi && !String(rek.nomi || '').trim()
     ? setXabar({ turi: 'xato', matn: "Salon nomi bo'sh bo'lmasligi kerak (Rekvizitlar)." })
     : bajar(async () => {
-    if (sOzgardi) await sozlamaSaqla({ ...faqatSozlama(s), shartnoma_bandlari: (s.shartnoma_bandlari || []).filter((b) => b.sarlavha.trim() || b.matn.trim()) })
+    if (sOzgardi) await sozlamaSaqla({ ...faqatSozlama(s), shartnoma_bandlari: bandlar.filter((b) => b.sarlavha.trim() || b.matn.trim()) })
     // faqat o'zgargan maydonlar: bo'sh qolgan boshqa maydon («yuridik nom» va h.k.) saqlashni to'xtatmasin
     if (rekOzgardi) {
       const a = JSON.parse(rekAsl)
@@ -90,526 +125,412 @@ export default function Sozlamalar({ menId, bolim, onBolim }) {
     }
   }, rekOzgardi && !sOzgardi ? 'Rekvizitlar saqlandi.' : 'Sozlamalar saqlandi.'))
 
-  const bolimlar = [
-    {
-      id: 'bandlik', nomi: 'Bron va zalog',
-      render: () => (
-        <>
-        <section className="blok stack">
-          <h3>Bron va bandlik</h3>
-          <label>Tozalash uchun bufer kun (kategoriya yoki libosda alohida belgilanmagan bo'lsa)
-            <input type="number" min="0" max="30" value={s.bufer_kun} onChange={son('bufer_kun')} />
-          </label>
-          <label>Avanssiz bron necha soat saqlanadi
-            <input type="number" min="1" max="168" value={s.vaqtinchalik_bron_soat} onChange={son('vaqtinchalik_bron_soat')} />
-          </label>
-          <label>Tanlangan libos necha daqiqa qulflanadi (boshqa sotuvchidan yashiriladi)
-            <input type="number" min="1" max="120" value={s.qulf_daqiqa} onChange={son('qulf_daqiqa')} />
-          </label>
-        </section>
-        <section className="blok stack">
-          <h3>Zalog turlari</h3>
-          <p className="malumot">Libos berishda qaysi garovlarni qabul qilasiz.</p>
-          {[['zalog_pul', 'Pul'], ['zalog_hujjat', 'Hujjat'], ['zalog_tillo', 'Tillo buyum']].map(([k, nom]) => (
-            <label key={k} className="qator">
-              <input type="checkbox" checked={s[k]} onChange={(e) => set(k, e.target.checked)} /> {nom}
-            </label>
-          ))}
-        </section>
-        </>
-      ),
-    },
-    {
-      id: 'kechikish', nomi: 'Kechikish jarimasi',
-      render: () => (
-        <section className="blok stack">
-          <h3>Kechikish jarimasi</h3>
-          <label className="qator">
-            <input type="checkbox" checked={s.kechikish_jarimasi} onChange={(e) => set('kechikish_jarimasi', e.target.checked)} />
-            Yoqilgan (qaytarishda avtomatik hisoblanadi)
-          </label>
-          {s.kechikish_jarimasi && (
-            <label>Kunlik summa, so'm
-              <SummaInput value={s.kechikish_kunlik_summa} onChange={son('kechikish_kunlik_summa')} />
-            </label>
-          )}
-          <label>Qaytmagan libos eslatmasi vaqti
-            <input type="time" value={String(s.qaytarish_tekshiruv_vaqti).slice(0, 5)} onChange={(e) => e.target.value && set('qaytarish_tekshiruv_vaqti', e.target.value)} />
-          </label>
-          <p className="malumot">Qaytarish kuni kelgan, lekin «Qaytarildi» deb qabul qilinmagan libos haqida shu vaqtdan keyin sotuvchi va
-            rahbarga Telegramda eslatma boradi (har kuni bir marta, libos qabul qilinguncha). Salon yopilishidan oldingi vaqtni qo'ying.</p>
-        </section>
-      ),
-    },
-    {
-      id: 'qaytarish', nomi: 'Avans qaytarish',
-      render: () => (
-        <section className="blok stack">
-          <h3>Bekor qilishda avans qaytarish</h3>
-          <label>Qoida nimaga qo'llanadi
-            <select className="r2-tor-select" value={s.qaytarish_asosi} onChange={(e) => set('qaytarish_asosi', e.target.value)}>
+  // Almashtirgichli qator (bitta sozlama maydoni)
+  const almashQator = (k, nomi, izoh) => (
+    <SQator key={k} nomi={nomi} izoh={izoh}><Almash checked={s[k]} onChange={(v) => set(k, v)} nomi={nomi} /></SQator>
+  )
+
+  const panellar = {
+    bandlik: () => (
+      <SPanel id="bandlik" ikon="kalendar" nomi="Bron va zalog" izoh="Libos qancha vaqt band turadi va qanday garov olinadi">
+        <div className="soz-uch">
+          <div className="soz-qiymat-k">
+            <b>Tozalash buferi</b>
+            <Qadam qiymat={s.bufer_kun} onChange={(v) => set('bufer_kun', v)} nomi="Tozalash buferi, kun" min={0} max={30} birlik="kun" />
+            <small>Qaytgan libos keyingi zakazgacha shuncha kun band turadi. Libos yoki kategoriyada alohida berilmagan bo'lsa.</small>
+          </div>
+          <div className="soz-qiymat-k">
+            <b>Avanssiz bron</b>
+            <Qadam qiymat={s.vaqtinchalik_bron_soat} onChange={(v) => set('vaqtinchalik_bron_soat', v)} nomi="Avanssiz bron, soat" min={1} max={168} birlik="soat" />
+            <small>Avans to'lanmagan «vaqtinchalik» bron shuncha soatdan keyin o'zi bo'shaydi.</small>
+          </div>
+          <div className="soz-qiymat-k">
+            <b>Libosni qulflash</b>
+            <Qadam qiymat={s.qulf_daqiqa} onChange={(v) => set('qulf_daqiqa', v)} nomi="Libosni qulflash, daqiqa" min={1} max={120} birlik="daqiqa" />
+            <small>Sotuvchi tanlagan libos boshqa sotuvchidan shuncha daqiqa yashiriladi — ikki kishi bir libosni sotmaydi.</small>
+          </div>
+        </div>
+        <div className="soz-kichik-bosh"><b>Zalog turlari</b><small>Libos berishda qaysi garovlarni qabul qilasiz. Zakazda faqat belgilanganlari chiqadi.</small></div>
+        <div className="soz-uch" role="group" aria-label="Zalog turlari">
+          {ZALOG.map(([k, nomi, izoh]) => <BelgiKarta key={k} checked={s[k]} onChange={(v) => set(k, v)} nomi={nomi} izoh={izoh} />)}
+        </div>
+      </SPanel>
+    ),
+    kechikish: () => (
+      <SPanel id="kechikish" ikon="soat" nomi="Kechikish jarimasi" izoh="Libosni vaqtida qaytarmagan mijozga"
+        ong={<Almash checked={s.kechikish_jarimasi} onChange={(v) => set('kechikish_jarimasi', v)} nomi="Kechikish jarimasi yoqilgan" />}>
+        <SQator nomi="Kunlik summa" className={s.kechikish_jarimasi ? '' : 'ochiq-emas'}
+          izoh={s.kechikish_jarimasi
+            ? `Qaytarishda o'zi hisoblanadi: libos 2 kun kechiksa — ${guruhla(2 * (Number(s.kechikish_kunlik_summa) || 0))} so'm.`
+            : "O'chiq: kechikkan mijozdan jarima olinmaydi."}>
+          <Qadam qiymat={s.kechikish_kunlik_summa} onChange={(v) => set('kechikish_kunlik_summa', v)} nomi="Kunlik jarima, so'm" summa
+            qadam={10000} max={100_000_000} birlik="so'm" disabled={!s.kechikish_jarimasi} />
+        </SQator>
+        <SQator nomi="Qaytmagan libos eslatmasi"
+          izoh="Qaytish kuni kelgan, lekin «Qaytarildi» qilinmagan libos haqida sotuvchi va rahbarga Telegramda — har kuni bir marta, libos qabul qilinguncha.">
+          <input type="time" className="soz-tanlov" aria-label="Qaytmagan libos eslatmasi vaqti" value={vaqt('qaytarish_tekshiruv_vaqti')}
+            onChange={(e) => e.target.value && set('qaytarish_tekshiruv_vaqti', e.target.value)} />
+        </SQator>
+      </SPanel>
+    ),
+    qaytarish: () => {
+      const q = s.qaytarish_qoidasi
+      return (
+        <SPanel id="qaytarish" ikon="qaytar" nomi="Avans qaytarish" izoh="Zakaz bekor qilinganda avansning qancha qismi qaytadi">
+          {'avans_foizi' in s && <AvansFoizi s={s} set={set} />}
+          <SQator nomi="Qoida nimaga qo'llanadi"
+            izoh={s.qaytarish_asosi === 'tolangan' ? "Qoida mijoz to'lagan hamma summaga qo'llanadi." : "Avansdan ortiq oldindan to'langan qoldiq har doim to'liq qaytadi."}>
+            <select className="soz-tanlov" aria-label="Qoida nimaga qo'llanadi" value={s.qaytarish_asosi} onChange={(e) => set('qaytarish_asosi', e.target.value)}>
               <option value="avans">Faqat avansga</option>
               <option value="tolangan">Hamma to'langan summaga</option>
             </select>
-          </label>
-          {s.qaytarish_asosi === 'avans' && ('avans_foizi' in s ? <AvansFoizi s={s} set={set} /> : (
-            <p className="malumot">Avansdan keyin oldindan to'langan qoldiq to'liq qaytariladi.</p>
-          ))}
-          {/* Qoida — 2 ustunli kichik jadval (avval bitta qator telefonda uchga sinib, sahifani surardi) */}
-          <table className="hisobot r2-qoida">
-            <thead><tr><th>Olib ketishgacha qolgan kun, kamida</th><th className="ong">Qaytariladi, %</th></tr></thead>
+          </SQator>
+          <table className="soz-jadval soz-qoida">
+            <thead><tr><th>Olib ketishgacha qolgan kun, kamida</th><th className="ong">Qaytariladi</th></tr></thead>
             <tbody>
-              {s.qaytarish_qoidasi.map(([kun, foiz], i) => (
+              {q.map(([kun, foiz], i) => {
+                const oxirgi = i === q.length - 1
+                return (
+                  <tr key={i}>
+                    <td>{oxirgi
+                      ? (i > 0 ? `${q[i - 1][0]} kundan kam` : 'Har qanday muddat')
+                      : <span className="soz-ichki"><input type="number" min="0" value={kun} onChange={qoida(i, 0)} aria-label={`${i + 1}-qoida: qolgan kun, kamida`} />kun</span>}
+                    </td>
+                    <td className="ong">
+                      <span className={`soz-ichki ${foizRang(foiz)}`}>
+                        <input type="number" min="0" max="100" value={foiz} onChange={qoida(i, 1)} aria-label={`${i + 1}-qoida: qaytariladigan foiz`} />%
+                      </span>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+          <p className="soz-misol"><b>Misol:</b> olib ketishgacha qolgan kunga qarab {s.qaytarish_asosi === 'tolangan' ? "to'langan summaning" : 'avansning'} shu
+            qismi qaytariladi, qolgani salonda qoladi. Avans 1 mln, qoldiq 4 mln to'langan, qoida 50% — {s.qaytarish_asosi === 'tolangan' ? '2,5 mln' : '4,5 mln'} qaytariladi.</p>
+        </SPanel>
+      )
+    },
+    shartnoma: () => (
+      <SPanel id="shartnoma" ikon="hujjat" nomi="Shartnoma bandlari" izoh="Ijara shartnomasiga qo'shiladigan bandlar"
+        ong={bandlar.length < 15 && (
+          <button type="button" className="ikkinchi kichik" onClick={() => { set('shartnoma_bandlari', [...bandlar, { sarlavha: '', matn: '' }]); setBandOchiq(bandlar.length) }}>
+            Band qo'shish
+          </button>
+        )}>
+        {bandlar.length === 0 && <p className="soz-izoh">Qo'shimcha band yo'q — shartnomada faqat avtomatik bandlar chiqadi.</p>}
+        {bandlar.map((b, i) => (bandOchiq === i ? (
+          <div key={i} className="soz-tahrir stack">
+            <label>Sarlavha<input value={b.sarlavha} maxLength={100} onChange={(e) => setBand(i, 'sarlavha', e.target.value)} /></label>
+            <label>Matn<textarea rows={3} value={b.matn} maxLength={2000} onChange={(e) => setBand(i, 'matn', e.target.value)} /></label>
+            <div className="soz-tugmalar">
+              <button type="button" className="kichik" onClick={() => setBandOchiq(null)}>Tayyor</button>
+              <button type="button" className="ikkinchi kichik" onClick={() => { set('shartnoma_bandlari', bandlar.filter((_, n) => n !== i)); setBandOchiq(null) }}>
+                Bandni olib tashlash
+              </button>
+            </div>
+          </div>
+        ) : (
+          <SQator key={i} className="soz-band" nomi={`${i + 1}. ${b.sarlavha.trim() || 'Sarlavhasiz band'}`} izoh={b.matn}>
+            <button type="button" className="havola" onClick={() => setBandOchiq(i)}>Tahrirlash</button>
+          </SQator>
+        )))}
+        <p className="soz-izoh">Ijara muddati, to'lov, zalog, jarima va avans qaytarish bandlari sozlamalardan avtomatik yoziladi — bu yerdagilar ulardan keyin chiqadi.</p>
+      </SPanel>
+    ),
+    promokod: () => (
+      <SPanel id="promokod" ikon="yorliq" nomi="Promokodlar" izoh="Salonchi va aksiya kodlari — qoidalar va kodlar bir joyda"
+        ong={<Almash checked={s.promokodlar_bolimi} onChange={(v) => set('promokodlar_bolimi', v)} nomi="Promokodlar bo'limi yoqilgan" />}>
+        {almashQator('promokod_tasdiqsiz', "Sotuvchi tasdiqsiz qo'llaydi", "O'chirilsa, promokod rahbar tasdig'ini kutadi.")}
+        {almashQator('promokod_chegirma_birga', "Promokod va qo'shimcha chegirma birga", "O'chiq: bittasi tanlanadi — salon ikki marta chegirma bermaydi.")}
+        {almashQator('salonchi_kodlari', "Salonchi kodi zakazni salonchiga bog'laydi", "Salonchi kodi bilan kelgan mijoz Salonchilar statistikasiga o'zi tushadi.")}
+        {s.promokodlar_bolimi ? <Promokodlar /> : <p className="soz-izoh">Bo'lim o'chiq — kodlar ro'yxati ko'rinmaydi.</p>}
+      </SPanel>
+    ),
+    chegirmalar: () => <TayyorChegirmalar />,
+    mavsumiy: () => (
+      <SPanel id="mavsumiy" ikon="quyosh" nomi="Mavsumiy narx" izoh="To'y mavsumida narxga ustama — zakazga o'zi qo'shiladi"
+        ong={<Almash checked={s.mavsumiy_narx} onChange={(v) => set('mavsumiy_narx', v)} nomi="Mavsumiy narx yoqilgan" />}>
+        {!s.mavsumiy_narx && <p className="soz-izoh">O'chiq: qoidalar saqlanadi, lekin narxga ta'sir qilmaydi.</p>}
+        <MavsumiyNarx />
+      </SPanel>
+    ),
+    katalog: () => (
+      <SPanel id="katalog" ikon="katalog" nomi="Libos qo'shish va manekin" izoh="Kim katalogga libos va aksessuar qo'sha oladi">
+        {almashQator('sotuvchi_libos_qoshadi', "Sotuvchi libos va aksessuar qo'sha oladi", "O'chirilsa — faqat rahbar qo'shadi.")}
+        {almashQator('libos_tasdigi', "Sotuvchi qo'shganini rahbar tasdiqlaydi",
+          s.libos_tasdigi ? 'Narx va tannarx tasdiqlangach ijaraga chiqadi.' : "O'chiq: sotuvchi libosi darhol katalogga chiqadi, tannarxni keyin kiritasiz.")}
+        {almashQator('manekin', 'Raqamli manekin', "Libos rasmini fonsiz qilib manekinda ko'rsatadi.")}
+      </SPanel>
+    ),
+    artikul: () => {
+      const xona = s.artikul_xona || 4
+      const namuna = (n) => `${s.artikul_prefiks || ''}${String(n).padStart(xona, '0')}`
+      const bosh = Number(s.artikul_boshlanish) || 0
+      return (
+        <SPanel id="artikul" ikon="raqam" nomi="Libos artikuli" izoh="Yorliqdagi kod — sanoq, zakaz va hisobot shu bilan ishlaydi">
+          {almashQator('artikul_avto', "Raqam avtomatik qo'yilsin",
+            `Libos qo'shishda artikul bo'sh qoldirilsa, tizim keyingisini beradi (oxirgisi ${namuna(57)} bo'lsa — ${namuna(58)}). Ikki xodim bir vaqtda qo'shsa ham takrorlanmaydi.`)}
+          <SQator nomi="Prefiks" izoh="Har artikul boshidagi bir xil qism, masalan «L-» yoki «OQ-». Ixtiyoriy.">
+            <input className="soz-tanlov soz-prefiks" maxLength={10} placeholder="L-" aria-label="Artikul prefiksi" value={s.artikul_prefiks}
+              onChange={(e) => set('artikul_prefiks', e.target.value.replace(/\s/g, ''))} />
+          </SQator>
+          {s.artikul_avto ? (
+            <>
+              <SQator nomi="Sanoq nechidan boshlansin" izoh="Salonda shu prefiksli kattaroq raqam bo'lsa, undan keyingisi beriladi.">
+                <Qadam qiymat={s.artikul_boshlanish} onChange={(v) => set('artikul_boshlanish', v)} nomi="Sanoq nechidan boshlansin" min={0} max={99_999_999} />
+              </SQator>
+              <SQator nomi="Raqam necha xonali" izoh={`Namuna: ${namuna(bosh)}, ${namuna(bosh + 1)}, ${namuna(bosh + 2)}…`}>
+                <select className="soz-tanlov" aria-label="Raqam necha xonali" value={xona} onChange={(e) => set('artikul_xona', Number(e.target.value))}>
+                  {[1, 2, 3, 4, 5, 6].map((n) => <option key={n} value={n}>{n} — {'0'.repeat(n - 1)}1</option>)}
+                </select>
+              </SQator>
+            </>
+          ) : <p className="soz-izoh">Avtomatik raqam o'chiq: artikulni har safar o'zingiz yozasiz.</p>}
+        </SPanel>
+      )
+    },
+    xodimlar: () => (
+      <SPanel id="xodimlar" ikon="mijozlar" nomi="Xodimlar" izoh="Har kim o'z PIN kodi bilan kiradi; rol nimani ko'rishini belgilaydi"
+        ong={<button type="button" className="ikkinchi kichik" onClick={() => setXodimOyna(true)}>Xodim qo'shish</button>}>
+        <div className="soz-xq bosh" aria-hidden="true"><span>Xodim</span><span>Rol</span><span>PIN</span><span>Telegram</span><span /></div>
+        {xodimlar.map((x) => (
+          <Xodim key={x.id} x={x} men={x.id === menId} onOzgartir={(b, ok) => bajar(() => xodimOzgartir(x.id, b), ok)} />
+        ))}
+        {xodimlar.some((x) => x.faol && !x.telegram_ulangan) && (
+          <p className="soz-izoh">Telegram ulanmagan xodimga pul topshirish tasdig'i va eslatmalar bormaydi — xodim menyusidan ulang.</p>
+        )}
+        {xodimOyna && (
+          <Oyna sarlavha="Xodim qo'shish" onYop={() => setXodimOyna(false)}>
+            <XodimForma onYuborish={async (b) => { const ok = await bajar(() => xodimQosh(b), "Xodim qo'shildi."); if (ok) setXodimOyna(false); return ok }} />
+          </Oyna>
+        )}
+      </SPanel>
+    ),
+    kassa: () => (
+      <SPanel id="kassa" ikon="kassa" nomi="Kassa — kim pul qabul qiladi" izoh="Ochiq smenani yopib, keyin almashtiring. «Saqlash» bosilgach kuchga kiradi.">
+        <div className="soz-ikki" role="radiogroup" aria-label="Kim pul qabul qiladi">
+          <RadioKarta name="kassa_rejimi" checked={s.kassa_rejimi === 'sotuvchi'} onChange={() => set('kassa_rejimi', 'sotuvchi')} nomi="Sotuvchining o'zi kassir"
+            izoh="Har sotuvchi o'z mijozidan pul oladi va o'z naqdiga javob beradi. Ketishda pulni topshiradi — qabul qiluvchi Telegramda tasdiqlaydi." />
+          <RadioKarta name="kassa_rejimi" checked={s.kassa_rejimi === 'kassir'} onChange={() => set('kassa_rejimi', 'kassir')} nomi="Alohida kassir"
+            izoh="Sotuvchi faqat zakaz oladi; pulni kassir qabul qiladi. Kassada sotuvchining zakazi «To'lov kutayotganlar» da chiqadi. Kamida bitta xodimga «Kassir» roli kerak." />
+        </div>
+        {almashQator('otkazma_tasdigi', "O'tkazmani rahbar tasdiqlaydi", "Telegramda «Hisobingizga tushdimi?» — Keldi / Kelmadi. «Kelmadi» bo'lsa, to'lov hisobdan chiqadi va qoldiq qayta chiqadi.")}
+        {almashQator('terminal_sverkasi', 'Smena yopishda terminal hisobotini solishtirish', "Terminal chiqargan kunlik summa kiritiladi; farq bo'lsa rahbarga xabar.")}
+      </SPanel>
+    ),
+    bonus: () => (
+      <SPanel id="bonus" ikon="sovga" nomi="Sotuvchi bonusi" izoh="Qaytarib olingan zakazlar summasidan foiz"
+        ong={<Almash checked={s.sotuvchi_bonusi} onChange={(v) => set('sotuvchi_bonusi', v)} nomi="Sotuvchi bonusi yoqilgan" />}>
+        <SQator nomi="Bonus foizi" className={s.sotuvchi_bonusi ? '' : 'ochiq-emas'}
+          izoh="Zakaz qaytarilgan oyda foydadan o'zi ayiriladi — bonusni berganda xarajatga qayta yozmang. Har sotuvchi summasi: Hisobot → «Sotuvchi bonusi».">
+          <Qadam qiymat={s.bonus_foiz} kasr qadam={0.5} max={100} birlik="%" nomi="Bonus, zakazlar summasidan %" disabled={!s.sotuvchi_bonusi}
+            onChange={(v) => set('bonus_foiz', v)} />
+        </SQator>
+      </SPanel>
+    ),
+    rekvizitlar: () => (
+      <SPanel id="rekvizitlar" ikon="bino" nomi="Rekvizitlar" izoh="Shartnoma va kvitansiyada chiqadi">
+        {!rek ? <p className="soz-izoh">Yuklanmoqda…</p> : (
+          <div className="soz-kv-royxat">
+            {[['nomi', 'Salon nomi *'], ['yuridik_nom', 'Yuridik nom'], ['stir', 'STIR'], ['manzil', 'Manzil'], ['telefon', 'Telefon']].map(([k, nom]) => (
+              <label key={k} className="soz-kv"><span>{nom}</span>
+                <input value={rek[k] || ''} placeholder="kiritilmagan" onChange={(e) => setRek({ ...rek, [k]: e.target.value })} />
+              </label>
+            ))}
+          </div>
+        )}
+      </SPanel>
+    ),
+    filiallar: () => (
+      <SPanel id="filiallar" ikon="joy" nomi="Filiallar" izoh="Qurilma qaysi filialga biriktirilgan bo'lsa, zakaz o'shanga yoziladi"
+        ong={<button type="button" className="ikkinchi kichik" aria-expanded={filialForma} onClick={() => setFilialForma(!filialForma)}>{filialForma ? 'Yopish' : "Filial qo'shish"}</button>}>
+        {fil.length === 0 && <p className="soz-izoh">Filial yo'q — salon bitta joyda ishlaydi.</p>}
+        {fil.map((f) => (
+          <FilialQator key={f.id} f={f} qurilma={qur.filter((q) => q.filial === f.id).length}
+            onFaol={() => bajar(() => filialOzgartir(f.id, { faol: !f.faol }), f.faol ? 'Filial nofaol qilindi.' : 'Filial faollashtirildi.')}
+            onSaqla={(b) => bajar(() => filialOzgartir(f.id, b), 'Filial saqlandi.')} />
+        ))}
+        {filialForma && (
+          <div className="stack soz-tahrir">
+            <h4 className="r2-kichik-sarlavha">Yangi filial</h4>
+            <label>Filial nomi *<input placeholder="masalan: Chilonzor" value={yangiFilial.nomi} maxLength={100} onChange={(e) => setYangiFilial({ ...yangiFilial, nomi: e.target.value })} /></label>
+            <label>Manzil<input value={yangiFilial.manzil} maxLength={300} onChange={(e) => setYangiFilial({ ...yangiFilial, manzil: e.target.value })} /></label>
+            <div className="soz-tugmalar">
+              <button type="button" className="kichik" disabled={!yangiFilial.nomi.trim()}
+                onClick={() => bajar(() => filialQosh(yangiFilial), "Filial qo'shildi.").then((ok) => { if (ok) { setYangiFilial({ nomi: '', manzil: '' }); setFilialForma(false) } })}>Qo'shish</button>
+            </div>
+          </div>
+        )}
+        {faolFilial && almashQator('filial_kassasi', 'Har filialda alohida kassa',
+          "Yoqilsa, har filial qurilmasi o'z smenasini ochadi; o'chiq bo'lsa salonda bitta umumiy kassa. Ochiq smenalarni avval yoping.")}
+        <p className="soz-izoh">Filiallar soni tarif bilan cheklangan.</p>
+      </SPanel>
+    ),
+    integratsiyalar: () => <Integratsiyalar />,
+    sms: () => (
+      <SPanel id="sms" ikon="xabar" nomi="Mijozga SMS" izoh="Eskiz orqali — har SMS balansdan (Eskiz tarifi)">
+        {almashQator('sms_eslatma', 'Ertaga olib ketish va qaytarish eslatmasi', "Mijozga kechqurun: ertaga libosni olib ketish yoki qaytarish haqida. Har zakazga bir marta.")}
+        {almashQator('sms_kvitansiya', "To'lovdan keyin SMS kvitansiya",
+          "«Zakaz #123 uchun 2 000 000 so'm qabul qilindi (naqd)» — xodim kamroq yoki boshqa usul bilan yozsa, mijoz darhol ko'radi.")}
+        {sms && !sms.sozlangan && (
+          <p className="soz-ogoh">Eskiz.uz hisobi kiritilmagan (Integratsiyalar → Eskiz SMS): SMS lar hozircha yuborilmaydi, faqat jurnalga yoziladi.</p>
+        )}
+        {sms && sms.xabarlar.length > 0 && (
+          <table className="soz-jadval">
+            <thead><tr><th>Oxirgi SMS</th><th>Kimga</th><th className="ong">Holat</th></tr></thead>
+            <tbody>
+              {sms.xabarlar.slice(0, 5).map((x, i) => (
                 <tr key={i}>
-                  <td><input type="number" min="0" value={kun} disabled={i === s.qaytarish_qoidasi.length - 1} onChange={qoida(i, 0)}
-                    aria-label={`${i + 1}-qoida: qolgan kun, kamida`} /></td>
-                  <td className="ong"><input type="number" min="0" max="100" value={foiz} onChange={qoida(i, 1)}
-                    aria-label={`${i + 1}-qoida: qaytariladigan foiz`} /></td>
+                  <td className="soz-mute">{vaqtMatni(x.vaqt)}</td>
+                  <td>{x.telefon}</td>
+                  <td className="ong">{x.holat === 'yuborildi' ? <Yorliq tur="yashil">yetkazildi</Yorliq>
+                    : x.holat === 'xato' ? <Yorliq tur="qizil" title={x.xato}>xato</Yorliq> : <Yorliq tur="ogoh">kutilmoqda</Yorliq>}</td>
                 </tr>
               ))}
             </tbody>
           </table>
-          <p className="malumot">Olib ketishgacha qolgan kunga qarab {s.qaytarish_asosi === 'tolangan' ? "to'langan summaning" : 'avansning'} shu
-            qismi qaytariladi; qolgani salonda qoladi. Misol: avans 1 mln, qoldiq 4 mln to'langan, qoida 50% —{' '}
-            {s.qaytarish_asosi === 'tolangan' ? '2,5 mln' : '4,5 mln'} qaytariladi.</p>
-        </section>
-      ),
-    },
-    {
-      id: 'katalog', nomi: "Libos qo'shish va manekin",
-      render: () => (
-        <section className="blok stack">
-          <h3>Libos qo'shish va manekin</h3>
-          <label className="qator">
-            <input type="checkbox" checked={s.libos_tasdigi} onChange={(e) => set('libos_tasdigi', e.target.checked)} />
-            Sotuvchi qo'shgan libos va aksessuarni rahbar tasdiqlaydi
-          </label>
-          {!s.libos_tasdigi && <p className="malumot">O'chirilgan: sotuvchi libosi darhol katalogga chiqadi, tannarxni keyin kiritasiz.</p>}
-          <label className="qator">
-            <input type="checkbox" checked={s.sotuvchi_libos_qoshadi} onChange={(e) => set('sotuvchi_libos_qoshadi', e.target.checked)} />
-            Sotuvchi libos va aksessuar qo'sha oladi (o'chirilsa — faqat rahbar)
-          </label>
-          <label className="qator">
-            <input type="checkbox" checked={s.manekin} onChange={(e) => set('manekin', e.target.checked)} />
-            Raqamli manekin (libos rasmini fonsiz qilib manekinda ko'rsatish)
-          </label>
-        </section>
-      ),
-    },
-    {
-      id: 'artikul', nomi: 'Libos artikuli',
-      render: () => {
-        const xona = s.artikul_xona || 4
-        const namuna = (n) => `${s.artikul_prefiks || ''}${String(n).padStart(xona, '0')}`
-        const bosh = Number(s.artikul_boshlanish) || 0
-        return (
-          <section className="blok stack">
-            <h3>Libos artikuli</h3>
-            {/* «i» matn yonida: label htmlFor bilan inputga bog'langan (ichidagi tugmaga emas) */}
-            <label htmlFor="artikul-prefiks">
-              <span>Prefiks (ixtiyoriy)
-                <Info nom="Prefiks">Har artikul boshidagi bir xil qism, masalan «L-» yoki «OQ-». Avtomatik raqamlash o'chiq bo'lsa ham,
-                  libos qo'shishda Artikul maydoni shu prefiks bilan boshlanadi — faqat raqamini yozasiz.</Info>
-              </span>
-              <input id="artikul-prefiks" maxLength={10} placeholder="L-" value={s.artikul_prefiks} onChange={(e) => set('artikul_prefiks', e.target.value.replace(/\s/g, ''))} />
-            </label>
-            <label className="qator">
-              <input type="checkbox" checked={s.artikul_avto} onChange={(e) => set('artikul_avto', e.target.checked)} />
-              <span>Raqam avtomatik qo'yilsin
-                <Info nom="Avtomatik raqam">Libos qo'shishda Artikul bo'sh qoldirilsa, tizim keyingi raqamni o'zi beradi. Qo'lda yozilgan
-                  artikul ham hisobga olinadi: oxirgisi {namuna(57)} bo'lsa, keyingisi {namuna(58)}. Ikki xodim bir vaqtda qo'shsa ham raqam takrorlanmaydi.</Info>
-              </span>
-            </label>
-            {s.artikul_avto && (
-              <div className="qator keng">
-                <label>Sanoq nechidan boshlansin
-                  <input type="number" min="0" max="99999999" value={s.artikul_boshlanish} onChange={son('artikul_boshlanish')} />
-                </label>
-                <label>Raqam necha xonali
-                  <select value={xona} onChange={(e) => set('artikul_xona', Number(e.target.value))}>
-                    {[1, 2, 3, 4, 5, 6].map((n) => <option key={n} value={n}>{n} — {'0'.repeat(n - 1)}1</option>)}
-                  </select>
-                </label>
-              </div>
-            )}
-            <p className="malumot">
-              {s.artikul_avto
-                ? <>Namuna: <b>{namuna(bosh)}</b>, <b>{namuna(bosh + 1)}</b>, <b>{namuna(bosh + 2)}</b>… Agar salonda shu prefiksli kattaroq raqam bo'lsa, undan keyingisi beriladi.</>
-                : "Avtomatik raqam o'chiq: artikulni har safar o'zingiz yozasiz."}
-            </p>
-          </section>
-        )
-      },
-    },
-    {
-      id: 'dashbord', nomi: 'Dashboard va hisobot',
-      render: () => (
-        <section className="blok stack">
-          <h3>Dashboard va kunlik hisobot</h3>
-          <label className="qator">
-            <input type="checkbox" checked={s.qoplamagan_royxat} onChange={(e) => set('qoplamagan_royxat', e.target.checked)} />
-            Qoplamagan va uzoq bo'sh turgan liboslar ro'yxati
-          </label>
-          {s.qoplamagan_royxat && (
-            <label>Necha kundan beri berilmagan libos ro'yxatga tushadi
-              <input type="number" min="1" max="730" value={s.qoplamagan_kun} onChange={son('qoplamagan_kun')} />
-            </label>
-          )}
-          <label className="qator">
-            <input type="checkbox" checked={s.kunlik_hisobot} onChange={(e) => set('kunlik_hisobot', e.target.checked)} />
-            Rahbarga Telegram orqali kunlik hisobot
-          </label>
-          {s.kunlik_hisobot && (
-            <label>Yuborish vaqti
-              <input type="time" value={String(s.kunlik_hisobot_vaqti).slice(0, 5)} onChange={(e) => e.target.value && set('kunlik_hisobot_vaqti', e.target.value)} />
-            </label>
-          )}
-        </section>
-      ),
-    },
-    {
-      id: 'sms', nomi: 'SMS eslatma',
-      render: () => (
-        <section className="blok stack">
-          <h3>Mijozga SMS eslatma</h3>
-          <label className="qator">
-            <input type="checkbox" checked={s.sms_eslatma} onChange={(e) => set('sms_eslatma', e.target.checked)} />
-            Ertaga olib ketish va qaytarish haqida mijozga SMS
-          </label>
-          <label className="qator">
-            <input type="checkbox" checked={s.sms_kvitansiya} onChange={(e) => set('sms_kvitansiya', e.target.checked)} />
-            Har to'lovdan keyin mijozga SMS kvitansiya
-          </label>
-          <p className="malumot">Avans, qoldiq, jarima yoki zalog qabul qilinishi bilan mijozga boradi: «zakaz #123 uchun 2 000 000 so'm qabul
-            qilindi (naqd). To'langan: 2 000 000 / 10 000 000». Xodim kamroq yoki boshqa usul bilan yozsa, mijoz buni darhol ko'radi.
-            Har SMS pullik (Eskiz tarifi); matnni Eskiz kabinetida shablon sifatida tasdiqlatish kerak.</p>
-          {sms && !sms.sozlangan && (
-            <p className="ogohlantirish">Eskiz.uz hisobi kiritilmagan (Integratsiyalar → SMS): SMS lar hozircha yuborilmaydi, faqat jurnalga yoziladi.</p>
-          )}
-          {sms && sms.xabarlar.length > 0 && (
-            <details className="amal">
-              <summary>Oxirgi SMS lar ({sms.xabarlar.length})</summary>
-              {sms.xabarlar.slice(0, 20).map((x, i) => (
-                <p key={i} className="qator-matn">
-                  {vaqtMatni(x.vaqt)} · {x.telefon} · {x.holat === 'yuborildi' ? 'yuborildi' : x.holat === 'xato' ? `xato: ${x.xato}` : 'kutilmoqda'}
-                </p>
-              ))}
-            </details>
-          )}
-          <p className="malumot">Sotuvchi eslatmalari o'z o'rnida qoladi; SMS — qo'shimcha kanal. Har zakazga har turdagi SMS bir marta yuboriladi.</p>
-        </section>
-      ),
-    },
-    {
-      id: 'shartnoma', nomi: 'Shartnoma bandlari',
-      render: () => (
-        <section className="blok stack">
-          <h3>Shartnoma: qo'shimcha bandlar</h3>
-          <p className="malumot">
-            Ijara muddati, to'lov, zalog, jarima va avans qaytarish bandlari sozlamalardan avtomatik yoziladi. Bu yerga salonning o'z
-            shartlarini qo'shasiz — ular shartnomada avtomatik bandlardan keyin chiqadi.
-          </p>
-          {(s.shartnoma_bandlari || []).map((b, i) => (
-            <div key={i} className="tasdiq">
-              <label>Sarlavha
-                <input value={b.sarlavha} maxLength={100}
-                  onChange={(e) => set('shartnoma_bandlari', s.shartnoma_bandlari.map((x, n) => (n === i ? { ...x, sarlavha: e.target.value } : x)))} />
-              </label>
-              <label>Matn
-                <textarea rows={3} value={b.matn} maxLength={2000}
-                  onChange={(e) => set('shartnoma_bandlari', s.shartnoma_bandlari.map((x, n) => (n === i ? { ...x, matn: e.target.value } : x)))} />
-              </label>
-              <button type="button" className="ikkinchi kichik" onClick={() => set('shartnoma_bandlari', s.shartnoma_bandlari.filter((_, n) => n !== i))}>
-                Bandni olib tashlash
-              </button>
-            </div>
-          ))}
-          {(s.shartnoma_bandlari || []).length < 15 && (
-            <button type="button" className="ikkinchi" onClick={() => set('shartnoma_bandlari', [...(s.shartnoma_bandlari || []), { sarlavha: '', matn: '' }])}>
-              Band qo'shish
-            </button>
-          )}
-        </section>
-      ),
-    },
-    {
-      id: 'mavsumiy', nomi: 'Mavsumiy narx',
-      render: () => (
-        <section className="blok stack">
-          <h3>Mavsumiy narx</h3>
-          <label className="qator">
-            <input type="checkbox" checked={s.mavsumiy_narx} onChange={(e) => set('mavsumiy_narx', e.target.checked)} />
-            Yoqilgan (ustama zakaz narxiga avtomatik qo'shiladi)
-          </label>
-          {s.mavsumiy_narx
-            ? <p className="malumot">Yoqish yoki o'chirish — pastdagi «Saqlash» bilan. Har bir qoida o'z tugmalari bilan saqlanadi.</p>
-            : <p className="malumot">O'chirilgan: qoidalar saqlanadi, lekin narxga ta'sir qilmaydi.</p>}
-          <MavsumiyNarx />
-        </section>
-      ),
-    },
-    {
-      id: 'bonus', nomi: 'Sotuvchi bonusi',
-      render: () => (
-        <section className="blok stack">
-          <h3>Sotuvchi bonusi</h3>
-          <label className="qator">
-            <input type="checkbox" checked={s.sotuvchi_bonusi} onChange={(e) => set('sotuvchi_bonusi', e.target.checked)} />
-            Yoqilgan (qaytarib olingan zakazlar summasidan foiz)
-          </label>
-          {s.sotuvchi_bonusi && (
-            <>
-              <label>Bonus, zakazlar summasidan %
-                <input type="number" min="0" max="100" step="0.5" value={s.bonus_foiz} onChange={son('bonus_foiz')} />
-              </label>
-              <p className="malumot">Bonus foydadan avtomatik ayiriladi — xarajat sifatida qayta kiritmang. Har bir sotuvchi summasi: Hisobot → «Sotuvchi bonusi».</p>
-            </>
-          )}
-        </section>
-      ),
-    },
-    {
-      id: 'kassa', nomi: 'Kassa',
-      render: () => (
-        <section className="blok stack">
-          <h3>Kim pul qabul qiladi</h3>
-          <label className="qator">
-            <input type="radio" name="kassa_rejimi" checked={s.kassa_rejimi === 'sotuvchi'} onChange={() => set('kassa_rejimi', 'sotuvchi')} />
-            Sotuvchining o'zi kassir
-          </label>
-          <p className="malumot">Har sotuvchi o'z mijozidan pul oladi va o'z qo'lidagi naqdga javob beradi (har biriga alohida quti yoki hamyon).
-            Ketayotganda pulini smenada qolgan xodimga yoki rahbarga topshiradi — qabul qiluvchi Telegramda tasdiqlaydi.
-            Kamomad faqat topshirgan xodimga yoziladi.</p>
-          <label className="qator">
-            <input type="radio" name="kassa_rejimi" checked={s.kassa_rejimi === 'kassir'} onChange={() => set('kassa_rejimi', 'kassir')} />
-            Alohida kassir
-          </label>
-          <p className="malumot">Sotuvchilar faqat zakaz oladi; pulni kassir (yoki rahbar) qabul qiladi — xuddi restoranda ofitsiant buyurtma
-            olib, hisobni kassir yopgandek. Kassada sotuvchining zakazi «To'lov kutayotganlar» ro'yxatida chiqadi.
-            Har sotuvchining zakazlaridan qancha pul kirgani Hisobot → «Xodimlar nazorati» da ko'rinadi.
-            Xodimlar bo'limida kamida bitta xodimga «Kassir» rolini bering.</p>
-          <p className="malumot">Rejimni o'zgartirishdan oldin ochiq smenani yoping. Pastdagi «Saqlash» bosilgach kuchga kiradi.</p>
-          <h3>Naqdsiz pul nazorati</h3>
-          <label className="qator">
-            <input type="checkbox" checked={s.otkazma_tasdigi} onChange={(e) => set('otkazma_tasdigi', e.target.checked)} />
-            O'tkazmani rahbar tasdiqlaydi
-          </label>
-          <p className="malumot">O'tkazma bilan to'lov olinganda rahbarga Telegramda «Hisobingizga tushdimi?» — «Keldi / Kelmadi».
-            «Kelmadi» bosilsa to'lov hisobdan chiqadi va zakaz qoldig'i qayta chiqadi. O'chirilsa o'tkazma tasdiqsiz hisobga olinadi.</p>
-          <label className="qator">
-            <input type="checkbox" checked={s.terminal_sverkasi} onChange={(e) => set('terminal_sverkasi', e.target.checked)} />
-            Smena yopishda terminal hisobotini solishtirish
-          </label>
-          <p className="malumot">Smenada terminal orqali to'lov bo'lsa, yopishda terminal chiqarib bergan kunlik hisobot summasi kiritiladi va
-            tizim bilan solishtiriladi; farq bo'lsa rahbarga xabar. O'chirilsa smena solishtirmasdan yopiladi.</p>
-          <p className="malumot">To'lovdan keyin mijozga SMS kvitansiya — «SMS eslatma» bo'limida.</p>
-        </section>
-      ),
-    },
-    {
-      id: 'promokod', nomi: 'Promokodlar',
-      render: () => (
-        <section className="blok stack">
-          <h3>Promokodlar</h3>
-          <label className="qator">
-            <input type="checkbox" checked={s.promokodlar_bolimi} onChange={(e) => set('promokodlar_bolimi', e.target.checked)} />
-            Promokodlar bo'limi yoqilgan
-          </label>
-          <label className="qator">
-            <input type="checkbox" checked={s.promokod_tasdiqsiz} onChange={(e) => set('promokod_tasdiqsiz', e.target.checked)} />
-            Sotuvchi promokodni rahbar tasdig'isiz qo'llaydi
-          </label>
-          <label className="qator">
-            <input type="checkbox" checked={s.promokod_chegirma_birga} onChange={(e) => set('promokod_chegirma_birga', e.target.checked)} />
-            Promokod va qo'shimcha chegirmani birga qo'llash mumkin
-          </label>
-          <label className="qator">
-            <input type="checkbox" checked={s.salonchi_kodlari} onChange={(e) => set('salonchi_kodlari', e.target.checked)} />
-            Salonchi kodi zakazni o'sha salonchiga bog'laydi
-          </label>
-        </section>
-      ),
-      // Qoidalar va kodlar bir joyda: bo'lim o'chirilgan bo'lsa kodlar ro'yxati ko'rinmaydi
-      keyin: () => s.promokodlar_bolimi && <Promokodlar />,
-    },
-    {
-      id: 'chegirmalar', nomi: 'Tayyor chegirmalar', saqlashsiz: true, // o'z formalari bilan saqlanadi
-      render: () => <TayyorChegirmalar />,
-    },
-    { id: 'jurnal', nomi: 'Jurnal', saqlashsiz: true, render: () => <Jurnal /> },
-    {
-      id: 'integratsiyalar', nomi: 'Integratsiyalar', saqlashsiz: true,
-      render: () => <Integratsiyalar />,
-    },
-    {
-      id: 'rekvizitlar', nomi: 'Rekvizitlar',
-      render: () => !rek ? <p className="malumot">Yuklanmoqda…</p> : (
-        <section className="blok stack">
-          <h3>Salon va shartnoma rekvizitlari</h3>
-          {[['nomi', 'Salon nomi *'], ['yuridik_nom', 'Yuridik nom'], ['stir', 'STIR (9 raqam)'], ['manzil', 'Manzil'], ['telefon', 'Telefon']].map(([k, nom]) => (
-            <label key={k}>{nom}<input value={rek[k] || ''} onChange={(e) => setRek({ ...rek, [k]: e.target.value })} /></label>
-          ))}
-          <p className="malumot">Shartnoma va hujjatlarda shu ma'lumotlar chiqadi. O'zgartirgach — pastdagi «Saqlash».</p>
-        </section>
-      ),
-    },
-    {
-      id: 'filiallar', nomi: 'Filiallar',
-      render: () => (
-        <section className="blok stack">
-          <h3>Filiallar</h3>
-          {fil.length === 0 && <p className="malumot">Filial yo'q — salon bitta joyda ishlaydi.</p>}
-          {fil.map((f) => (
-            <div key={f.id} className={`tasdiq ${f.faol ? '' : 'bajarilgan'}`}>
-              <span><b>{f.nomi}</b>{f.manzil ? ` · ${f.manzil}` : ''}{f.faol ? '' : ' · nofaol'}</span>
-              <button className="ikkinchi kichik" onClick={() => bajar(() => filialOzgartir(f.id, { faol: !f.faol }), f.faol ? 'Filial nofaol qilindi.' : 'Filial faollashtirildi.')}>
-                {f.faol ? 'Nofaol qilish' : 'Faollashtirish'}
-              </button>
-              <FilialTahrir key={`${f.nomi}-${f.manzil}`} f={f} onSaqla={(b) => bajar(() => filialOzgartir(f.id, b), 'Filial saqlandi.')} />
-            </div>
-          ))}
-          <div className="stack">
-            <h4 className="r2-kichik-sarlavha">Yangi filial</h4>
-            <div className="libos-narxlar">
-              <label>Filial nomi *<input placeholder="masalan: Chilonzor" value={yangiFilial.nomi} maxLength={100} onChange={(e) => setYangiFilial({ ...yangiFilial, nomi: e.target.value })} /></label>
-              <label>Manzil<input value={yangiFilial.manzil} maxLength={300} onChange={(e) => setYangiFilial({ ...yangiFilial, manzil: e.target.value })} /></label>
-            </div>
-            <button className="ikkinchi" disabled={!yangiFilial.nomi.trim()}
-              onClick={() => bajar(() => filialQosh(yangiFilial), "Filial qo'shildi.").then((ok) => ok && setYangiFilial({ nomi: '', manzil: '' }))}>Qo'shish</button>
-          </div>
-          <p className="malumot">
-            Qurilmani (planshetni) filialga biriktirsangiz, undan ochilgan zakaz va qo'shilgan libos shu filialga yoziladi.
-            Filiallar soni tarif bilan cheklangan.
-          </p>
-          {fil.some((f) => f.faol) && (
-            <>
-              <label className="qator">
-                <input type="checkbox" checked={s.filial_kassasi} onChange={(e) => set('filial_kassasi', e.target.checked)} />
-                Har filialda alohida kassa (smena)
-              </label>
-              <p className="malumot">
-                Yoqilsa, har filial qurilmasi o'z smenasini ochadi va to'lov sotuvchi ishlayotgan kassaga yoziladi. O'chirilgan bo'lsa
-                salonda bitta umumiy kassa. Pastdagi «Saqlash» bosilgach kuchga kiradi; ochiq smenalarni avval yoping.
-              </p>
-            </>
-          )}
-        </section>
-      ),
-    },
-    {
-      id: 'qurilmalar', nomi: 'Qurilmalar va parol', saqlashsiz: true,
-      render: () => (
-        <section className="blok stack">
-          <h3>Qurilmalar</h3>
-          {qur.map((q) => (
-            <div key={q.id} className="tasdiq">
-              <span>
-                <b>{q.nomi}</b> · {q.tasdiqlangan ? 'ishonchli' : <span className="qizil">ruxsat kutmoqda</span>}
-                {q.oxirgi_kirish ? ` · oxirgi kirish ${vaqtMatni(q.oxirgi_kirish)}` : ''}
-                <br /><small className="malumot r2-model"><NavIkona nom="qurilma" className="tugma-ikon" />{q.modeli || "Model noma'lum — qurilmadan keyingi kirishda aniqlanadi"}</small>
-              </span>
-              {fil.some((f) => f.faol) && (
-                <QurilmaFiliali key={`${q.id}-${q.filial}`} q={q} fil={fil}
-                  onSaqla={(filial) => bajar(() => qurilmaFilial(q.id, filial), 'Qurilma filiali saqlandi.')} />
-              )}
-              <div className="qator">
-                {!q.tasdiqlangan && <button onClick={() => bajar(() => qurilmaTasdiq(q.id), 'Qurilmaga ruxsat berildi.')}>Ruxsat berish</button>}
-                <button className="ikkinchi" onClick={() => setChiqarSurov(q)}>Chiqarish</button>
-              </div>
-            </div>
-          ))}
-          {chiqarSurov && (
-            <Tasdiq sarlavha={`«${chiqarSurov.nomi}» chiqarilsinmi?`} tugma="Ha, chiqarish"
-              matn="Undagi ochiq sessiyalar darhol yopiladi; qayta kirish uchun salon logini va rahbar ruxsati kerak bo'ladi. Agar bu shu qurilma bo'lsa — siz ham tizimdan chiqasiz."
-              onYop={() => setChiqarSurov(null)}
-              onTasdiq={() => { const q = chiqarSurov; setChiqarSurov(null); bajar(() => qurilmaOchirish(q.id), "Qurilma ro'yxatdan chiqarildi.") }} />
-          )}
-          <p className="malumot">Yangi qurilmada salon logini kiritilgach, u shu yerda ruxsat kutadi. Telegram ulagan bo'lsangiz, ruxsatni botdagi tugma yoki qurilma ekranidagi havola/QR orqali ham berasiz. Chiqarilgan qurilmadagi ochiq sessiyalar darhol yopiladi.</p>
-          <h4 className="r2-kichik-sarlavha">Salon paroli</h4>
-          <div className="qator r2-parol">
-            <label>Yangi salon paroli (kamida 8 belgi)<input type="password" value={yangiParol} autoComplete="new-password" onChange={(e) => setYangiParol(e.target.value)} /></label>
-            <button className="ikkinchi" disabled={yangiParol.length < 8}
-              onClick={() => bajar(() => salonParol(yangiParol), "Salon paroli o'zgartirildi.").then((ok) => ok && setYangiParol(''))}>O'zgartirish</button>
-          </div>
-        </section>
-      ),
-    },
-    {
-      id: 'yordam', nomi: 'Texnik yordam', saqlashsiz: true,
-      render: () => !yordam ? <p className="malumot">Yuklanmoqda…</p> : (
-        <section className="blok stack">
-          <h3>Texnik yordam ruxsati</h3>
-          <p className="malumot">
-            Platforma egasi salon zakazlari va hisobotini faqat siz bergan muddatli ruxsat bilan ko'ra oladi (faqat o'qish).
-            Har bir kirish jurnalga yoziladi.
-          </p>
-          {yordam.amalda ? (
-            <>
-              <p className="ogohlantirish">Ruxsat amalda: {vaqtMatni(yordam.tugaydi)} gacha.</p>
-              <button className="xavfli" onClick={() => bajar(yordamBekor, 'Ruxsat bekor qilindi.')}>Ruxsatni bekor qilish</button>
-            </>
-          ) : (
-            <div className="qator">
-              <button className="ikkinchi" onClick={() => bajar(() => yordamBer(2), '2 soatga ruxsat berildi.')}>2 soatga ruxsat</button>
-              <button className="ikkinchi" onClick={() => bajar(() => yordamBer(24), '24 soatga ruxsat berildi.')}>24 soatga ruxsat</button>
-            </div>
-          )}
-        </section>
-      ),
-    },
-    {
-      id: 'xodimlar', nomi: 'Xodimlar', saqlashsiz: true,
-      render: () => (
-        <section className="blok stack">
-          <div className="blok-sarlavha">
-            <h3>Xodimlar ({xodimlar.length})</h3>
-            <button type="button" className="kichik" onClick={() => setXodimOyna(true)}><NavIkona nom="qosh" className="tugma-ikon" />Xodim qo'shish</button>
-          </div>
-          {xodimlar.map((x) => (
-            <Xodim key={x.id} x={x} men={x.id === menId}
-              onOzgartir={(b, ok) => bajar(() => xodimOzgartir(x.id, b), ok)} />
-          ))}
-          {xodimOyna && (
-            <Oyna sarlavha="Xodim qo'shish" onYop={() => setXodimOyna(false)}>
-              <XodimForma onYuborish={async (b) => { const ok = await bajar(() => xodimQosh(b), "Xodim qo'shildi."); if (ok) setXodimOyna(false); return ok }} />
-            </Oyna>
-          )}
-        </section>
-      ),
-    },
-  ]
+        )}
+      </SPanel>
+    ),
+    dashbord: () => (
+      <SPanel id="dashbord" ikon="ustun" nomi="Dashboard va kunlik hisobot" izoh="Rahbar nimani ko'radi va qachon xabar oladi">
+        {almashQator('kunlik_hisobot', 'Rahbarga kunlik hisobot Telegramda',
+          s.kunlik_hisobot ? `Kassa, zakazlar, qarz — bir xabarda. Yuborish vaqti: ${vaqt('kunlik_hisobot_vaqti')}.` : "O'chiq: kunlik hisobot yuborilmaydi.")}
+        {s.kunlik_hisobot && (
+          <SQator nomi="Yuborish vaqti" izoh="Salon yopilishiga yaqin vaqtni qo'ying.">
+            <input type="time" className="soz-tanlov" aria-label="Kunlik hisobot yuborish vaqti" value={vaqt('kunlik_hisobot_vaqti')}
+              onChange={(e) => e.target.value && set('kunlik_hisobot_vaqti', e.target.value)} />
+          </SQator>
+        )}
+        {almashQator('qoplamagan_royxat', "Uzoq bo'sh turgan liboslar ro'yxati",
+          s.qoplamagan_royxat ? `${s.qoplamagan_kun} kundan beri berilmagan va o'zini qoplamagan libos Dashboardda chiqadi.` : "O'chiq: Dashboardda bu ro'yxat chiqmaydi.")}
+        {s.qoplamagan_royxat && (
+          <SQator nomi="Necha kundan keyin ro'yxatga tushadi">
+            <Qadam qiymat={s.qoplamagan_kun} onChange={(v) => set('qoplamagan_kun', v)} nomi="Bo'sh turgan kun" min={1} max={730} qadam={5} birlik="kun" />
+          </SQator>
+        )}
+      </SPanel>
+    ),
+    qurilmalar: () => (
+      <SPanel id="qurilmalar" ikon="qurilma" nomi="Qurilmalar va salon paroli" izoh="Faqat ruxsat berilgan qurilmadan kiriladi">
+        <Sahifali royxat={qur} hajm={8} nomi="qurilma">{(qism) => qism.map((q) => (
+          <QurilmaQator key={q.id} q={q} fil={faolFilial ? fil : null} onChiqar={() => setChiqarSurov(q)}
+            onRuxsat={() => bajar(() => qurilmaTasdiq(q.id), 'Qurilmaga ruxsat berildi.')}
+            onFilial={(filial) => bajar(() => qurilmaFilial(q.id, filial), 'Qurilma filiali saqlandi.')} />
+        ))}</Sahifali>
+        <SQator nomi="Salon paroli" izoh="Yangi qurilmada birinchi kirish uchun — salon logini bilan birga.">
+          {parolOchiq ? (
+            <span className="soz-parol">
+              <input type="password" className="soz-tanlov" aria-label="Yangi salon paroli (kamida 8 belgi)" placeholder="kamida 8 belgi" value={yangiParol}
+                autoComplete="new-password" onChange={(e) => setYangiParol(e.target.value)} />
+              <button type="button" className="kichik" disabled={yangiParol.length < 8}
+                onClick={() => bajar(() => salonParol(yangiParol), "Salon paroli o'zgartirildi.").then((ok) => { if (ok) { setYangiParol(''); setParolOchiq(false) } })}>Saqlash</button>
+              <button type="button" className="ikkinchi kichik" onClick={() => { setYangiParol(''); setParolOchiq(false) }}>Bekor</button>
+            </span>
+          ) : <button type="button" className="ikkinchi kichik" onClick={() => setParolOchiq(true)}>O'zgartirish</button>}
+        </SQator>
+        <p className="soz-izoh">Yangi qurilmada salon logini kiritilgach, u shu yerda ruxsat kutadi. Telegram ulangan bo'lsa, ruxsatni botdagi tugma yoki qurilma
+          ekranidagi havola/QR orqali ham berasiz. Chiqarilgan qurilmadagi ochiq sessiyalar darhol yopiladi.</p>
+        {chiqarSurov && (
+          <Tasdiq sarlavha={`«${chiqarSurov.nomi}» ${chiqarSurov.tasdiqlangan ? 'chiqarilsinmi' : 'rad etilsinmi'}?`} tugma={chiqarSurov.tasdiqlangan ? 'Ha, chiqarish' : 'Ha, rad etish'}
+            matn="Undagi ochiq sessiyalar darhol yopiladi; qayta kirish uchun salon logini va rahbar ruxsati kerak bo'ladi. Agar bu shu qurilma bo'lsa — siz ham tizimdan chiqasiz."
+            onYop={() => setChiqarSurov(null)}
+            onTasdiq={() => { const q = chiqarSurov; setChiqarSurov(null); bajar(() => qurilmaOchirish(q.id), "Qurilma ro'yxatdan chiqarildi.") }} />
+        )}
+      </SPanel>
+    ),
+    yordam: () => (
+      <SPanel id="yordam" ikon="yordam" nomi="Texnik yordam ruxsati" izoh="Platforma egasi salon ma'lumotini faqat siz bergan muddatda ko'radi (faqat o'qish)"
+        ong={yordam && (yordam.amalda ? <Yorliq tur="ogoh">ochiq</Yorliq> : <Yorliq>Ruxsat yo'q</Yorliq>)}>
+        {!yordam ? <p className="soz-izoh">Yuklanmoqda…</p> : yordam.amalda ? (
+          <SQator nomi="Ruxsat amalda" izoh={`${vaqtMatni(yordam.tugaydi)} gacha. Har kirish jurnalga yoziladi.`}>
+            <button type="button" className="xavfli kichik" onClick={() => bajar(yordamBekor, 'Ruxsat bekor qilindi.')}>Ruxsatni bekor qilish</button>
+          </SQator>
+        ) : (
+          <SQator nomi="Muddatli ruxsat berish" izoh="Har kirish jurnalga yoziladi. Istalgan payt bekor qilasiz.">
+            <button type="button" className="ikkinchi kichik" aria-label="2 soatga ruxsat berish" onClick={() => bajar(() => yordamBer(2), '2 soatga ruxsat berildi.')}>2 soat</button>
+            <button type="button" className="ikkinchi kichik" aria-label="24 soatga ruxsat berish" onClick={() => bajar(() => yordamBer(24), '24 soatga ruxsat berildi.')}>24 soat</button>
+          </SQator>
+        )}
+      </SPanel>
+    ),
+    jurnal: () => <Jurnal />,
+  }
 
-  // 'bosh' — «Barcha sozlamalar»: guruhlar kartalar to'rida (maket uslubi); aks holda tanlangan bo'lim
-  const joriy = bolim === 'bosh'
-    ? { id: 'bosh', nomi: 'Barcha sozlamalar', render: () => <SozlamaMarkazi onTanla={onBolim} /> }
-    : bolimlar.find((b) => b.id === (ESKI_BOLIM[bolim] || bolim)) || bolimlar[0]
+  // Kanvas: umumiy ko'rinishda har bo'limning joriy qiymati (saqlangan holat bo'yicha — tahrirdagi o'zgarish emas)
+  const sa = asl ? JSON.parse(asl) : s
+  const faolXodim = xodimlar.filter((x) => x.faol !== false)
+  const faolFil = fil.filter((f) => f.faol).length
+  const kutQur = qur.filter((q) => !q.tasdiqlangan).length
+  const qiymat = {
+    bandlik: `${sa.bufer_kun} kun · ${sa.vaqtinchalik_bron_soat} soat · ${sa.qulf_daqiqa} daq`,
+    kechikish: sa.kechikish_jarimasi ? `${guruhla(sa.kechikish_kunlik_summa || 0)} / kun` : "o'chiq",
+    qaytarish: `${sa.avans_foizi ? `avans ${sa.avans_foizi}%` : "to'liq avans"} · ${(sa.qaytarish_qoidasi || []).length} qoida`,
+    shartnoma: `${(sa.shartnoma_bandlari || []).length} band`,
+    mavsumiy: sa.mavsumiy_narx ? 'yoqilgan' : "o'chiq",
+    promokod: sa.promokodlar_bolimi ? 'yoqilgan' : "o'chiq",
+    katalog: !sa.sotuvchi_libos_qoshadi ? 'faqat rahbar' : sa.libos_tasdigi ? "rahbar tasdig'i bilan" : 'tasdiqsiz',
+    artikul: sa.artikul_avto ? `avtomatik${sa.artikul_prefiks ? ` · ${sa.artikul_prefiks}` : ''}` : "qo'lda",
+    xodimlar: `${faolXodim.length} xodim`,
+    bonus: sa.sotuvchi_bonusi ? `${sa.bonus_foiz}%` : "o'chiq",
+    kassa: sa.kassa_rejimi === 'kassir' ? 'alohida kassir' : "sotuvchi o'zi oladi",
+    filiallar: fil.length ? `${faolFil} faol${fil.length - faolFil ? ` · ${fil.length - faolFil} nofaol` : ''}` : "yo'q",
+    rekvizitlar: rekAsl ? (JSON.parse(rekAsl).yuridik_nom || JSON.parse(rekAsl).nomi || '') : '',
+    dashbord: sa.kunlik_hisobot ? `har kuni ${String(sa.kunlik_hisobot_vaqti).slice(0, 5)}` : "hisobot o'chiq",
+    sms: sa.sms_eslatma || sa.sms_kvitansiya ? 'yoqilgan' : "o'chiq",
+    qurilmalar: kutQur ? `${kutQur} ruxsat kutmoqda` : `${qur.length} qurilma`,
+    yordam: yordam ? (yordam.amalda ? 'ochiq' : 'yopiq') : '',
+  }
+  const diqqat = new Set([kutQur && 'qurilmalar', faolXodim.some((x) => !x.telegram_ulangan) && 'xodimlar'].filter(Boolean))
+  const telegramsiz = faolXodim.filter((x) => !x.telegram_ulangan)
+  const etibor = [
+    kutQur > 0 && { matn: `${kutQur} ta yangi qurilma ruxsat kutmoqda`, tugma: 'Qurilmalar', bolim: 'qurilmalar' },
+    telegramsiz.length > 0 && {
+      matn: telegramsiz.length === 1 ? `${telegramsiz[0].ism} Telegramni ulamagan — xabarlar unga bormaydi`
+        : `${telegramsiz.length} xodim Telegramni ulamagan — xabarlar ularga bormaydi`,
+      tugma: 'Xodimlar', bolim: 'xodimlar' },
+  ].filter(Boolean)
+
+  // 'bosh' — «Barcha sozlamalar»: guruhlar kartalar to'rida; aks holda tanlangan bo'lim guruhi (hamma panellari)
+  const joriyId = ESKI_BOLIM[bolim] || bolim
+  const guruh = bolim === 'bosh' ? null : (SOZLAMA_BOLIMLAR.find((b) => b.id === joriyId)?.guruh || GURUHLAR[0].nomi)
   const topildi = sozlamaQidir(qidiruv)
 
   return (
     <div className="sozlama-joy">
+    {/* Shisha uslubi: keng ekranda bo'limlar ro'yxati sahifaning o'zida chapda (chap panel asosiy menyuda qoladi); telefonda — ☰ menyu */}
+    <nav className="sozlama-yon" aria-label="Sozlama menyusi">
+      <div className="sozlama-guruh">
+        <button type="button" className={bolim === 'bosh' ? 'faol' : ''} aria-current={bolim === 'bosh' ? 'page' : undefined}
+          onClick={() => onBolim('bosh')}><NavIkona nom="bosh" /><span>Barcha sozlamalar</span></button>
+      </div>
+      <BolimRoyxati bolim={joriyId} guruh={guruh} onTanla={onBolim} diqqat={diqqat} />
+    </nav>
     <div className="sozlama-mazmun">
       <div className="sozlama-menu">
         <button type="button" className="sozlama-menu-tugma" aria-expanded={menuOchiq}
           onClick={() => setMenuOchiq(!menuOchiq)}>
           <span className="sozlama-menu-belgi" aria-hidden="true">☰</span>
-          <span className="sozlama-menu-nom">{joriy.nomi}</span>
+          <span className="sozlama-menu-nom">{guruh || 'Barcha sozlamalar'}</span>
           <span className="sozlama-menu-chevron" aria-hidden="true">▾</span>
         </button>
         {menuOchiq && (
           <div className="sozlama-menu-rohat">
             <div className="sozlama-guruh">
               <button type="button" className={bolim === 'bosh' ? 'faol' : ''} aria-current={bolim === 'bosh' ? 'page' : undefined}
-                onClick={() => { onBolim('bosh'); setMenuOchiq(false) }}><NavIkona nom="katalog" /><span>Barcha sozlamalar</span></button>
+                onClick={() => { onBolim('bosh'); setMenuOchiq(false) }}><NavIkona nom="bosh" /><span>Barcha sozlamalar</span></button>
             </div>
-            <BolimRoyxati bolim={bolim} onTanla={(id) => { onBolim(id); setMenuOchiq(false) }} />
+            <BolimRoyxati bolim={joriyId} guruh={guruh} diqqat={diqqat} onTanla={(id) => { onBolim(id); setMenuOchiq(false) }} />
           </div>
         )}
       </div>
-      {/* Qidiruv: «PIN», «SMS», «artikul», «filial»… — 20 ta bo'lim ichida adashmaslik uchun (B-36) */}
+      {/* Qidiruv: «PIN», «SMS», «artikul», «filial»… — 20 ta bo'lim ichida adashmaslik uchun (B-36); kanvas: sarlavha o'ngida */}
+      <BoshAmal>
       <div className="r2-sozlama-qidiruv">
         <label className="qidiruv-maydon">
           <NavIkona nom="qidiruv" className="tugma-ikon" />
-          <input type="search" className="jadval-qidiruv" aria-label="Sozlamadan qidirish" placeholder="Qidirish: PIN, SMS, artikul, filial…"
+          <input type="search" className="jadval-qidiruv" aria-label="Sozlamadan qidirish" placeholder="Sozlamani qidirish: jarima, PIN, SMS…"
             value={qidiruv} onChange={(e) => setQidiruv(e.target.value)} />
         </label>
         {qidiruv.trim() && (
@@ -623,17 +544,34 @@ export default function Sozlamalar({ menId, bolim, onBolim }) {
           </div>
         )}
       </div>
-      {joriy.render()}
-      {xabar.matn && <p className={xabar.turi === 'xato' ? 'xato' : 'malumot sozlama-xabar'}>{xabar.matn}</p>}
-      {/* Saqlash paneli faqat o'zgarish bo'lganda (professional sozlama sahifalaridagidek); bo'lim almashsa ham turadi */}
-      {(sOzgardi || rekOzgardi) && (
-        <div className="sozlama-saqlash" role="region" aria-label="Saqlanmagan o'zgarishlar">
-          <span>Saqlanmagan o'zgarishlar bor</span>
-          <button type="button" className="ikkinchi kichik" onClick={() => { setS(JSON.parse(asl)); if (rekAsl) setRek(JSON.parse(rekAsl)) }}>Bekor qilish</button>
-          <button type="button" className="kichik" onClick={saqlash}>Saqlash</button>
+      </BoshAmal>
+      {guruh === null
+        ? <SozlamaMarkazi onTanla={onBolim} qiymat={qiymat} diqqat={diqqat} etibor={etibor} />
+        : (
+          <>
+            <nav className="soz-yol" aria-label="Sozlama yo'li">
+              <button type="button" className="havola" onClick={() => onBolim('bosh')}>Barcha sozlamalar</button>
+              <span aria-hidden="true">/</span><b>{guruh}</b>
+            </nav>
+            {PANEL_TARTIBI[guruh].map((x) => (Array.isArray(x)
+              ? <div key={x.join('-')} className="soz-juft">{x.map((id) => <Fragment key={id}>{panellar[id]()}</Fragment>)}</div>
+              : <Fragment key={x}>{panellar[x]()}</Fragment>))}
+          </>
+        )}
+      {/* Pastda yopishib turadi: xabar va (o'zgarish bo'lsa) saqlash paneli — uzun guruh sahifasida ham ko'rinadi */}
+      {(xabar.matn || sOzgardi || rekOzgardi) && (
+        <div className="soz-past">
+          {xabar.matn && <p role="status" className={`soz-xabar ${xabar.turi === 'xato' ? 'xato' : ''}`}>{xabar.matn}</p>}
+          {(sOzgardi || rekOzgardi) && (
+            <div className="sozlama-saqlash" role="region" aria-label="Saqlanmagan o'zgarishlar">
+              <NavIkona nom="soat" className="tugma-ikon" />
+              <span>Saqlanmagan o'zgarishlar bor</span>
+              <button type="button" className="ikkinchi kichik" onClick={() => { setS(JSON.parse(asl)); if (rekAsl) setRek(JSON.parse(rekAsl)); setBandOchiq(null) }}>Bekor qilish</button>
+              <button type="button" className="kichik" onClick={saqlash}>Saqlash</button>
+            </div>
+          )}
         </div>
       )}
-      {joriy.keyin?.()}
     </div>
     </div>
   )
@@ -646,117 +584,197 @@ function AvansFoizi({ s, set }) {
   const foiz = s.avans_foizi
   const avans = foiz ? (MISOL_JAMI * foiz) / 100 : null
   return (
-    <fieldset className="guruh r3z-avans">
-      <legend>Avans qancha</legend>
-      <label className="qator">
-        <input type="radio" name="avans_foizi" checked={foiz == null} onChange={() => set('avans_foizi', null)} />
-        Birinchi to'lov to'liq avans
-      </label>
-      <label className="qator r3z-foiz">
-        <input type="radio" name="avans_foizi" checked={foiz != null} onChange={() => set('avans_foizi', foiz ?? 30)} />
-        <span>Avans — zakaz summasining</span>
-        <input type="number" min="1" max="100" value={foiz ?? ''} disabled={foiz == null} aria-label="Avans, zakaz summasidan foiz"
-          onChange={(e) => set('avans_foizi', e.target.value === '' ? 30 : Math.min(100, Math.max(1, Number(e.target.value))))} />
-        <span>%, ortig'i to'liq qaytariladi</span>
-      </label>
-      <p className="malumot">
-        {foiz == null
-          ? "Misol: mijoz 3 000 000 lik zakazga birinchi marta 1 500 000 to'lasa — hammasi avans, bekor qilinganda yuqoridagi qoida qo'llanadi; keyingi to'lovlar to'liq qaytariladi."
-          : `Misol: ${guruhla(MISOL_JAMI)} lik zakazda ${foiz}% → avans ${guruhla(avans)}. Mijoz 1 500 000 to'lagan bo'lsa, bekor qilinganda `
-            + (1_500_000 > avans ? `${guruhla(1_500_000 - avans)} to'liq qaytariladi, ${guruhla(avans)} ga yuqoridagi qoida qo'llanadi.` : "hammasi avans — yuqoridagi qoida qo'llanadi.")}
-      </p>
+    <fieldset className="soz-qator soz-avans">
+      <legend className="sr-only">Avans qancha</legend>
+      <span className="soz-matn">
+        <b>Avans miqdori</b>
+        <small>
+          {foiz == null
+            ? "Misol: mijoz 3 000 000 lik zakazga birinchi marta 1 500 000 to'lasa — hammasi avans, bekor qilinganda pastdagi qoida qo'llanadi; keyingi to'lovlar to'liq qaytariladi."
+            : `Misol: ${guruhla(MISOL_JAMI)} lik zakazda ${foiz}% → avans ${guruhla(avans)}. Mijoz 1 500 000 to'lagan bo'lsa, bekor qilinganda `
+              + (1_500_000 > avans ? `${guruhla(1_500_000 - avans)} to'liq qaytariladi, ${guruhla(avans)} ga pastdagi qoida qo'llanadi.` : "hammasi avans — pastdagi qoida qo'llanadi.")}
+        </small>
+      </span>
+      <span className="soz-ong soz-avans-tanlov">
+        <label className="soz-chip">
+          <input type="radio" name="avans_foizi" checked={foiz == null} onChange={() => set('avans_foizi', null)} />
+          Birinchi to'lov to'liq avans
+        </label>
+        <label className="soz-chip">
+          <input type="radio" name="avans_foizi" checked={foiz != null} onChange={() => set('avans_foizi', foiz ?? 30)} />
+          Zakazdan foiz
+        </label>
+        <Qadam qiymat={foiz ?? 30} disabled={foiz == null} nomi="Avans, zakaz summasidan foiz" min={1} max={100} qadam={5} birlik="%"
+          onChange={(v) => set('avans_foizi', v)} />
+      </span>
     </fieldset>
+  )
+}
+
+// Qurilma qatori (kanvas): belgi, nom va holat · oxirgi kirish · filial; ruxsat kutayotgani ajralib turadi.
+// Filial — matnda; «Filial» bosilsa tanlov ochiladi (har qatorda doim ochiq tanlov ro'yxatni og'irlashtirardi)
+function QurilmaQator({ q, fil, onChiqar, onRuxsat, onFilial }) {
+  const [filialOchiq, setFilialOchiq] = useState(false)
+  const filialNomi = fil && (fil.find((f) => f.id === q.filial)?.nomi || 'filialsiz')
+  return (
+    <div className={`soz-qurilma${q.tasdiqlangan ? '' : ' kutadi'}`}>
+      <span className="soz-plitka kichik" aria-hidden="true"><NavIkona nom="qurilma" className="tugma-ikon" /></span>
+      <span className="soz-matn">
+        <b>{q.nomi}{q.tasdiqlangan ? '' : ' — yangi qurilma'}</b>
+        <small>{[q.tasdiqlangan ? 'ishonchli' : 'ruxsat kutmoqda', q.oxirgi_kirish && `oxirgi kirish ${vaqtMatni(q.oxirgi_kirish)}`,
+          q.modeli, filialNomi].filter(Boolean).join(' · ')}</small>
+        {fil && filialOchiq && <QurilmaFiliali q={q} fil={fil} onSaqla={(v) => onFilial(v).then((ok) => ok && setFilialOchiq(false))} />}
+      </span>
+      <span className="soz-ong">
+        {fil && <button type="button" className="havola soz-mute-havola" aria-expanded={filialOchiq} onClick={() => setFilialOchiq(!filialOchiq)}>Filial</button>}
+        {q.tasdiqlangan ? <button type="button" className="havola" onClick={onChiqar}>Chiqarish</button> : (
+          <>
+            <button type="button" className="ikkinchi kichik" onClick={onChiqar}>Rad etish</button>
+            <button type="button" className="kichik soz-yashil" onClick={onRuxsat}>Ruxsat berish</button>
+          </>
+        )}
+      </span>
+    </div>
   )
 }
 
 function QurilmaFiliali({ q, fil, onSaqla }) {
   const [v, setV] = useState(q.filial ? String(q.filial) : '')
   return (
-    <div className="qator r2z-qurilma-filial">
-      <select value={v} aria-label="Qurilma filiali" onChange={(e) => setV(e.target.value)}>
+    <span className="soz-qurilma-filial">
+      <select className="soz-tanlov" value={v} aria-label="Qurilma filiali" onChange={(e) => setV(e.target.value)}>
         <option value="">Filialga biriktirilmagan</option>
         {fil.filter((f) => f.faol || f.id === q.filial).map((f) => <option key={f.id} value={f.id}>{f.nomi}</option>)}
       </select>
-      <button type="button" className="ikkinchi kichik" disabled={v === (q.filial ? String(q.filial) : '')}
-        onClick={() => onSaqla(v ? Number(v) : null)}>Saqlash</button>
-    </div>
+      {v !== (q.filial ? String(q.filial) : '') && (
+        <button type="button" className="ikkinchi kichik" onClick={() => onSaqla(v ? Number(v) : null)}>Saqlash</button>
+      )}
+    </span>
   )
 }
 
-// «Barcha sozlamalar»: 6 guruh — kartalar to'rida; har qator — bo'limga o'tish (belgi, nom, qisqa izoh)
-function SozlamaMarkazi({ onTanla }) {
+// «Barcha sozlamalar» (kanvas SozlamaBolimShisha): tepada e'tibor talab qiladigan holatlar; 6 guruh — ikki ustunda kartalar,
+// har qator — bo'lim nomi va joriy qiymati (tilla), bosilsa bo'lim ochiladi. Qisqa izoh — sichqoncha ostida (title).
+function SozlamaMarkazi({ onTanla, qiymat, diqqat, etibor }) {
+  const ustunlar = [GURUHLAR.slice(0, 3), GURUHLAR.slice(3)]
   return (
-    <div className="sozlama-tor" role="group" aria-label="Sozlama bo'limlari">
-      {GURUHLAR.map(({ nomi: g, ikon }) => (
-        <section key={g} className="blok dash-karta sozlama-guruh-karta" aria-label={g}>
-          <div className="dash-karta-bosh"><h3><NavIkona nom={ikon} className="tugma-ikon" />{g}</h3></div>
-          <ul className="sozlama-qatorlar">
-            {SOZLAMA_BOLIMLAR.filter((b) => b.guruh === g).map((b) => (
-              <li key={b.id}>
-                <button type="button" onClick={() => onTanla(b.id)}>
-                  <span className="sozlama-belgi" aria-hidden="true"><NavIkona nom={b.ikon} /></span>
-                  <span className="sozlama-matn"><b>{b.nomi}</b><small>{b.izoh}</small></span>
-                  <NavIkona nom="ong" className="tugma-ikon sozlama-ong" />
-                </button>
-              </li>
+    <div className="sozlama-umumiy">
+      {etibor.length > 0 && (
+        <div className="ogohlantirish sozlama-etibor" role="status">
+          <NavIkona nom="qalqon" className="tugma-ikon" />
+          <p><b>E'tibor:</b> {etibor.map((e) => e.matn).join('. ')}.</p>
+          <span className="sozlama-etibor-tugmalar">
+            {etibor.map((e) => (
+              <button key={e.bolim} type="button" className="havola" onClick={() => onTanla(e.bolim)}>
+                {e.tugma}<NavIkona nom="ong" className="tugma-ikon" />
+              </button>
             ))}
-          </ul>
-        </section>
-      ))}
+          </span>
+        </div>
+      )}
+      <div className="sozlama-tor ikki-ustun" role="group" aria-label="Sozlama bo'limlari">
+        {ustunlar.map((guruhlar, i) => (
+          <div key={i} className="sozlama-ustun">
+            {guruhlar.map(({ nomi: g, ikon }) => (
+              <section key={g} className="blok dash-karta sozlama-guruh-karta" aria-label={g}>
+                <div className="dash-karta-bosh"><h3><NavIkona nom={ikon} className="tugma-ikon" />{g}</h3></div>
+                <ul className="sozlama-qatorlar">
+                  {SOZLAMA_BOLIMLAR.filter((b) => b.guruh === g).map((b) => (
+                    <li key={b.id}>
+                      <button type="button" title={b.izoh} onClick={() => onTanla(b.id)}>
+                        <span className="sozlama-matn"><b>{b.nomi}</b></span>
+                        {qiymat[b.id] && <span className={`sozlama-qiymat${diqqat.has(b.id) ? ' diqqat' : ''}`}>{qiymat[b.id]}</span>}
+                        <NavIkona nom="ong" className="tugma-ikon sozlama-ong" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            ))}
+          </div>
+        ))}
+      </div>
     </div>
   )
 }
 
-function BolimRoyxati({ bolim, onTanla }) {
+// Chap ro'yxat: ochiq guruhning hamma bo'limlari belgilanadi (guruh sahifasida hammasi ko'rinib turadi); e'tibor kerak bo'lsa — tilla nuqta
+function BolimRoyxati({ bolim, guruh, onTanla, diqqat }) {
   return GURUHLAR.map(({ nomi: g }) => (
     <div key={g} className="sozlama-guruh">
       <h4>{g}</h4>
       {SOZLAMA_BOLIMLAR.filter((b) => b.guruh === g).map((b) => (
-        <button key={b.id} type="button" className={b.id === bolim ? 'faol' : ''} aria-current={b.id === bolim ? 'page' : undefined}
-          onClick={() => onTanla(b.id)}><NavIkona nom={b.ikon} /><span>{b.nomi}</span></button>
+        <button key={b.id} type="button" className={`${b.id === bolim ? 'faol' : ''}${g === guruh ? ' guruhda' : ''}`.trim()}
+          aria-current={b.id === bolim ? 'page' : undefined} onClick={() => onTanla(b.id)}>
+          <NavIkona nom={b.ikon} /><span>{b.nomi}</span>
+          {diqqat?.has(b.id) && <i className="soz-nuqta" aria-hidden="true" title="e'tibor kerak" />}
+        </button>
       ))}
     </div>
   ))
 }
 
-function FilialTahrir({ f, onSaqla }) {
-  const [nomi, setNomi] = useState(f.nomi)
-  const [manzil, setManzil] = useState(f.manzil || '')
+function FilialQator({ f, qurilma, onFaol, onSaqla }) {
+  const [tahrir, setTahrir] = useState(false)
   return (
-    <details className="amal">
-      <summary>Tahrirlash</summary>
-      <div className="stack">
-        <label>Nomi<input value={nomi} maxLength={100} onChange={(e) => setNomi(e.target.value)} /></label>
-        <label>Manzil<input value={manzil} maxLength={300} onChange={(e) => setManzil(e.target.value)} /></label>
-        <button className="ikkinchi" disabled={!nomi.trim() || (nomi.trim() === f.nomi && manzil === (f.manzil || ''))}
-          onClick={() => onSaqla({ nomi: nomi.trim(), manzil })}>Saqlash</button>
+    <div className={`tasdiq soz-filial${f.faol ? '' : ' bajarilgan'}`}>
+      <div className="soz-qator">
+        <span className="soz-matn"><b>{f.nomi}</b>
+          <small>{[f.manzil, qurilma ? `${qurilma} qurilma` : ''].filter(Boolean).join(' · ') || 'manzil kiritilmagan'}</small>
+        </span>
+        <span className="soz-ong">
+          <Yorliq tur={f.faol ? 'yashil' : 'yopiq'}>{f.faol ? 'Faol' : 'Nofaol'}</Yorliq>
+          <button type="button" className="havola" aria-expanded={tahrir} onClick={() => setTahrir(!tahrir)}>Tahrirlash</button>
+        </span>
       </div>
-    </details>
+      {tahrir && <FilialTahrir f={f} onFaol={onFaol} onSaqla={(b) => onSaqla(b).then((ok) => ok && setTahrir(false))} />}
+    </div>
   )
 }
 
+function FilialTahrir({ f, onSaqla, onFaol }) {
+  const [nomi, setNomi] = useState(f.nomi)
+  const [manzil, setManzil] = useState(f.manzil || '')
+  return (
+    <div className="stack soz-tahrir">
+      <label>Nomi<input value={nomi} maxLength={100} onChange={(e) => setNomi(e.target.value)} /></label>
+      <label>Manzil<input value={manzil} maxLength={300} onChange={(e) => setManzil(e.target.value)} /></label>
+      <div className="soz-tugmalar">
+        <button type="button" className="kichik" disabled={!nomi.trim() || (nomi.trim() === f.nomi && manzil === (f.manzil || ''))}
+          onClick={() => onSaqla({ nomi: nomi.trim(), manzil })}>Saqlash</button>
+        <button type="button" className="ikkinchi kichik" onClick={onFaol}>{f.faol ? 'Nofaol qilish' : 'Faollashtirish'}</button>
+      </div>
+    </div>
+  )
+}
+
+// Xodim qatori (kanvas jadvali): ism va telefon, rol, PIN, Telegram; «···» — tahrirlash menyusi qator ostida ochiladi
 function Xodim({ x, men, onOzgartir }) {
   const [ochiq, setOchiq] = useState(false)
   const [yangiRol, setYangiRol] = useState(null)
   const [pin, setPin] = useState('')
   const [ism, setIsm] = useState(x.ism)
   const [telefon, setTelefon] = useState(x.telefon || '')
+  const rolNomi = ROLLAR.find(([k]) => k === x.rol)?.[1]
   return (
-    <div className={`xodim ${x.faol ? '' : 'nofaol'}`}>
-      <div className="xodim-sarlavha">
-        <span className="xodim-chip">
-          <i aria-hidden="true">{(x.ism || '?').trim().charAt(0).toUpperCase()}</i>
-          <span><b className="xodim-ism">{x.ism}{men ? ' (siz)' : ''}</b>{x.telefon && <small>{x.telefon}</small>}</span>
+    <div className={`soz-xodim${x.faol ? '' : ' nofaol'}`}>
+      <div className="soz-xq">
+        <span className="soz-xodim-ism">
+          <i className="soz-avatar" aria-hidden="true">{boshHarf(x.ism)}</i>
+          <span className="soz-matn"><b className="xodim-ism">{x.ism}</b>
+            <small>{[x.telefon, men && 'siz', !x.faol && 'nofaol'].filter(Boolean).join(' · ') || '—'}</small></span>
         </span>
-        <span className="xodim-belgilar">
-          <span className={`holat ${x.rol === 'rahbar' ? 'berildi' : 'qaytarildi'}`}>{ROLLAR.find(([k]) => k === x.rol)?.[1]}</span>
-          {!x.faol && <span className="holat qarz">Nofaol</span>}
-          {x.bloklangan && <span className="holat vaqtinchalik">PIN bloklangan</span>}
-        </span>
-        <button className="xodim-menu" aria-label="Xodim menyusi" aria-expanded={ochiq} onClick={() => setOchiq(!ochiq)}>⋮</button>
+        <span><Yorliq tur={x.rol === 'rahbar' ? 'tilla' : 'yopiq'}>{rolNomi}</Yorliq></span>
+        <span className="soz-mute">{x.bloklangan ? <Yorliq tur="qizil">bloklangan</Yorliq> : "o'rnatilgan"}</span>
+        <span>{x.telegram_ulangan ? <Yorliq tur="yashil">ulangan</Yorliq> : (
+          <button type="button" className="soz-holat ogoh" title="Xodim menyusida «Telegram» → «Kod olish»" onClick={() => setOchiq(true)}>ulanmagan · ulash</button>
+        )}</span>
+        <button type="button" className="soz-uch-nuqta" aria-label="Xodim menyusi" aria-expanded={ochiq} onClick={() => setOchiq(!ochiq)}>
+          <NavIkona nom="koproq" className="tugma-ikon" />
+        </button>
       </div>
       {ochiq && (
-        <div className="xodim-menyu stack">
+        <div className="xodim-menyu stack soz-tahrir">
           <XodimTelegram x={x} />
           <label>Ism<input value={ism} maxLength={200} aria-label="Ism" onChange={(e) => setIsm(e.target.value)} /></label>
           <label>Telefon<input value={telefon} maxLength={20} inputMode="tel" aria-label="Telefon" onChange={(e) => setTelefon(e.target.value)} /></label>

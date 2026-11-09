@@ -47,7 +47,16 @@ export default function TushumChizigi({ kunlar, rang = '#B9833A' }) {
   const h = BALAND - TEPA - PAST
   const x = (i) => CHAP + (n > 1 ? (i * w) / (n - 1) : w / 2)
   const y = (v) => TEPA + h - (Math.max(0, v) / yuqori) * h
-  const yol = (kalit) => kunlar.map((k, i) => `${i ? 'L' : 'M'}${x(i).toFixed(1)},${y(k[kalit]).toFixed(1)}`).join(' ')
+  // Silliq egri (Catmull-Rom → Bezier, shisha maketidagidek); boshqaruv nuqtalari asosdan pastga tushmaydi — chiziq 0 dan «sho'ng'imaydi»
+  const asos = TEPA + h
+  const silliq = (pts) => pts.map((p, i) => {
+    if (i === 0) return `M${p[0].toFixed(1)},${p[1].toFixed(1)}`
+    const p0 = pts[i - 2] || pts[i - 1], p1 = pts[i - 1], p3 = pts[i + 1] || p
+    const c1 = [p1[0] + (p[0] - p0[0]) / 6, Math.min(asos, p1[1] + (p[1] - p0[1]) / 6)]
+    const c2 = [p[0] - (p3[0] - p1[0]) / 6, Math.min(asos, p[1] - (p3[1] - p1[1]) / 6)]
+    return `C${c1[0].toFixed(1)},${c1[1].toFixed(1)} ${c2[0].toFixed(1)},${c2[1].toFixed(1)} ${p[0].toFixed(1)},${p[1].toFixed(1)}`
+  }).join(' ')
+  const yol = (kalit) => silliq(kunlar.map((k, i) => [x(i), y(k[kalit])]))
   const chiziq = yol('summa')
   const maydon = `${chiziq} L${x(n - 1).toFixed(1)},${TEPA + h} L${x(0).toFixed(1)},${TEPA + h} Z`
   const yBelgilar = Array.from({ length: Math.round(yuqori / q) + 1 }, (_, i) => i * q)
@@ -74,9 +83,10 @@ export default function TushumChizigi({ kunlar, rang = '#B9833A' }) {
         aria-label={`Kunlik tushum, ${qisqaSana(kunlar[0].sana)} – ${qisqaSana(kunlar[n - 1].sana)}: jami ${som(jami)}. Kunlarni ko'rish uchun ← va → tugmalari.`}>
         <defs>
           <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor={rang} stopOpacity=".32" />
+            <stop offset="0%" stopColor={rang} stopOpacity=".42" />
             <stop offset="100%" stopColor={rang} stopOpacity="0" />
           </linearGradient>
+          <filter id="tushum-yorug" x="-100%" y="-100%" width="300%" height="300%"><feGaussianBlur stdDeviation="5" /></filter>
         </defs>
         {yBelgilar.map((v) => (
           <g key={v}>
@@ -91,7 +101,13 @@ export default function TushumChizigi({ kunlar, rang = '#B9833A' }) {
         ))}
         <path d={yol('oldingi')} className="tc-oldingi" />
         <path d={maydon} fill={`url(#${gradId})`} />
-        <path d={chiziq} fill="none" stroke={rang} strokeWidth="2.25" strokeLinejoin="round" strokeLinecap="round" />
+        <path d={chiziq} fill="none" stroke={rang} strokeWidth="3" strokeLinejoin="round" strokeLinecap="round" />
+        {/* har kunda halqa — kunlar kam bo'lsa (ko'p bo'lsa chiziq ustida to'r bo'lib qoladi); oxirgi kun — nurli nuqta */}
+        {n <= 16 && kunlar.slice(0, -1).map((d, i) => (
+          <circle key={d.sana} cx={x(i)} cy={y(d.summa)} r="4" className="tc-halqa" stroke={rang} />
+        ))}
+        <circle cx={x(n - 1)} cy={y(kunlar[n - 1].summa)} r="12" fill={rang} opacity=".55" filter="url(#tushum-yorug)" />
+        <circle cx={x(n - 1)} cy={y(kunlar[n - 1].summa)} r="6" fill="#FFF3DC" stroke={rang} strokeWidth="2.5" />
         {k && (
           <g>
             <line x1={x(tanlangan)} x2={x(tanlangan)} y1={TEPA} y2={TEPA + h} className="tc-chiziq" />

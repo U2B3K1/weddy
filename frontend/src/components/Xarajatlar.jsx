@@ -2,21 +2,30 @@ import { useCallback, useEffect, useState } from 'react'
 import {
   doimiyXarajatOzgartir, doimiyXarajatQosh, doimiyXarajatlar, filiallar, hisobot, moddaOzgartir, moddaQosh, som, xarajatModdalari,
   xarajatBekor, xarajatQaror, xarajatTuzat, xarajatYarat, xarajatlar, xatoMatni,
-  sanaMatni,
+  sanaMatni, guruhla,
 } from '../api'
+import KpiFiltr from './KpiFiltr'
+import { BoshAmal } from './BoshJoy'
+import { Belgi } from './ZakazQatorlari'
 import NavIkona from './NavIkona'
 import Oyna from './Oyna'
 import OyTanlash from './OyTanlash'
+import Sahifali from './Sahifalash'
 import SummaInput from './SummaInput'
 import Tasdiq from './Tasdiq'
 
-const HOLAT = { kutilmoqda: ['Tasdiq kutmoqda', 'vaqtinchalik'], tasdiqlandi: ['Tasdiqlangan', 'bron'], rad: ['Rad etilgan', 'qarz'] }
 const iso = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 const oyOraligi = (oy) => { const [y, m] = oy.split('-').map(Number); return [`${oy}-01`, iso(new Date(y, m, 0))] }
 const oldingiOy = (oy) => { const [y, m] = oy.split('-').map(Number); const d = new Date(y, m - 2, 1); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}` }
 
-// Rahbar uchun xarajatlar (4.13): oy bo'yicha jadval (tasdiq kutayotganlar tepada), «+ Xarajat» oynasi,
-// turlar bo'yicha «bu oy / o'tgan oy» jamlanmasi («pul qayerga ketyapti?»), doimiy oylik xarajatlar (FT-13.3) va turlari (FT-13.1).
+// Rahbar uchun xarajatlar (4.13). Kanvas (HisobotXarajatShisha): 4 ko'rsatkich; chapda oy jadvali (modda bo'yicha chiplar,
+// tasdiq kutayotganlar tepada, pastda jami), o'ngda «Taqsimot» halqasi (turlar bo'yicha, faqat tasdiqlangan) va doimiy xarajatlar.
+// «Xarajat kiritish» — tablar qatori o'ngida, oynada. Xarajat turlari (FT-13.1) — chap ustun ostida.
+const RANGLAR = ['#F3BF70', '#79A9F2', '#62D4A3', '#B79CF2', '#F08FB8', '#F2C46D', '#7FD1D9', '#C9CCD4']
+const kunOy = (s) => { const [, m, d] = String(s).split('-'); return `${Number(d)} ${OYLAR_QISQA[Number(m) - 1]}` }
+const OYLAR_QISQA = ['yan', 'fev', 'mar', 'apr', 'may', 'iyun', 'iyul', 'avg', 'sen', 'okt', 'noy', 'dek']
+const mln = (n) => (n >= 1_000_000 ? `${(n / 1_000_000).toFixed(1).replace('.', ',').replace(',0', '')} mln` : guruhla(n))
+
 export default function Xarajatlar() {
   const [oy, setOy] = useState(() => OyTanlash.joriy())
   const [royxat, setRoyxat] = useState([])
@@ -27,6 +36,7 @@ export default function Xarajatlar() {
   const [xabar, setXabar] = useState({ turi: '', matn: '' })
   const [oyna, setOyna] = useState(null)  // 'yangi' | xarajat (tuzatish)
   const [radSurov, setRadSurov] = useState(null)
+  const [filtr, setFiltr] = useState('')
 
   const yukla = useCallback(async () => {
     const [a, b, c, bu, otgan] = await Promise.all([xarajatlar({ oy }), xarajatModdalari(true), doimiyXarajatlar(),
@@ -50,70 +60,75 @@ export default function Xarajatlar() {
   const faol = moddalar.filter((m) => m.faol)
   // Tasdiq kutayotganlar tepada (ajratilgan), qolgani sana bo'yicha
   const tartib = [...royxat].sort((a, b) => (a.holat === 'kutilmoqda' ? 0 : 1) - (b.holat === 'kutilmoqda' ? 0 : 1) || (b.sana > a.sana ? 1 : b.sana < a.sana ? -1 : 0))
-  const kutayotgan = royxat.filter((x) => x.holat === 'kutilmoqda').length
-  const tasdiqlangan = royxat.filter((x) => x.holat === 'tasdiqlandi').reduce((s, x) => s + x.summa, 0)
+  const korinadi = filtr ? tartib.filter((x) => x.modda_nomi === filtr) : tartib
+  const kutayotgan = royxat.filter((x) => x.holat === 'kutilmoqda')
+  const tasdiqlangan = royxat.filter((x) => x.holat === 'tasdiqlandi')
+  const jami = tasdiqlangan.reduce((s, x) => s + x.summa, 0)
+  const doimiySumma = tasdiqlangan.filter((x) => x.doimiy).reduce((s, x) => s + x.summa, 0)
+  const doimiyNomlar = [...new Set(tasdiqlangan.filter((x) => x.doimiy).map((x) => x.modda_nomi))]
+  const ozgaruvchanNomlar = [...new Set(tasdiqlangan.filter((x) => !x.doimiy).map((x) => x.modda_nomi))]
+  const filtrNomlar = [...new Set(royxat.map((x) => x.modda_nomi))]
+  const koringanJami = korinadi.filter((x) => x.holat === 'tasdiqlandi').reduce((s, x) => s + x.summa, 0)
+  const qisqa = (r) => r.slice(0, 2).join(', ').toLowerCase() + (r.length > 2 ? ' va boshqalar' : '')
 
   return (
-    <div className="stack">
-      <section className="blok jadval-panel r2-xarajat">
-        <div className="jadval-asboblar">
-          <h3 className="panel-nom">Xarajatlar</h3>
-          <OyTanlash value={oy} onChange={setOy} />
-          <button type="button" className="kichik r2-oxirgi" onClick={() => setOyna('yangi')}><NavIkona nom="qosh" className="tugma-ikon" />Xarajat</button>
-        </div>
-        {xabar.matn && <p className={`${xabar.turi === 'xato' ? 'xato' : 'malumot'} jadval-bosh r2-xabar`} role="status">{xabar.matn}</p>}
-        {royxat.length === 0 ? <p className="malumot jadval-bosh">Bu oyda xarajat yo'q.</p> : (
-          <div className="jadval-ora">
-            <table className="zakaz-jadval r2-xarajat-jadval">
-              <thead>
-                <tr><th>Sana</th><th>Turi</th><th className="ong">Summa</th><th className="tor-yashir">Kim kiritdi</th><th>Holat</th><th aria-label="Amallar" /></tr>
-              </thead>
-              <tbody>
-                {tartib.map((x) => (
-                  <XarajatQator key={`${x.id}-${x.summa}-${x.holat}`} x={x} bajar={bajar}
-                    onTuzat={() => setOyna(x)} onRad={() => setRadSurov(x)} />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-        {royxat.length > 0 && (
-          <p className="r2-jami jadval-bosh">
-            <span>Tasdiqlangan jami: <b>{som(tasdiqlangan)}</b></span>
-            {kutayotgan > 0 && <span className="malumot"> · {kutayotgan} ta tasdiq kutmoqda (foydaga hali kirmagan)</span>}
-          </p>
-        )}
+    <div className="stack xarajat-sahifa">
+      <BoshAmal>
+        <button type="button" className="bosh-tugma" onClick={() => setOyna('yangi')}><NavIkona nom="qosh" className="tugma-ikon" />Xarajat kiritish</button>
+      </BoshAmal>
+      <section className="dash-kpi libos-kpi" aria-label="Xarajat ko'rsatkichlari">
+        <KpiFiltr nom="Jami xarajat" son={guruhla(jami)} ikon="chiqdi" rang="pushti" izoh={`${tasdiqlangan.length} ta tasdiqlangan yozuv`} />
+        <KpiFiltr nom="Doimiy" son={guruhla(doimiySumma)} ikon="kun" rang="kok" izoh={doimiyNomlar.length ? qisqa(doimiyNomlar) : "bu oy hali yo'q"} />
+        <KpiFiltr nom="O'zgaruvchan" son={guruhla(jami - doimiySumma)} ikon="tushum" rang="tilla" izoh={ozgaruvchanNomlar.length ? qisqa(ozgaruvchanNomlar) : "bu oy hali yo'q"} />
+        <KpiFiltr nom="Tasdiq kutmoqda" son={guruhla(kutayotgan.reduce((s, x) => s + x.summa, 0))} ikon="soat" rang="sariq"
+          izoh={kutayotgan.length ? `${kutayotgan.length} ta · jamiga kirmagan` : "kutayotgani yo'q"} />
       </section>
+      {xabar.matn && <p className={`${xabar.turi === 'xato' ? 'xato' : 'malumot'} r2-xabar`} role="status">{xabar.matn}</p>}
 
-      {turlar && turlar.length > 0 && (
-        <section className="blok jadval-panel">
-          <div className="jadval-asboblar"><h3 className="panel-nom">Turlar bo'yicha</h3></div>
-          <div className="jadval-ora">
-            <table className="hisobot r2-turlar">
-              <thead><tr><th>Xarajat turi</th><th className="ong">{OyTanlash.nomi(oy)}</th><th className="ong">{OyTanlash.nomi(oldingiOy(oy))}</th></tr></thead>
-              <tbody>
-                {turlar.map((t) => (
-                  <tr key={t.nom}><td>{t.nom}</td><td className="ong">{som(t.bu)}</td><td className="ong">{t.otgan ? som(t.otgan) : '—'}</td></tr>
+      <div className="xarajat-ikki">
+        <div className="sanoq-ustun">
+          <section className="blok xarajat-panel r2-xarajat" aria-label="Xarajatlar ro'yxati">
+            <div className="sanoq-panel-bosh">
+              <h3 className="sanoq-panel-nom"><Belgi nom="filtr" className="tugma-ikon" />Xarajatlar</h3>
+              <OyTanlash value={oy} onChange={(v) => { setOy(v); setFiltr('') }} />
+            </div>
+            {filtrNomlar.length > 1 && (
+              <div className="hisobot-chiplar xarajat-chiplar" role="group" aria-label="Xarajat turi bo'yicha">
+                {['', ...filtrNomlar].map((n) => (
+                  <button key={n || 'hammasi'} type="button" className={filtr === n ? 'faol' : ''} aria-pressed={filtr === n} onClick={() => setFiltr(n)}>{n || 'Hammasi'}</button>
                 ))}
-              </tbody>
-              <tfoot><tr><td>Jami</td><td className="ong">{som(turlar.reduce((s, t) => s + t.bu, 0))}</td><td className="ong">{som(turlar.reduce((s, t) => s + t.otgan, 0))}</td></tr></tfoot>
-            </table>
-          </div>
-          <p className="malumot jadval-bosh r2-izoh">Faqat tasdiqlangan xarajatlar — foydadan ayirilgan summa.</p>
-        </section>
-      )}
-
-      <details className="blok amal">
-        <summary>Doimiy oylik xarajatlar ({doimiy.filter((d) => d.faol).length})</summary>
-        <div className="stack">
-          <p className="malumot">Har oy boshida shu ro'yxatdan qoralama yaratiladi — siz summani tekshirib tasdiqlaysiz yoki rad etasiz.</p>
-          {doimiy.map((d) => <DoimiyQator key={`${d.id}-${d.summa}-${d.izoh}`} d={d} bajar={bajar} />)}
-          <Forma moddalar={faol} doimiy fil={fil} tugma="Doimiy xarajat qo'shish"
-            onYuborish={(b) => bajar(() => doimiyXarajatQosh(b), "Doimiy xarajat qo'shildi.")} />
+              </div>
+            )}
+            {royxat.length === 0 ? <p className="malumot jadval-bosh">Bu oyda xarajat yo'q.</p> : (
+              <Sahifali royxat={korinadi} hajm={15} kalit={`${oy}-${filtr}`}>{(qism) => (
+                <table className="soz-jadval r2-xarajat-jadval">
+                  <thead>
+                    <tr><th>Sana</th><th>Modda</th><th>Izoh · kim yozdi</th><th className="ong">Summa</th><th>Holat</th><th aria-label="Amallar" /></tr>
+                  </thead>
+                  <tbody>
+                    {qism.map((x) => (
+                      <XarajatQator key={`${x.id}-${x.summa}-${x.holat}`} x={x} bajar={bajar}
+                        onTuzat={() => setOyna(x)} onRad={() => setRadSurov(x)} />
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr><td>Jami</td><td colSpan={2} className="soz-mute">{kutayotgan.length ? 'tasdiq kutayotgan jamiga kirmaydi' : 'tasdiqlangan xarajatlar'}</td>
+                      <td className="ong">−{guruhla(koringanJami)}</td><td colSpan={2} /></tr>
+                  </tfoot>
+                </table>
+              )}</Sahifali>
+            )}
+          </section>
+          <ModdalarBloki moddalar={moddalar} bajar={bajar} />
         </div>
-      </details>
 
-      <ModdalarBloki moddalar={moddalar} bajar={bajar} />
+        <div className="sanoq-ustun">
+          <Taqsimot turlar={turlar} oy={oy} />
+          <section className="blok xarajat-panel" aria-label="Doimiy xarajatlar">
+            <DoimiyBlok doimiy={doimiy} royxat={royxat} moddalar={faol} fil={fil} oy={oy} bajar={bajar} />
+          </section>
+        </div>
+      </div>
 
       {oyna === 'yangi' && (
         <Oyna sarlavha="Xarajat qo'shish" onYop={() => setOyna(null)}>
@@ -136,37 +151,98 @@ export default function Xarajatlar() {
   )
 }
 
+// «Taqsimot» — halqa diagramma: tasdiqlangan xarajatlar turlar bo'yicha; ostida ro'yxat (summa va ulush), o'tgan oy bilan farq
+function Taqsimot({ turlar, oy }) {
+  const bor = (turlar || []).filter((t) => t.bu > 0)
+  const jami = bor.reduce((s, t) => s + t.bu, 0)
+  const otgan = (turlar || []).reduce((s, t) => s + t.otgan, 0)
+  const R = 54, C = 2 * Math.PI * R
+  // har bo'lak boshlanishi — oldingilar uzunligi yig'indisi (render ichida o'zgaruvchi qayta yozilmasin)
+  const boshlar = bor.map((_, i) => bor.slice(0, i).reduce((s, t) => s + (t.bu / jami) * C, 0))
+  return (
+    <section className="blok xarajat-panel" aria-label="Taqsimot">
+      <h3 className="sanoq-panel-nom"><NavIkona nom="foiz" className="tugma-ikon" />Taqsimot</h3>
+      {!jami ? <p className="soz-izoh">Bu oy tasdiqlangan xarajat yo'q.</p> : (
+        <>
+          <div className="taqsimot-halqa">
+            <svg viewBox="0 0 140 140" role="img" aria-label={`Xarajatlar taqsimoti: ${bor.map((t) => `${t.nom} ${Math.round((t.bu * 100) / jami)}%`).join(', ')}`}>
+              <circle cx="70" cy="70" r={R} fill="none" stroke="rgba(255,255,255,.07)" strokeWidth="16" />
+              {bor.map((t, i) => (
+                <circle key={t.nom} cx="70" cy="70" r={R} fill="none" stroke={RANGLAR[i % RANGLAR.length]} strokeWidth="16"
+                  strokeDasharray={`${Math.max((t.bu / jami) * C - 2, 0.5)} ${C}`} strokeDashoffset={-boshlar[i]} transform="rotate(-90 70 70)" />
+              ))}
+            </svg>
+            <span className="taqsimot-markaz"><b>{mln(jami)}</b><small>{OyTanlash.nomi(oy)}</small></span>
+          </div>
+          <ul className="taqsimot-royxat">
+            {bor.map((t, i) => (
+              <li key={t.nom}>
+                <i style={{ background: RANGLAR[i % RANGLAR.length] }} aria-hidden="true" />
+                <span>{t.nom}</span><b>{guruhla(t.bu)}</b><small>{Math.round((t.bu * 100) / jami)}%</small>
+              </li>
+            ))}
+          </ul>
+          {otgan > 0 && (
+            <p className="soz-izoh">O'tgan oy jami: {guruhla(otgan)} ({jami >= otgan ? '+' : '−'}{Math.abs(Math.round(((jami - otgan) * 100) / otgan))}%).</p>
+          )}
+        </>
+      )}
+    </section>
+  )
+}
+
+// Doimiy xarajatlar (FT-13.3): har oy boshida qoralama yaratiladi — rahbar summani tekshirib tasdiqlaydi yoki rad etadi.
+// Holat: shu oyda shu turdagi doimiy xarajat tasdiqlangan bo'lsa — «to'landi», aks holda — «kutilmoqda».
+function DoimiyBlok({ doimiy, royxat, moddalar, fil, oy, bajar }) {
+  const [forma, setForma] = useState(false)
+  const holati = (d) => {
+    const bu = royxat.filter((x) => x.doimiy && x.modda === d.modda)
+    return bu.some((x) => x.holat === 'tasdiqlandi') ? ['yashil', "to'landi"] : ['yopiq', 'kutilmoqda']
+  }
+  return (
+    <>
+      <div className="sanoq-panel-bosh">
+        <h3 className="sanoq-panel-nom"><Belgi nom="kun" className="tugma-ikon" />Doimiy xarajatlar</h3>
+        <small>{OyTanlash.nomi(oy).split(' ')[0].toLowerCase()}</small>
+      </div>
+      {doimiy.length === 0 && <p className="soz-izoh">Doimiy xarajat yo'q. Qo'shilsa, har oy boshida qoralama yaratiladi — siz tasdiqlaysiz yoki rad etasiz.</p>}
+      {doimiy.map((d) => <DoimiyQator key={d.id} d={d} holat={holati(d)} bajar={bajar} />)}
+      <button type="button" className="ikkinchi kichik xarajat-doimiy-qosh" aria-expanded={forma} onClick={() => setForma(!forma)}>
+        {forma ? 'Yopish' : "+ Doimiy xarajat"}
+      </button>
+      {forma && (
+        <div className="soz-tahrir">
+          <Forma moddalar={moddalar} doimiy fil={fil} tugma="Doimiy xarajat qo'shish"
+            onYuborish={(b) => bajar(() => doimiyXarajatQosh(b), "Doimiy xarajat qo'shildi.").then((ok) => { if (ok) setForma(false); return ok })} />
+        </div>
+      )}
+    </>
+  )
+}
+
 function XarajatQator({ x, bajar, onTuzat, onRad }) {
   const [summa, setSumma] = useState(x.summa)
-  const [nom, sinf] = HOLAT[x.holat] || [x.holat, 'qaytarildi']
   const kutmoqda = x.holat === 'kutilmoqda'
   return (
     <tr className={`${kutmoqda ? 'r2-kutmoqda' : ''} ${x.holat === 'rad' ? 'r2-rad' : ''}`}>
-      <td>
-        <span className="zakaz-nom">
-          <b>{sanaMatni(x.sana)}</b>
-          {x.izoh && <small>{x.izoh}</small>}
-        </span>
-      </td>
+      <td><b>{kunOy(x.sana)}</b></td>
       <td>{x.modda_nomi}{x.doimiy && <small className="r2-belgi">doimiy</small>}{x.kassadan && <small className="r2-belgi">kassadan</small>}</td>
+      <td><span className="soz-matn xarajat-izoh"><span>{x.izoh || '—'}</span><small>{x.kiritgan || '—'}</small></span></td>
       <td className="ong">{kutmoqda && !x.kassadan
         ? <SummaInput value={summa} aria-label="Tasdiqlanadigan summa" className="r2-summa" onChange={(e) => setSumma(e.target.value)} />
-        : <b>{som(x.summa)}</b>}</td>
-      <td className="tor-yashir">{x.kiritgan || '—'}</td>
-      <td><span className={`holat ${sinf}`}>{nom}</span></td>
+        : <b className="xarajat-summa">−{guruhla(x.summa)}</b>}</td>
+      <td>{kutmoqda ? <span className="soz-holat ogoh">kutilmoqda</span> : x.holat === 'rad' ? <span className="soz-holat qizil">Rad etilgan</span> : <span className="soz-mute">tasdiqlangan</span>}</td>
       <td className="r2-amallar"><div>
         {kutmoqda && (
           <>
             <button type="button" className="kichik" disabled={!x.kassadan && !(Number(summa) > 0)}
               onClick={() => bajar(() => xarajatQaror(x.id, 'tasdiq', x.kassadan ? undefined : Number(summa)), 'Tasdiqlandi.')}>Tasdiqlash</button>
             {/* kassadan to'langan pul chiqib bo'lgan — rad etilsa kiritgan xodimning kamomadi bo'ladi (tasdiq oynasi bilan) */}
-            <button type="button" className="ikkinchi kichik"
-              onClick={() => (x.kassadan ? onRad() : bajar(() => xarajatQaror(x.id, 'rad'), 'Rad etildi.'))}>
-              {x.kassadan ? `Rad etish — ${x.kiritgan || 'xodim'} kamomadi` : 'Rad etish'}
-            </button>
+            <button type="button" className="ikkinchi kichik" title={x.kassadan ? `Rad etilsa — ${x.kiritgan || 'xodim'} kamomadi` : undefined}
+              onClick={() => (x.kassadan ? onRad() : bajar(() => xarajatQaror(x.id, 'rad'), 'Rad etildi.'))}>Rad etish</button>
           </>
         )}
-        {x.holat !== 'rad' && <button type="button" className="ikkinchi kichik" onClick={onTuzat}>Tuzatish</button>}
+        {x.holat !== 'rad' && <button type="button" className="havola" onClick={onTuzat}>Tuzatish</button>}
       </div></td>
     </tr>
   )
@@ -213,23 +289,33 @@ function XarajatTahrir({ x, moddalar, bajar }) {
   )
 }
 
-function DoimiyQator({ d, bajar }) {
+function DoimiyQator({ d, holat, bajar }) {
   const [summa, setSumma] = useState(d.summa)
   const [izoh, setIzoh] = useState(d.izoh || '')
+  const [ochiq, setOchiq] = useState(false)
   return (
-    <div className={`tasdiq ${d.faol ? '' : 'bajarilgan'}`}>
-      <span><b>{d.modda_nomi}</b> · {som(d.summa)}{d.izoh ? ` · ${d.izoh}` : ''}{d.faol ? '' : " · o'chirilgan"}</span>
-      <div className="qator">
-        <SummaInput value={summa} aria-label="Summa" onChange={(e) => setSumma(e.target.value)} />
-        <input value={izoh} maxLength={300} placeholder="Izoh" aria-label="Izoh" onChange={(e) => setIzoh(e.target.value)} />
+    <div className={`tasdiq doimiy-q ${d.faol ? '' : 'bajarilgan'}`}>
+      <div className="doimiy-q-bosh">
+        <span className="soz-matn"><b>{d.modda_nomi}</b><small>{[d.izoh, d.filial_nomi, !d.faol && "o'chirilgan"].filter(Boolean).join(' · ') || 'har oy'}</small></span>
+        <b className="doimiy-summa">{som(d.summa)}</b>
+        {d.faol && <span className={`soz-holat ${holat[0]}`}>{holat[1]}</span>}
+        <button type="button" className="havola" aria-expanded={ochiq} onClick={() => setOchiq(!ochiq)}>Tahrirlash</button>
       </div>
-      <div className="qator">
-        <button className="ikkinchi kichik" disabled={!(Number(summa) > 0) || (Number(summa) === d.summa && izoh === (d.izoh || ''))}
-          onClick={() => bajar(() => doimiyXarajatOzgartir(d.id, { summa: Number(summa), izoh }), 'Doimiy xarajat saqlandi.')}>Saqlash</button>
-        <button className="ikkinchi kichik" onClick={() => bajar(() => doimiyXarajatOzgartir(d.id, { faol: !d.faol }), d.faol ? "O'chirildi." : 'Yoqildi.')}>
-          {d.faol ? "O'chirish" : 'Yoqish'}
-        </button>
-      </div>
+      {ochiq && (
+        <div className="soz-tahrir">
+          <div className="soz-tugmalar">
+            <SummaInput value={summa} aria-label="Summa" onChange={(e) => setSumma(e.target.value)} />
+            <input value={izoh} maxLength={300} placeholder="Izoh" aria-label="Izoh" onChange={(e) => setIzoh(e.target.value)} />
+          </div>
+          <div className="soz-tugmalar">
+            <button className="kichik" disabled={!(Number(summa) > 0) || (Number(summa) === d.summa && izoh === (d.izoh || ''))}
+              onClick={() => bajar(() => doimiyXarajatOzgartir(d.id, { summa: Number(summa), izoh }), 'Doimiy xarajat saqlandi.')}>Saqlash</button>
+            <button className="ikkinchi kichik" onClick={() => bajar(() => doimiyXarajatOzgartir(d.id, { faol: !d.faol }), d.faol ? "O'chirildi." : 'Yoqildi.')}>
+              {d.faol ? "O'chirish" : 'Yoqish'}
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

@@ -6,8 +6,9 @@ import Tasdiq from '../components/Tasdiq'
 import SmenaTugma from '../components/SmenaTugma'
 import LibosSiluet from '../components/LibosSiluet'
 import NavIkona from '../components/NavIkona'
+import Tasma from '../components/Tasma'
 import TolovTanlov, { UsulTanlov } from '../components/TolovTanlov'
-import { Bezak, IjaraSana, Muhr, VaraqSana } from '../components/Varaq'
+import { IjaraSana, Muhr } from '../components/Varaq'
 import {
   bekorHisobi, bekorQilish, berish, chegirmaMiqdori, chegirmaOlibTashla, chegirmaSora, mijozOzgartir, primerkaBelgila, primerkaOzgartir, promokodOlibTashla, promokodQolla, qarzTolash, qaytarish, sanaKochirish, som, sozlamalar, tayyorChegirmalar,
   saqlangan, tolovQabul, tolovTuzat, xatoMatni, zakazAksessuarOchir, zakazAksessuarQosh, zakazSonlari, zakazTafsilot, zakazTarixi, zakazlarSahifa,
@@ -16,13 +17,25 @@ import {
 } from '../api'
 import SummaInput from '../components/SummaInput'
 import KpiFiltr from '../components/KpiFiltr'
+import { Sahifalash } from '../components/Sahifalash'
 import { Belgi, Qatorlar } from '../components/ZakazQatorlari'
+import { BoshAmal, BoshXulosa } from '../components/BoshJoy'
+
+// Bo'lim boshidagi bir qatorli xulosa (kanvas «9 ta faol zakaz · bugun 3 ta beriladi, 1 tasi qaytadi»)
+function zakazXulosa(s) {
+  const olib = s.bugun_olib || 0, qaytar = s.bugun_qaytar || 0
+  const bugun = olib || qaytar
+    ? `bugun ${[olib && `${olib} ta beriladi`, qaytar && `${qaytar} tasi qaytadi`].filter(Boolean).join(', ')}`
+    : 'bugun berish va qaytarish yo\'q'
+  return `${s.faol || 0} ta faol zakaz · ${bugun}`
+}
 import { TARIX_HARAKATLARI, ZAKAZ_HOLATLARI } from '../nomlar'
-import { bugunIso } from '../components/kalendar/sana'
+import { HAFTA, OYLAR, bugunIso } from '../components/kalendar/sana'
 
 // Zakaz yo'li: 4 qadam (A-26); joriy — hozir kutilayotgani (ostida bir qator: qoldiq, muddat). Nomlar qisqa —
 // telefonda ham hammasi sig'adi. «yopildi» — hammasi o'tilgan, «bekor» — ip chiqmaydi.
 const QADAMLAR = ['Bron', "To'lov", 'Berildi', 'Qaytdi']
+const bosHarflar = (ism) => (ism || '?').trim().split(/\s+/).slice(0, 2).map((x) => x[0]).join('').toUpperCase()
 function qadamIndeksi(z) {
   const h = z.holat
   if (h === 'yopildi') return 4
@@ -77,12 +90,11 @@ const KORSATKICHLAR = [
   { k: 'kechikkan', nom: 'Kechikkan', ikon: 'soat', rang: 'pushti', izoh: (n) => (n > 0 ? "mijozga qo'ng'iroq qiling" : 'hammasi vaqtida') },
   { k: 'tolov_kutmoqda', nom: "To'lov kutmoqda", ikon: 'kassa', rang: 'yashil', izoh: () => 'avans yoki qoldiq' },
 ]
-const SAHIFA = 50
+const SAHIFA = 20  // ro'yxat sahifasi (raqamli sahifalar, Ndiz)
 // «Bugun» ustuni (o'ngda) faqat keng ekranda — torroqda jadval ustunlari sig'maydi, ko'rsatkich kartalari shu ishni qiladi
 const UCH_USTUN = '(min-width: 1440px)'
 // Mijoz bilan gaplashish kerak bo'ladigan holatlar — qatorda qo'ng'iroq tugmasi
 const QONGIROQ = ['vaqtinchalik', 'chegirma_kutilmoqda', 'bron', 'berildi', 'qaytarildi']
-const mln = (n) => `${(n / 1e6).toLocaleString('ru-RU', { maximumFractionDigits: 2 })} mln`
 const kunFarqi = (a, b) => Math.round((Date.parse(b) - Date.parse(a)) / 86400000)
 // Sotuvchi uchun eng muhim savol — «qachon?»: olib ketishgacha yoki qaytarishgacha qancha qoldi, kechikdimi
 function muddat(z, bugun) {
@@ -103,16 +115,16 @@ function muddat(z, bugun) {
   return null
 }
 
-// Zakazlar jadvali — Zakazlar ro'yxati va bosh ekran «Bugungi ishlar» uchun bitta ko'rinish (A-28):
-// libos rasmi, ijara sanasi + «qachon?», holat (avanssiz bronda muddati), to'lov progressi, qo'ng'iroq tugmasi.
-// `summa` — oxirgi ustun (standart: jami), `tolovUstun` — keng ekrandagi to'lov progressi ustuni.
-export function ZakazJadvali({ royxat, onOch, summaNomi = 'Jami', summa = (z) => som(z.jami), tolovUstun = true }) {
+// Zakazlar jadvali — kanvas (ZakazlarShisha) ustunlari: Zakaz (surat, raqam, libos) │ Mijoz (ism, telefon) │
+// Ijara muddati (sana + «qachon?» belgisi) │ Holat (avanssiz bronda muddati) │ To'lov / jami (summa va chiziq).
+const mlnSon = (n) => (n / 1e6).toLocaleString('ru-RU', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+export function ZakazJadvali({ royxat, onOch }) {
   const bugun = bugunIso()
   return (
-    <div className="jadval-ora">
+    <Tasma className="jadval-ora" pastki={84}>
       <table className="zakaz-jadval">
         <thead>
-          <tr><th>Zakaz</th><th>Ijara</th><th>Holat</th>{tolovUstun && <th className="tor-yashir">To'lov</th>}<th className="ong">{summaNomi}</th></tr>
+          <tr><th>Zakaz</th><th>Mijoz</th><th>Ijara muddati</th><th>Holat</th><th className="ong">To'lov / jami</th></tr>
         </thead>
         <tbody>
           {royxat.map((z) => {
@@ -123,17 +135,18 @@ export function ZakazJadvali({ royxat, onOch, summaNomi = 'Jami', summa = (z) =>
               <tr key={z.id} onClick={() => onOch(z.id)} className={m?.[1] === 'kech' ? 'kechikkan' : ''}>
                 <td>
                   {/* tugma — klaviatura uchun; bosish hodisasi qatorga ko'tariladi */}
-                  <span className="zakaz-bosh">
-                    <button type="button" className="zakaz-katak">
-                      <span className="zakaz-eskiz">{z.rasm ? <img src={z.rasm} alt="" loading="lazy" /> : <LibosSiluet />}</span>
-                      <span className="zakaz-nom"><b>#{z.raqam} {z.mijoz}</b><small>{z.liboslar.join(', ')}</small></span>
-                    </button>
-                    {/* qatorni bosish kartani ochadi; qo'ng'iroq — alohida, telefon ilovasiga */}
-                    {QONGIROQ.includes(z.holat) && z.telefon && (
-                      <a className="qongiroq" href={`tel:${z.telefon}`} title={z.telefon} aria-label={`${z.mijoz} — qo'ng'iroq qilish`}
-                        onClick={(e) => e.stopPropagation()}><NavIkona nom="telefon" /></a>
-                    )}
-                  </span>
+                  <button type="button" className="zakaz-katak" aria-label={`Zakaz #${z.raqam}, ${z.mijoz}`}>
+                    <span className="zakaz-eskiz">{z.rasm ? <img src={z.rasm} alt="" loading="lazy" /> : <LibosSiluet />}</span>
+                    <span className="zakaz-nom"><b>#{z.raqam}</b><small>{z.liboslar.join(', ')}</small></span>
+                  </button>
+                </td>
+                <td className="mijoz-katak">
+                  <b>{z.mijoz}</b>
+                  {/* qatorni bosish kartani ochadi; telefon — alohida, telefon ilovasiga (faol zakazda) */}
+                  {z.telefon && (QONGIROQ.includes(z.holat) ? (
+                    <a className="qongiroq-matn" href={`tel:${z.telefon}`} aria-label={`${z.mijoz} — qo'ng'iroq qilish`}
+                      onClick={(e) => e.stopPropagation()}><NavIkona nom="telefon" />{z.telefon}</a>
+                  ) : <small>{z.telefon}</small>)}
                 </td>
                 <td className="ijara-katak">
                   <IjaraSana dan={z.olib_ketish} gacha={z.qaytarish} />
@@ -144,25 +157,20 @@ export function ZakazJadvali({ royxat, onOch, summaNomi = 'Jami', summa = (z) =>
                   {/* A-17: avans olinmasa bron qachon o'zi bekor bo'ladi */}
                   {z.bron_muddati && <small className="bron-muddat">avans {muddatVaqti(z.bron_muddati)} gacha</small>}
                 </td>
-                {tolovUstun && (
-                  <td className="tor-yashir">
-                    {z.holat === 'bekor' ? <span className="malumot">—</span> : avanssiz && z.jami > 0 ? (
-                      <span className="malumot">Avans yo'q</span>
-                    ) : (
-                      <span className="tolov-progress" title={`${som(z.tolangan)} to'langan`}>
-                        <i style={{ '--foiz': `${foiz}%` }} className={foiz >= 100 ? 'toliq' : ''} />
-                        <small>{foiz >= 100 ? "To'liq" : `${mln(z.tolangan)} / ${mln(z.jami)}`}</small>
-                      </span>
-                    )}
-                  </td>
-                )}
-                <td className="ong jami-katak"><b>{summa(z)}</b></td>
+                <td className="ong tolov-katak" title={`${som(z.tolangan)} to'langan, jami ${som(z.jami)}`}>
+                  {z.holat === 'bekor' ? <span className="malumot">—</span> : (
+                    <span className="tolov-progress">
+                      <small>{foiz >= 100 ? `To'liq · ${mlnSon(z.jami)} mln` : `${mlnSon(z.tolangan)} / ${mlnSon(z.jami)} mln`}{avanssiz && z.jami > 0 && ' · avans yo\'q'}</small>
+                      <i style={{ '--foiz': `${foiz}%` }} className={foiz >= 100 ? 'toliq' : ''} />
+                    </span>
+                  )}
+                </td>
               </tr>
             )
           })}
         </tbody>
       </table>
-    </div>
+    </Tasma>
   )
 }
 
@@ -177,8 +185,7 @@ export default function Zakazlar({ tanlangan, onTanla, onYangi, onKassa, boshQ, 
   const [jami, setJami] = useState(0)
   const [sonlar, setSonlar] = useState({})
   const [xato, setXato] = useState('')
-  const [band, setBand] = useState(false)
-  const yuklangan = useRef(SAHIFA)  // kartadan qaytganda shuncha qator qayta yuklanadi — skroll joyi saqlanadi
+  const [sahifa, setSahifa] = useState(1)  // raqamli sahifa (20 tadan); kartadan qaytganda shu sahifa qayta yuklanadi
   const skroll = useRef(null)
   const uchUstun = useMedia(UCH_USTUN)
 
@@ -189,11 +196,11 @@ export default function Zakazlar({ tanlangan, onTanla, onYangi, onKassa, boshQ, 
   useEffect(() => {
     if (tanlangan) return undefined
     let bekor = false
-    zakazlarSahifa({ q: qKech || undefined, holat: holat || undefined, limit: Math.min(yuklangan.current, 200), offset: 0 })
+    zakazlarSahifa({ q: qKech || undefined, holat: holat || undefined, limit: SAHIFA, offset: (sahifa - 1) * SAHIFA })
       .then((d) => { if (!bekor) { setRoyxat(d.natija); setJami(d.jami); setXato('') } })
       .catch((e) => { if (!bekor) setXato(xatoMatni(e)) })
     return () => { bekor = true }
-  }, [qKech, holat, tanlangan])
+  }, [qKech, holat, tanlangan, sahifa])
   useEffect(() => {
     if (tanlangan) return
     zakazSonlari({ q: qKech || undefined }).then(setSonlar).catch(() => {})
@@ -205,24 +212,17 @@ export default function Zakazlar({ tanlangan, onTanla, onYangi, onKassa, boshQ, 
 
   if (tanlangan) return <Karta key={tanlangan} id={tanlangan} amal={amal} onOrqaga={() => onTanla(null)} onKassa={onKassa} />
 
-  const filtr = (k) => { yuklangan.current = SAHIFA; setHolat(k) }
+  const filtr = (k) => { setSahifa(1); setHolat(k) }
   const qidir = (v) => {
-    yuklangan.current = SAHIFA
+    setSahifa(1)
     setQ(v)
     if (v.trim() && holat === 'faol') setHolat('')  // raqam bo'yicha qidiruv yopilgan zakazni ham topsin
   }
   const och = (id) => { skroll.current = window.scrollY; onTanla(id); window.scrollTo(0, 0) }
-  const yana = async () => {
-    setBand(true)
-    try {
-      const d = await zakazlarSahifa({ q: qKech || undefined, holat: holat || undefined, limit: SAHIFA, offset: royxat.length })
-      const keyingi = [...royxat, ...d.natija.filter((x) => !royxat.some((y) => y.id === x.id))]
-      yuklangan.current = keyingi.length
-      setRoyxat(keyingi); setJami(d.jami)
-    } catch (e) { setXato(xatoMatni(e)) } finally { setBand(false) }
-  }
   return (
     <div className="zakaz-sahifa">
+      {/* Bo'lim boshidagi xulosa (kanvas): «47 ta faol zakaz · bugun 2 ta beriladi, 2 tasi qaytadi» */}
+      {sonlar.faol != null && <BoshXulosa>{zakazXulosa(sonlar)}</BoshXulosa>}
       <section className="dash-kpi zakaz-kpi kpi-filtrlar" aria-label="Zakazlar ko'rsatkichlari">
         {KORSATKICHLAR.map((c) => (
           <Korsatkich key={c.k} c={c} son={sonlar[c.k]} ertaga={c.ertaga ? sonlar[c.ertaga] : null}
@@ -249,10 +249,15 @@ export default function Zakazlar({ tanlangan, onTanla, onYangi, onKassa, boshQ, 
                 <input type="search" className="jadval-qidiruv" placeholder="Raqam, telefon yoki ism" aria-label="Zakaz qidirish"
                   value={q} onChange={(e) => qidir(e.target.value)} />
               </label>
+              {/* kanvas: qidiruv yonida topilgan zakazlar soni */}
+              {royxat && <span className="zakaz-son" aria-live="polite">{jami} ta zakaz</span>}
+              {/* «Yangi zakaz» — kanvasdagidek bo'lim boshida, tablar qatorining o'ngida (BoshAmal) */}
               {onYangi && (
-                <button type="button" className="kichik yangi-zakaz-tugma" onClick={onYangi} disabled={Boolean(yangiYopiq)} title={yangiYopiq || undefined}>
-                  <NavIkona nom="qosh" className="tugma-ikon" />Yangi zakaz
-                </button>
+                <BoshAmal>
+                  <button type="button" className="bosh-tugma" onClick={onYangi} disabled={Boolean(yangiYopiq)} title={yangiYopiq || undefined}>
+                    <NavIkona nom="qosh" className="tugma-ikon" />Yangi zakaz
+                  </button>
+                </BoshAmal>
               )}
             </div>
           </div>
@@ -262,13 +267,9 @@ export default function Zakazlar({ tanlangan, onTanla, onYangi, onKassa, boshQ, 
           ) : (
             <>
               <ZakazJadvali royxat={royxat} onOch={och} />
-              {royxat.length < jami && (
-                <div className="jadval-yana">
-                  <button type="button" className="ikkinchi kichik" disabled={band} onClick={yana}>
-                    {band ? 'Yuklanmoqda…' : `Yana ${Math.min(SAHIFA, jami - royxat.length)} ta`}
-                  </button>
-                  <span className="malumot">{royxat.length} / {jami} ko'rsatildi</span>
-                </div>
+              {/* sahifa cho'zilib ketmasin: 20 tadan, raqamli sahifalar (server sahifalaydi) */}
+              {jami > SAHIFA && (
+                <Sahifalash sahifa={sahifa} sahifalar={Math.ceil(jami / SAHIFA)} jami={jami} hajm={SAHIFA} nomi="ta" onTanla={setSahifa} />
               )}
             </>
           )}
@@ -305,6 +306,12 @@ function useMedia(sorov) {
   return mos
 }
 
+// «9 noyabr, yakshanba» — kanvasdagi «Bugun» paneli sarlavhasi uchun
+function bugunSarlavha(iso) {
+  const [y, m, d] = iso.split('-').map(Number)
+  return `${d} ${OYLAR[m - 1].toLowerCase()}, ${HAFTA[(new Date(y, m - 1, d).getDay() + 6) % 7][1].toLowerCase()}`
+}
+
 // O'ng ustun — bugungi kun tartibi bir qarashda: kim olib ketadi (qoldig'i bilan), kim qaytaradi, kim kechikdi.
 // Qator bosilsa zakaz kartasi; ro'yxatning o'zi esa o'z filtrida qoladi.
 function BugunUstuni({ onOch }) {
@@ -326,7 +333,7 @@ function BugunUstuni({ onOch }) {
   ].filter((g) => g.royxat.length > 0) : []
   return (
     <aside className="blok dash-karta zakaz-bugun" aria-label="Bugun">
-      <div className="dash-karta-bosh"><h3><Belgi nom="kun" />Bugun</h3></div>
+      <div className="dash-karta-bosh"><h3><Belgi nom="kun" />Bugun</h3><span className="malumot">{bugunSarlavha(bugun)}</span></div>
       {!d ? <p className="malumot">Yuklanmoqda…</p> : guruhlar.length === 0 ? (
         <p className="zakaz-bugun-bosh"><Belgi nom="bajarildi" />Bugun olib ketish ham, qaytarish ham yo'q.</p>
       ) : guruhlar.map((g) => (
@@ -444,6 +451,13 @@ function Karta({ id, amal, onOrqaga, onKassa }) {
         <button className="ikkinchi karta-orqaga" aria-label="Zakazlar ro'yxatiga qaytish" onClick={onOrqaga}><NavIkona nom="chap" className="tugma-ikon" /></button>
         <h2>Zakaz #{z.raqam}</h2>
         <span className={`holat ${holatSinfi(h)}`}>{ZAKAZ_HOLATLARI[h]}</span>
+        {/* kanvas: sarlavha ostida kim va qachon yaratgan, o'ngda «Chop etish» (shartnoma) */}
+        {z.yaratilgan && <p className="karta-bosh-izoh">Yaratildi {qisqaVaqt(z.yaratilgan)}{z.sotuvchi ? ` · ${z.sotuvchi}` : ''}</p>}
+        {!['chegirma_kutilmoqda', 'bekor'].includes(h) && (
+          <button type="button" className="ikkinchi kichik karta-chop" onClick={() => setChop('shartnoma')}>
+            <NavIkona nom="hujjat" className="tugma-ikon" />Chop etish
+          </button>
+        )}
         {/* A-17: avanssiz bron qachon o'zi bekor bo'lishi — sotuvchi mijozga aniq vaqtni aytadi */}
         {z.bron_muddati && (
           <p className="bron-muddat-izoh">{h === 'chegirma_kutilmoqda'
@@ -477,18 +491,33 @@ function Karta({ id, amal, onOrqaga, onKassa }) {
         {MUHRLI.includes(h) ? <Muhr raqam={z.raqam} bosildi={muhrBosildi} className="muhr-karta" />
           : h === 'bekor' ? <span className="shtamp" aria-hidden="true">Bekor qilindi</span>
           : <span className="muhr-joy" aria-hidden="true" />}
-        {z.mijoz !== z.telefon && <p className="varaq-kimga">{z.mijoz}</p>}
-        <a className="varaq-telefon" href={`tel:${z.telefon}`}>{z.telefon}</a>
-        <Bezak />
-        <VaraqSana dan={z.olib_ketish} gacha={z.qaytarish} />
-        {/* Libos fotosi: sotuvchi mijoz bilan qaysi libos haqida gaplashayotganini bir qarashda ko'radi */}
+        {/* Kanvas (ZakazKartaShisha): mijoz qatori — bosh harflar doirasi, ism, telefon · to'y · manba */}
+        <div className="km-mijoz">
+          <span className="km-avatar" aria-hidden="true">{bosHarflar(z.mijoz)}</span>
+          <div className="km-mijoz-matn">
+            {z.mijoz !== z.telefon && <p className="varaq-kimga">{z.mijoz}</p>}
+            <span className="km-meta">
+              <a className="varaq-telefon" href={`tel:${z.telefon}`}>{z.telefon}</a>
+              {z.toy_sanasi && <span>to'y {sanaMatni(z.toy_sanasi)}</span>}
+              {z.manba && <span>{z.manba}</span>}
+            </span>
+          </div>
+        </div>
+        {/* Libos: surat, nom, artikul va o'lcham, ijara narxi — sotuvchi qaysi libos haqida gaplashayotganini bir qarashda ko'radi */}
         <div className="karta-liboslar">
           {z.libos_qatorlari.map((p) => (
             <figure key={p.id} className="karta-libos">
               <span className="karta-libos-foto">{p.rasm ? <img src={p.rasm} alt="" /> : <LibosSiluet />}</span>
-              <figcaption><b>{p.artikul}</b> {p.nomi}{p.olcham ? <small>o'lcham {p.olcham}</small> : null}</figcaption>
+              <figcaption><b>{p.nomi}</b><small>{p.artikul}{p.olcham ? ` · o'lcham ${p.olcham}` : ''}</small>
+                <span className="km-narx"><span>Ijara narxi</span><b>{som(p.narx)}</b></span></figcaption>
             </figure>
           ))}
+        </div>
+        {/* uchta quti: olib ketish, qaytarish, muddat */}
+        <div className="km-sanalar">
+          <div><small>Olib ketish</small><b>{sanaMatni(z.olib_ketish)}</b></div>
+          <div><small>Qaytarish</small><b>{sanaMatni(z.qaytarish)}</b></div>
+          <div><small>Muddat</small><b>{kunFarqi(z.olib_ketish, z.qaytarish) + 1} kun</b></div>
         </div>
         <dl className="varaq-hisob">
           {z.aksessuarlar.length > 0 && <div className="varaq-hisob-matn"><dt>Aksessuarlar</dt><dd>{z.aksessuarlar.join(', ')}</dd></div>}

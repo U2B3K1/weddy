@@ -25,12 +25,10 @@ const bolim = async (page, nom) => {
   await page.waitForLoadState('networkidle')
 }
 
-async function sozlama(page, guruh, nom) {
-  const asosiy = nav(page).getByRole('button', { name: 'Sozlama', exact: true })
-  if (await asosiy.isVisible()) await asosiy.click()
-  const g = nav(page).getByRole('button', { name: guruh })
-  if (await g.getAttribute('aria-expanded') !== 'true') await g.click()
-  await nav(page).getByRole('button', { name: nom, exact: true }).click()
+// _guruh — faqat o'qish uchun: bo'limlar Sozlama sahifasining o'zidagi chap ro'yxatda, guruhlar doim ochiq (Ndiz)
+async function sozlama(page, _guruh, nom) {
+  await nav(page).getByRole('button', { name: 'Sozlama', exact: true }).click()
+  await page.getByRole('navigation', { name: 'Sozlama menyusi' }).getByRole('button', { name: nom, exact: true }).click()
   await page.waitForLoadState('networkidle')
 }
 
@@ -40,7 +38,8 @@ test('sozlama: filial, mavsumiy narx, tayyor chegirma, SMS shabloni', async ({ p
 
   await test.step('filial: qo\'shish, tahrirlash, nofaol/faol', async () => {
     await sozlama(page, 'Salon va xodimlar', 'Filiallar')
-    // yangi filial formasi — ko'rinadigan yorliqlar bilan (B-23)
+    // yangi filial formasi — panel tepasidagi «Filial qo'shish» bilan ochiladi (kanvas), ko'rinadigan yorliqlar bilan (B-23)
+    await page.getByRole('button', { name: "Filial qo'shish" }).click()
     const yangiFilial = page.locator('.stack', { has: page.locator('h4', { hasText: 'Yangi filial' }) }).last()
     await yangiFilial.getByLabel('Filial nomi').fill('Chilonzor')
     await yangiFilial.getByLabel('Manzil').fill('Bunyodkor 1')
@@ -53,15 +52,16 @@ test('sozlama: filial, mavsumiy narx, tayyor chegirma, SMS shabloni', async ({ p
     await qator.getByRole('button', { name: 'Saqlash' }).click()
     await expect(page.getByText('Filial saqlandi.')).toBeVisible()
     const yangi = page.locator('.tasdiq', { hasText: 'Chilonzor filiali' })
+    await yangi.getByText('Tahrirlash').click()  // faol/nofaol — tahrir ichida (qatorda faqat holat yorlig'i)
     await yangi.getByRole('button', { name: 'Nofaol qilish' }).click()
-    await expect(yangi).toContainText('nofaol')
+    await expect(yangi.locator('.soz-holat')).toHaveText('Nofaol')
     await yangi.getByRole('button', { name: 'Faollashtirish' }).click()
-    await expect(yangi).not.toContainText('nofaol')
+    await expect(yangi.locator('.soz-holat')).toHaveText('Faol')
   })
 
   await test.step('mavsumiy narx: qoida qo\'shish, tahrirlash, o\'chirish, olib tashlash', async () => {
     await sozlama(page, 'Narx va chegirma', 'Mavsumiy narx')
-    const yoqilgan = page.getByLabel(/^Yoqilgan/)
+    const yoqilgan = page.getByLabel('Mavsumiy narx yoqilgan')  // panel sarlavhasidagi almashtirgich
     if (!(await yoqilgan.isChecked())) await yoqilgan.check()
     await page.getByText("Qoida qo'shish").click()
     await page.getByLabel('Nomi *', { exact: true }).fill('Dam olish kunlari')  // majburiy maydon « *» bilan (B-29)
@@ -87,12 +87,14 @@ test('sozlama: filial, mavsumiy narx, tayyor chegirma, SMS shabloni', async ({ p
 
   await test.step('tayyor chegirma: qo\'shish, summaga o\'tkazish, nofaol', async () => {
     await sozlama(page, 'Narx va chegirma', 'Tayyor chegirmalar')
+    await page.getByRole('button', { name: "Chegirma qo'shish" }).click()  // forma panel tepasidagi tugma bilan ochiladi (kanvas)
     await page.getByPlaceholder('Nomi (masalan, Doimiy mijoz)').fill('Doimiy mijoz')
-    await page.locator('.blok > .stack').getByLabel('Qiymat').fill('10')
-    await page.getByRole('button', { name: "Qo'shish", exact: true }).click()
+    await page.locator('.soz-qosh').getByLabel('Qiymat').fill('10')
+    await page.getByRole('region', { name: 'Tayyor chegirmalar' }).getByRole('button', { name: "Qo'shish", exact: true }).click()
     await expect(page.getByText("Tayyor chegirma qo'shildi.")).toBeVisible()
     const qator = page.locator('.tasdiq', { hasText: 'Doimiy mijoz' })
     await expect(qator).toContainText('Doimiy mijoz · 10%')
+    await qator.getByRole('button', { name: 'Tahrirlash' }).click()
     await qator.getByLabel('Chegirma turi').selectOption('summa')
     await qator.getByLabel('Qiymat').fill('150000')
     await qator.getByRole('button', { name: 'Saqlash' }).click()
@@ -105,14 +107,14 @@ test('sozlama: filial, mavsumiy narx, tayyor chegirma, SMS shabloni', async ({ p
 
   await test.step('integratsiyalar: SMS yuboruvchi nomi va shablon', async () => {
     await sozlama(page, "Ko'rinish va xabarlar", 'Integratsiyalar')
-    await page.getByText(/^SMS \(Eskiz\.uz\)/).click()
+    await page.getByRole('button', { name: /^Eskiz SMS/ }).click()  // xizmat kartasi — sozlamasi kartalar ostida ochiladi
     await page.getByLabel(/^Yuboruvchi nomi/).fill('LIBOSA')
     await page.getByLabel('«Ertaga olib ketish» shabloni').fill('{salon}: ertaga {sana} libosni olib ketasiz.')
-    await page.locator('details', { hasText: 'Eskiz email' }).getByRole('button', { name: 'Saqlash' }).click()
+    await page.getByRole('region', { name: 'Eskiz SMS sozlamasi' }).getByRole('button', { name: 'Saqlash' }).click()
     await expect(page.getByText('Saqlandi.', { exact: true })).toBeVisible()
     await sozlama(page, 'Salon va xodimlar', 'Filiallar')
     await sozlama(page, "Ko'rinish va xabarlar", 'Integratsiyalar')  // qayta ochilganda serverdan o'qiladi
-    await page.getByText(/^SMS \(Eskiz\.uz\)/).click()
+    await page.getByRole('button', { name: /^Eskiz SMS/ }).click()
     await expect(page.getByLabel(/^Yuboruvchi nomi/)).toHaveValue('LIBOSA')
   })
   expect(xatolar).toEqual([])
@@ -126,7 +128,7 @@ test("zakaz kartasi: salonchi, libos almashtirish, summada chegirma va uning tas
     await bolim(page, 'Mijozlar')
     await page.getByRole('tab', { name: 'Salonchilar' }).click()
     // B-34: jadval; qo'shish va tahrirlash — oynada
-    await page.getByRole('button', { name: 'Salonchi', exact: true }).click()
+    await page.getByRole('button', { name: "Salonchi qo'shish", exact: true }).click()  // tablar qatori o'ngidagi tilla tugma
     const oyna = page.getByRole('dialog', { name: "Salonchi qo'shish" })
     await oyna.getByLabel('Ism').fill('Gulnora')
     await oyna.getByLabel('Salon nomi').fill('Gul salon')
@@ -134,7 +136,8 @@ test("zakaz kartasi: salonchi, libos almashtirish, summada chegirma va uning tas
     await expect(page.getByText("Salonchi qo'shildi.")).toBeVisible()
     const qator = page.locator('.r2s-jadval tbody tr', { hasText: 'Gulnora' })
     await expect(qator).toContainText('Gul salon')
-    await qator.getByRole('button', { name: 'Tahrirlash' }).click()
+    await qator.getByRole('button', { name: /Gulnora/ }).click()  // kanvas: tanlangan salonchi o'ng panelda, «Tahrirlash» — o'sha yerda
+    await page.getByRole('region', { name: 'Gulnora tafsiloti' }).getByRole('button', { name: 'Tahrirlash' }).click()
     const tahrir = page.getByRole('dialog', { name: 'Gulnora' })
     await tahrir.getByLabel('Telefon').fill('+998901234567')
     await tahrir.getByRole('button', { name: 'Saqlash' }).click()
@@ -197,7 +200,7 @@ test('hisobot → xarajatlar: xarajat turi, kiritish, tuzatish, bekor qilish, do
   const xatolar = xatolarniKuzat(page)
   await kirish(page, 'Rahbar', '1111')
   await bolim(page, 'Hisobotlar')
-  await nav(page).getByRole('button', { name: 'Xarajatlar', exact: true }).click()
+  await page.getByRole('tab', { name: 'Xarajatlar', exact: true }).click()
 
   await test.step('yangi xarajat turi', async () => {
     const turlar = page.locator('details', { has: page.locator('summary', { hasText: /^Xarajat turlari$/ }) })
@@ -208,7 +211,7 @@ test('hisobot → xarajatlar: xarajat turi, kiritish, tuzatish, bekor qilish, do
   })
 
   await test.step('xarajat kiritish (oyna), summasini tuzatish va bekor qilish', async () => {
-    await page.getByRole('button', { name: 'Xarajat', exact: true }).click()
+    await page.getByRole('button', { name: 'Xarajat kiritish', exact: true }).click()  // tablar qatori o'ngidagi tilla tugma (kanvas)
     const oyna = page.getByRole('dialog', { name: "Xarajat qo'shish" })
     await oyna.getByLabel('Xarajat turi').selectOption({ label: 'Gul bezak' })
     await oyna.getByLabel("Summa, so'm").fill('250000')
@@ -218,13 +221,13 @@ test('hisobot → xarajatlar: xarajat turi, kiritish, tuzatish, bekor qilish, do
     await expect(oyna).toBeHidden()
     const qator = page.locator('.r2-xarajat-jadval tbody tr', { hasText: "To'y zali uchun" })
     await expect(qator).toContainText('Gul bezak')
-    await expect(qator).toContainText("250 000 so'm")
+    await expect(qator).toContainText('250 000')
     await qator.getByRole('button', { name: 'Tuzatish' }).click()
     const tuzatish = page.getByRole('dialog', { name: /^Xarajatni tuzatish/ })
     await tuzatish.getByLabel("Summa, so'm").fill('200000')
     await tuzatish.getByRole('button', { name: 'Saqlash' }).click()
     await expect(page.getByText('Xarajat tuzatildi.')).toBeVisible()
-    await expect(qator).toContainText("200 000 so'm")
+    await expect(qator).toContainText('200 000')
     await qator.getByRole('button', { name: 'Tuzatish' }).click()
     await tuzatish.getByRole('button', { name: 'Bekor qilish' }).click()
     await page.getByRole('alertdialog').getByRole('button', { name: 'Ha, bekor qilish' }).click()  // tasdiq (B-07)
@@ -233,15 +236,15 @@ test('hisobot → xarajatlar: xarajat turi, kiritish, tuzatish, bekor qilish, do
   })
 
   await test.step("doimiy oylik xarajat: qo'shish, summani o'zgartirish, o'chirish", async () => {
-    const sarlavha = page.locator('summary', { hasText: /^Doimiy oylik xarajatlar/ })
-    const blok = sarlavha.locator('..')
-    await sarlavha.click()
+    const blok = page.getByRole('region', { name: 'Doimiy xarajatlar' })  // kanvas: o'ng ustundagi panel
+    await blok.getByRole('button', { name: '+ Doimiy xarajat' }).click()
     await blok.getByLabel('Xarajat turi').selectOption({ label: 'Gul bezak' })
     await blok.getByLabel("Summa, so'm").fill('300000')
     await blok.getByLabel('Izoh').last().fill('Har oy gul')
     await blok.getByRole('button', { name: "Doimiy xarajat qo'shish" }).click()
     await expect(page.getByText("Doimiy xarajat qo'shildi.")).toBeVisible()
     const qator = blok.locator('.tasdiq', { hasText: 'Har oy gul' })
+    await qator.getByRole('button', { name: 'Tahrirlash' }).click()
     await qator.getByLabel('Summa').fill('350000')
     await qator.getByRole('button', { name: 'Saqlash' }).click()
     await expect(page.getByText('Doimiy xarajat saqlandi.')).toBeVisible()
@@ -302,13 +305,13 @@ test("katalog: kategoriyalar, libos ta'miri, aksessuar donasi ta'miri", async ({
     await expect(t.locator('.dona').first()).toBeVisible()  // tafsilot yuklanguncha sanalmasin
     const oldin = await t.locator('.dona').count()
     await t.getByText("Dona qo'shish", { exact: true }).click()
-    await t.locator('details', { hasText: 'Bir dona narxi' }).getByRole('button', { name: "Qo'shish" }).click()
+    await t.locator('.aks-forma', { hasText: 'Bir dona narxi' }).getByRole('button', { name: "Qo'shish" }).click()
     await expect(t.locator('.dona')).toHaveCount(oldin + 1)
     const dona = (await t.locator('.dona').last().evaluate((e) => e.firstChild.textContent)).trim()  // yorliq — birinchi matn
-    await t.getByText(/^Ta'mir \(/).click()
+    await t.getByRole('button', { name: "Ta'mirga berish" }).click()  // panel pastidagi tugma formani ochadi
     await t.getByLabel('Dona', { exact: true }).selectOption({ label: dona })
     await t.getByLabel('Nima qilinadi').fill('Gulini tikish')
-    await t.getByRole('button', { name: "Ta'mirga berish" }).click()
+    await t.getByRole('button', { name: "Ta'mirga yuborish" }).click()
     await expect(t.getByRole('status')).toHaveText("Dona ta'mirga berildi.")  // xabar ochiq aksessuar ichida
     const qator = t.locator('.tasdiq', { hasText: 'Gulini tikish' })
     await qator.getByPlaceholder("Narxi, so'm").fill('30000')
@@ -363,14 +366,15 @@ test("kassa: zalog tekshiruvi, inkassatsiya; rahbar: smena tuzatish, dashboard f
 
   await bolim(page, 'Kassa')
   await test.step('zalog tekshiruvi: «Joyida»', async () => {
-    await nav(page).getByRole('button', { name: 'Zaloglar', exact: true }).click()
-    const qator = page.locator('.tasdiq-qator', { hasText: `zakaz #${z.raqam}` })
-    await qator.getByRole('button', { name: 'Joyida' }).click()
-    await expect(qator).toContainText('· joyida')
+    await page.getByRole('tab', { name: 'Zaloglar', exact: true }).click()
+    // kanvas: jadval qatoridagi katakcha «joyida» deb belgilaydi
+    const qator = page.locator('.zalog-jadval tbody tr', { hasText: `#${z.raqam}` })
+    await qator.getByRole('checkbox').click()
+    await expect(qator).toContainText('joyida ✓')
   })
 
   await test.step('inkassatsiya: naqd pulni rahbarga', async () => {
-    await nav(page).getByRole('button', { name: 'Inkassatsiya', exact: true }).click()
+    await page.getByRole('tab', { name: 'Inkassatsiya', exact: true }).click()
     await expect(page.getByRole('radiogroup', { name: 'Kimga' }).getByRole('radio', { checked: true })).toContainText('Rahbar')  // bitta rahbar — o'zi tanlanadi
     const klav = page.getByRole('group', { name: 'Raqamli klaviatura' })
     for (const k of ['1', '000', '0', '0']) await klav.getByRole('button', { name: k, exact: true }).click()
@@ -387,16 +391,17 @@ test("kassa: zalog tekshiruvi, inkassatsiya; rahbar: smena tuzatish, dashboard f
   await kirish(rahbar, 'Rahbar', '1111')
   await test.step("smenalar tarixi: yopilgan smenani tuzatish", async () => {
     await bolim(rahbar, 'Kassa')
-    await nav(rahbar).getByRole('button', { name: 'Smenalar tarixi', exact: true }).click()
-    const yopilgan = rahbar.locator('.tasdiq-qator', { has: rahbar.getByRole('button', { name: 'Tuzatish' }) }).first()
-    // qatorda faqat ma'lumot — tuzatish oynada
-    await yopilgan.getByRole('button', { name: 'Tuzatish' }).click()
+    await rahbar.getByRole('tab', { name: 'Smenalar tarixi', exact: true }).click()
+    // kanvas: jadvaldan yopilgan smena tanlanadi, o'ngdagi tafsilotda «Tuzatish» — oyna ochiladi
+    await rahbar.locator('.tarix-jadval tbody tr', { hasText: 'Yopilgan' }).first().click()
+    const tafsilot = rahbar.getByRole('region', { name: 'Smena tafsiloti' })
+    await tafsilot.getByRole('button', { name: 'Tuzatish' }).click()
     const oyna = rahbar.getByRole('dialog', { name: /^Smenani tuzatish/ })
     await oyna.getByLabel('Izoh').fill('Qayta sanaldi')
     await oyna.getByRole('button', { name: 'Tuzatishni saqlash' }).click()
     await expect(oyna).toHaveCount(0)
     await expect(rahbar.getByText('Smena tuzatildi.')).toBeVisible()
-    await expect(rahbar.locator('.tasdiq-qator', { hasText: 'Qayta sanaldi' }).first()).toBeVisible()
+    await expect(tafsilot).toContainText('Qayta sanaldi')
   })
   await test.step("dashboard: filial tanlovi", async () => {
     await bolim(rahbar, 'Dashboard')

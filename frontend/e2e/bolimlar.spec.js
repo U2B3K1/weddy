@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test'
 import { GURUHLAR, SOZLAMA_BOLIMLAR } from '../src/pages/sozlamaBolimlari.js'
 import { bolim, kirish, xatolarniKuzat } from './yordam.js'
 
-// Chap paneldagi o'z menyusiga ega bo'limlar (App.jsx: kassaRoyxat, HISOBOT_ROYXAT)
+// Ichki bo'limlari sahifa tepasidagi tablarda bo'lgan bo'limlar (App.jsx: kassaRoyxat, HISOBOT_ROYXAT; Ndiz — shisha uslubi)
 const ICHKI = {
   Kassa: ['Yangi zakaz', "To'lov qabul", 'Xarajat', 'Inkassatsiya', 'Zaloglar', 'Smena hisoboti', 'Smenalar tarixi'],
   // «Grafik» bo'limi yo'q (B-14): 12 oylik sof foyda grafigi — «Oylik foyda» ostida (QA-07: nav nomi sahifa sarlavhasi bilan bir xil)
@@ -16,6 +16,10 @@ async function och(page, nomi) {
   await nav(page).getByRole('button', { name: nomi, exact: true }).click()
   await page.waitForLoadState('networkidle')
 }
+async function tabOch(page, nomi) {
+  await page.getByRole('tab', { name: nomi, exact: true }).click()
+  await page.waitForLoadState('networkidle')
+}
 
 test('rahbar: barcha bo\'limlar va ichki bo\'limlar ochiladi', async ({ page }) => {
   const xatolar = xatolarniKuzat(page)
@@ -25,7 +29,7 @@ test('rahbar: barcha bo\'limlar va ichki bo\'limlar ochiladi', async ({ page }) 
   for (const nom of ['Bugun olib ketadi', 'Bugun qaytaradi', "Qo'ng'iroq qilish", "Qoldiq to'lanmagan"]) {
     await expect(page.getByRole('region', { name: new RegExp(`^${nom}:`) })).toHaveCount(0)
   }
-  for (const karta of ['Tushum dinamikasi', 'Liboslar holati', 'Yaqin bronlar', 'Tezkor amallar']) {
+  for (const karta of ['Egasining savollari', 'Tushum dinamikasi', 'Diqqat talab', 'Liboslar holati', 'Zakaz va mijoz', 'Xodimlar']) {  // kanvas bloklari
     await expect(page.getByRole('region', { name: karta })).toBeVisible()
   }
   const [kpiY, torY] = await page.evaluate(() => ['.dash-kpi', '.dash-tor']
@@ -34,8 +38,9 @@ test('rahbar: barcha bo\'limlar va ichki bo\'limlar ochiladi', async ({ page }) 
   // davr — «Tushum dinamikasi» kartasidagi ixcham tanlov; ko'rsatkichlar shu davr bo'yicha qayta yuklanadi
   await page.getByRole('region', { name: 'Tushum dinamikasi' }).getByLabel('Davr').selectOption('7')
   await expect(page.getByRole('region', { name: 'Tushum dinamikasi' })).toContainText('oldingi 7 kun')
-  // «Tezkor amallar» → «Libos qo'shish»: Liboslar bo'limi qo'shish oynasi ochiq holda
-  await page.getByRole('region', { name: 'Tezkor amallar' }).getByRole('button', { name: "Libos qo'shish" }).click()
+  // «+ Libos qo'shish» — Liboslar bo'limi boshida (kanvas; Dashboard'da «Tezkor amallar» yo'q): qo'shish oynasi ochiladi
+  await och(page, 'Liboslar')
+  await page.getByRole('button', { name: "Libos qo'shish" }).click()
   await expect(page.getByRole('dialog', { name: "Libos qo'shish" })).toBeVisible()
   await page.keyboard.press('Escape')
   await expect(page.getByRole('dialog', { name: "Libos qo'shish" })).toHaveCount(0)
@@ -43,9 +48,8 @@ test('rahbar: barcha bo\'limlar va ichki bo\'limlar ochiladi', async ({ page }) 
   for (const nom of ['Dashboard', 'Liboslar', 'Zakazlar', 'Mijozlar', 'Kassa', 'Hisobotlar']) {
     await test.step(nom, async () => {
       await och(page, nom)
-      for (const ichki of ICHKI[nom] || []) await test.step(ichki, () => och(page, ichki))
-      if (nom === 'Hisobotlar') await expect(nav(page).getByRole('button', { name: 'Grafik', exact: true })).toHaveCount(0)
-      if (ICHKI[nom]) await och(page, 'Asosiy')
+      for (const ichki of ICHKI[nom] || []) await test.step(ichki, () => tabOch(page, ichki))
+      if (nom === 'Hisobotlar') await expect(page.getByRole('tab', { name: 'Grafik', exact: true })).toHaveCount(0)
     })
   }
   await test.step('Sozlama', async () => {
@@ -61,14 +65,16 @@ test('rahbar: barcha bo\'limlar va ichki bo\'limlar ochiladi', async ({ page }) 
     expect(kenglik, "Sozlama umumiy ko'rinishi telefonda gorizontal surilmasin").toBeLessThanOrEqual(ekran)
     await page.setViewportSize({ width: 1280, height: 860 })
     await markaz.getByRole('button', { name: /^Bron va zalog/ }).click()
-    await expect(page.getByRole('heading', { name: 'Bron va bandlik' })).toBeVisible()
-    await nav(page).getByRole('button', { name: 'Barcha sozlamalar', exact: true }).click()  // chap menyudan umumiy ko'rinishga qaytish
+    await expect(page.getByRole('heading', { name: 'Bron va zalog' })).toBeVisible()  // guruh sahifasi: har bo'lim — panel (kanvas)
+    const sozMenyu = page.getByRole('navigation', { name: 'Sozlama menyusi' })
+    await sozMenyu.getByRole('button', { name: 'Barcha sozlamalar', exact: true }).click()  // sahifadagi chap ro'yxatdan umumiy ko'rinishga qaytish
     await expect(markaz).toBeVisible()
     for (const g of GURUHLAR) {
-      const guruh = nav(page).getByRole('button', { name: g.nomi, exact: true })  // «Liboslar» guruhi asosiy nav nomi bilan bir xil
-      if (await guruh.getAttribute('aria-expanded') !== 'true') await guruh.click()  // joriy bo'lim guruhi ochiq turadi
       for (const b of SOZLAMA_BOLIMLAR.filter((x) => x.guruh === g.nomi)) {
-        await test.step(b.nomi, () => och(page, b.nomi))
+        await test.step(b.nomi, async () => {
+          await sozMenyu.getByRole('button', { name: b.nomi, exact: true }).click()
+          await page.waitForLoadState('networkidle')
+        })
       }
     }
   })
@@ -91,8 +97,8 @@ test('sotuvchi: rahbar bo\'limlari ko\'rinmaydi, o\'zinikilari ochiladi', async 
   if (await kartalar.count() === 0) await expect(ishlar).toContainText("Bugun shoshilinch ish yo'q")
   for (const nom of ['Dashboard', 'Liboslar', 'Zakazlar', 'Mijozlar']) await och(page, nom)
   await och(page, 'Kassa')
-  for (const ichki of ICHKI.Kassa.filter((x) => x !== 'Smenalar tarixi')) await och(page, ichki)
-  await expect(nav(page).getByRole('button', { name: 'Smenalar tarixi' })).toHaveCount(0)
+  for (const ichki of ICHKI.Kassa.filter((x) => x !== 'Smenalar tarixi')) await tabOch(page, ichki)
+  await expect(page.getByRole('tab', { name: 'Smenalar tarixi', exact: true })).toHaveCount(0)
   // shapka menyusi: «Chiqish» ustida profil rasmi — yuklangach shapkada va kirish ekranidagi kartochkada ko'rinadi
   await page.locator('.ustki-xodim').click()
   const menyu = page.getByRole('menu')

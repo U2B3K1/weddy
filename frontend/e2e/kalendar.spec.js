@@ -39,7 +39,9 @@ test('bandlik kalendari: bron tasmasi, kun soni va kun varaqasi', async ({ page 
 
   await nav(page).getByRole('button', { name: 'Zakazlar', exact: true }).click()
   await page.getByRole('tab', { name: 'Bandlik kalendari' }).click()
-  await expect(page.getByRole('heading', { name: 'Bandlik' })).toBeVisible()
+  // sahifa sarlavhasi endi «Bandlik kalendari» (kanvas) — panel sarlavhasi aniq nom bilan
+  await expect(page.getByRole('heading', { name: 'Bandlik kalendari', level: 1 })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Bandlik', exact: true })).toBeVisible()
   await page.getByLabel('Davr boshi').fill(iso(199))
 
   // uch kunlik bron — bitta tasma (3 ustunni egallaydi), vaqtinchalik
@@ -98,8 +100,8 @@ test("bo'sh katak: shu libos va kunga oldindan to'ldirilgan Yangi zakaz", async 
   const [, artikul] = nomi.match(/^(\S+) /)
   const [, kun] = nomi.match(/, (\d+) /)
   await katak.click()
-  await expect(nav(page).getByRole('button', { name: 'Yangi zakaz', exact: true })).toHaveAttribute('aria-current', 'page')
-  await expect(page.locator('.varaq-sana').first()).toContainText(kun)
+  await expect(page.getByRole('tab', { name: 'Yangi zakaz', exact: true })).toHaveAttribute('aria-selected', 'true')
+  await expect(page.locator('.yz-sanalar')).toContainText(kun)  // 2-qadam: «Zakaz xulosasi» sanalari (kanvas)
   const libos = page.locator('ul.liboslar li', { hasText: `${artikul} ` })  // «E2E-1 Libos…» (E2E-10 emas)
   await expect(libos.getByRole('button', { name: 'Olib tashlash' })).toBeVisible()
   await suratlar(page, '3-bosh-katak-yangi-zakaz')

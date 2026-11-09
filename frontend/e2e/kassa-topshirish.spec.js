@@ -58,7 +58,7 @@ test('pul topshirish: rahbar → sotuvchi → rahbar; kassir rejimi', async ({ p
 
   await test.step('sotuvchi qo\'shiladi; rahbar pulini unga topshirib chiqadi', async () => {
     await sotuvchi.locator('.smena-panel').getByRole('button', { name: "Smenaga qo'shilish" }).click()
-    await expect(sotuvchi.locator('.smena-naqd')).toContainText("Sizda naqd0 so'm")
+    await expect(sotuvchi.locator('.smena-naqd')).toContainText("Naqd0 so'm")
     await kassaga(page)
     await expect(page.locator('.smena-naqd')).toContainText("2 000 000 so'm")
     // smenada ikki xodim — yopish tugmasi yo'q (oxirgi qolgan xodim yopadi), faqat topshirib chiqish
@@ -107,7 +107,7 @@ test('pul topshirish: rahbar → sotuvchi → rahbar; kassir rejimi', async ({ p
   })
 
   await test.step("smena hisoboti: tepada 4 ko'rsatkich (maket uslubi), terminal — tizimdagi summa", async () => {
-    await nav(sotuvchi).getByRole('button', { name: 'Smena hisoboti', exact: true }).click()
+    await sotuvchi.getByRole('tab', { name: 'Smena hisoboti', exact: true }).click()
     const kpi = sotuvchi.getByRole('region', { name: "Smena ko'rsatkichlari" })
     await expect(kpi.locator('.dash-kpi-karta')).toHaveCount(4)
     await expect(kpi.locator('.dash-kpi-karta', { hasText: 'Terminal' })).toContainText("300 000 so'm")
@@ -119,7 +119,7 @@ test('pul topshirish: rahbar → sotuvchi → rahbar; kassir rejimi', async ({ p
   await test.step('sotuvchi yopadi va pulni rahbarga beradi', async () => {
     await sotuvchi.locator('.smena-panel').getByRole('button', { name: 'Smenani yopish' }).click()
     const oyna = sotuvchi.getByRole('dialog', { name: 'Smenani yopish' })
-    await oyna.getByLabel('Pul qayerda qoladi').selectOption({ label: 'Rahbarga: Rahbar' })
+    await oyna.getByRole('radio', { name: 'Rahbarga: Rahbar' }).check()  // kanvas: «Pul qayerda qoladi?» — tanlov tugmalari
     await summaTer(oyna, ['1', '9', '9', '0', '000'])
     await expect(oyna).toContainText("Farq yo'q")
     await expect(oyna.getByRole('button', { name: 'Smenani yopish' })).toBeDisabled()  // terminal hisoboti kiritilmagan
@@ -138,30 +138,27 @@ test('pul topshirish: rahbar → sotuvchi → rahbar; kassir rejimi', async ({ p
   })
 
   await test.step('«Alohida kassir» rejimi: sozlama va sotuvchi ekrani', async () => {
-    await nav(page).getByRole('button', { name: 'Asosiy', exact: true }).click()  // Kassa menyusidan asosiy bo'limlarga
     await nav(page).getByRole('button', { name: 'Sozlama', exact: true }).click()
-    const guruh = nav(page).getByRole('button', { name: 'Salon va xodimlar', exact: true })  // B-36: Kassa — «Salon va xodimlar» guruhida
-    if (await guruh.getAttribute('aria-expanded') !== 'true') await guruh.click()
-    await nav(page).getByRole('button', { name: 'Kassa', exact: true }).click()
+    await page.getByRole('navigation', { name: 'Sozlama menyusi' }).getByRole('button', { name: 'Kassa', exact: true }).click()  // B-36: «Salon va xodimlar» guruhida
     await page.getByLabel('Alohida kassir').check()
     await rasm(page, '5-sozlama-kassa')
     await page.getByRole('region', { name: "Saqlanmagan o'zgarishlar" }).getByRole('button', { name: 'Saqlash' }).click()
     try {
       await expect(page.getByText('Sozlamalar saqlandi.')).toBeVisible()
       await kassaga(sotuvchi)  // yangilanganda /auth/me/ dan yangi rejim keladi
-      await expect(nav(sotuvchi).getByRole('button', { name: 'Yangi zakaz', exact: true })).toBeVisible()
-      await expect(nav(sotuvchi).getByRole('button', { name: "To'lov qabul" })).toHaveCount(0)  // faqat zakaz oladi
+      // yagona bo'lim — tablar chiqmaydi; bo'lim nomi sarlavha ostida (shisha uslubi, Ndiz)
+      await expect(sotuvchi.locator('.ustki-nom p')).toHaveText('Yangi zakaz')
+      await expect(sotuvchi.getByRole('tab', { name: "To'lov qabul", exact: true })).toHaveCount(0)  // faqat zakaz oladi
       await rasm(sotuvchi, '6-kassir-rejimida-sotuvchi')
     } finally {  // keyingi testlar uchun rejim qaytariladi
       await apiSorov(page, 'PATCH', '/sozlamalar/', { kassa_rejimi: 'sotuvchi' })
     }
   })
 
-  await test.step('dashbord: «Nazorat» — kamomad kimda', async () => {
+  await test.step('dashbord: «Kassada kamomad» — kamomad kimda', async () => {
     await page.reload()  // yangilanganda Dashboard ochiladi
-    const n = page.getByRole('region', { name: 'Nazorat, oxirgi 7 kun' })
-    await expect(n).toContainText("Rahbar -10 000 so'm")
-    await expect(n).toContainText('Sanalmagan')
+    await expect(page.getByRole('region', { name: 'Egasining savollari' })).toContainText("Rahbar -10 000 so'm")
+    await expect(page.getByRole('region', { name: 'Liboslar holati' })).toContainText('hali sanalmagan')
     await rasm(page, '7-dashbord-nazorat')
   })
 

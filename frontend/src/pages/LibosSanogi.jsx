@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Tasdiq from '../components/Tasdiq'
-import { filiallar, sanaMatni, sanoq, sanoqBekor, sanoqBelgila, sanoqBoshla, sanoqYakunla, xatoMatni } from '../api'
+import KpiFiltr from '../components/KpiFiltr'
+import NavIkona from '../components/NavIkona'
+import { Belgi } from '../components/ZakazQatorlari'
+import { OYLAR, bugunIso } from '../components/kalendar/sana'
+import { filiallar, sanoq, sanoqBekor, sanoqBelgila, sanoqBoshla, sanoqYakunla, xatoMatni } from '../api'
 
 const JOY = { mijozda: 'tizimda: mijozda', tamirda: "ta'mirda", tozalashda: 'tozalashda' }
 // Qator libos yoki aksessuar donasi (FT-01) bo'ladi — kalit va belgilash shunga qarab
 const qatorKaliti = (q) => `${q.tur}-${q.libos ?? q.dona}`
 const qatorId = (q) => (q.libos ? { libos: q.libos } : { dona: q.dona })
-// Server vaqti mahalliy vaqt bilan keladi: «07.11.2026 02:10»
-const vaqtMatni = (s) => (s ? `${sanaMatni(s)} ${String(s).slice(11, 16)}` : '')
-const joySinfi = (j) => ({ mijozda: 'qarz', tamirda: 'vaqtinchalik', tozalashda: 'vaqtinchalik' }[j] || 'bron')
 
 // Terilgan qismga mos buyumlar: artikul boshidan mos kelgani oldin, keyin ichida uchragani, keyin nomi bo'yicha;
 // hali topilmaganlari oldinda. Raqamning bir qismini terib, ro'yxatdan bosish — to'liq artikulni yozishdan tez.
@@ -26,7 +27,7 @@ function takliflar(qatorlar, matn, soni = 6) {
     .slice(0, soni).map(([, q]) => q)
 }
 
-// Libos sanog'i: javondagi liboslar artikul (skaner) yoki ro'yxatdan belgilanadi; yakunda «salonda bo'lishi
+// Libos sanog'i (kanvas LibosSanoqShisha): javondagi liboslar artikul (skaner) yoki ro'yxatdan belgilanadi; yakunda «salonda bo'lishi
 // kerak edi, lekin yo'q» liboslar chiqadi — zakazsiz ijarani yoki yo'qolgan libosni ushlaydi. Natija rahbarga Telegramda.
 export default function LibosSanogi() {
   const [d, setD] = useState(null)
@@ -47,59 +48,78 @@ export default function LibosSanogi() {
 
   if (!d) return <p className={xabar.turi === 'xato' ? 'xato' : 'malumot'}>{xabar.matn || 'Yuklanmoqda…'}</p>
   if (d.ochiq) {
-    return <OchiqSanoq s={d.ochiq} onYangila={(s) => setD({ ...d, ochiq: s })}
+    return <OchiqSanoq s={d.ochiq} tarix={d.tarix} onYangila={(s) => setD({ ...d, ochiq: s })}
       onYakun={(s) => { setNatija(s); yukla() }}
       onBekor={() => { setXabar({ turi: 'ok', matn: "Sanoq bekor qilindi — hech kimga xabar yuborilmadi." }); yukla() }} />
   }
   return (
-    <div className="stack">
+    <div className="stack sanoq-sahifa">
       {xabar.matn && <p className={xabar.turi === 'xato' ? 'xato' : 'malumot'}>{xabar.matn}</p>}
       {natija && <Natija s={natija} />}
-      <section className="blok">
-        <h3>Libos sanog'i</h3>
-        <p className="malumot">Javondagi har bir libos va aksessuar donasini (fata, toj — yorlig'i bilan) belgilang. Tizim «salonda bo'lishi kerak edi, lekin yo'q» liboslarni
-          ko'rsatadi — zakazsiz berilgan yoki yo'qolgan libos shunday topiladi. Natija rahbarga Telegramda boradi.</p>
-        <div className="qator">
-          {fil.length > 0 && (
-            <select className="kichik-tanlov" value={filial} aria-label="Filial" onChange={(e) => setFilial(e.target.value)}>
-              <option value="">Barcha filiallar</option>
-              {fil.map((f) => <option key={f.id} value={f.id}>{f.nomi}</option>)}
-            </select>
-          )}
-          <button onClick={boshla}>Sanoqni boshlash</button>
+      <section className="sanoq-holat">
+        <span className="sanoq-nuqta yopiq" aria-hidden="true" />
+        <div className="sanoq-holat-matn">
+          <b>Sanoq ochiq emas</b>
+          <small>Javondagi har bir libos va aksessuar donasini (fata, toj — yorlig'i bilan) belgilang: «salonda bo'lishi kerak edi, lekin yo'q»
+            buyum shunday topiladi. Natija rahbarga Telegramda boradi.</small>
         </div>
+        {fil.length > 0 && (
+          <select className="kichik-tanlov" value={filial} aria-label="Filial" onChange={(e) => setFilial(e.target.value)}>
+            <option value="">Barcha filiallar</option>
+            {fil.map((f) => <option key={f.id} value={f.id}>{f.nomi}</option>)}
+          </select>
+        )}
+        <button type="button" className="bosh-tugma" onClick={boshla}><NavIkona nom="raqam" className="tugma-ikon" />Sanoqni boshlash</button>
       </section>
-      {d.tarix.length > 0 && (
-        <section className="blok jadval-panel">
-          <div className="jadval-asboblar"><h3 className="panel-nom">Oldingi sanoqlar</h3></div>
-          {d.tarix.map((s) => (
-            <div key={s.id} className="tasdiq-qator">
-              <div className="tasdiq-matn">
-                <b>{vaqtMatni(s.yakunlangan)}{s.filial ? ` · ${s.filial}` : ''} · {s.yakunlagan}</b>
-                <small>salonda bo'lishi kerak {s.kutilgan}, joyida {s.topilgan}
-                  {s.yoq > 0 && <b className="qizil"> · {s.yoq} ta yo'q</b>}
-                  {s.ortiqcha > 0 && <span className="qizil"> · {s.ortiqcha} ta qaytgani kiritilmagan</span>}
-                  {s.izoh && ` · ${s.izoh}`}</small>
-              </div>
-            </div>
-          ))}
-        </section>
-      )}
+      <OldingiSanoqlar tarix={d.tarix} />
     </div>
   )
 }
 
-function OchiqSanoq({ s, onYangila, onYakun, onBekor }) {
+// Oldingi sanoqlar: sana · kim yakunlagan, «N tadan M tasi joyida», o'ngda natija yorlig'i
+function OldingiSanoqlar({ tarix }) {
+  if (!tarix?.length) return null
+  return (
+    <section className="blok sanoq-panel" aria-label="Oldingi sanoqlar">
+      <h3 className="sanoq-panel-nom"><NavIkona nom="tarix" className="tugma-ikon" />Oldingi sanoqlar</h3>
+      {tarix.map((s) => (
+        <div key={s.id} className="sanoq-tarix-q">
+          <span className="soz-matn">
+            <b>{kunOy(s.yakunlangan)} · {s.yakunlagan}{s.filial ? ` · ${s.filial}` : ''}</b>
+            <small>{s.kutilgan} tadan {s.topilgan} tasi joyida{s.izoh ? ` · ${s.izoh}` : ''}</small>
+          </span>
+          <span className="sanoq-yorliqlar">
+            {s.yoq > 0 && <span className="soz-holat qizil">{s.yoq} ta yo'q</span>}
+            {s.ortiqcha > 0 && <span className="soz-holat ogoh">{s.ortiqcha} ta kiritilmagan</span>}
+            {!s.yoq && !s.ortiqcha && <span className="soz-holat yashil">hammasi joyida</span>}
+          </span>
+        </div>
+      ))}
+    </section>
+  )
+}
+
+const HOZIR_KUN = bugunIso()
+const kunOy = (s) => {
+  if (!s) return ''
+  const [y, m, k] = String(s).slice(0, 10).split('-')
+  return `${y}-${m}-${k}` === HOZIR_KUN ? 'bugun' : `${Number(k)} ${OYLAR[Number(m) - 1].toLowerCase()}`
+}
+const soat = (s) => (s ? String(s).slice(11, 16) : '')
+const PANEL_SONI = 5  // «Hali topilmaganlar» guruhida birinchi ko'rinadiganlar; qolgani «hammasini ko'rsatish»
+
+function OchiqSanoq({ s, tarix, onYangila, onYakun, onBekor }) {
   const [artikul, setArtikul] = useState('')
   const [xabar, setXabar] = useState({ turi: '', matn: '' })
   const [hammasi, setHammasi] = useState(false)
+  const [toliq, setToliq] = useState(false)
   const [izoh, setIzoh] = useState('')
   const [band, setBand] = useState(false)
   const [surov, setSurov] = useState(null)  // 'yakun' | 'bekor' — tasdiq oynasi
   const [aktiv, setAktiv] = useState(-1)  // klaviatura (↑/↓) bilan tanlangan taklif; -1 — Enter terilganini yuboradi (skaner)
   const kiritish = useRef(null)
 
-  const qatorniYangila = (r) => onYangila({ ...s, qatorlar: s.qatorlar.map((q) => (qatorKaliti(q) === qatorKaliti(r) ? { ...q, topildi: r.topildi } : q)) })
+  const qatorniYangila = (r) => onYangila({ ...s, qatorlar: s.qatorlar.map((q) => (qatorKaliti(q) === qatorKaliti(r) ? { ...q, topildi: r.topildi, xodim: r.xodim, vaqt: r.vaqt } : q)) })
   const belgila = async (body) => {
     setXabar({ turi: '', matn: '' })
     try {
@@ -143,23 +163,57 @@ function OchiqSanoq({ s, onYangila, onYakun, onBekor }) {
   }
 
   const salonda = s.qatorlar.filter((q) => q.joy === 'salonda')
+  const boshqa = s.qatorlar.filter((q) => q.joy !== 'salonda')
   const topildi = salonda.filter((q) => q.topildi).length
+  const qolgan = salonda.length - topildi
+  const turlar = (r) => [r.filter((q) => q.tur === 'libos').length, r.filter((q) => q.tur !== 'libos').length]
+  const [sl, sa] = turlar(salonda)
+  const [bl, ba] = turlar(boshqa)
   const korinadi = hammasi ? s.qatorlar : s.qatorlar.filter((q) => !q.topildi)
+  const oxirgilar = s.qatorlar.filter((q) => q.topildi && q.vaqt).sort((a, b) => String(b.vaqt).localeCompare(String(a.vaqt))).slice(0, 6)
+  const foiz = salonda.length ? Math.round((topildi * 100) / salonda.length) : 100
+  const guruhlar = [
+    ['salonda', "Salonda bo'lishi kerak", korinadi.filter((q) => q.joy === 'salonda')],
+    ['boshqa', "Ta'mirda, tozalashda, mijozda", korinadi.filter((q) => q.joy !== 'salonda')],
+  ]
   return (
-    <div className="stack">
-      <div className="stat-qator">
-        <div className="stat"><span>Salonda bo'lishi kerak</span><b>{salonda.length}</b></div>
-        <div className="stat"><span>Topildi</span><b>{topildi}</b></div>
-        <div className="stat"><span>Hali topilmagan</span><b>{salonda.length - topildi}</b></div>
-        <div className="stat"><span>Mijozda / ta'mirda / tozalashda</span><b>{s.qatorlar.length - salonda.length}</b></div>
-      </div>
-      <section className="blok">
-        <form className="sanoq-kiritish" onSubmit={skaner}>
-          <div className="sanoq-maydon">
-            <input ref={kiritish} autoFocus value={artikul} onChange={(e) => { setArtikul(e.target.value); setAktiv(-1) }} onKeyDown={strelka}
-              placeholder="Raqamini tering yoki skanerlang, masalan: L-0012" aria-label="Artikul" maxLength={50} autoComplete="off"
-              role="combobox" aria-expanded={taklif.length > 0} aria-controls="sanoq-takliflar" aria-autocomplete="list"
-              aria-activedescendant={aktiv >= 0 ? `taklif-${aktiv}` : undefined} />
+    <div className="stack sanoq-sahifa">
+      <section className="sanoq-holat" aria-label="Sanoq holati">
+        <span className="sanoq-nuqta" aria-hidden="true" />
+        <div className="sanoq-holat-matn">
+          <b>Sanoq ochiq · boshladi {s.boshlagan}, {kunOy(s.boshlangan)} {soat(s.boshlangan)}{s.filial ? ` · ${s.filial}` : ''}</b>
+          <span className="sanoq-chiziq" role="progressbar" aria-label="Belgilangan" aria-valuenow={topildi} aria-valuemin={0} aria-valuemax={salonda.length}>
+            <i style={{ width: `${foiz}%` }} />
+          </span>
+        </div>
+        <b className="sanoq-son">{topildi} / {salonda.length}</b>
+        <small className="sanoq-holat-izoh">bir necha kishi birga davom ettirishi mumkin</small>
+      </section>
+
+      <section className="dash-kpi libos-kpi" aria-label="Sanoq ko'rsatkichlari">
+        <KpiFiltr nom="Salonda bo'lishi kerak" son={salonda.length} ikon="libos" rang="tilla" izoh={`${sl} libos · ${sa} dona aksessuar`} />
+        <KpiFiltr nom="Topildi" son={topildi} ikon="bajarildi" rang="yashil" izoh="javonda belgilandi" />
+        <KpiFiltr nom="Hali topilmagan" son={qolgan} ikon="filtr" rang="sariq" izoh={qolgan ? 'izlash davom etmoqda' : 'hammasi topildi'} />
+        <KpiFiltr nom="Boshqa joyda" son={boshqa.length} ikon="mijoz" rang="kok" izoh={`${bl} libos · ${ba} aksessuar`} />
+      </section>
+
+      <div className="sanoq-ikki">
+        <div className="sanoq-ustun">
+          <section className="blok sanoq-panel" aria-label="Belgilash">
+            <div className="sanoq-panel-bosh">
+              <h3 className="sanoq-panel-nom"><NavIkona nom="raqam" className="tugma-ikon" />Belgilash</h3>
+              <small>skaner yoki qo'lda</small>
+            </div>
+            <form className="sanoq-kiritish" onSubmit={skaner}>
+              <div className="sanoq-maydon">
+                <NavIkona nom="raqam" className="tugma-ikon" />
+                <input ref={kiritish} autoFocus value={artikul} onChange={(e) => { setArtikul(e.target.value); setAktiv(-1) }} onKeyDown={strelka}
+                  placeholder="Raqamini tering yoki skanerlang, masalan: L-0012" aria-label="Artikul" maxLength={50} autoComplete="off"
+                  role="combobox" aria-expanded={taklif.length > 0} aria-controls="sanoq-takliflar" aria-autocomplete="list"
+                  aria-activedescendant={aktiv >= 0 ? `taklif-${aktiv}` : undefined} />
+              </div>
+              <button type="submit" className="ikkinchi">Topildi</button>
+            </form>
             {taklif.length > 0 && (
               <ul id="sanoq-takliflar" className="sanoq-takliflar" role="listbox" aria-label="Mos buyumlar">
                 {taklif.map((q, i) => (
@@ -168,69 +222,89 @@ function OchiqSanoq({ s, onYangila, onYakun, onBekor }) {
                     onMouseDown={(e) => e.preventDefault()} onClick={() => tanla(q)}>
                     <b>{q.artikul}</b>
                     <span>{q.nomi}{q.olcham && ` · ${q.olcham}`}</span>
-                    <small>{q.topildi ? '✓ belgilangan' : JOY[q.joy] || 'salonda'}</small>
+                    <small className={`soz-holat ${q.topildi ? 'yashil' : q.joy === 'mijozda' ? 'kok' : 'yopiq'}`}>{q.topildi ? '✓ belgilangan' : JOY[q.joy] || 'salonda'}</small>
                   </li>
                 ))}
               </ul>
             )}
-          </div>
-          <button type="submit">Topildi</button>
-        </form>
-        {xabar.matn && <p className={xabar.turi === 'xato' ? 'xato' : 'malumot'}>{xabar.matn}</p>}
-        <small className="malumot">Boshladi: {s.boshlagan}{s.filial ? ` · ${s.filial}` : ''}. Sanoqni bir necha kishi birga davom ettirishi mumkin.</small>
-      </section>
-      <section className="blok jadval-panel">
-        <div className="jadval-asboblar">
-          <h3 className="panel-nom">{hammasi ? 'Hammasi' : 'Hali topilmaganlar'}</h3>
-          <label className="qator malumot"><input type="checkbox" checked={hammasi} onChange={(e) => setHammasi(e.target.checked)} /> topilganlarni ham ko'rsatish</label>
+            {xabar.matn && <p className={xabar.turi === 'xato' ? 'xato' : 'malumot sanoq-xabar'}>{xabar.matn}</p>}
+          </section>
+
+          {oxirgilar.length > 0 && (
+            <section className="blok sanoq-panel" aria-label="Oxirgi belgilanganlar">
+              <h3 className="sanoq-panel-nom"><NavIkona nom="tarix" className="tugma-ikon" />Oxirgi belgilanganlar</h3>
+              {oxirgilar.map((q) => (
+                <div key={qatorKaliti(q)} className="sanoq-oxirgi-q">
+                  <span className="soz-mute">{soat(q.vaqt)}</span>
+                  <b>{q.artikul}</b>
+                  <span>{q.nomi}</span>
+                  <span className="soz-mute">{q.xodim}</span>
+                </div>
+              ))}
+            </section>
+          )}
+          <OldingiSanoqlar tarix={tarix} />
         </div>
-        {korinadi.length === 0 && <p className="malumot jadval-bosh">Hammasi belgilandi.</p>}
-        {/* Avval salonda turishi kerak bo'lganlar; keyin alohida — ta'mirda, tozalashda, mijozda (topilmasa ham xato emas) */}
-        {[korinadi.filter((q) => q.joy === 'salonda'), korinadi.filter((q) => q.joy !== 'salonda')].map((guruh, gi) => guruh.length > 0 && (
-          <div key={gi} className="sanoq-guruh">
-            <h4 className="sanoq-guruh-nom">{gi === 0
-              ? <>Salonda bo'lishi kerak <span className="tab-son">{guruh.length}</span></>
-              : <>Ta'mirda, tozalashda, mijozda <span className="tab-son">{guruh.length}</span><small>javonda bo'lsa belgilang — bo'lmasa ham xato emas</small></>}</h4>
-            {guruh.map((q) => (
-          <div key={qatorKaliti(q)} className={`tasdiq-qator${q.topildi ? ' bajarilgan' : ''}`}>
-            <div className="tasdiq-matn">
-              <b>{q.artikul} · {q.nomi}</b>
-              <small>{q.kategoriya}{q.olcham && ` · ${q.olcham}`}
-                {JOY[q.joy] && <> · <span className={`holat ${joySinfi(q.joy)}`}>{JOY[q.joy]}</span></>}
-                {q.topildi && q.xodim && ` · belgiladi: ${q.xodim}`}</small>
-            </div>
-            <div className="tasdiq-tugmalar">
-              {q.topildi
-                ? <button className="ikkinchi kichik" onClick={() => belgila({ ...qatorId(q), topildi: false })}>Bekor</button>
-                : <button className="ikkinchi kichik" onClick={() => belgila({ ...qatorId(q), topildi: true })}>Topildi</button>}
-            </div>
+
+        <section className="blok sanoq-panel" aria-label={hammasi ? 'Hammasi' : 'Hali topilmaganlar'}>
+          <div className="sanoq-panel-bosh">
+            <h3 className="sanoq-panel-nom"><NavIkona nom="qidiruv" className="tugma-ikon" />{hammasi ? 'Hammasi' : 'Hali topilmaganlar'}</h3>
+            <label className="sanoq-hammasi"><input type="checkbox" checked={hammasi} onChange={(e) => setHammasi(e.target.checked)} />topilganlar ham</label>
           </div>
-            ))}
-          </div>
-        ))}
-      </section>
-      <section className="blok stack">
-        <h3>Sanoqni yakunlash</h3>
-        {salonda.length - topildi > 0 && <p className="ogohlantirish">{salonda.length - topildi} ta buyum hali topilmagan — yakunlasangiz «yo'q» deb rahbarga yuboriladi.</p>}
-        <label>Izoh (ixtiyoriy)
-          <input value={izoh} onChange={(e) => setIzoh(e.target.value)} placeholder="masalan: A-2 kimyoviy tozalashda" maxLength={300} />
-        </label>
-        <div className="qator r2-sanoq-tugmalar">
-          <button onClick={() => setSurov('yakun')} disabled={band}>Yakunlash</button>
-          <button className="ikkinchi" onClick={() => setSurov('bekor')} disabled={band}>Sanoqni bekor qilish</button>
+          {korinadi.length === 0 && <p className="malumot jadval-bosh">Hammasi belgilandi.</p>}
+          {/* Avval salonda turishi kerak bo'lganlar; keyin alohida — ta'mirda, tozalashda, mijozda (topilmasa ham xato emas) */}
+          {guruhlar.map(([k, nom, guruh]) => guruh.length > 0 && (
+            <div key={k} className="sanoq-guruh">
+              <h4 className="sanoq-guruh-nom">{nom} <span className="tab-son">{guruh.length}</span>
+                {k === 'boshqa' && <small>Javonda bo'lsa belgilang — bo'lmasa ham xato emas.</small>}</h4>
+              {(toliq ? guruh : guruh.slice(0, PANEL_SONI)).map((q) => (
+                <div key={qatorKaliti(q)} className={`sanoq-q${q.topildi ? ' bajarilgan' : ''}`}>
+                  {q.rasm ? <img className="sanoq-rasm" src={q.rasm} alt="" /> : (
+                    <span className="sanoq-plitka" aria-hidden="true"><Belgi nom={q.tur === 'libos' ? 'libos' : 'toj'} className="tugma-ikon" /></span>
+                  )}
+                  <span className="soz-matn">
+                    <b>{q.artikul} · {q.nomi}</b>
+                    <small>{q.kategoriya}{q.olcham && ` · ${q.olcham}`}{q.topildi && q.xodim && ` · belgiladi: ${q.xodim}`}</small>
+                  </span>
+                  {q.topildi
+                    ? <button type="button" className="ikkinchi kichik" onClick={() => belgila({ ...qatorId(q), topildi: false })}>Bekor</button>
+                    : q.joy === 'salonda'
+                      ? <button type="button" className="ikkinchi kichik" onClick={() => belgila({ ...qatorId(q), topildi: true })}>Topildi</button>
+                      : (
+                        <span className="sanoq-joy">
+                          <span className={`soz-holat ${q.joy === 'mijozda' ? 'kok' : 'ogoh'}`}>{JOY[q.joy]?.replace('tizimda: ', '')}</span>
+                          <button type="button" className="havola" onClick={() => belgila({ ...qatorId(q), topildi: true })}>javonda</button>
+                        </span>
+                      )}
+                </div>
+              ))}
+              {!toliq && guruh.length > PANEL_SONI && (
+                <p className="sanoq-yana">yana {guruh.length - PANEL_SONI} ta · <button type="button" className="havola" onClick={() => setToliq(true)}>hammasini ko'rsatish</button></p>
+              )}
+            </div>
+          ))}
+        </section>
+      </div>
+
+      <section className="sanoq-yakun" aria-label="Sanoqni yakunlash">
+        <div className="sanoq-yakun-matn">
+          <b>{qolgan > 0 ? `${qolgan} ta buyum hali topilmagan` : 'Hammasi topildi'}</b>
+          <small>{qolgan > 0 ? "Yakunlansa, topilmaganlar «yo'q» deb rahbarga Telegramda boradi; keyin qayta belgilab bo'lmaydi." : 'Yakunlang — natija rahbarga Telegramda boradi.'}</small>
         </div>
-        <p className="malumot">Tasodifan boshlangan bo'lsa — bekor qiling: natija saqlanmaydi va hech kimga yuborilmaydi.</p>
+        <input value={izoh} onChange={(e) => setIzoh(e.target.value)} placeholder="Izoh: masalan, A-2 kimyoviy tozalashda" aria-label="Izoh (ixtiyoriy)" maxLength={300} />
+        <button type="button" className="ikkinchi" onClick={() => setSurov('bekor')} disabled={band}>Bekor qilish</button>
+        <button type="button" className="bosh-tugma" onClick={() => setSurov('yakun')} disabled={band}><NavIkona nom="bajarildi" className="tugma-ikon" />Sanoqni yakunlash</button>
       </section>
       {surov === 'yakun' && (
         <Tasdiq sarlavha="Sanoq yakunlansinmi?" tugma="Ha, yakunlash" xavfli={false}
-          matn={salonda.length - topildi > 0
-            ? `${salonda.length - topildi} ta buyum topilmagan — rahbarga Telegramda «yo'q» deb yuboriladi. Yakunlangan sanoqqa qayta belgilab bo'lmaydi.`
+          matn={qolgan > 0
+            ? `${qolgan} ta buyum topilmagan — rahbarga Telegramda «yo'q» deb yuboriladi. Yakunlangan sanoqqa qayta belgilab bo'lmaydi.`
             : "Hammasi topildi. Natija rahbarga Telegramda yuboriladi."}
           onYop={() => setSurov(null)} onTasdiq={yakunla} />
       )}
       {surov === 'bekor' && (
         <Tasdiq sarlavha="Sanoq bekor qilinsinmi?" tugma="Ha, bekor qilish"
-          matn={`Belgilangan ${s.qatorlar.filter((q) => q.topildi).length} ta buyum o'chadi, natija hech kimga yuborilmaydi. Qaytarib bo'lmaydi.`}
+          matn={`Belgilangan ${s.qatorlar.filter((q) => q.topildi).length} ta buyum o'chadi, natija hech kimga yuborilmaydi. Tasodifan boshlangan bo'lsa — shu.`}
           onYop={() => setSurov(null)} onTasdiq={bekorQil} />
       )}
     </div>

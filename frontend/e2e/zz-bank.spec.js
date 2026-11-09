@@ -32,9 +32,9 @@ test("bank solishtirish: karta to'lovlari tarixi — kim, qachon, qaysi zakazga"
   await rahbar.setViewportSize({ width: 1280, height: 860 })
   await kirish(rahbar, 'Rahbar', '1111')
   await nav(rahbar).getByRole('button', { name: 'Hisobotlar', exact: true }).click()
-  await nav(rahbar).getByRole('button', { name: 'Bank solishtirish', exact: true }).click()
+  await rahbar.getByRole('tab', { name: 'Bank solishtirish', exact: true }).click()
   await expect(rahbar.getByText('Nima uchun:')).toBeVisible()
-  const tarix = rahbar.locator('.tasdiq', { hasText: 'Terminal' }).locator('details.bank-tarix')
+  const tarix = rahbar.locator('details.bank-tarix', { hasText: 'Terminal' })  // kanvas: jadval ostida har usulning tarixi
   await tarix.locator('summary').click()
   const qator = tarix.locator('tbody tr', { hasText: `#${z.raqam} Bank Sinov` })
   await expect(qator).toContainText('Sotuvchi')
