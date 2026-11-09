@@ -1,0 +1,1073 @@
+{
+  "v": 3,
+  "attachments": {},
+  "boards": {
+    "Bandlik.dc.html": {
+      "expand": "fill",
+      "h": 1160,
+      "is_interactive": true,
+      "title": "Bandlik kalendari",
+      "w": 1440,
+      "x": 0,
+      "y": 1760
+    },
+    "Foyda.dc.html": {
+      "expand": "fill",
+      "h": 1660,
+      "is_interactive": true,
+      "title": "Hisobotlar — oylik foyda",
+      "w": 1440,
+      "x": 4560,
+      "y": 1760
+    },
+    "HisobotBolim.dc.html": {
+      "expand": "fill",
+      "h": 1170,
+      "is_interactive": true,
+      "title": "Hisobotlar — Umumiy (liboslar · xodimlar · qarzdorlar)",
+      "w": 1440,
+      "x": 0,
+      "y": 9940
+    },
+    "HisobotBonus.dc.html": {
+      "expand": "fill",
+      "h": 1030,
+      "is_interactive": true,
+      "title": "Hisobotlar — Sotuvchi bonusi",
+      "w": 1440,
+      "x": 3040,
+      "y": 9940
+    },
+    "HisobotGrafik.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "is_interactive": true,
+      "title": "Hisobotlar — Grafik (12 oy)",
+      "w": 1440,
+      "x": 4560,
+      "y": 9940
+    },
+    "HisobotXarajat.dc.html": {
+      "expand": "fill",
+      "h": 1330,
+      "is_interactive": true,
+      "title": "Hisobotlar — Xarajatlar",
+      "w": 1440,
+      "x": 1520,
+      "y": 9940
+    },
+    "Kassa.dc.html": {
+      "expand": "fill",
+      "h": 1160,
+      "is_interactive": true,
+      "title": "Kassa — to'lov qabul (sotuvchi ko'rinishi)",
+      "w": 1440,
+      "x": 4560,
+      "y": 0
+    },
+    "KassaMinimal.dc.html": {
+      "expand": "fill",
+      "h": 1080,
+      "is_interactive": true,
+      "title": "Kassa — MINIMAL yo'nalish (sinov, solishtiring)",
+      "w": 1440,
+      "x": 6080,
+      "y": 0
+    },
+    "KassaMurosa.dc.html": {
+      "expand": "fill",
+      "h": 1030,
+      "is_interactive": true,
+      "title": "Kassa — MUROSA (shisha + minimal guruhlash)",
+      "w": 1440,
+      "x": 7600,
+      "y": 0
+    },
+    "MainMurosa.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "is_interactive": true,
+      "title": "Dashboard — MUROSA (bento 4 · 5/4/3 · 4, bir ekranga sig'adi)",
+      "w": 1440,
+      "x": 9120,
+      "y": 0
+    },
+    "MainShisha.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "is_interactive": true,
+      "page": "shisha",
+      "title": "Dashboard (rahbar)",
+      "w": 1440,
+      "x": 0,
+      "y": 0
+    },
+    "KassaShisha.dc.html": {
+      "expand": "fill",
+      "h": 1040,
+      "is_interactive": true,
+      "page": "shisha",
+      "title": "Kassa — to'lov qabul (sotuvchi ko'rinishi)",
+      "w": 1440,
+      "x": 4560,
+      "y": 0
+    },
+    "KassaBank.dc.html": {
+      "expand": "fill",
+      "h": 1010,
+      "is_interactive": true,
+      "title": "Kassa — Bank solishtirish (rahbar)",
+      "w": 1440,
+      "x": 3040,
+      "y": 6530
+    },
+    "KassaBolim.dc.html": {
+      "expand": "fill",
+      "h": 1210,
+      "is_interactive": true,
+      "title": "Kassa — Xarajat",
+      "w": 1440,
+      "x": 0,
+      "y": 5200
+    },
+    "KassaInkassatsiya.dc.html": {
+      "expand": "fill",
+      "h": 1170,
+      "is_interactive": true,
+      "title": "Kassa — Inkassatsiya (pul topshirish)",
+      "w": 1440,
+      "x": 1520,
+      "y": 5200
+    },
+    "KassaSmena.dc.html": {
+      "expand": "fill",
+      "h": 1070,
+      "is_interactive": true,
+      "title": "Kassa — Smena hisoboti",
+      "w": 1440,
+      "x": 4560,
+      "y": 5200
+    },
+    "KassaTarix.dc.html": {
+      "expand": "fill",
+      "h": 1250,
+      "is_interactive": true,
+      "title": "Kassa — Smenalar tarixi (rahbar)",
+      "w": 1440,
+      "x": 1520,
+      "y": 6530
+    },
+    "KassaYopish.dc.html": {
+      "expand": "fill",
+      "h": 1070,
+      "is_interactive": true,
+      "title": "Kassa — Smenani yopish (oyna)",
+      "w": 1440,
+      "x": 0,
+      "y": 6530
+    },
+    "KassaZaloglar.dc.html": {
+      "expand": "fill",
+      "h": 970,
+      "is_interactive": true,
+      "title": "Kassa — Zaloglar",
+      "w": 1440,
+      "x": 3040,
+      "y": 5200
+    },
+    "LibosBolim.dc.html": {
+      "expand": "fill",
+      "h": 1040,
+      "is_interactive": true,
+      "title": "Liboslar — Aksessuarlar (har dona yorliq bilan)",
+      "w": 1440,
+      "x": 0,
+      "y": 11690
+    },
+    "LibosQoshish.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "is_interactive": true,
+      "title": "Liboslar — Libos qo'shish (oyna)",
+      "w": 1440,
+      "x": 4560,
+      "y": 11690
+    },
+    "LibosSanoq.dc.html": {
+      "expand": "fill",
+      "h": 1620,
+      "is_interactive": true,
+      "title": "Liboslar — Sanoq (ochiq sanoq)",
+      "w": 1440,
+      "x": 1520,
+      "y": 11690
+    },
+    "LibosYetkazib.dc.html": {
+      "expand": "fill",
+      "h": 1410,
+      "is_interactive": true,
+      "title": "Liboslar — Yetkazib beruvchilar (rahbar)",
+      "w": 1440,
+      "x": 3040,
+      "y": 11690
+    },
+    "Liboslar.dc.html": {
+      "expand": "fill",
+      "h": 1280,
+      "is_interactive": true,
+      "title": "Liboslar",
+      "w": 1440,
+      "x": 1520,
+      "y": 1760
+    },
+    "Main.dc.html": {
+      "expand": "fill",
+      "h": 1400,
+      "is_interactive": true,
+      "title": "Dashboard (rahbar)",
+      "w": 1440,
+      "x": 0,
+      "y": 0
+    },
+    "Mijoz.dc.html": {
+      "expand": "fill",
+      "h": 1000,
+      "is_interactive": true,
+      "title": "Mijoz profili",
+      "w": 1440,
+      "x": 3040,
+      "y": 1760
+    },
+    "MijozBolim.dc.html": {
+      "expand": "fill",
+      "h": 1420,
+      "is_interactive": true,
+      "title": "Mijozlar — ro'yxat (rahbar)",
+      "w": 1440,
+      "x": 0,
+      "y": 13730
+    },
+    "MijozSalonchi.dc.html": {
+      "expand": "fill",
+      "h": 1130,
+      "is_interactive": true,
+      "title": "Mijozlar — Salonchilar",
+      "w": 1440,
+      "x": 1520,
+      "y": 13730
+    },
+    "Shrift.dc.html": {
+      "h": 906,
+      "title": "Shrift taqqoslash — tanlandi: Manrope",
+      "w": 390,
+      "x": 3510,
+      "y": 3800
+    },
+    "Sotuvchi.dc.html": {
+      "expand": "fill",
+      "h": 960,
+      "is_interactive": true,
+      "title": "Sotuvchi bosh sahifasi (pul oladi)",
+      "w": 1440,
+      "x": 0,
+      "y": 3800
+    },
+    "SotuvchiKassir.dc.html": {
+      "expand": "fill",
+      "h": 960,
+      "is_interactive": true,
+      "title": "Sotuvchi — kassir rejimi (pulni kassir oladi)",
+      "w": 1440,
+      "x": 1520,
+      "y": 3800
+    },
+    "SozlamaBolim.dc.html": {
+      "expand": "fill",
+      "h": 1220,
+      "is_interactive": true,
+      "title": "Sozlama — Barcha sozlamalar",
+      "w": 1440,
+      "x": 0,
+      "y": 15570
+    },
+    "SozlamaLibos.dc.html": {
+      "expand": "fill",
+      "h": 1220,
+      "is_interactive": true,
+      "title": "Sozlama — Liboslar",
+      "w": 1440,
+      "x": 4560,
+      "y": 15570
+    },
+    "SozlamaNarx.dc.html": {
+      "expand": "fill",
+      "h": 1350,
+      "is_interactive": true,
+      "title": "Sozlama — Narx va chegirma",
+      "w": 1440,
+      "x": 3040,
+      "y": 15570
+    },
+    "SozlamaSalon.dc.html": {
+      "expand": "fill",
+      "h": 1620,
+      "is_interactive": true,
+      "title": "Sozlama — Salon va xodimlar",
+      "w": 1440,
+      "x": 0,
+      "y": 17600
+    },
+    "SozlamaXabar.dc.html": {
+      "expand": "fill",
+      "h": 1320,
+      "is_interactive": true,
+      "title": "Sozlama — Ko'rinish va xabarlar",
+      "w": 1440,
+      "x": 1520,
+      "y": 17600
+    },
+    "SozlamaXavf.dc.html": {
+      "expand": "fill",
+      "h": 1320,
+      "is_interactive": true,
+      "title": "Sozlama — Xavfsizlik",
+      "w": 1440,
+      "x": 3040,
+      "y": 17600
+    },
+    "SozlamaZakaz.dc.html": {
+      "expand": "fill",
+      "h": 1890,
+      "is_interactive": true,
+      "title": "Sozlama — Zakaz qoidalari",
+      "w": 1440,
+      "x": 1520,
+      "y": 15570
+    },
+    "Telefon.dc.html": {
+      "h": 844,
+      "is_interactive": true,
+      "title": "Telefon — rahbar, 390 px",
+      "w": 390,
+      "x": 3040,
+      "y": 3800
+    },
+    "YangiZakaz.dc.html": {
+      "expand": "fill",
+      "h": 1240,
+      "is_interactive": true,
+      "title": "Yangi zakaz — 2-qadam: libos",
+      "w": 1440,
+      "x": 3040,
+      "y": 0
+    },
+    "YangiZakazMijoz.dc.html": {
+      "expand": "fill",
+      "h": 1060,
+      "is_interactive": true,
+      "title": "Yangi zakaz — 3-qadam: mijoz va tasdiq",
+      "w": 1440,
+      "x": 1520,
+      "y": 8200
+    },
+    "YangiZakazSana.dc.html": {
+      "expand": "fill",
+      "h": 960,
+      "is_interactive": true,
+      "title": "Yangi zakaz — 1-qadam: sana",
+      "w": 1440,
+      "x": 0,
+      "y": 8200
+    },
+    "ZakazKarta.dc.html": {
+      "expand": "fill",
+      "h": 1320,
+      "is_interactive": true,
+      "title": "Zakaz kartasi (#13)",
+      "w": 1440,
+      "x": 3040,
+      "y": 8200
+    },
+    "Zakazlar.dc.html": {
+      "expand": "fill",
+      "h": 1080,
+      "is_interactive": true,
+      "title": "Zakazlar",
+      "w": 1440,
+      "x": 1520,
+      "y": 0
+    },
+    "ZakazlarShisha.dc.html": {
+      "expand": "fill",
+      "h": 1290,
+      "is_interactive": true,
+      "title": "Zakazlar",
+      "w": 1440,
+      "x": 1520,
+      "y": 0,
+      "page": "shisha"
+    },
+    "YangiZakazShisha.dc.html": {
+      "expand": "fill",
+      "h": 1270,
+      "is_interactive": true,
+      "title": "Yangi zakaz — 2-qadam: libos",
+      "w": 1440,
+      "x": 3040,
+      "y": 0,
+      "page": "shisha"
+    },
+    "BandlikShisha.dc.html": {
+      "expand": "fill",
+      "h": 1160,
+      "is_interactive": true,
+      "title": "Bandlik kalendari",
+      "w": 1440,
+      "x": 0,
+      "y": 1760,
+      "page": "shisha"
+    },
+    "LiboslarShisha.dc.html": {
+      "expand": "fill",
+      "h": 1280,
+      "is_interactive": true,
+      "title": "Liboslar",
+      "w": 1440,
+      "x": 1520,
+      "y": 1760,
+      "page": "shisha"
+    },
+    "MijozShisha.dc.html": {
+      "expand": "fill",
+      "h": 980,
+      "is_interactive": true,
+      "title": "Mijoz profili",
+      "w": 1440,
+      "x": 3040,
+      "y": 1760,
+      "page": "shisha"
+    },
+    "FoydaShisha.dc.html": {
+      "expand": "fill",
+      "h": 1650,
+      "is_interactive": true,
+      "title": "Hisobotlar — oylik foyda",
+      "w": 1440,
+      "x": 4560,
+      "y": 1760,
+      "page": "shisha"
+    },
+    "SotuvchiShisha.dc.html": {
+      "expand": "fill",
+      "h": 900,
+      "is_interactive": true,
+      "title": "Sotuvchi bosh sahifasi (pul oladi)",
+      "w": 1440,
+      "x": 0,
+      "y": 3800,
+      "page": "shisha"
+    },
+    "SotuvchiKassirShisha.dc.html": {
+      "expand": "fill",
+      "h": 960,
+      "is_interactive": true,
+      "title": "Sotuvchi — kassir rejimi (pulni kassir oladi)",
+      "w": 1440,
+      "x": 1520,
+      "y": 3800,
+      "page": "shisha"
+    },
+    "TelefonShisha.dc.html": {
+      "h": 844,
+      "is_interactive": true,
+      "title": "Telefon — rahbar, 390 px",
+      "w": 390,
+      "x": 3040,
+      "y": 3800,
+      "page": "shisha"
+    },
+    "KassaBolimShisha.dc.html": {
+      "expand": "fill",
+      "h": 1190,
+      "is_interactive": true,
+      "title": "Kassa — Xarajat",
+      "w": 1440,
+      "x": 0,
+      "y": 5200,
+      "page": "shisha"
+    },
+    "KassaInkassatsiyaShisha.dc.html": {
+      "expand": "fill",
+      "h": 1180,
+      "is_interactive": true,
+      "title": "Kassa — Inkassatsiya (pul topshirish)",
+      "w": 1440,
+      "x": 1520,
+      "y": 5200,
+      "page": "shisha"
+    },
+    "KassaZaloglarShisha.dc.html": {
+      "expand": "fill",
+      "h": 970,
+      "is_interactive": true,
+      "title": "Kassa — Zaloglar",
+      "w": 1440,
+      "x": 3040,
+      "y": 5200,
+      "page": "shisha"
+    },
+    "KassaSmenaShisha.dc.html": {
+      "expand": "fill",
+      "h": 1070,
+      "is_interactive": true,
+      "title": "Kassa — Smena hisoboti",
+      "w": 1440,
+      "x": 4560,
+      "y": 5200,
+      "page": "shisha"
+    },
+    "KassaYopishShisha.dc.html": {
+      "expand": "fill",
+      "h": 1070,
+      "is_interactive": true,
+      "title": "Kassa — Smenani yopish (oyna)",
+      "w": 1440,
+      "x": 0,
+      "y": 6530,
+      "page": "shisha"
+    },
+    "KassaTarixShisha.dc.html": {
+      "expand": "fill",
+      "h": 1250,
+      "is_interactive": true,
+      "title": "Kassa — Smenalar tarixi (rahbar)",
+      "w": 1440,
+      "x": 1520,
+      "y": 6530,
+      "page": "shisha"
+    },
+    "KassaBankShisha.dc.html": {
+      "expand": "fill",
+      "h": 1010,
+      "is_interactive": true,
+      "title": "Kassa — Bank solishtirish (rahbar)",
+      "w": 1440,
+      "x": 3040,
+      "y": 6530,
+      "page": "shisha"
+    },
+    "YangiZakazSanaShisha.dc.html": {
+      "expand": "fill",
+      "h": 940,
+      "is_interactive": true,
+      "title": "Yangi zakaz — 1-qadam: sana",
+      "w": 1440,
+      "x": 0,
+      "y": 8200,
+      "page": "shisha"
+    },
+    "YangiZakazMijozShisha.dc.html": {
+      "expand": "fill",
+      "h": 1050,
+      "is_interactive": true,
+      "title": "Yangi zakaz — 3-qadam: mijoz va tasdiq",
+      "w": 1440,
+      "x": 1520,
+      "y": 8200,
+      "page": "shisha"
+    },
+    "ZakazKartaShisha.dc.html": {
+      "expand": "fill",
+      "h": 1330,
+      "is_interactive": true,
+      "title": "Zakaz kartasi (#13)",
+      "w": 1440,
+      "x": 3040,
+      "y": 8200,
+      "page": "shisha"
+    },
+    "HisobotBolimShisha.dc.html": {
+      "expand": "fill",
+      "h": 1170,
+      "is_interactive": true,
+      "title": "Hisobotlar — Umumiy (liboslar · xodimlar · qarzdorlar)",
+      "w": 1440,
+      "x": 0,
+      "y": 9940,
+      "page": "shisha"
+    },
+    "HisobotXarajatShisha.dc.html": {
+      "expand": "fill",
+      "h": 1330,
+      "is_interactive": true,
+      "title": "Hisobotlar — Xarajatlar",
+      "w": 1440,
+      "x": 1520,
+      "y": 9940,
+      "page": "shisha"
+    },
+    "HisobotBonusShisha.dc.html": {
+      "expand": "fill",
+      "h": 1030,
+      "is_interactive": true,
+      "title": "Hisobotlar — Sotuvchi bonusi",
+      "w": 1440,
+      "x": 3040,
+      "y": 9940,
+      "page": "shisha"
+    },
+    "HisobotGrafikShisha.dc.html": {
+      "expand": "fill",
+      "h": 910,
+      "is_interactive": true,
+      "title": "Hisobotlar — Grafik (12 oy)",
+      "w": 1440,
+      "x": 4560,
+      "y": 9940,
+      "page": "shisha"
+    },
+    "LibosBolimShisha.dc.html": {
+      "expand": "fill",
+      "h": 1040,
+      "is_interactive": true,
+      "title": "Liboslar — Aksessuarlar (har dona yorliq bilan)",
+      "w": 1440,
+      "x": 0,
+      "y": 11690,
+      "page": "shisha"
+    },
+    "LibosSanoqShisha.dc.html": {
+      "expand": "fill",
+      "h": 1620,
+      "is_interactive": true,
+      "title": "Liboslar — Sanoq (ochiq sanoq)",
+      "w": 1440,
+      "x": 1520,
+      "y": 11690,
+      "page": "shisha"
+    },
+    "LibosYetkazibShisha.dc.html": {
+      "expand": "fill",
+      "h": 1410,
+      "is_interactive": true,
+      "title": "Liboslar — Yetkazib beruvchilar (rahbar)",
+      "w": 1440,
+      "x": 3040,
+      "y": 11690,
+      "page": "shisha"
+    },
+    "LibosQoshishShisha.dc.html": {
+      "expand": "fill",
+      "h": 1280,
+      "is_interactive": true,
+      "title": "Liboslar — Libos qo'shish (oyna)",
+      "w": 1440,
+      "x": 4560,
+      "y": 11690,
+      "page": "shisha"
+    },
+    "MijozBolimShisha.dc.html": {
+      "expand": "fill",
+      "h": 1420,
+      "is_interactive": true,
+      "title": "Mijozlar — ro'yxat (rahbar)",
+      "w": 1440,
+      "x": 0,
+      "y": 13730,
+      "page": "shisha"
+    },
+    "MijozSalonchiShisha.dc.html": {
+      "expand": "fill",
+      "h": 1130,
+      "is_interactive": true,
+      "title": "Mijozlar — Salonchilar",
+      "w": 1440,
+      "x": 1520,
+      "y": 13730,
+      "page": "shisha"
+    },
+    "SozlamaBolimShisha.dc.html": {
+      "expand": "fill",
+      "h": 1220,
+      "is_interactive": true,
+      "title": "Sozlama — Barcha sozlamalar",
+      "w": 1440,
+      "x": 0,
+      "y": 15570,
+      "page": "shisha"
+    },
+    "SozlamaZakazShisha.dc.html": {
+      "expand": "fill",
+      "h": 1900,
+      "is_interactive": true,
+      "title": "Sozlama — Zakaz qoidalari",
+      "w": 1440,
+      "x": 1520,
+      "y": 15570,
+      "page": "shisha"
+    },
+    "SozlamaNarxShisha.dc.html": {
+      "expand": "fill",
+      "h": 1360,
+      "is_interactive": true,
+      "title": "Sozlama — Narx va chegirma",
+      "w": 1440,
+      "x": 3040,
+      "y": 15570,
+      "page": "shisha"
+    },
+    "SozlamaLibosShisha.dc.html": {
+      "expand": "fill",
+      "h": 1220,
+      "is_interactive": true,
+      "title": "Sozlama — Liboslar",
+      "w": 1440,
+      "x": 4560,
+      "y": 15570,
+      "page": "shisha"
+    },
+    "SozlamaSalonShisha.dc.html": {
+      "expand": "fill",
+      "h": 1650,
+      "is_interactive": true,
+      "title": "Sozlama — Salon va xodimlar",
+      "w": 1440,
+      "x": 0,
+      "y": 17600,
+      "page": "shisha"
+    },
+    "SozlamaXabarShisha.dc.html": {
+      "expand": "fill",
+      "h": 1290,
+      "is_interactive": true,
+      "title": "Sozlama — Ko'rinish va xabarlar",
+      "w": 1440,
+      "x": 1520,
+      "y": 17600,
+      "page": "shisha"
+    },
+    "SozlamaXavfShisha.dc.html": {
+      "expand": "fill",
+      "h": 1320,
+      "is_interactive": true,
+      "title": "Sozlama — Xavfsizlik",
+      "w": 1440,
+      "x": 3040,
+      "y": 17600,
+      "page": "shisha"
+    }
+  },
+  "createdOnFiles": {
+    "at": "2026-11-08T11:20:00Z",
+    "v": 1
+  },
+  "designSystems": [],
+  "launch": {
+    "view": "canvas"
+  },
+  "noteOrder": [
+    "satr1",
+    "satr2",
+    "satr3",
+    "satr4",
+    "satr5",
+    "satr6",
+    "satr7",
+    "satr8",
+    "satr9",
+    "qoidalar",
+    "minimal",
+    "murosa",
+    "shisha",
+    "satr1Shisha",
+    "satr2Shisha",
+    "satr3Shisha",
+    "satr4Shisha",
+    "satr5Shisha",
+    "satr6Shisha",
+    "satr7Shisha",
+    "satr8Shisha",
+    "satr9Shisha"
+  ],
+  "notes": {
+    "murosa": {
+      "fill": "orange",
+      "size": 24,
+      "text": "MUROSA v2 — foydalanuvchi tanlagan 1-yo'l (Codex 7- va 8-tur «maket siri» + minimalizm). Shisha panel: rgba(18,23,34,.76) + blur 16 + tilla qirra .40 + ichki yorug'lik; foto 520 px, o'ngda kelin portreti; Dashboard bento 4 → 5/4/3 → 4 (bir ekranga sig'adi); sarlavha Cormorant 600, raqamlar qalin Manrope; rang faqat ma'noda (tilla — amal/tanlov, qizil — qarz/kechikish, sariq — muddat/qaror, yashil — joyida). Kassa: minimal guruhlash + libos suratlari. Ma'qul bo'lsa hamma ekranga o'tkaziladi.",
+      "w": 2960,
+      "x": 7600,
+      "y": -420
+    },
+    "shisha": {
+      "fill": "orange",
+      "page": "shisha",
+      "size": 24,
+      "text": "SHISHA shablon — tanlangan uslub (2026-11-08). Asosiy shablondagi 1–14 qoidalar o'z kuchida, farqi material, shrift va ranglarda:\n• Bloklar shaffof shisha: asos rgba(14,19,30,.42), blur 10, orqa fon yorqinligi .8; tepa qirra och tilla, diagonal yaltirash.\n• Fon: zal surati butun kenglikda, pastida uning aksi; iliq nurlar har 760 px da — har blok ortida nimadir ko'rinadi.\n• Chap menyu 207 px: «LIBOSA» matni, 48 px qatorlar, faol bo'lim — 5 px tilla chiziq; pastda faqat «Chiqish» (promo surati va xodim kartasi olib tashlandi, ilovadagidek — 2026-11-09).\n• Shrift: sarlavha va nomlar — Cormorant Garamond 600; matn — Manrope; katta raqamlar — Manrope 800.\n• Ranglar: tilla #F3BF70, yashil #62D4A3, qizil #F08089, ko'k #79A9F2, sariq #F2C46D; bo'lim tablarining faoli — to'la tilla.\n• O'tkazish tugadi (2026-11-09): asosiy sahifadagi barcha ish ekranlari shishada — ish oqimi, boshqaruv, rollar, telefon, Kassa bo'limlari, Zakaz qadamlari, Hisobotlar, Liboslar, Mijozlar, Sozlama. Shisha nusxasi yo'qlari: Kassa/Dashboard variantlari (Minimal, Murosa) va shrift namunasi.",
+      "w": 500,
+      "x": -620,
+      "y": 0
+    },
+    "minimal": {
+      "fill": "orange",
+      "size": 24,
+      "text": "Minimal yo'nalish — sinov (Claude + Codex, 6-tur). Chapdagi Kassa bilan solishtiring; ma'qul bo'lsa hamma ekranga o'tkaziladi.\n1) Zal surati ish maydonida yo'q. 2) Uch aksent: tilla — asosiy amal va tanlov; qizil — kechikish, qarz; sariq — muddati tugayotgan. Qolgan holatlar kulrang matn. 3) Ramka faqat zarur joyda; ichma-ich quti yo'q. 4) Soya va gradient yo'q. 5) Holat — guruh sarlavhasi («Bugun», «Qarzi bor»), rangli nishon emas. 6) Bitta qidiruv ro'yxat ustida. 7) Bo'limlar — tagchiziqli tablar. 8) Bezak ikonkalar yo'q.",
+      "w": 1440,
+      "x": 6080,
+      "y": -420
+    },
+    "qoidalar": {
+      "fill": "orange",
+      "size": 24,
+      "text": "Shablon qoidalari (kelishuv: docs/maket-shablon/KELISHUV.md)\n\n1. Har ekranda bitta tilla tugma — asosiy amal. Yangi zakaz joyi — Zakazlar; Dashboard tugmasi va telefondagi «+» shu formani ochadi.\n2. Rang faqat holatga: tilla — bron; ko'k — mijozda; yashil — qaytarildi, to'liq; qizil — kechikkan, qarz; sariq uzuq — vaqtinchalik. Harakat yorliqlari («Beriladi», «Qaytadi») rangsiz.\n3. Zal foni faqat tepada. Ish bloklari to'q shisha panelda.\n4. Sarlavha — Forum, urg'u — Cormorant kursiv. Matn shrifti — Manrope (tanlandi 2026-11-08; raqamlar tabular).\n5. Rahbar: 3 savol → «Hozir» (signallar) → «Davr bo'yicha» (filtr faqat shu yerda). Kundalik ishlar va tasdiqlar qo'ng'iroqchada.\n6. Sotuvchi: «Bugungi ishlar». Kassir rejimida pul tugmalari yo'q — «To'lov kutilmoqda».\n7. Bank solishtirish — faqat rahbar Kassasida.\n8. Yangi zakaz tartibi: Sana → Libos → Mijoz.\n9. Grafiklar: silliq chiziq, panjara, o'q yozuvlari, oldingi davr uzuq chiziqda, nuqtada izoh; ulushlar jami 100%.\n10. Telefon: pastki tab-bar, tegish maydoni ≥ 44 px.\n11. Ritm 8 px: ichkarida 8/16, bo'limlar orasida 24/32; panel ichi 24 px (telefonda 16). Bir xil balandlik faqat taqqoslanadigan kartalarda.\n12. Kassa, Hisobot, Liboslar, Mijozlar va Sozlama bo'limlari bitta faylda (KassaBolim, HisobotBolim, LibosBolim, MijozBolim, SozlamaBolim; «bolim» xususiyati); qolgan artboard'lar uni o'z bo'limi bilan ko'rsatadi.\n13. Jadvalda raqam o'ngga, undan keyingi matn ustuni 16 px chekinish bilan; «tasdiqlangan» kabi oddiy holat rangsiz matn, faqat e'tibor kerak bo'lgani nishonda.\n14. Sozlamada tilla «Saqlash» faqat o'zgarish bo'lganda chiqadi (pastki panel); o'z tugmasi bor bo'limlar (xodim, qurilma, kod) darhol saqlanadi.",
+      "w": 500,
+      "x": -620,
+      "y": 0
+    },
+    "satr1": {
+      "kind": "title1",
+      "maxW": 6000,
+      "text": "Ish oqimi — sotuvchi va kassa",
+      "w": 240,
+      "x": 0,
+      "y": -300
+    },
+    "satr2": {
+      "kind": "title1",
+      "maxW": 6000,
+      "text": "Boshqaruv — rahbar",
+      "w": 240,
+      "x": 0,
+      "y": 1460
+    },
+    "satr3": {
+      "kind": "title1",
+      "maxW": 3900,
+      "text": "Rollar va telefon (Claude + Codex kelishuvi)",
+      "w": 240,
+      "x": 0,
+      "y": 3500
+    },
+    "satr4": {
+      "kind": "title1",
+      "maxW": 6000,
+      "text": "Kassa bo'limlari",
+      "w": 240,
+      "x": 0,
+      "y": 4900
+    },
+    "satr5": {
+      "kind": "title1",
+      "maxW": 4480,
+      "text": "Zakaz: yangi zakaz qadamlari va karta",
+      "w": 240,
+      "x": 0,
+      "y": 7900
+    },
+    "satr6": {
+      "kind": "title1",
+      "maxW": 6000,
+      "text": "Hisobotlar — egasining savollari (oylik foyda yuqorida, Boshqaruv qatorida)",
+      "w": 240,
+      "x": 0,
+      "y": 9640
+    },
+    "satr7": {
+      "kind": "title1",
+      "maxW": 6000,
+      "text": "Liboslar bo'limlari: aksessuar, sanoq, yetkazib beruvchi, libos qo'shish",
+      "w": 240,
+      "x": 0,
+      "y": 11390
+    },
+    "satr8": {
+      "kind": "title1",
+      "maxW": 2960,
+      "text": "Mijozlar: ro'yxat va salonchilar (profil — Boshqaruv qatorida)",
+      "w": 240,
+      "x": 0,
+      "y": 13430
+    },
+    "satr9": {
+      "kind": "title1",
+      "maxW": 6000,
+      "text": "Sozlama: 6 guruh, 20 bo'lim (ilovadagi tartib)",
+      "w": 240,
+      "x": 0,
+      "y": 15270
+    },
+    "satr1Shisha": {
+      "kind": "title1",
+      "maxW": 6000,
+      "text": "Ish oqimi — sotuvchi va kassa",
+      "w": 240,
+      "x": 0,
+      "y": -300,
+      "page": "shisha"
+    },
+    "satr2Shisha": {
+      "kind": "title1",
+      "maxW": 6000,
+      "text": "Boshqaruv — rahbar",
+      "w": 240,
+      "x": 0,
+      "y": 1460,
+      "page": "shisha"
+    },
+    "satr3Shisha": {
+      "kind": "title1",
+      "maxW": 3900,
+      "text": "Rollar va telefon (Claude + Codex kelishuvi)",
+      "w": 240,
+      "x": 0,
+      "y": 3500,
+      "page": "shisha"
+    },
+    "satr4Shisha": {
+      "kind": "title1",
+      "maxW": 6000,
+      "text": "Kassa bo'limlari",
+      "w": 240,
+      "x": 0,
+      "y": 4900,
+      "page": "shisha"
+    },
+    "satr5Shisha": {
+      "kind": "title1",
+      "maxW": 4480,
+      "text": "Zakaz: yangi zakaz qadamlari va karta",
+      "w": 240,
+      "x": 0,
+      "y": 7900,
+      "page": "shisha"
+    },
+    "satr6Shisha": {
+      "kind": "title1",
+      "maxW": 6000,
+      "text": "Hisobotlar — egasining savollari (oylik foyda yuqorida, Boshqaruv qatorida)",
+      "w": 240,
+      "x": 0,
+      "y": 9640,
+      "page": "shisha"
+    },
+    "satr7Shisha": {
+      "kind": "title1",
+      "maxW": 6000,
+      "text": "Liboslar bo'limlari: aksessuar, sanoq, yetkazib beruvchi, libos qo'shish",
+      "w": 240,
+      "x": 0,
+      "y": 11390,
+      "page": "shisha"
+    },
+    "satr8Shisha": {
+      "kind": "title1",
+      "maxW": 2960,
+      "text": "Mijozlar: ro'yxat va salonchilar (profil — Boshqaruv qatorida)",
+      "w": 240,
+      "x": 0,
+      "y": 13430,
+      "page": "shisha"
+    },
+    "satr9Shisha": {
+      "kind": "title1",
+      "maxW": 6000,
+      "text": "Sozlama: 6 guruh, 20 bo'lim (ilovadagi tartib)",
+      "w": 240,
+      "x": 0,
+      "y": 15270,
+      "page": "shisha"
+    }
+  },
+  "order": [
+    "Main.dc.html",
+    "Zakazlar.dc.html",
+    "YangiZakaz.dc.html",
+    "Kassa.dc.html",
+    "KassaMinimal.dc.html",
+    "KassaMurosa.dc.html",
+    "MainMurosa.dc.html",
+    "Bandlik.dc.html",
+    "Liboslar.dc.html",
+    "Mijoz.dc.html",
+    "Foyda.dc.html",
+    "Sotuvchi.dc.html",
+    "SotuvchiKassir.dc.html",
+    "Telefon.dc.html",
+    "Shrift.dc.html",
+    "KassaBolim.dc.html",
+    "KassaInkassatsiya.dc.html",
+    "KassaZaloglar.dc.html",
+    "KassaSmena.dc.html",
+    "KassaYopish.dc.html",
+    "KassaTarix.dc.html",
+    "KassaBank.dc.html",
+    "YangiZakazSana.dc.html",
+    "YangiZakazMijoz.dc.html",
+    "ZakazKarta.dc.html",
+    "HisobotBolim.dc.html",
+    "HisobotXarajat.dc.html",
+    "HisobotBonus.dc.html",
+    "HisobotGrafik.dc.html",
+    "LibosBolim.dc.html",
+    "LibosSanoq.dc.html",
+    "LibosYetkazib.dc.html",
+    "LibosQoshish.dc.html",
+    "MijozBolim.dc.html",
+    "MijozSalonchi.dc.html",
+    "SozlamaBolim.dc.html",
+    "SozlamaZakaz.dc.html",
+    "SozlamaNarx.dc.html",
+    "SozlamaLibos.dc.html",
+    "SozlamaSalon.dc.html",
+    "SozlamaXabar.dc.html",
+    "SozlamaXavf.dc.html",
+    "MainShisha.dc.html",
+    "KassaShisha.dc.html",
+    "ZakazlarShisha.dc.html",
+    "YangiZakazShisha.dc.html",
+    "BandlikShisha.dc.html",
+    "LiboslarShisha.dc.html",
+    "MijozShisha.dc.html",
+    "FoydaShisha.dc.html",
+    "SotuvchiShisha.dc.html",
+    "SotuvchiKassirShisha.dc.html",
+    "TelefonShisha.dc.html",
+    "KassaBolimShisha.dc.html",
+    "KassaInkassatsiyaShisha.dc.html",
+    "KassaZaloglarShisha.dc.html",
+    "KassaSmenaShisha.dc.html",
+    "KassaYopishShisha.dc.html",
+    "KassaTarixShisha.dc.html",
+    "KassaBankShisha.dc.html",
+    "YangiZakazSanaShisha.dc.html",
+    "YangiZakazMijozShisha.dc.html",
+    "ZakazKartaShisha.dc.html",
+    "HisobotBolimShisha.dc.html",
+    "HisobotXarajatShisha.dc.html",
+    "HisobotBonusShisha.dc.html",
+    "HisobotGrafikShisha.dc.html",
+    "LibosBolimShisha.dc.html",
+    "LibosSanoqShisha.dc.html",
+    "LibosYetkazibShisha.dc.html",
+    "LibosQoshishShisha.dc.html",
+    "MijozBolimShisha.dc.html",
+    "MijozSalonchiShisha.dc.html",
+    "SozlamaBolimShisha.dc.html",
+    "SozlamaZakazShisha.dc.html",
+    "SozlamaNarxShisha.dc.html",
+    "SozlamaLibosShisha.dc.html",
+    "SozlamaSalonShisha.dc.html",
+    "SozlamaXabarShisha.dc.html",
+    "SozlamaXavfShisha.dc.html"
+  ],
+  "pages": [
+    {
+      "id": "asosiy",
+      "name": "Asosiy shablon"
+    },
+    {
+      "id": "shisha",
+      "name": "Shisha — tanlangan uslub"
+    }
+  ],
+  "title": "Libosa — yangi dizayn shabloni"
+}

@@ -1,0 +1,280 @@
+<!doctype html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<title>Libosa — Kassa (murosa)</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&amp;family=Manrope:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+/* KASSA MUROSA v2 — GPT «Касса приём оплаты» maketiga maksimal yaqin (Codex 8-tur 4, 5, 14, 15-bandlar);
+   KassaMinimal'dan qoldi: «Bugun / Oldindan to'lov / Qarzi bor» guruhlari va bitta qidiruv. Qarz — qizil. */
+:root{--bg:#0D1320;--text:#F5F2EE;--muted:#B7BAC5;--uch:#858C99;--gold:#F3BF70;--gold2:#E8AD5C;--green:#62D4A3;--red:#F08089;--amber:#F2C46D;
+  --line:rgba(236,190,120,.40);--glass:rgba(18,23,34,.76);--radius:16px}
+body{margin:0;background:var(--bg)}
+*{box-sizing:border-box}
+button{font:inherit;cursor:pointer}
+a{color:var(--gold);text-decoration:none}
+sc-for,sc-if{display:contents}
+:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
+.ilova{display:flex;min-height:100vh;background:var(--bg);color:var(--text);font:400 14px/1.45 Manrope,system-ui,sans-serif}
+svg.i{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+/* chap menyu — MainMurosa bilan bir xil */
+.yon{width:207px;flex:none;display:flex;flex-direction:column;gap:6px;padding:20px 12px 16px;background:rgba(12,18,30,.91);border-right:1px solid rgba(255,255,255,.09)}
+.brend{display:block;margin:0 0 18px;padding:18px 8px 16px;border:1px solid rgba(236,190,120,.22);border-radius:16px;background:rgba(255,255,255,.02);text-align:center;font:600 34px/1 'Cormorant Garamond',serif;letter-spacing:.14em;color:var(--gold)}
+.nav{display:flex;align-items:center;gap:14px;min-height:48px;padding:0 14px;border-radius:12px;color:#D4D7DE;font-weight:600;font-size:14px}
+.nav svg{width:24px;height:24px;color:#C9CCD4}
+.nav:hover{color:var(--text)}
+.nav.faol{color:var(--text);background:linear-gradient(90deg,rgba(243,191,112,.30),rgba(243,191,112,.22) 35%,rgba(243,191,112,.05));box-shadow:inset 5px 0 var(--gold)}
+.nav.faol svg{color:var(--gold)}
+.nav .son{margin-left:auto;min-width:22px;height:22px;padding:0 6px;border-radius:11px;background:#D9434F;color:#fff;font-size:12px;line-height:22px;text-align:center;font-weight:700}
+.yon-past{margin-top:auto;display:flex;flex-direction:column;gap:10px}
+.promo{position:relative;height:155px;border-radius:14px;overflow:hidden;border:1px solid rgba(243,191,112,.45)}
+.promo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:60% 15%}
+.promo::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,rgba(13,19,32,.85),rgba(13,19,32,.15) 70%)}
+.promo span{position:absolute;z-index:1;left:14px;top:14px;width:110px;font:italic 500 19px/1.2 'Cormorant Garamond',serif;color:var(--gold)}
+.foyd{display:flex;align-items:center;gap:8px;min-height:60px;padding:10px 8px;border-radius:14px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03)}
+.avatar{width:34px;height:34px;border-radius:50%;display:grid;place-items:center;flex:none;background:linear-gradient(140deg,#F3BF70,#B9844A);color:#1A140C;font-weight:800;font-size:12px}
+.foyd b{display:block;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.foyd small{display:block;color:var(--muted);font-size:12px}
+.chiqish{display:flex;align-items:center;gap:12px;min-height:44px;padding:0 14px;color:#C9CCD4;font-weight:600}
+/* asosiy */
+.mazmun{flex:1;min-width:0;position:relative;isolation:isolate;padding:18px 16px 24px 19px}
+.mazmun::before{content:'';position:absolute;z-index:-3;inset:0 0 auto;height:520px;pointer-events:none;
+  background:linear-gradient(180deg,rgba(13,19,32,.28) 0%,rgba(13,19,32,.45) 35%,rgba(13,19,32,.80) 60%,var(--bg) 100%),linear-gradient(rgba(115,72,32,.10),rgba(115,72,32,.10)),url(/_blob/c9a1861df1eef0d758b27417a77833a6) center 45%/cover no-repeat}
+.ustki{display:flex;align-items:center;gap:12px}
+.qidiruv-u{flex:0 1 520px;display:flex;align-items:center;gap:12px;min-height:48px;padding:0 18px;border-radius:999px;background:rgba(10,14,22,.55);border:1px solid rgba(255,255,255,.16);color:#D4D7DE;backdrop-filter:blur(12px)}
+.qidiruv-u input{flex:1;min-width:0;background:none;border:0;outline:none;color:var(--text);font:inherit;font-size:14.5px}
+.qidiruv-u input::placeholder{color:#AEB3BE}
+.ong{margin-left:auto;display:flex;align-items:center;gap:10px}
+.tabletka{display:inline-flex;align-items:center;gap:8px;min-height:46px;padding:0 14px;border-radius:14px;background:rgba(10,14,22,.55);border:1px solid rgba(255,255,255,.16);color:var(--text);font-weight:600;font-size:13.5px;backdrop-filter:blur(12px);white-space:nowrap}
+.tabletka svg{width:18px;height:18px}
+.tabletka .chev{width:14px;height:14px;color:var(--muted)}
+.qongiroq{position:relative;width:46px;padding:0;justify-content:center;border-radius:50%}
+.qongiroq i{position:absolute;top:-3px;right:-3px;min-width:18px;height:18px;padding:0 4px;border-radius:9px;background:#D9434F;color:#fff;font:700 11px/18px Manrope;font-style:normal}
+.prof{display:inline-flex;align-items:center;gap:6px}
+.prof .avatar{position:relative;width:42px;height:42px;box-shadow:0 0 0 2px rgba(243,191,112,.6);font-size:14px}
+.prof .avatar::after{content:'';position:absolute;right:-1px;bottom:-1px;width:10px;height:10px;border-radius:50%;background:var(--green);box-shadow:0 0 0 2px var(--bg)}
+h1{margin:10px 0 0;font:600 52px/1 'Cormorant Garamond',serif;text-shadow:0 2px 20px rgba(0,0,0,.5)}
+.ost{margin:2px 0 0;font:500 26px/1.15 'Cormorant Garamond',serif;color:#E9E4DA}
+.panel{position:relative;border:1px solid var(--line);border-radius:var(--radius);
+  background:linear-gradient(145deg,rgba(255,255,255,.10),transparent 62%),var(--glass);backdrop-filter:blur(16px) saturate(115%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.13),inset 0 -1px 0 rgba(243,191,112,.05),0 10px 24px rgba(0,0,0,.27);min-width:0}
+/* tablar — ikonkali shisha tasma, faol to'la tilla */
+.tablar{display:flex;align-items:center;gap:4px;min-height:46px;margin-top:14px;padding:4px;border:1px solid rgba(243,191,112,.60);border-radius:14px;background:linear-gradient(rgba(255,255,255,.07),transparent),rgba(16,20,29,.78)}
+.tablar a{flex:1;display:flex;align-items:center;justify-content:center;gap:8px;min-height:36px;padding:0 10px;border-radius:999px;color:#F5F2EE;font-weight:600;white-space:nowrap}
+.tablar a .i{width:22px;height:22px}
+.tablar a:not(.faol):hover{background:rgba(255,255,255,.05)}
+.tablar a.faol{color:#171717;font-weight:800;background:linear-gradient(135deg,#F9C97A,#E9AA50);box-shadow:inset 0 1px 0 #FFE1A8,0 2px 10px rgba(243,191,112,.20)}
+.tablar .ajr{width:1px;height:22px;background:rgba(255,255,255,.12)}
+/* smena */
+.smena{display:flex;flex-wrap:wrap;align-items:center;gap:8px 20px;min-height:52px;margin:12px 0;padding:8px 10px 8px 16px;border-radius:14px;border:1px solid rgba(98,212,163,.60);
+  background:linear-gradient(100deg,rgba(45,145,91,.30),rgba(24,74,53,.16)),rgba(15,27,26,.88);font-variant-numeric:tabular-nums;color:#D4D7DE}
+.smena .ochiq{display:inline-flex;align-items:center;gap:10px;color:#94E8B5;font-weight:800;font-size:16px}
+.smena .ochiq::before{content:'✓';display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:#87E5A6;color:#102D20;font-size:17px;font-weight:900;box-shadow:inset 0 1px 0 rgba(255,255,255,.4)}
+.smena .ajr{width:1px;height:26px;background:rgba(255,255,255,.18)}
+.smena b{color:#F6DDB0;font-weight:800;font-size:15px}
+.smena .yop{margin-left:auto;display:inline-flex;align-items:center;gap:8px;min-height:36px;padding:0 18px;border:1px solid var(--gold);border-radius:999px;color:var(--text);background:rgba(13,19,25,.42);box-shadow:inset 0 0 12px rgba(243,191,112,.09);font-weight:700}
+.tor{display:grid;grid-template-columns:minmax(0,63fr) minmax(0,37fr);gap:14px;align-items:start}
+.ichi{padding:16px 16px 18px}
+.p-bosh{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.p-bosh>svg{width:28px;height:28px;color:var(--gold)}
+.p-bosh h2{margin:0;font:600 27px/1.1 'Cormorant Garamond',serif}
+.p-bosh .son{min-width:28px;height:28px;padding:0 9px;border-radius:14px;background:linear-gradient(135deg,#F9C97A,#E9AA50);color:#171717;font:800 14px/28px Manrope;text-align:center}
+.qidiruv{display:flex;align-items:center;gap:10px;min-height:44px;padding:0 16px;border-radius:999px;background:rgba(8,11,18,.55);border:1px solid rgba(255,255,255,.14);color:#C9CCD4}
+.qidiruv:focus-within{border-color:var(--gold)}
+.qidiruv input{flex:1;min-width:0;background:none;border:0;outline:none;color:var(--text);font:inherit}
+.qidiruv input::placeholder{color:#AEB3BE}
+.ustun{display:grid;grid-template-columns:52px minmax(0,1fr) minmax(0,1.15fr) 132px;gap:12px;align-items:center}
+.jadval-b{margin:14px 0 2px;padding:0 12px 8px;border-bottom:1px solid rgba(255,255,255,.10);color:#D4D7DE;font-weight:600;font-size:13.5px}
+.jadval-b>span:last-child{text-align:right}
+.guruh{margin:14px 4px 6px;color:var(--uch);font-size:11.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase}
+.qator{width:100%;min-height:66px;margin-bottom:6px;padding:8px 12px;border:1px solid transparent;border-radius:13px;background:rgba(255,255,255,.025);color:var(--text);text-align:left}
+.qator:hover{background:rgba(255,255,255,.05)}
+.qator.tanlandi{border-color:#F3BF70;background:linear-gradient(90deg,rgba(243,191,112,.12),rgba(243,191,112,.03));box-shadow:0 0 0 1px rgba(243,191,112,.25),0 0 18px -6px rgba(243,191,112,.45)}
+.qator .raqam-z{font:700 17px/1 Manrope;color:#ECEAE5;font-variant-numeric:tabular-nums}
+.qator .ikki{display:flex;flex-direction:column;min-width:0}
+.qator .ikki b{font-size:14.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.qator .ikki small{color:var(--muted);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.libos-k{display:flex;align-items:center;gap:10px;min-width:0}
+.libos-k img{width:44px;height:54px;border-radius:9px;object-fit:cover;object-position:50% 14%;flex:none;border:1px solid rgba(255,255,255,.1)}
+.qoldiq{justify-self:end;min-width:120px;padding:5px 12px;border-radius:999px;border:1px solid rgba(243,191,112,.75);background:rgba(243,191,112,.06);text-align:center;font-variant-numeric:tabular-nums;line-height:1.2}
+.qoldiq small{display:block;color:#F6DDB0;font-size:11.5px;font-weight:600}
+.qoldiq b{display:block;color:var(--gold);font-size:14px;font-weight:800}
+.qoldiq.qarz{border-color:rgba(240,128,137,.8);background:rgba(240,128,137,.08)}
+.qoldiq.qarz small{color:#F6C2C6}.qoldiq.qarz b{color:var(--red)}
+.sariq{color:var(--amber)!important}.qizil-m{color:var(--red)!important}
+/* to'lov paneli */
+.tolov{position:sticky;top:20px;padding:16px}
+.tolov-bosh{display:flex;gap:14px;align-items:center;padding-bottom:12px;margin-bottom:8px;border-bottom:1px solid rgba(255,255,255,.1)}
+.tolov-bosh img{width:84px;height:96px;border-radius:12px;object-fit:cover;object-position:50% 14%;border:1px solid rgba(255,255,255,.1)}
+.tolov-bosh h2{margin:0;font:600 27px/1.1 'Cormorant Garamond',serif}
+.tolov-bosh p{margin:4px 0 0;color:#D4D7DE;font-size:13.5px;line-height:1.45}
+.satr{display:flex;justify-content:space-between;padding:2px 0;color:#D4D7DE;font-variant-numeric:tabular-nums;font-size:14.5px}
+.satr b{color:var(--gold);font-weight:800;font-size:16px}
+.summa-q{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;margin:12px 0 10px}
+.katta{padding:8px 14px;border-radius:12px;background:rgba(8,11,18,.6);border:1.5px solid rgba(243,191,112,.75);font:600 30px/1.2 'Cormorant Garamond',serif;font-variant-numeric:lining-nums tabular-nums;text-align:center}
+.toliq{min-height:40px;padding:0 14px;border-radius:999px;border:1px solid var(--gold);background:rgba(243,191,112,.08);color:var(--gold);font-weight:700;white-space:nowrap}
+.klav{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.klav button{min-height:42px;border:1px solid rgba(255,255,255,.10);border-radius:10px;background:linear-gradient(180deg,rgba(255,255,255,.10),rgba(255,255,255,.02));box-shadow:inset 0 1px 0 rgba(255,255,255,.12);color:var(--text);font:500 24px/1 'Cormorant Garamond',serif}
+.klav button:hover{background:linear-gradient(180deg,rgba(255,255,255,.14),rgba(255,255,255,.04))}
+.yorliq{margin:12px 0 6px;font-weight:700;font-size:14px}
+.usul{display:flex;gap:4px;padding:4px;border-radius:14px;background:rgba(8,11,18,.55);border:1px solid rgba(255,255,255,.12)}
+.usul button{flex:1;display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:40px;border:0;border-radius:10px;background:none;color:#D4D7DE;font-weight:700;white-space:nowrap}
+.usul button svg{width:20px;height:20px}
+.usul button.faol{color:#171717;background:linear-gradient(135deg,#F9C97A,#E9AA50);box-shadow:inset 0 1px 0 #FFE1A8}
+.asosiy{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;min-height:54px;margin-top:14px;border:1px solid #FFD494;border-radius:999px;background:linear-gradient(120deg,#F9C97A,#E8AD5C);color:#171717;font:700 21px/1 'Cormorant Garamond',serif;box-shadow:0 10px 26px -12px rgba(243,191,112,.8)}
+.asosiy[disabled]{opacity:.45;cursor:not-allowed}
+.izoh{display:flex;align-items:center;justify-content:center;gap:8px;margin:10px 0 0;color:#B7BAC5;font-size:13px}
+.izoh svg{width:18px;height:18px}
+.xato{margin:8px 0 0;color:var(--red);font-weight:700;font-size:13px}
+/* Cormorant'ning eski uslubdagi raqamlari o'rniga bir tekis raqamlar */
+.klav button,.asosiy,.katta,h2,.ost{font-variant-numeric:lining-nums tabular-nums}
+.foyd b{font-size:12px}.foyd .avatar{width:32px;height:32px}
+@media (max-width:1100px){.tor{grid-template-columns:minmax(0,1fr)}.tolov{position:static}}
+@media (max-width:760px){.yon{display:none}.tablar{overflow-x:auto}}
+</style>
+</helmet>
+<div class="ilova">
+  <nav class="yon" aria-label="Bo'limlar">
+    <span class="brend">LIBOSA</span>
+    <a class="nav" href="Sotuvchi.dc.html"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11 12 3l9 8v10H3z"/><path d="M9 21v-6h6v6"/></svg>Bosh sahifa</a>
+    <a class="nav faol" href="KassaMurosa.dc.html" aria-current="page"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4M8 14h2M14 14h2"/></svg>Kassa</a>
+    <a class="nav" href="Zakazlar.dc.html"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4M8 14h.01M12 14h.01M16 14h.01M8 17h.01M12 17h.01"/></svg>Zakazlar<span class="son">3</span></a>
+    <a class="nav" href="Liboslar.dc.html"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6l-1 5 4 13H6l4-13z"/></svg>Liboslar</a>
+    <a class="nav" href="MijozBolim.dc.html"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6 6 0 0 1 3.5 6"/></svg>Mijozlar</a>
+    <div class="yon-past">
+      <div class="promo"><img src="/_blob/758947eb97690570420217f21f276a4b" alt=""><span>Maxsus liboslar sizning kuningiz uchun</span></div>
+      <div class="foyd"><span class="avatar">MR</span><span style="flex: 1; min-width: 0"><b>Malika Rahimova</b><small>Sotuvchi</small></span><svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="width: 16px; height: 16px; color: var(--muted)"><path d="m6 9 6 6 6-6"/></svg></div>
+      <a class="chiqish" href="#"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>Chiqish</a>
+    </div>
+  </nav>
+
+  <main class="mazmun">
+    <div class="ustki">
+      <label class="qidiruv-u"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="width: 22px; height: 22px"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input type="search" placeholder="Zakaz: raqam, telefon yoki ism" aria-label="Butun ilova bo'yicha qidirish"></label>
+      <div class="ong">
+        <button type="button" class="tabletka qongiroq" aria-label="Bildirishnomalar: 3"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><i>3</i></button>
+        <button type="button" class="tabletka">Filial: Asosiy salon<svg class="i chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+        <button type="button" class="tabletka"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>8 noyabr, 2026<svg class="i chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></button>
+        <span class="prof"><span class="avatar">MR</span><svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="width: 14px; height: 14px; color: var(--muted)"><path d="m6 9 6 6 6-6"/></svg></span>
+      </div>
+    </div>
+
+    <h1>Kassa</h1>
+    <p class="ost">To'lov qabul</p>
+    <nav class="tablar" aria-label="Kassa bo'limlari">
+      <a class="faol" href="KassaMurosa.dc.html" aria-current="page"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M2 10h20M6 15h4"/></svg>To'lov qabul</a>
+      <a href="KassaBolim.dc.html"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/></svg>Xarajat</a>
+      <a href="KassaInkassatsiya.dc.html"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/></svg>Inkassatsiya</a>
+      <a href="KassaZaloglar.dc.html"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/><path d="m9 12 2 2 4-4"/></svg>Zaloglar</a>
+      <a href="KassaSmena.dc.html"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21V10M10 21V4M16 21v-8M21 21H3"/></svg>Smena hisoboti</a>
+      <a href="KassaTarix.dc.html"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg>Smenalar tarixi</a>
+    </nav>
+    <div class="smena">
+      <span class="ochiq">Smena ochiq · Malika</span>
+      <span class="ajr"></span>
+      <span>Naqd <b>1 250 000</b></span><span>Terminal <b>800 000</b></span><span>O'tkazma <b>300 000</b></span>
+      <a class="yop" href="KassaYopish.dc.html"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="width: 18px; height: 18px"><path d="M12 2v10M18.4 6.6a9 9 0 1 1-12.8 0"/></svg>Smenani yopish</a>
+    </div>
+
+    <div class="tor">
+      <section class="panel ichi" aria-label="To'lov kutayotgan zakazlar">
+        <div class="p-bosh"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 3 8l9 5 9-5zM3 13l9 5 9-5M3 17.5l9 5 9-5"/></svg><h2>To'lov kutayotgan zakazlar</h2><span class="son">{{son}}</span></div>
+        <label class="qidiruv"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input type="search" value="{{q}}" onInput="{{qYoz}}" placeholder="Zakaz raqami, mijoz, telefon yoki libos bo'yicha qidirish…" aria-label="To'lov kutayotganlarni qidirish"></label>
+        <div class="ustun jadval-b"><span>Zakaz</span><span>Mijoz</span><span>Libos</span><span>Qoldiq</span></div>
+        <sc-for list="{{guruhlar}}" as="g" hint-placeholder-count="3">
+          <div class="guruh">{{g.nom}}</div>
+          <sc-for list="{{g.qatorlar}}" as="k" hint-placeholder-count="2">
+            <button type="button" class="ustun qator {{k.cls}}" aria-pressed="{{k.tanlangan}}" onClick="{{k.bos}}">
+              <span class="raqam-z">#{{k.id}}</span>
+              <span class="ikki"><b>{{k.mijoz}}</b><small>{{k.telK}}</small></span>
+              <span class="libos-k"><img src="{{k.rasm}}" alt=""><span class="ikki"><b>{{k.libos}}</b><small class="{{k.izohCls}}">{{k.izoh}}</small></span></span>
+              <span class="qoldiq {{k.qarzCls}}"><small>{{k.qoldiqNom}}</small><b>{{k.qoldiqMatn}} so'm</b></span>
+            </button>
+          </sc-for>
+        </sc-for>
+        <sc-if value="{{bosh}}" hint-placeholder-val="{{ false }}"><p style="padding: 24px 4px; color: var(--muted)">«{{q}}» bo'yicha to'lov kutayotgan zakaz yo'q.</p></sc-if>
+      </section>
+
+      <aside class="panel tolov" aria-label="To'lov">
+        <div class="tolov-bosh"><img src="{{t.rasm}}" alt=""><div><h2>#{{t.id}} · {{t.mijoz}}</h2><p>{{t.sku}}<br>{{t.libos}} · {{t.olcham}} o'lcham · {{t.holatNom}}</p></div></div>
+        <div class="satr"><span>Ijara summasi:</span><span>{{t.jamiMatn}} so'm</span></div>
+        <div class="satr"><span>To'langan:</span><span>{{t.tolanganMatn}} so'm</span></div>
+        <div class="satr"><span>{{t.qoldiqSar}}:</span><b class="{{t.qizil}}">{{t.qoldiqMatn}} so'm</b></div>
+        <div class="summa-q"><div class="katta" aria-live="polite">{{summaMatn}} so'm</div><button type="button" class="toliq" onClick="{{toliq}}">To'liq {{t.qoldiqMatn}}</button></div>
+        <div class="klav" role="group" aria-label="Raqamlar">
+          <sc-for list="{{tugmalar}}" as="b" hint-placeholder-count="12"><button type="button" aria-label="{{b.aria}}" onClick="{{b.bos}}">{{b.matn}}</button></sc-for>
+        </div>
+        <div class="yorliq">To'lov usuli</div>
+        <div class="usul" role="group" aria-label="To'lov usuli">
+          <sc-for list="{{usullar}}" as="u" hint-placeholder-count="4"><button type="button" class="{{u.cls}}" aria-pressed="{{u.faol}}" onClick="{{u.bos}}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{u.d}}"/></svg>{{u.nom}}</button></sc-for>
+        </div>
+        <sc-if value="{{kopmi}}" hint-placeholder-val="{{ false }}"><p class="xato">Qoldiqdan ko'p — {{t.qoldiqMatn}} dan oshmasin.</p></sc-if>
+        <button type="button" class="asosiy" disabled="{{otmaydi}}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="width: 22px; height: 22px"><path d="m5 12 5 5 9-10"/></svg><span>{{summaMatn}} so'm qabul qilish</span></button>
+        <p class="izoh"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2h12v20l-3-2-3 2-3-2-3 2z"/><path d="M9 7h6M9 11h6M9 15h4"/></svg>{{usulIzoh}}</p>
+      </aside>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1040}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { tanlangan: 13, summa: '1600000', usul: 'naqd', q: '' };
+  }
+  renderVals() {
+    const R = { Mira: '/_blob/b28f71fbbeeeed9ca5c0052f387901a2', Luna: '/_blob/ff22f88eaee9183133df1fc14998e6ee', "Oq ko'ylak": '/_blob/758947eb97690570420217f21f276a4b', Rubin: '/_blob/cf292d70c86c681a76df49fe549f8887', Bella: '/_blob/7d80ca195130908ffa9854d230fd9af0' };
+    const SKU = { Mira: ['M-0013', 42], Luna: ['L-0042', 38], "Oq ko'ylak": ['O-0031', 44], Rubin: ['R-0056', 46], Bella: ['B-0021', 40] };
+    const K = [
+      { id: 13, mijoz: 'Dilnoza Karimova', tel: '998901234567', libos: 'Mira', izoh: '8–9 noyabr · bugun 10:00', guruh: 'bugun', holatNom: 'bron', jami: 2000000, tolangan: 400000, qoldiqNom: 'Qoldiq' },
+      { id: 17, mijoz: 'Gulnoza Saidova', tel: '998906789012', libos: 'Luna', izoh: "avanssiz · 5 soatda bo'shaydi", izohCls: 'sariq', guruh: 'bugun', holatNom: 'vaqtinchalik', jami: 1800000, tolangan: 0, qoldiqNom: 'Avans kerak' },
+      { id: 18, mijoz: 'Munisa Asqarova', tel: '998917890123', libos: "Oq ko'ylak", izoh: '12–14 noyabr', guruh: 'keyin', holatNom: 'bron', jami: 3200000, tolangan: 1000000, qoldiqNom: 'Qoldiq' },
+      { id: 9, mijoz: 'Aziza Xolmatova', tel: '998975678901', libos: 'Rubin', izoh: '1 kun kechikdi', izohCls: 'qizil-m', guruh: 'qarz', holatNom: 'kechikdi', jami: 2200000, tolangan: 1700000, qoldiqNom: 'Qarz' },
+      { id: 12, mijoz: 'Shahnoza Tursunova', tel: '998904456677', libos: 'Bella', izoh: 'qaytardi 3 noyabr', guruh: 'qarz', holatNom: 'qaytarildi', jami: 3000000, tolangan: 2500000, qoldiqNom: 'Qarz' }
+    ];
+    const GURUH = [['bugun', 'Bugun'], ['keyin', "Oldindan to'lov"], ['qarz', 'Qarzi bor']];
+    const USUL = [
+      ['naqd', 'Naqd', "Qabul qilingach kvitansiya yaratiladi", 'M2 6h20v12H2zM12 9.5a2.5 2.5 0 1 0 0 5a2.5 2.5 0 1 0 0-5'],
+      ['terminal', 'Terminal', 'Terminal chekini saqlang · kvitansiya yaratiladi', 'M3 5h18v14H3zM3 10h18M7 15h4'],
+      ['otkazma', "O'tkazma", 'Rahbar Telegramda tasdiqlaydi', 'M4 8h14l-3-3M20 16H6l3 3']
+    ];
+    const fmt = (n) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+    const telK = (t) => '+998 ' + t.slice(3, 5) + ' *** ** ' + t.slice(-2);
+    const s = this.state;
+    const qoldiq = (k) => k.jami - k.tolangan;
+    const q = s.q.trim().toLowerCase().replace(/^#/, ''), qd = q.replace(/[\s+-]/g, '');
+    const mos = (k) => !q || (k.mijoz + ' ' + k.libos + ' ' + SKU[k.libos][0]).toLowerCase().includes(q) || (/^\d+$/.test(qd) && (String(k.id) === qd || (qd.length >= 4 && k.tel.includes(qd))));
+    const korinadi = K.filter(mos);
+    const tz = K.find((k) => k.id === s.tanlangan) || K[0];
+    const summa = Number(s.summa || 0);
+    const qoy = (v) => this.setState({ summa: String(Math.min(Number(v.replace(/^0+(?=\d)/, '') || 0), 999999999)) });
+    const raqamlar = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '000', '0'];
+    const usul = USUL.find((u) => u[0] === s.usul);
+    return {
+      q: s.q, qYoz: (e) => this.setState({ q: e.target.value }), son: korinadi.length,
+      guruhlar: GURUH.map(([id, nom]) => ({
+        nom, qatorlar: korinadi.filter((k) => k.guruh === id).map((k) => ({
+          id: k.id, mijoz: k.mijoz, telK: telK(k.tel), libos: k.libos, izoh: k.izoh, izohCls: k.izohCls || '', rasm: R[k.libos],
+          qoldiqNom: k.qoldiqNom, qoldiqMatn: fmt(qoldiq(k)), qarzCls: k.guruh === 'qarz' ? 'qarz' : '',
+          tanlangan: k.id === tz.id, cls: k.id === tz.id ? 'tanlandi' : '', bos: () => this.setState({ tanlangan: k.id, summa: String(qoldiq(k)) })
+        }))
+      })).filter((g) => g.qatorlar.length),
+      bosh: korinadi.length === 0,
+      tugmalar: raqamlar.map((r) => ({ matn: r, aria: r, bos: () => qoy((s.summa === '0' ? '' : s.summa) + r) }))
+        .concat([{ matn: '⌫', aria: "Oxirgi raqamni o'chirish", bos: () => qoy(s.summa.slice(0, -1) || '0') }]),
+      t: { ...tz, rasm: R[tz.libos], sku: SKU[tz.libos][0], olcham: SKU[tz.libos][1], jamiMatn: fmt(tz.jami), tolanganMatn: fmt(tz.tolangan), qoldiqMatn: fmt(qoldiq(tz)), qizil: tz.guruh === 'qarz' ? 'qizil-m' : '', qoldiqSar: tz.qoldiqNom },
+      summaMatn: fmt(summa), kopmi: summa > qoldiq(tz), otmaydi: summa <= 0 || summa > qoldiq(tz),
+      usullar: USUL.map(([id, nom, , d]) => ({ nom, d, faol: id === s.usul, cls: id === s.usul ? 'faol' : '', bos: () => this.setState({ usul: id }) })),
+      usulIzoh: usul[2],
+      toliq: () => this.setState({ summa: String(qoldiq(tz)) })
+    };
+  }
+}
+</script>
+</body>
+</html>

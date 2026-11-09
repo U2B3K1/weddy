@@ -1,0 +1,591 @@
+<!doctype html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<title>Libosa — Hisobotlar</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,500;1,600&amp;family=Forum&amp;family=Manrope:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#080B12}
+a{color:#E4C196}a:hover{color:#F3DDBE}
+*{box-sizing:border-box}
+button{font:inherit;cursor:pointer}
+sc-for,sc-if{display:contents}
+.ilova{display:flex;flex-wrap:wrap;min-height:100vh;background:#080B12;color:#F6F1E8;font:400 14px/1.45 Manrope,system-ui,sans-serif}
+svg.i{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.yon{flex:1 1 232px;max-width:248px;display:flex;flex-direction:column;gap:4px;padding:18px 14px;background:#0B0F17;border-right:1px solid rgba(228,193,150,.12)}
+.brend{display:block;padding:16px 10px 22px;margin-bottom:14px;border-bottom:1px solid rgba(228,193,150,.16);text-align:center;text-decoration:none}
+.brend b{font:400 30px/1 Forum,serif;letter-spacing:.3em;margin-right:-.3em;color:#E4C196}
+.nav{display:flex;align-items:center;gap:12px;min-height:44px;padding:0 12px;border-radius:10px;color:#B9C0CC;font-weight:600;text-decoration:none}
+.nav:hover{color:#F6F1E8;background:rgba(255,255,255,.04)}
+.nav.faol{color:#F6F1E8;background:linear-gradient(90deg,rgba(228,193,150,.26),rgba(228,193,150,.05));box-shadow:inset 3px 0 0 #E4C196}
+.nav.faol svg{color:#E4C196}
+.nav .son{margin-left:auto;min-width:22px;padding:0 6px;border-radius:11px;background:#B8473F;color:#fff;font-size:13px;line-height:20px;text-align:center}
+.mazmun{flex:999 1 560px;min-width:0;position:relative;padding:20px 32px 48px}
+.mazmun::before{content:'';position:absolute;left:0;right:0;top:0;height:330px;background:linear-gradient(180deg,rgba(8,11,18,.3),rgba(8,11,18,.78) 60%,#080B12),url(/_blob/c9a1861df1eef0d758b27417a77833a6) 50% 38%/cover;pointer-events:none}
+.mazmun>*{position:relative}
+.ustki{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.qidiruv{flex:1 1 260px;max-width:480px;display:flex;align-items:center;gap:10px;min-height:44px;padding:0 16px;border-radius:999px;background:rgba(8,11,18,.74);border:1px solid rgba(228,193,150,.24);color:#E4C196}
+.qidiruv input{flex:1;min-width:0;background:none;border:0;outline:none;color:#F6F1E8;font:inherit}
+.qidiruv input::placeholder{color:#98A1B0}
+.ong{margin-left:auto;display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.tabletka{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 16px;border-radius:999px;background:rgba(8,11,18,.74);border:1px solid rgba(228,193,150,.24);color:#F6F1E8;font-weight:600;white-space:nowrap}
+.tabletka svg{width:18px;height:18px;color:#E4C196}
+.ikon-t{position:relative;width:44px;height:44px;display:grid;place-items:center;padding:0;border-radius:50%;background:rgba(8,11,18,.74);border:1px solid rgba(228,193,150,.24);color:#F6F1E8}
+.ikon-t .nuqta{position:absolute;top:-4px;right:-4px;min-width:20px;height:20px;padding:0 5px;border-radius:10px;background:#B8473F;color:#fff;font-size:13px;line-height:20px;font-weight:700}
+.avatar{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;flex:none;background:rgba(228,193,150,.2);color:#E4C196;font-weight:700}
+.xodim-t{display:inline-flex;align-items:center;gap:10px;min-height:44px;padding:2px 16px 2px 2px;border-radius:999px;background:rgba(8,11,18,.74);border:1px solid rgba(228,193,150,.24);color:#F6F1E8;text-align:left}
+.xodim-t small{display:block;color:#98A1B0;font-size:13px;line-height:1.1}
+.sarlavha{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px;margin:32px 0 24px}
+.sarlavha h1{margin:0;font:400 46px/1.05 Forum,serif}
+.sarlavha p{margin:8px 0 0;color:#C7CED8;font-size:15px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:0 24px;border-radius:999px;border:0;background:linear-gradient(110deg,#CC9866,#E4C196);color:#141B26;font-weight:700;font-size:15px;text-decoration:none;box-shadow:0 10px 28px -12px rgba(228,193,150,.8)}
+.btn:hover{color:#141B26;filter:brightness(1.06)}
+.btn-2{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 18px;border-radius:999px;border:1px solid rgba(228,193,150,.5);background:transparent;color:#F6F1E8;font-weight:600;text-decoration:none;white-space:nowrap}
+.btn-2:hover{color:#F6F1E8;background:rgba(228,193,150,.1)}
+.havola{background:none;border:0;padding:0;color:#E4C196;font-weight:600;text-decoration:none;white-space:nowrap}
+.panel{background:rgba(16,21,31,.86);border:1px solid rgba(228,193,150,.14);border-radius:18px;padding:24px;backdrop-filter:blur(12px)}
+.panel-bosh{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin-bottom:16px}
+.panel-bosh h2{display:flex;align-items:center;gap:10px;margin:0;font:400 22px/1.2 Forum,serif}
+.panel-bosh h2 svg{color:#E4C196}
+.kpilar{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-bottom:16px}
+.kpi{position:relative;display:flex;align-items:center;gap:14px;min-width:0;padding:16px 18px;border-radius:16px;border:1px solid rgba(228,193,150,.2);background:linear-gradient(135deg,rgba(228,193,150,.15),rgba(16,21,31,.88) 62%);color:#F6F1E8;text-align:left}
+.kpi .belgi{width:50px;height:50px;border-radius:50%;display:grid;place-items:center;flex:none;background:rgba(228,193,150,.16);color:#E4C196}
+.kpi small{display:block;color:#C7CED8;font-size:13.5px}
+.kpi b{display:block;font:400 26px/1.15 Forum,serif;font-variant-numeric:tabular-nums;white-space:nowrap}
+.kpi em{display:block;font-style:normal;color:#98A1B0;font-size:13px}
+.kpi.kok{border-color:rgba(141,180,232,.26);background:linear-gradient(135deg,rgba(141,180,232,.16),rgba(16,21,31,.88) 62%)}.kpi.kok .belgi{background:rgba(141,180,232,.16);color:#8DB4E8}
+.kpi.qizil{border-color:rgba(255,155,146,.28);background:linear-gradient(135deg,rgba(214,105,112,.2),rgba(16,21,31,.88) 62%)}.kpi.qizil .belgi{background:rgba(255,155,146,.16);color:#FF9B92}
+.kpi.yashil{border-color:rgba(126,214,160,.26);background:linear-gradient(135deg,rgba(126,214,160,.14),rgba(16,21,31,.88) 62%)}.kpi.yashil .belgi{background:rgba(126,214,160,.16);color:#7ED6A0}
+.kpi.binafsha{border-color:rgba(185,162,232,.28);background:linear-gradient(135deg,rgba(185,162,232,.16),rgba(16,21,31,.88) 62%)}.kpi.binafsha .belgi{background:rgba(185,162,232,.16);color:#B9A2E8}
+.kpi.ogoh{border-color:rgba(242,196,109,.3);background:linear-gradient(135deg,rgba(242,196,109,.15),rgba(16,21,31,.88) 62%)}.kpi.ogoh .belgi{background:rgba(242,196,109,.16);color:#F2C46D}
+.holat{display:inline-flex;align-items:center;gap:6px;min-height:26px;padding:0 12px;border-radius:999px;font-size:13px;font-weight:700;white-space:nowrap}
+.h-yashil{background:rgba(126,214,160,.16);color:#7ED6A0}
+.h-ogoh{background:rgba(242,196,109,.16);color:#F2C46D}
+.h-qizil{background:rgba(255,155,146,.16);color:#FF9B92}
+.h-yopiq{background:rgba(255,255,255,.08);color:#C7CED8}
+.ikki{display:flex;flex-direction:column;min-width:0}
+.ikki small,.mute{color:#98A1B0;font-size:13px}
+.segment{display:inline-flex;flex-wrap:wrap;gap:4px;padding:4px;border-radius:999px;background:rgba(8,11,18,.74);border:1px solid rgba(228,193,150,.2)}
+.segment a,.segment button{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:0 18px;border:0;border-radius:999px;background:none;color:#C7CED8;font-weight:600;text-decoration:none;white-space:nowrap}
+.segment a:hover,.segment button:hover{color:#F6F1E8}
+.segment .faol{background:rgba(228,193,150,.2);color:#F3DDBE;box-shadow:inset 0 0 0 1px rgba(228,193,150,.55)}
+.chiplar{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:0 14px;border-radius:999px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);color:#C7CED8;font-weight:600;white-space:nowrap}
+.chip:hover{color:#F6F1E8}
+.chip.faol{background:rgba(228,193,150,.18);border-color:#E4C196;color:#F6F1E8}
+.tanlov{min-height:44px;padding:0 14px;border-radius:999px;background:rgba(8,11,18,.6);border:1px solid rgba(228,193,150,.24);color:#F6F1E8;font:inherit;font-weight:600}
+.asbob{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:16px}
+.progress{height:8px;border-radius:8px;background:rgba(255,255,255,.08);overflow:hidden}
+.progress i{display:block;height:100%;border-radius:8px;background:linear-gradient(90deg,#CC9866,#E4C196)}
+.progress.yashil i{background:linear-gradient(90deg,#4FA874,#7ED6A0)}
+.progress.qizil i{background:linear-gradient(90deg,#A63F38,#E4867E)}
+.ust{display:grid;gap:12px;align-items:center;padding:12px 8px;border-bottom:1px solid rgba(255,255,255,.05);white-space:nowrap;font-variant-numeric:tabular-nums}
+.ust.bosh{padding-top:0;color:#98A1B0;font-size:13px;font-weight:600;border-bottom-color:rgba(228,193,150,.14)}
+.ust .raqam{text-align:right}
+.ust.jami{background:rgba(228,193,150,.08);border-radius:12px;font-weight:700;border-bottom:0;margin-top:8px}
+/* o'ngga tekislangan raqamdan keyingi matn ustuni yopishib qolmasin */
+.ust>.raqam+:not(.raqam){padding-left:16px}
+.eskiz{width:36px;height:46px;border-radius:8px;object-fit:cover;object-position:50% 12%;flex:none}
+.qator{display:flex;align-items:center;gap:12px;min-width:0}
+.izoh-q{display:flex;gap:10px;align-items:flex-start;margin-top:16px;color:#C7CED8;font-size:13.5px}
+.izoh-q svg{width:18px;height:18px;color:#8DB4E8;margin-top:1px}
+.satr{display:flex;justify-content:space-between;gap:12px;padding:6px 0;font-variant-numeric:tabular-nums}
+.satr>span:first-child{color:#C7CED8}
+.g-asosiy{display:grid;grid-template-columns:minmax(0,68fr) minmax(0,32fr);gap:16px;align-items:start}
+.ustun{display:flex;flex-direction:column;gap:16px;min-width:0}
+@media (max-width:1180px){.g-asosiy{grid-template-columns:minmax(0,1fr)}.kpilar{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:760px){.yon{max-width:none;flex-direction:row;align-items:center;overflow-x:auto;padding:8px 10px;border-right:0;border-bottom:1px solid rgba(228,193,150,.12)}.brend{display:none}.nav{flex:none}.mazmun{padding:16px}.sarlavha h1{font-size:34px}.kpilar{grid-template-columns:minmax(0,1fr)}}
+/* umumiy */
+.libos-q{grid-template-columns:minmax(0,1.4fr) 80px 130px 130px minmax(0,1.3fr)}
+.libos-q>span:last-child{padding-left:20px}
+.qoplash{display:grid;grid-template-columns:minmax(0,1fr) 56px;gap:10px;align-items:center}
+.progress.chegara{position:relative;overflow:visible}
+.progress.chegara::after{content:'';position:absolute;left:33.3%;top:-4px;bottom:-4px;width:2px;border-radius:1px;background:rgba(246,241,232,.7)}
+.qoplash b{text-align:right}
+.xodim-q{grid-template-columns:minmax(0,1.4fr) 90px 130px 150px 100px 110px 120px}
+.qarz-q{grid-template-columns:minmax(0,1.4fr) minmax(0,1.3fr) 130px minmax(0,1.2fr) 120px}
+/* xarajat */
+.halqa-quti{display:flex;align-items:center;gap:20px}
+.halqa{position:relative;width:150px;height:150px;flex:none}
+.halqa-markaz{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.halqa-markaz b{font:400 22px/1.1 Forum,serif}
+.halqa-markaz span{font-size:13px;color:#98A1B0}
+.legenda{flex:1;display:flex;flex-direction:column;gap:10px;min-width:0}
+.legenda div{display:grid;grid-template-columns:10px minmax(0,1fr) auto 44px;gap:8px;align-items:center;font-variant-numeric:tabular-nums}
+.legenda i{width:10px;height:10px;border-radius:50%}
+.legenda span{color:#C7CED8;white-space:nowrap}
+.legenda em{font-style:normal;text-align:right;color:#98A1B0;font-size:13px}
+.xar-q{grid-template-columns:60px 112px minmax(0,1fr) 112px 112px}
+.kesik{overflow:hidden;text-overflow:ellipsis}
+.x-tasdiq{color:#98A1B0;font-size:13px}
+.x-kutish{justify-self:start}
+.doimiy{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+.doimiy:last-child{border-bottom:0}
+/* bonus */
+.bonus-q{grid-template-columns:28px minmax(0,1fr) 80px 128px 64px 112px}
+button.ust{width:100%;border:0;border-bottom:1px solid rgba(255,255,255,.05);background:none;color:#F6F1E8;text-align:left}
+button.ust:hover{background:rgba(255,255,255,.03)}
+button.ust.ochiq{background:rgba(228,193,150,.08)}
+.ichki{margin:4px 0 12px 40px;padding:12px 16px;border-radius:14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06)}
+.ichki-q{grid-template-columns:56px minmax(0,1.2fr) minmax(0,1fr) 72px 110px 90px}
+.formula{padding:16px;border-radius:14px;border:1px solid rgba(228,193,150,.4);background:rgba(228,193,150,.08);text-align:center}
+.formula b{display:block;font:400 30px/1.2 Forum,serif;color:#E4C196;margin-top:4px}
+/* grafik */
+.grafik{position:relative;width:100%;aspect-ratio:900/280}
+.grafik svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.grafik .ilgich{position:absolute;top:0;bottom:12%;padding:0;border:0;background:transparent;cursor:crosshair}
+.x-yorliq{position:absolute;top:91%;transform:translateX(-50%);color:#98A1B0;font-size:13px;white-space:nowrap}
+.y-yorliq{position:absolute;left:0;width:7.4%;transform:translateY(-50%);text-align:right;color:#98A1B0;font-size:13px;white-space:nowrap}
+.oy-jadval{margin-top:20px;font-variant-numeric:tabular-nums}
+.oj-q{display:grid;align-items:center;font-size:13.5px}
+.oj{padding:7px 0;text-align:center;white-space:nowrap}
+.oj.oj-n{display:flex;justify-content:flex-end;padding-right:10px}
+.oj-b{width:10px;height:10px;border-radius:50%}
+.oj-q .tanlandi{background:rgba(228,193,150,.12)}
+.oj-q:first-child .tanlandi{border-radius:8px 8px 0 0}
+.oj-q:nth-child(2) .tanlandi{border-radius:0 0 8px 8px}
+.izoh-oyna{position:absolute;z-index:2;width:max-content;padding:8px 12px;border-radius:12px;border:1px solid rgba(228,193,150,.55);background:rgba(11,15,23,.94);box-shadow:0 12px 30px -10px rgba(0,0,0,.8);pointer-events:none}
+.izoh-oyna>b{display:block;font-size:14px}
+.izoh-oyna>span{display:block;font-size:13px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.belgilar{display:flex;gap:16px;color:#C7CED8;font-size:13px}
+.belgilar span{display:inline-flex;align-items:center;gap:8px}
+.reyting-q{display:grid;grid-template-columns:28px minmax(0,1fr) 90px;gap:10px;align-items:center;padding:8px 0}
+.medal{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;font-weight:700;font-size:13px;color:#141B26}
+</style>
+</helmet>
+<div class="ilova">
+  <nav class="yon" aria-label="Bo'limlar">
+    <a class="brend" href="Main.dc.html"><b>LIBOSA</b></a>
+    <a class="nav" href="Main.dc.html"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>Dashboard</a>
+    <a class="nav" href="Kassa.dc.html"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></svg>Kassa</a>
+    <a class="nav" href="Zakazlar.dc.html"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8h14l-1 12H6z"/><path d="M9 8a3 3 0 0 1 6 0"/></svg>Zakazlar<span class="son">3</span></a>
+    <a class="nav" href="Liboslar.dc.html"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6l-1 5 4 13H6l4-13z"/></svg>Liboslar</a>
+    <a class="nav" href="MijozBolim.dc.html"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6 6 0 0 1 3.5 6"/></svg>Mijozlar</a>
+    <a class="nav faol" href="HisobotBolim.dc.html" aria-current="page"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21h18M6 17v-6M11 17V5M16 17v-9M20 17v-4"/></svg>Hisobotlar</a>
+    <a class="nav" href="SozlamaBolim.dc.html"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></svg>Sozlama</a>
+  </nav>
+
+  <main class="mazmun">
+    <div class="ustki">
+      <label class="qidiruv"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input type="search" placeholder="Zakaz, mijoz yoki telefon" aria-label="Qidirish"></label>
+      <div class="ong">
+        <button type="button" class="ikon-t" aria-label="Bildirishnomalar: 3"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><span class="nuqta">3</span></button>
+        <span class="tabletka"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21h18M5 21V8l7-5 7 5v13M9 21v-6h6v6"/></svg>Asosiy salon</span>
+        <span class="tabletka"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>8 noyabr, 2026</span>
+        <button type="button" class="xodim-t" aria-label="Xodim menyusi"><span class="avatar">NY</span><span>Nodira Yusupova<small>Rahbar</small></span></button>
+      </div>
+    </div>
+
+    <div class="sarlavha">
+      <div>
+        <h1>{{sarlavha}}</h1>
+        <p>{{izoh}}</p>
+        <nav class="segment" aria-label="Hisobotlar" style="margin-top: 16px">
+          <button type="button" class="{{t.umumiy}}" onClick="{{tUmumiy}}">Umumiy hisobot</button>
+          <a href="Foyda.dc.html">Oylik foyda</a>
+          <button type="button" class="{{t.xarajat}}" onClick="{{tXarajat}}">Xarajatlar</button>
+          <button type="button" class="{{t.bonus}}" onClick="{{tBonus}}">Sotuvchi bonusi</button>
+          <button type="button" class="{{t.grafik}}" onClick="{{tGrafik}}">Grafik</button>
+        </nav>
+      </div>
+      <sc-if value="{{b.xarajat}}" hint-placeholder-val="{{ false }}">
+        <a class="btn" href="KassaBolim.dc.html"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Xarajat kiritish</a>
+      </sc-if>
+      <sc-if value="{{b.umumiy}}" hint-placeholder-val="{{ true }}">
+        <button type="button" class="btn-2"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>Excel'ga yuklab olish</button>
+      </sc-if>
+    </div>
+
+    <!-- ===================== UMUMIY HISOBOT ===================== -->
+    <sc-if value="{{b.umumiy}}" hint-placeholder-val="{{ true }}">
+      <div class="asbob">
+        <span class="mute" style="margin-right: 4px">Nima bo'yicha:</span>
+        <div class="chiplar" role="group" aria-label="Hisobot turi">
+          <sc-for list="{{turlar}}" as="v" hint-placeholder-count="3"><button type="button" class="chip {{v.cls}}" aria-pressed="{{v.faol}}" onClick="{{v.bos}}">{{v.nom}}</button></sc-for>
+        </div>
+        <select class="tanlov" aria-label="Davr" style="margin-left: auto"><option>{{umDavr}}</option></select>
+      </div>
+
+      <sc-if value="{{u.libos}}" hint-placeholder-val="{{ true }}">
+        <div class="kpilar">
+          <div class="kpi"><span class="belgi"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6l-1 5 4 13H6l4-13z"/></svg></span><span><small>Ijaralar</small><b>78</b><em>6 ta libos · 2026 yil</em></span></div>
+          <div class="kpi yashil"><span class="belgi"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12l7 7 7-7"/></svg></span><span><small>Ijara tushumi</small><b>185,6 mln</b><em>shu liboslardan</em></span></div>
+          <div class="kpi kok"><span class="belgi"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h18v12H3zM3 7l3-4h12l3 4"/></svg></span><span><small>Tannarx</small><b>125,0 mln</b><em>sotib olingan narx</em></span></div>
+          <div class="kpi"><span class="belgi"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg></span><span><small>O'rtacha qoplash</small><b>148%</b><em>4 tasi o'zini oqladi</em></span></div>
+        </div>
+        <section class="panel" aria-label="Liboslar bo'yicha">
+          <div class="panel-bosh"><h2><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6l-1 5 4 13H6l4-13z"/></svg>Qaysi libos o'zini oqladi</h2><span class="mute">qoplash bo'yicha saralangan</span></div>
+          <div class="ust bosh libos-q"><span>Libos</span><span class="raqam">Ijaralar</span><span class="raqam">Tushum</span><span class="raqam">Tannarx</span><span>Qoplash</span></div>
+          <sc-for list="{{liboslar}}" as="l" hint-placeholder-count="6">
+            <div class="ust libos-q">
+              <span class="qator"><img class="eskiz" src="{{l.rasm}}" alt=""><span class="ikki"><b>{{l.nom}}</b><small>{{l.sku}} · {{l.kat}}</small></span></span>
+              <span class="raqam">{{l.ijara}}</span><span class="raqam">{{l.tushum}}</span><span class="raqam mute">{{l.tannarx}}</span>
+              <span class="qoplash"><span class="progress chegara {{l.cls}}"><i style="width: {{l.en}}%"></i></span><b style="color: {{l.rang}}">{{l.foiz}}%</b></span>
+            </div>
+          </sc-for>
+          <div class="ust jami libos-q"><span>Jami</span><span class="raqam">78</span><span class="raqam">185 600 000</span><span class="raqam">125 000 000</span><span class="qoplash"><span></span><b>148%</b></span></div>
+          <p class="izoh-q"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span>Qoplash = ijaradan tushgan pul ÷ libosning sotib olingan narxi. Chiziqdagi oq belgi — 100%: undan o'tsa, libos o'z narxini qaytargan, qolgani foyda. Tannarx faqat rahbarga ko'rinadi.</span></p>
+        </section>
+      </sc-if>
+
+      <sc-if value="{{u.xodim}}" hint-placeholder-val="{{ false }}">
+        <div class="kpilar">
+          <div class="kpi"><span class="belgi"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8h14l-1 12H6z"/><path d="M9 8a3 3 0 0 1 6 0"/></svg></span><span><small>Zakazlar</small><b>11</b><em>2 xodim</em></span></div>
+          <div class="kpi yashil"><span class="belgi"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12l7 7 7-7"/></svg></span><span><small>Kassaga tushum</small><b>9 600 000</b><em>1 – 8 noyabr</em></span></div>
+          <div class="kpi ogoh"><span class="belgi"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 5 5 19M7 8a1 1 0 1 0 0-2 1 1 0 0 0 0 2M17 18a1 1 0 1 0 0-2 1 1 0 0 0 0 2"/></svg></span><span><small>Chegirmalar</small><b>2 ta</b><em>250 000 · 1 tasi kutilmoqda</em></span></div>
+          <div class="kpi yashil"><span class="belgi"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg></span><span><small>Kassada kamomad</small><b>Yo'q</b><em>7 smena farqsiz</em></span></div>
+        </div>
+        <section class="panel" aria-label="Xodimlar bo'yicha">
+          <div class="panel-bosh"><h2><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6 6 0 0 1 3.5 6"/></svg>Xodimlar nazorati</h2><span class="mute">1 – 8 noyabr</span></div>
+          <div class="ust bosh xodim-q"><span>Xodim</span><span class="raqam">Zakazlar</span><span class="raqam">Kassaga</span><span>Chegirmalar</span><span class="raqam">Bekor</span><span class="raqam">Smenalar</span><span>Kamomad</span></div>
+          <div class="ust xodim-q"><span class="qator"><span class="avatar">MR</span><span class="ikki"><b>Malika Rahimova</b><small>sotuvchi</small></span></span><span class="raqam">7</span><span class="raqam">6 200 000</span><span><span class="holat h-ogoh">2 ta · 250 000</span></span><span class="raqam">1</span><span class="raqam">4</span><span><span class="holat h-yashil">yo'q</span></span></div>
+          <div class="ust xodim-q"><span class="qator"><span class="avatar">SQ</span><span class="ikki"><b>Sevara Qodirova</b><small>sotuvchi · kassa</small></span></span><span class="raqam">4</span><span class="raqam">3 400 000</span><span><span class="holat h-yopiq">yo'q</span></span><span class="raqam">0</span><span class="raqam">3</span><span><span class="holat h-yashil">yo'q</span></span></div>
+          <div class="ust jami xodim-q"><span>Jami</span><span class="raqam">11</span><span class="raqam">9 600 000</span><span>2 ta · 250 000</span><span class="raqam">1</span><span class="raqam">7</span><span>yo'q</span></div>
+          <p class="izoh-q"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span>Bekor qilingan zakaz: #10 Nilufar Hamidova · Oq ko'ylak (Malika, 2 noyabr) — vaqtinchalik bron edi, pul olinmagan. Chegirma so'rovlari va tasdiqlar qo'ng'iroqchada.</span></p>
+        </section>
+      </sc-if>
+
+      <sc-if value="{{u.qarz}}" hint-placeholder-val="{{ false }}">
+        <div class="kpilar" style="grid-template-columns: repeat(3, minmax(0, 1fr))">
+          <div class="kpi qizil"><span class="belgi"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/></svg></span><span><small>Jami qarz</small><b>2 400 000</b><em>3 mijozda</em></span></div>
+          <div class="kpi ogoh"><span class="belgi"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><span><small>Eng eski qarz</small><b>19 kun</b><em>20 oktabrdan beri</em></span></div>
+          <div class="kpi"><span class="belgi"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/></svg></span><span><small>Zalog bilan kafolatlangan</small><b>1 000 000</b><em>2 qarz zalog bilan</em></span></div>
+        </div>
+        <section class="panel" aria-label="Qarzdorlar">
+          <div class="panel-bosh"><h2><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17h.01"/></svg>Qarzdorlar</h2><span class="mute">eng kattasi tepada</span></div>
+          <div class="ust bosh qarz-q"><span>Mijoz</span><span>Zakaz</span><span class="raqam">Qarz</span><span>Zalog</span><span>Necha kun</span></div>
+          <div class="ust qarz-q"><span class="ikki"><b>Dildora Saidova</b><small>+998 90 711 22 08</small></span><span class="mute">#4 · Zarina · qaytardi 20 okt</span><b class="raqam" style="color: #FF9B92">1 400 000</b><span class="mute">yo'q</span><span><span class="holat h-qizil">19 kun</span></span></div>
+          <div class="ust qarz-q"><span class="ikki"><b>Aziza Xolmatova</b><small>+998 97 567 89 01</small></span><span class="mute">#9 · Rubin · hali qaytarmagan</span><b class="raqam" style="color: #FF9B92">500 000</b><span>500 000 so'm naqd</span><span><span class="holat h-ogoh">1 kun</span></span></div>
+          <div class="ust qarz-q"><span class="ikki"><b>Shahnoza Tursunova</b><small>+998 90 445 66 77</small></span><span class="mute">#12 · Bella · qaytardi 3 noy</span><b class="raqam" style="color: #FF9B92">500 000</b><span>oltin uzuk</span><span><span class="holat h-ogoh">5 kun</span></span></div>
+          <p class="izoh-q"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span>Zalogsiz qarzga e'tibor bering — Dildora Saidovaning 1 400 000 qarzi hech narsa bilan kafolatlanmagan.</span></p>
+        </section>
+      </sc-if>
+    </sc-if>
+
+    <!-- ===================== XARAJATLAR ===================== -->
+    <sc-if value="{{b.xarajat}}" hint-placeholder-val="{{ false }}">
+      <div class="kpilar">
+        <div class="kpi qizil"><span class="belgi"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg></span><span><small>Jami xarajat</small><b>4 115 000</b><em>kirgan pulning 43%</em></span></div>
+        <div class="kpi kok"><span class="belgi"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></span><span><small>Doimiy</small><b>2 800 000</b><em>ish haqi va bino ijarasi</em></span></div>
+        <div class="kpi"><span class="belgi"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17 9 11l4 4 8-8"/></svg></span><span><small>O'zgaruvchan</small><b>1 315 000</b><em>tozalash, bonus va boshqalar</em></span></div>
+        <div class="kpi ogoh"><span class="belgi"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><span><small>Tasdiq kutmoqda</small><b>40 000</b><em>1 ta · jamiga kirmagan</em></span></div>
+      </div>
+      <div class="g-asosiy">
+        <section class="panel" aria-label="Xarajatlar ro'yxati">
+          <div class="panel-bosh"><h2><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></svg>Xarajatlar</h2><select class="tanlov" aria-label="Davr"><option>1 – 8 noyabr</option><option>Oktabr</option></select></div>
+          <div class="chiplar" role="group" aria-label="Modda" style="margin-bottom: 16px">
+            <sc-for list="{{xChip}}" as="c" hint-placeholder-count="7"><button type="button" class="chip {{c.cls}}" aria-pressed="{{c.faol}}" onClick="{{c.bos}}">{{c.nom}}</button></sc-for>
+          </div>
+          <div class="ust bosh xar-q"><span>Sana</span><span>Modda</span><span>Izoh · kim yozdi</span><span class="raqam">Summa</span><span>Holat</span></div>
+          <sc-for list="{{xarajatlar}}" as="x" hint-placeholder-count="10">
+            <div class="ust xar-q"><b>{{x.sana}}</b><span>{{x.modda}}</span><span class="ikki"><span class="kesik">{{x.izoh}}</span><small>{{x.kim}}</small></span><b class="raqam">{{x.summa}}</b><span class="{{x.hcls}}">{{x.holat}}</span></div>
+          </sc-for>
+          <div class="ust jami xar-q"><span>Jami</span><span></span><span class="mute" style="font-weight: 500">{{xJamiIzoh}}</span><span class="raqam">{{xJami}}</span><span></span></div>
+        </section>
+        <div class="ustun">
+          <section class="panel" aria-label="Xarajatlar taqsimoti">
+            <div class="panel-bosh"><h2><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 1 0 9 9h-9z"/><path d="M15 3.5A9 9 0 0 1 20.5 9H15z"/></svg>Taqsimot</h2></div>
+            <div class="halqa-quti" style="flex-direction: column">
+              <div class="halqa">
+                <svg viewBox="0 0 140 140" role="img" aria-label="{{h.aria}}" style="width: 150px; height: 150px; display: block">
+                  <circle cx="70" cy="70" r="54" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="16"/>
+                  <circle cx="70" cy="70" r="54" fill="none" stroke="#E4C196" stroke-width="16" stroke-dasharray="{{h.s0.da}}" stroke-dashoffset="{{h.s0.do}}" transform="rotate(-90 70 70)"/>
+                  <circle cx="70" cy="70" r="54" fill="none" stroke="#8DB4E8" stroke-width="16" stroke-dasharray="{{h.s1.da}}" stroke-dashoffset="{{h.s1.do}}" transform="rotate(-90 70 70)"/>
+                  <circle cx="70" cy="70" r="54" fill="none" stroke="#7ED6A0" stroke-width="16" stroke-dasharray="{{h.s2.da}}" stroke-dashoffset="{{h.s2.do}}" transform="rotate(-90 70 70)"/>
+                  <circle cx="70" cy="70" r="54" fill="none" stroke="#B9A2E8" stroke-width="16" stroke-dasharray="{{h.s3.da}}" stroke-dashoffset="{{h.s3.do}}" transform="rotate(-90 70 70)"/>
+                  <circle cx="70" cy="70" r="54" fill="none" stroke="#F2A0C4" stroke-width="16" stroke-dasharray="{{h.s4.da}}" stroke-dashoffset="{{h.s4.do}}" transform="rotate(-90 70 70)"/>
+                  <circle cx="70" cy="70" r="54" fill="none" stroke="#F2C46D" stroke-width="16" stroke-dasharray="{{h.s5.da}}" stroke-dashoffset="{{h.s5.do}}" transform="rotate(-90 70 70)"/>
+                </svg>
+                <div class="halqa-markaz" aria-hidden="true"><b>4,1 mln</b><span>1–8 noyabr</span></div>
+              </div>
+              <div class="legenda" style="width: 100%">
+                <sc-for list="{{h.legenda}}" as="g" hint-placeholder-count="6"><div><i style="background: {{g.rang}}"></i><span>{{g.nom}}</span><b>{{g.summa}}</b><em>{{g.foiz}}%</em></div></sc-for>
+              </div>
+            </div>
+          </section>
+          <section class="panel" aria-label="Doimiy xarajatlar">
+            <div class="panel-bosh"><h2><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Doimiy xarajatlar</h2><span class="mute">noyabr</span></div>
+            <div class="doimiy"><span class="ikki" style="flex: 1"><b>Bino ijarasi</b><small>har oy 1-sanada</small></span><b>1 000 000</b><span class="holat h-yashil">to'landi</span></div>
+            <div class="doimiy"><span class="ikki" style="flex: 1"><b>Ish haqi — avans</b><small>5-sanada</small></span><b>1 800 000</b><span class="holat h-yashil">to'landi</span></div>
+            <div class="doimiy"><span class="ikki" style="flex: 1"><b>Ish haqi — qoldiq</b><small>20-sanada</small></span><b>1 800 000</b><span class="holat h-yopiq">kutilmoqda</span></div>
+            <div class="doimiy"><span class="ikki" style="flex: 1"><b>Internet va telefon</b><small>15-sanada</small></span><b>150 000</b><span class="holat h-yopiq">kutilmoqda</span></div>
+          </section>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- ===================== SOTUVCHI BONUSI ===================== -->
+    <sc-if value="{{b.bonus}}" hint-placeholder-val="{{ false }}">
+      <div class="kpilar">
+        <div class="kpi kok"><span class="belgi"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8h14l-1 12H6z"/><path d="M9 8a3 3 0 0 1 6 0"/></svg></span><span><small>Hisobga kirgan zakazlar</small><b>3</b><em>1 tasi kirmadi — qarz</em></span></div>
+        <div class="kpi"><span class="belgi"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/></svg></span><span><small>Ular bo'yicha ijara</small><b>{{bk.ijara}}</b><em>to'liq to'langan</em></span></div>
+        <div class="kpi binafsha"><span class="belgi"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 5 5 19M7 8a1 1 0 1 0 0-2 1 1 0 0 0 0 2M17 18a1 1 0 1 0 0-2 1 1 0 0 0 0 2"/></svg></span><span><small>Bonus stavkasi</small><b>5%</b><em>Sozlamada</em></span></div>
+        <div class="kpi yashil"><span class="belgi"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12v9H4v-9M2 7h20v5H2zM12 21V7M12 7H8a2 2 0 1 1 2-3l2 3 2-3a2 2 0 1 1 2 3z"/></svg></span><span><small>Jami bonus</small><b>{{bk.bonus}}</b><em>foydadan ayirildi, to'lanmagan</em></span></div>
+      </div>
+      <div class="g-asosiy">
+        <section class="panel" aria-label="Sotuvchilar bo'yicha">
+          <div class="panel-bosh"><h2><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/></svg>Sotuvchilar bo'yicha</h2><select class="tanlov" aria-label="Oy"><option>Noyabr, 2026</option><option>Oktabr, 2026</option></select></div>
+          <div class="ust bosh bonus-q"><span></span><span>Sotuvchi</span><span class="raqam">Zakazlar</span><span class="raqam">Ijara</span><span class="raqam">Stavka</span><span class="raqam">Bonus</span></div>
+          <sc-for list="{{sotuvchilar}}" as="v" hint-placeholder-count="2">
+            <button type="button" class="ust bonus-q {{v.cls}}" aria-expanded="{{v.ochiq}}" onClick="{{v.bos}}">
+              <svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="color: #E4C196"><path d="{{v.d}}"/></svg>
+              <span class="qator"><span class="avatar">{{v.bosh}}</span><b>{{v.nom}}</b></span>
+              <span class="raqam">{{v.son}}</span><span class="raqam">{{v.ijara}}</span><span class="raqam">5%</span><b class="raqam" style="color: #E4C196">{{v.bonus}}</b>
+            </button>
+            <sc-if value="{{v.ochiq}}" hint-placeholder-val="{{ false }}">
+              <div class="ichki">
+                <div class="ust bosh ichki-q"><span>Zakaz</span><span>Mijoz</span><span>Libos</span><span>Qaytdi</span><span class="raqam">Ijara</span><span class="raqam">Bonus</span></div>
+                <sc-for list="{{v.zakazlar}}" as="z" hint-placeholder-count="2">
+                  <div class="ust ichki-q"><b>#{{z.id}}</b><span>{{z.mijoz}}</span><span class="qator"><img class="eskiz" src="{{z.rasm}}" alt="" style="width: 28px; height: 36px"><span>{{z.libos}}</span></span><span class="mute">{{z.qaytdi}}</span><span class="raqam">{{z.ijara}}</span><b class="raqam" style="color: #E4C196">{{z.bonus}}</b></div>
+                </sc-for>
+              </div>
+            </sc-if>
+          </sc-for>
+          <div class="ust jami bonus-q"><span></span><span>Jami</span><span class="raqam">3</span><span class="raqam">{{bk.ijara}}</span><span class="raqam">5%</span><span class="raqam" style="color: #E4C196">{{bk.bonus}}</span></div>
+          <div class="ust" style="grid-template-columns: 36px minmax(0,1fr) auto; white-space: normal; border-bottom: 0; margin-top: 8px; padding: 12px; border-radius: 12px; background: rgba(242,196,109,.06)">
+            <svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="color: #F2C46D"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+            <span><b>Hisobga kirmadi:</b> #12 Shahnoza Tursunova — Bella, Malika. Libos qaytdi, lekin 500 000 so'm qarz yopilmagan. Qarz yopilgan oyda bonusga kiradi.</span>
+            <a class="havola" href="ZakazKarta.dc.html">Zakaz →</a>
+          </div>
+        </section>
+        <div class="ustun">
+          <section class="panel" aria-label="Bonus formulasi">
+            <div class="panel-bosh"><h2><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M8 7h8M8 11h2M14 11h2M8 15h2M14 15h2"/></svg>Formula</h2><span class="mute">{{fb.nom}}</span></div>
+            <div class="formula"><span class="mute">{{fb.ijara}} × 5% =</span><b>{{fb.bonus}} so'm</b></div>
+            <div class="satr" style="margin-top: 12px"><span>Foydadan ayiriladi</span><span>zakaz qaytgan oyda, o'zi</span></div>
+            <div class="satr"><span>To'lanadi</span><span>oy yopilganda</span></div>
+            <p class="mute" style="margin: 8px 0 0">Bonusni berganingizda xarajatga qayta yozmang — u allaqachon hisobda.</p>
+          </section>
+          <section class="panel" aria-label="Qoidalar">
+            <div class="panel-bosh"><h2><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5a2 2 0 0 1 2-2h13v16H6a2 2 0 0 0-2 2z"/><path d="M4 19V5"/></svg>Qoidalar</h2></div>
+            <div style="display: flex; flex-direction: column; gap: 10px; color: #C7CED8">
+              <span>• Bonus shu oyda <b style="color: #F6F1E8">qaytarilgan va to'liq yopilgan</b> zakazlardan hisoblanadi.</span>
+              <span>• Keyin bekor qilingan zakaz bonusidan ayiriladi; bonus manfiy bo'lmaydi.</span>
+              <span>• Yopilgan oy raqamlari orqaga qarab o'zgarmaydi.</span>
+            </div>
+            <a class="havola" href="SozlamaSalon.dc.html" style="display: inline-block; margin-top: 16px">Stavkani o'zgartirish — Sozlama →</a>
+          </section>
+        </div>
+      </div>
+    </sc-if>
+
+    <!-- ===================== GRAFIK ===================== -->
+    <sc-if value="{{b.grafik}}" hint-placeholder-val="{{ false }}">
+      <div class="kpilar">
+        <div class="kpi"><span class="belgi"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12l7 7 7-7"/></svg></span><span><small>Tushum, 12 oy</small><b>{{gk.tushum}}</b><em>noyabr 2025 – oktabr 2026</em></span></div>
+        <div class="kpi yashil"><span class="belgi"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17 9 11l4 4 8-8"/><path d="M15 7h6v6"/></svg></span><span><small>Sof foyda, 12 oy</small><b>{{gk.foyda}}</b><em>oyiga o'rtacha {{gk.ortacha}}</em></span></div>
+        <div class="kpi binafsha"><span class="belgi"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 5 5 19M7 8a1 1 0 1 0 0-2 1 1 0 0 0 0 2M17 18a1 1 0 1 0 0-2 1 1 0 0 0 0 2"/></svg></span><span><small>Foyda ulushi</small><b>{{gk.ulush}}</b><em>kirgan pulning</em></span></div>
+        <div class="kpi ogoh"><span class="belgi"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3l2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.4 6.7 19.4l1.2-6L3.4 9.3l6-.7z"/></svg></span><span><small>Eng yaxshi oy</small><b>Avgust</b><em>25,6 mln sof foyda</em></span></div>
+      </div>
+      <div class="g-asosiy">
+        <section class="panel" aria-label="Oxirgi 12 oy">
+          <div class="panel-bosh" style="margin-bottom: 8px">
+            <h2><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17 9 11l4 4 8-8"/><path d="M15 7h6v6"/></svg>Oxirgi 12 to'liq oy</h2>
+            <div class="belgilar">
+              <span><svg width="22" height="10" aria-hidden="true"><line x1="0" y1="5" x2="22" y2="5" stroke="#E4C196" stroke-width="2.5"/><circle cx="11" cy="5" r="3.5" fill="#E4C196"/></svg>Tushum</span>
+              <span><svg width="22" height="10" aria-hidden="true"><line x1="0" y1="5" x2="22" y2="5" stroke="#7ED6A0" stroke-width="2.5"/><circle cx="11" cy="5" r="3.5" fill="#7ED6A0"/></svg>Sof foyda</span>
+            </div>
+          </div>
+          <p class="mute" style="margin: 0 0 24px">Nuqtaga olib boring — oy raqamlari chiqadi</p>
+          <figure class="grafik" style="margin: 0">
+            <svg viewBox="0 0 900 280" role="img" aria-label="12 oylik tushum va sof foyda: eng yuqori — avgust, eng past — yanvar">
+              <defs>
+                <linearGradient id="g-tush" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#E4C196" stop-opacity=".34"/><stop offset="1" stop-color="#CC9866" stop-opacity="0"/></linearGradient>
+                <linearGradient id="g-foy" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#7ED6A0" stop-opacity=".28"/><stop offset="1" stop-color="#7ED6A0" stop-opacity="0"/></linearGradient>
+              </defs>
+              <g stroke="rgba(255,255,255,.07)" stroke-width="1">
+                <line x1="76" y1="20" x2="864" y2="20"/><line x1="76" y1="64" x2="864" y2="64"/><line x1="76" y1="108" x2="864" y2="108"/><line x1="76" y1="152" x2="864" y2="152"/><line x1="76" y1="196" x2="864" y2="196"/>
+              </g>
+              <path d="{{g.tik}}" stroke="rgba(255,255,255,.05)" stroke-width="1" fill="none"/>
+              <line x1="76" y1="240" x2="864" y2="240" stroke="rgba(228,193,150,.3)" stroke-width="1"/>
+              <path d="{{g.tMaydon}}" fill="url(#g-tush)"/>
+              <path d="{{g.fMaydon}}" fill="url(#g-foy)"/>
+              <path d="{{g.tChiziq}}" fill="none" stroke="#E4C196" stroke-width="2.6" stroke-linecap="round"/>
+              <path d="{{g.fChiziq}}" fill="none" stroke="#7ED6A0" stroke-width="2.6" stroke-linecap="round"/>
+              <path d="{{g.tNuqta}}" fill="#0B0F17" stroke="#E4C196" stroke-width="2"/>
+              <path d="{{g.fNuqta}}" fill="#0B0F17" stroke="#7ED6A0" stroke-width="2"/>
+              <line x1="{{gt.x}}" y1="20" x2="{{gt.x}}" y2="240" stroke="rgba(228,193,150,.45)" stroke-width="1" stroke-dasharray="3 4"/>
+              <circle cx="{{gt.x}}" cy="{{gt.ty}}" r="6" fill="#F6F1E8" stroke="#E4C196" stroke-width="3"/>
+              <circle cx="{{gt.x}}" cy="{{gt.fy}}" r="6" fill="#F6F1E8" stroke="#7ED6A0" stroke-width="3"/>
+            </svg>
+            <span class="y-yorliq" style="top: 85.71%" aria-hidden="true">0</span>
+            <span class="y-yorliq" style="top: 70%" aria-hidden="true">10 mln</span>
+            <span class="y-yorliq" style="top: 54.29%" aria-hidden="true">20 mln</span>
+            <span class="y-yorliq" style="top: 38.57%" aria-hidden="true">30 mln</span>
+            <span class="y-yorliq" style="top: 22.86%" aria-hidden="true">40 mln</span>
+            <span class="y-yorliq" style="top: 7.14%" aria-hidden="true">50 mln</span>
+            <sc-for list="{{g.yorliqlar}}" as="y" hint-placeholder-count="12"><span class="x-yorliq" style="left: {{y.chap}}%" aria-hidden="true">{{y.t}}</span></sc-for>
+            <sc-for list="{{g.ilgichlar}}" as="p" hint-placeholder-count="12"><button type="button" class="ilgich" style="left: {{p.chap}}%; width: {{p.en}}%" aria-label="{{p.aria}}" onMouseEnter="{{p.tanla}}" onFocus="{{p.tanla}}" onClick="{{p.tanla}}"></button></sc-for>
+            <div class="izoh-oyna" style="left: {{gt.chap}}%; top: {{gt.tepa}}%; transform: {{gt.tr}}" aria-live="polite">
+              <b>{{gt.oy}}</b>
+              <span style="color: #E4C196">Tushum: {{gt.tushum}}</span>
+              <span style="color: #7ED6A0">Sof foyda: {{gt.foyda}}</span>
+              <span style="color: #C7CED8">Ulush: {{gt.ulush}}</span>
+            </div>
+          </figure>
+          <div class="oy-jadval" aria-label="Oyma-oy raqamlar, mln so'm">
+            <div class="oj-q" style="grid-template-columns: {{g.kol}}"><span class="oj oj-n" title="Tushum, mln so'm"><i class="oj-b" style="background: #E4C196"></i></span><sc-for list="{{g.ustun}}" as="u" hint-placeholder-count="12"><span class="oj {{u.cls}}">{{u.t}}</span></sc-for></div>
+            <div class="oj-q" style="grid-template-columns: {{g.kol}}"><span class="oj oj-n" title="Sof foyda, mln so'm"><i class="oj-b" style="background: #7ED6A0"></i></span><sc-for list="{{g.ustun}}" as="u" hint-placeholder-count="12"><b class="oj {{u.cls}}" style="color: #7ED6A0">{{u.f}}</b></sc-for></div>
+            <p class="mute" style="margin: 12px 0 0">Raqamlar mln so'mda, ustunlar grafikdagi oylar ostida.</p>
+          </div>
+        </section>
+        <section class="panel" aria-label="Oylar reytingi">
+          <div class="panel-bosh"><h2><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0z"/></svg>Sof foyda reytingi</h2></div>
+          <sc-for list="{{reyting}}" as="r" hint-placeholder-count="5">
+            <div class="reyting-q"><span class="medal" style="background: {{r.medal}}">{{r.o}}</span><span class="ikki"><b>{{r.oy}}</b><span class="progress yashil" style="margin-top: 6px"><i style="width: {{r.en}}%"></i></span></span><b style="text-align: right">{{r.foyda}}</b></div>
+          </sc-for>
+          <p class="izoh-q"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span><b style="color: #F6F1E8">To'y mavsumi</b> iyul–oktabr: yillik sof foydaning {{gk.mavsum}} shu to'rt oyga to'g'ri keladi. Yanvar–fevral — eng sokin oylar.</span></p>
+        </section>
+      </div>
+    </sc-if>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"bolim":{"editor":"enum","options":["umumiy","xarajat","bonus","grafik"],"default":"umumiy"},"$preview":{"width":1440,"height":1170}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    const p = props || {};
+    this.state = { bolim: p.bolim || 'umumiy', tur: 'libos', modda: 'hammasi', ochiq: 'malika', nuqta: 9 };
+  }
+  renderVals() {
+    const s = this.state;
+    const fmt = (n) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+    const mln = (n) => (Math.round(n * 10) / 10).toFixed(1).replace('.', ',') + ' mln';
+    const R = { L1: '/_blob/78b3216f7738bdab0ea238adcec51f32', L2: '/_blob/7d80ca195130908ffa9854d230fd9af0', L3: '/_blob/b28f71fbbeeeed9ca5c0052f387901a2', L4: '/_blob/ff22f88eaee9183133df1fc14998e6ee', L5: '/_blob/cf292d70c86c681a76df49fe549f8887', L6: '/_blob/758947eb97690570420217f21f276a4b' };
+    const ulush = (vals, jami) => {
+      const x = vals.map((v) => (v / jami) * 100), b = x.map((v) => Math.floor(v));
+      let q = 100 - b.reduce((a, v) => a + v, 0);
+      x.map((v, i) => [v - Math.floor(v), i]).sort((a, c) => c[0] - a[0]).forEach(([, i]) => { if (q > 0) { b[i] += 1; q -= 1; } });
+      return b;
+    };
+    const SARL = {
+      umumiy: ['Umumiy hisobot', "Egasining savollari: qaysi libos o'zini oqladi, xodimlar qanday ishladi, kim qarzdor"],
+      xarajat: ['Xarajatlar', "Pul qayerga ketdi — moddalar bo'yicha"],
+      bonus: ['Sotuvchi bonusi', 'Noyabr, 2026 — 1–8 kunlar bo\'yicha hisoblangan'],
+      grafik: ['Grafik', "Oxirgi 12 to'liq oy (noyabr hali tugamagan): tushum, sof foyda, mavsum"]
+    };
+    // umumiy — liboslar
+    const LIB = [
+      { nom: 'Mira', sku: 'M-0013', kat: 'Kechki', rasm: R.L3, ijara: 19, tushum: 38000000, tannarx: 15000000 },
+      { nom: 'Bella', sku: 'B-0021', kat: "To'y", rasm: R.L2, ijara: 22, tushum: 64000000, tannarx: 28000000 },
+      { nom: 'Luna', sku: 'L-0042', kat: 'Pachka', rasm: R.L4, ijara: 12, tushum: 21600000, tannarx: 12000000 },
+      { nom: 'Zarina', sku: 'Z-0007', kat: 'Milliy', rasm: R.L1, ijara: 15, tushum: 36000000, tannarx: 22000000 },
+      { nom: 'Rubin', sku: 'R-0056', kat: 'Milliy', rasm: R.L5, ijara: 6, tushum: 13200000, tannarx: 18000000 },
+      { nom: "Oq ko'ylak", sku: 'O-0031', kat: "To'y · avgustdan", rasm: R.L6, ijara: 4, tushum: 12800000, tannarx: 30000000 }
+    ];
+    const liboslar = LIB.map((l) => {
+      const f = Math.round((l.tushum / l.tannarx) * 100);
+      return { ...l, tushum: fmt(l.tushum), tannarx: fmt(l.tannarx), foiz: f, en: Math.min(100, Math.round(f / 3)), cls: f >= 100 ? 'yashil' : 'qizil', rang: f >= 100 ? '#7ED6A0' : '#FF9B92' };
+    });
+    // xarajatlar
+    const XAR = [
+      { sana: '8 noy', modda: 'Transport', m: 'transport', izoh: 'Rubin uchun taksi — Aziza Xolmatovaga borildi', kim: 'Malika', summa: 50000 },
+      { sana: '7 noy', modda: "Ta'mir", m: 'tamir', izoh: 'Mira — tugma qadash, bugungi berishdan oldin', kim: 'Malika', summa: 40000, kutilmoqda: true },
+      { sana: '6 noy', modda: 'Reklama', m: 'reklama', izoh: 'Instagram — haftalik reklama', kim: 'Nodira', summa: 70000 },
+      { sana: '5 noy', modda: 'Ish haqi', m: 'ish', izoh: 'Noyabr avansi — 2 xodim', kim: 'Nodira', summa: 1800000 },
+      { sana: '4 noy', modda: 'Tozalash', m: 'tozalash', izoh: 'Zarina, Luna', kim: 'Sevara', summa: 320000 },
+      { sana: '3 noy', modda: 'Tozalash', m: 'tozalash', izoh: 'Bella — kimyoviy tozalash', kim: 'Sevara', summa: 180000 },
+      { sana: '3 noy', modda: 'Kommunal', m: 'kommunal', izoh: 'Elektr energiya — oktabr', kim: 'Nodira', summa: 180000 },
+      { sana: '2 noy', modda: 'Tozalash', m: 'tozalash', izoh: 'Mira', kim: 'Malika', summa: 200000 },
+      { sana: '1 noy', modda: 'Bino ijarasi', m: 'ijara', izoh: 'Noyabr uchun', kim: 'Nodira', summa: 1000000 },
+      // bonus qo'lda yozilmaydi: zakaz qaytarilgan oyda o'zi xarajatga tushadi (ilovadagi finance/reports.py qoidasi)
+      { sana: '1–8 noy', modda: 'Sotuvchi bonusi', m: 'ish', izoh: "Avtomatik — 3 zakaz × 5% (to'lanmagan)", kim: 'tizim', summa: 315000, avto: true }
+    ];
+    const MODDA = [['hammasi', 'Hammasi'], ['ish', 'Ish haqi'], ['ijara', 'Bino ijarasi'], ['tozalash', 'Tozalash'], ['kommunal', 'Kommunal'], ['reklama', 'Reklama'], ['transport', 'Transport']];
+    const xf = XAR.filter((x) => s.modda === 'hammasi' || x.m === s.modda);
+    const tasdiqlangan = xf.filter((x) => !x.kutilmoqda);
+    const TAQ = [['Ish haqi va bonus', 2115000, '#E4C196'], ['Bino ijarasi', 1000000, '#8DB4E8'], ['Tozalash', 700000, '#7ED6A0'], ['Kommunal', 180000, '#B9A2E8'], ['Reklama', 70000, '#F2A0C4'], ['Transport', 50000, '#F2C46D']];
+    const TJ = 4115000, C = 2 * Math.PI * 54, foizlar = ulush(TAQ.map((t) => t[1]), TJ);
+    let kum = 0;
+    const seg = TAQ.map(([, v]) => { const len = (v / TJ) * C; const r = { da: Math.max(len - 2, 0.5).toFixed(2) + ' ' + (C - Math.max(len - 2, 0.5)).toFixed(2), do: (-kum).toFixed(2) }; kum += len; return r; });
+    // bonus
+    const SOT = [
+      { id: 'malika', nom: 'Malika Rahimova', bosh: 'MR', zakazlar: [{ id: 11, mijoz: 'Feruza Aliyeva', libos: 'Luna', rasm: R.L4, ijara: 1800000, qaytdi: '1 noy' }, { id: 16, mijoz: 'Zebo Ahmedova', libos: 'Mira', rasm: R.L3, ijara: 2000000, qaytdi: '2 noy' }] },
+      { id: 'sevara', nom: 'Sevara Qodirova', bosh: 'SQ', zakazlar: [{ id: 8, mijoz: 'Kamila Nurmatova', libos: 'Zarina', rasm: R.L1, ijara: 2500000, qaytdi: '4 noy' }] }
+    ];
+    const bJami = SOT.reduce((a, v) => a + v.zakazlar.reduce((b, z) => b + z.ijara, 0), 0);
+    const sotuvchilar = SOT.map((v) => {
+      const ij = v.zakazlar.reduce((a, z) => a + z.ijara, 0), ochiq = s.ochiq === v.id;
+      return {
+        ...v, son: v.zakazlar.length, ijara: fmt(ij), bonus: fmt(ij * 0.05), ochiq, cls: ochiq ? 'ochiq' : '',
+        d: ochiq ? 'm6 9 6 6 6-6' : 'm9 6 6 6-6 6',
+        bos: () => this.setState({ ochiq: ochiq ? null : v.id }),
+        zakazlar: v.zakazlar.map((z) => ({ ...z, ijara: fmt(z.ijara), bonus: fmt(z.ijara * 0.05) }))
+      };
+    });
+    const fs = SOT.find((v) => v.id === s.ochiq) || SOT[0];
+    const fij = fs.zakazlar.reduce((a, z) => a + z.ijara, 0);
+    // grafik
+    const OYLAR = ['Noy 25', 'Dek', 'Yan', 'Fev', 'Mar', 'Apr', 'May', 'Iyun', 'Iyul', 'Avg', 'Sen', 'Okt'];
+    const TOLIQ = ['Noyabr 2025', 'Dekabr 2025', 'Yanvar 2026', 'Fevral 2026', 'Mart 2026', 'Aprel 2026', 'May 2026', 'Iyun 2026', 'Iyul 2026', 'Avgust 2026', 'Sentabr 2026', 'Oktabr 2026'];
+    const TU = [18.2, 21.5, 14.0, 16.8, 24.6, 27.3, 22.4, 27.0, 34.9, 41.2, 29.5, 34.8];
+    const FO = [8.9, 11.2, 5.1, 7.0, 13.0, 15.6, 11.8, 15.1, 21.7, 25.6, 16.4, 20.6];
+    const W = 900, H = 280, X0 = 76, X1 = 864, Y0 = 240, Y1 = 20, M = 50;
+    const q = (X1 - X0) / 11;
+    const xy = (v, i) => [X0 + i * q, Y0 - (v / M) * (Y0 - Y1)];
+    const silliq = (pts) => pts.map((p, i) => {
+      if (i === 0) return 'M' + p[0].toFixed(1) + ',' + p[1].toFixed(1);
+      const p0 = pts[i - 2] || pts[i - 1], p1 = pts[i - 1], p3 = pts[i + 1] || p;
+      const c1 = [p1[0] + (p[0] - p0[0]) / 6, Math.min(Y0, p1[1] + (p[1] - p0[1]) / 6)];
+      const c2 = [p[0] - (p3[0] - p1[0]) / 6, Math.min(Y0, p[1] - (p3[1] - p1[1]) / 6)];
+      return 'C' + [c1[0], c1[1], c2[0], c2[1], p[0], p[1]].map((z) => z.toFixed(1)).join(',');
+    }).join(' ');
+    const nuq = (pts) => pts.map(([x, y]) => 'M' + (x - 3.5).toFixed(1) + ',' + y.toFixed(1) + 'a3.5,3.5 0 1,0 7,0a3.5,3.5 0 1,0 -7,0').join('');
+    const tp = TU.map(xy), fp = FO.map(xy);
+    const tc = silliq(tp), fc = silliq(fp), yop = (d) => d + ' L' + X1 + ',' + Y0 + ' L' + X0 + ',' + Y0 + ' Z';
+    const ni = s.nuqta, xp = (tp[ni][0] / W) * 100;
+    const sumT = TU.reduce((a, v) => a + v, 0), sumF = FO.reduce((a, v) => a + v, 0);
+    const mavsum = FO.slice(8, 12).reduce((a, v) => a + v, 0);
+    const rt = FO.map((f, i) => [f, i]).sort((a, b) => b[0] - a[0]).slice(0, 5);
+    const MEDAL = ['linear-gradient(135deg,#F3DDBE,#CC9866)', 'linear-gradient(135deg,#E9EDF2,#9AA3B2)', 'linear-gradient(135deg,#E8B48C,#A8683E)', 'rgba(255,255,255,.12)', 'rgba(255,255,255,.12)'];
+    return {
+      sarlavha: SARL[s.bolim][0], izoh: SARL[s.bolim][1],
+      b: { umumiy: s.bolim === 'umumiy', xarajat: s.bolim === 'xarajat', bonus: s.bolim === 'bonus', grafik: s.bolim === 'grafik' },
+      t: { umumiy: s.bolim === 'umumiy' ? 'faol' : '', xarajat: s.bolim === 'xarajat' ? 'faol' : '', bonus: s.bolim === 'bonus' ? 'faol' : '', grafik: s.bolim === 'grafik' ? 'faol' : '' },
+      tUmumiy: () => this.setState({ bolim: 'umumiy' }), tXarajat: () => this.setState({ bolim: 'xarajat' }), tBonus: () => this.setState({ bolim: 'bonus' }), tGrafik: () => this.setState({ bolim: 'grafik' }),
+      turlar: [['libos', 'Liboslar'], ['xodim', 'Xodimlar'], ['qarz', 'Qarzdorlar']].map(([id, nom]) => ({ nom, faol: s.tur === id, cls: s.tur === id ? 'faol' : '', bos: () => this.setState({ tur: id }) })),
+      u: { libos: s.tur === 'libos', xodim: s.tur === 'xodim', qarz: s.tur === 'qarz' },
+      umDavr: s.tur === 'libos' ? '2026 yil' : s.tur === 'xodim' ? '1 – 8 noyabr' : 'Hozirgi holat',
+      liboslar,
+      xChip: MODDA.map(([id, nom]) => ({ nom, faol: s.modda === id, cls: s.modda === id ? 'faol' : '', bos: () => this.setState({ modda: id }) })),
+      xarajatlar: xf.map((x) => ({ ...x, summa: '−' + fmt(x.summa), holat: x.kutilmoqda ? 'kutilmoqda' : x.avto ? 'avtomatik' : 'tasdiqlangan', hcls: x.kutilmoqda ? 'holat h-ogoh x-kutish' : 'x-tasdiq' })),
+      xJami: '−' + fmt(tasdiqlangan.reduce((a, x) => a + x.summa, 0)),
+      xJamiIzoh: xf.some((x) => x.kutilmoqda) ? 'tasdiq kutayotgan jamiga kirmaydi' : '',
+      h: {
+        s0: seg[0], s1: seg[1], s2: seg[2], s3: seg[3], s4: seg[4], s5: seg[5],
+        aria: TAQ.map((t, i) => t[0] + ' ' + foizlar[i] + '%').join(', '),
+        legenda: TAQ.map(([nom, v, rang], i) => ({ nom, rang, summa: fmt(v), foiz: foizlar[i] }))
+      },
+      sotuvchilar,
+      fb: { nom: fs.nom, ijara: fmt(fij), bonus: fmt(fij * 0.05) },
+      bk: { ijara: fmt(bJami), bonus: fmt(bJami * 0.05) },
+      gk: { tushum: mln(sumT), foyda: mln(sumF), ortacha: mln(sumF / 12), ulush: Math.round((sumF / sumT) * 100) + '%', mavsum: Math.round((mavsum / sumF) * 100) + '%' },
+      g: {
+        tChiziq: tc, fChiziq: fc, tMaydon: yop(tc), fMaydon: yop(fc), tNuqta: nuq(tp), fNuqta: nuq(fp),
+        tik: tp.map(([x]) => 'M' + x.toFixed(1) + ',20 V240').join(' '),
+        yorliqlar: tp.map(([x], i) => ({ t: OYLAR[i], chap: ((x / W) * 100).toFixed(2) })),
+        // jadval ustunlari grafik nuqtalari ostida turadi
+        kol: (((X0 - q / 2) / W) * 100).toFixed(3) + '% repeat(12, ' + ((q / W) * 100).toFixed(3) + '%)',
+        ustun: TU.map((t, i) => ({ oy: OYLAR[i], t: t.toFixed(1).replace('.', ','), f: FO[i].toFixed(1).replace('.', ','), cls: i === ni ? 'tanlandi' : '' })),
+        ilgichlar: tp.map(([x], i) => ({ chap: (((x - q / 2) / W) * 100).toFixed(2), en: ((q / W) * 100).toFixed(2), aria: TOLIQ[i] + ': tushum ' + mln(TU[i]) + ', foyda ' + mln(FO[i]), tanla: () => this.setState({ nuqta: i }) }))
+      },
+      gt: {
+        x: tp[ni][0].toFixed(1), ty: tp[ni][1].toFixed(1), fy: fp[ni][1].toFixed(1),
+        chap: xp.toFixed(2), tepa: ((tp[ni][1] / H) * 100).toFixed(2),
+        // baland nuqtada izoh pastga tushadi — sarlavha va belgilarni yopmasin
+        tr: 'translate(' + (xp > 75 ? 'calc(-100% + 18px)' : xp < 20 ? '-18px' : '-50%') + ', ' + (tp[ni][1] / H < 0.4 ? '18px' : 'calc(-100% - 16px)') + ')',
+        oy: TOLIQ[ni], tushum: mln(TU[ni]), foyda: mln(FO[ni]), ulush: Math.round((FO[ni] / TU[ni]) * 100) + '%'
+      },
+      reyting: rt.map(([f, i], k) => ({ o: k + 1, medal: MEDAL[k], oy: TOLIQ[i], foyda: mln(f), en: Math.round((f / rt[0][0]) * 100) }))
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<title>Libosa — Bandlik kalendari</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,500;1,600&amp;family=Forum&amp;family=Manrope:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#080B12}
+a{color:#E4C196}a:hover{color:#F3DDBE}
+*{box-sizing:border-box}
+button{font:inherit;cursor:pointer}
+sc-for,sc-if{display:contents}
+.ilova{display:flex;flex-wrap:wrap;min-height:100vh;background:#080B12;color:#F6F1E8;font:400 14px/1.45 Manrope,system-ui,sans-serif}
+svg.i{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.yon{flex:1 1 232px;max-width:248px;display:flex;flex-direction:column;gap:4px;padding:18px 14px;background:#0B0F17;border-right:1px solid rgba(228,193,150,.12)}
+.brend{display:block;padding:16px 10px 22px;margin-bottom:14px;border-bottom:1px solid rgba(228,193,150,.16);text-align:center;text-decoration:none}
+.brend b{font:400 30px/1 Forum,serif;letter-spacing:.3em;margin-right:-.3em;color:#E4C196}
+.nav{display:flex;align-items:center;gap:12px;min-height:44px;padding:0 12px;border-radius:10px;color:#B9C0CC;font-weight:600;text-decoration:none}
+.nav:hover{color:#F6F1E8;background:rgba(255,255,255,.04)}
+.nav.faol{color:#F6F1E8;background:linear-gradient(90deg,rgba(228,193,150,.26),rgba(228,193,150,.05));box-shadow:inset 3px 0 0 #E4C196}
+.nav.faol svg{color:#E4C196}
+.nav .son{margin-left:auto;min-width:22px;padding:0 6px;border-radius:11px;background:#B8473F;color:#fff;font-size:13px;line-height:20px;text-align:center}
+.mazmun{flex:999 1 560px;min-width:0;position:relative;padding:20px 32px 48px}
+.mazmun::before{content:'';position:absolute;left:0;right:0;top:0;height:330px;background:linear-gradient(180deg,rgba(8,11,18,.3),rgba(8,11,18,.78) 60%,#080B12),url(/_blob/c9a1861df1eef0d758b27417a77833a6) 50% 38%/cover;pointer-events:none}
+.mazmun>*{position:relative}
+.ustki{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.qidiruv{flex:1 1 260px;max-width:480px;display:flex;align-items:center;gap:10px;min-height:44px;padding:0 16px;border-radius:999px;background:rgba(8,11,18,.74);border:1px solid rgba(228,193,150,.24);color:#E4C196}
+.qidiruv input{flex:1;min-width:0;background:none;border:0;outline:none;color:#F6F1E8;font:inherit}
+.qidiruv input::placeholder{color:#98A1B0}
+.ong{margin-left:auto;display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.tabletka{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 16px;border-radius:999px;background:rgba(8,11,18,.74);border:1px solid rgba(228,193,150,.24);color:#F6F1E8;font-weight:600;white-space:nowrap}
+.tabletka svg{width:18px;height:18px;color:#E4C196}
+.ikon-t{position:relative;width:44px;height:44px;display:grid;place-items:center;padding:0;border-radius:50%;background:rgba(8,11,18,.74);border:1px solid rgba(228,193,150,.24);color:#F6F1E8}
+.ikon-t .nuqta{position:absolute;top:-4px;right:-4px;min-width:20px;height:20px;padding:0 5px;border-radius:10px;background:#B8473F;color:#fff;font-size:13px;line-height:20px;font-weight:700}
+.avatar{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;flex:none;background:rgba(228,193,150,.2);color:#E4C196;font-weight:700}
+.xodim-t{display:inline-flex;align-items:center;gap:10px;min-height:44px;padding:2px 16px 2px 2px;border-radius:999px;background:rgba(8,11,18,.74);border:1px solid rgba(228,193,150,.24);color:#F6F1E8;text-align:left}
+.xodim-t small{display:block;color:#98A1B0;font-size:13px;line-height:1.1}
+.sarlavha{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px;margin:32px 0 24px}
+.sarlavha h1{margin:0;font:400 46px/1.05 Forum,serif}
+.sarlavha p{margin:8px 0 0;color:#C7CED8;font-size:15px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:0 24px;border-radius:999px;border:0;background:linear-gradient(110deg,#CC9866,#E4C196);color:#141B26;font-weight:700;font-size:15px;text-decoration:none;box-shadow:0 10px 28px -12px rgba(228,193,150,.8)}
+.btn:hover{color:#141B26;filter:brightness(1.06)}
+.btn-2{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 18px;border-radius:999px;border:1px solid rgba(228,193,150,.5);background:transparent;color:#F6F1E8;font-weight:600;text-decoration:none;white-space:nowrap}
+.btn-2:hover{color:#F6F1E8;background:rgba(228,193,150,.1)}
+.btn-2.kichik{min-height:36px;padding:0 14px;font-size:13.5px}
+.panel{background:rgba(16,21,31,.86);border:1px solid rgba(228,193,150,.14);border-radius:18px;padding:24px;backdrop-filter:blur(12px)}
+.panel-bosh{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin-bottom:16px}
+.panel-bosh h2{display:flex;align-items:center;gap:10px;margin:0;font:400 22px/1.2 Forum,serif}
+.panel-bosh h2 svg{color:#E4C196}
+.kpilar{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:16px}
+.kpi{display:flex;align-items:center;gap:14px;min-width:0;padding:16px 18px;border-radius:16px;border:1px solid rgba(228,193,150,.2);background:linear-gradient(135deg,rgba(228,193,150,.15),rgba(16,21,31,.88) 62%);color:#F6F1E8;text-align:left}
+.kpi .belgi{width:50px;height:50px;border-radius:50%;display:grid;place-items:center;flex:none;background:rgba(228,193,150,.16);color:#E4C196}
+.kpi small{display:block;color:#C7CED8;font-size:13.5px}
+.kpi b{display:block;font:400 28px/1.15 Forum,serif;font-variant-numeric:tabular-nums}
+.kpi em{display:block;font-style:normal;color:#98A1B0;font-size:13px}
+.kpi.kok{border-color:rgba(141,180,232,.26);background:linear-gradient(135deg,rgba(141,180,232,.16),rgba(16,21,31,.88) 62%)}.kpi.kok .belgi{background:rgba(141,180,232,.16);color:#8DB4E8}
+.kpi.yashil{border-color:rgba(126,214,160,.26);background:linear-gradient(135deg,rgba(126,214,160,.14),rgba(16,21,31,.88) 62%)}.kpi.yashil .belgi{background:rgba(126,214,160,.16);color:#7ED6A0}
+.kpi.ogoh{border-color:rgba(242,196,109,.3);background:linear-gradient(135deg,rgba(242,196,109,.15),rgba(16,21,31,.88) 62%)}.kpi.ogoh .belgi{background:rgba(242,196,109,.16);color:#F2C46D}
+.holat{display:inline-flex;align-items:center;gap:6px;min-height:26px;padding:0 12px;border-radius:999px;font-size:13px;font-weight:700;white-space:nowrap}
+.h-bron{background:rgba(228,193,150,.18);color:#E4C196}
+.h-vaqt{border:1px dashed #F2C46D;color:#F2C46D}
+.h-ber{background:rgba(141,180,232,.18);color:#8DB4E8}
+.h-kech{background:rgba(255,155,146,.16);color:#FF9B92}
+.eskiz{width:40px;height:52px;border-radius:8px;object-fit:cover;object-position:50% 12%;flex:none;display:block}
+.qator{display:flex;align-items:center;gap:12px;min-width:0}
+.ikki{display:flex;flex-direction:column;min-width:0}
+.ikki small,.mute{color:#98A1B0;font-size:13px}
+.segment{display:inline-flex;flex-wrap:wrap;gap:4px;padding:4px;border-radius:999px;background:rgba(8,11,18,.74);border:1px solid rgba(228,193,150,.2)}
+.segment a,.segment button{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:0 18px;border:0;border-radius:999px;background:none;color:#C7CED8;font-weight:600;text-decoration:none;white-space:nowrap}
+.segment a:hover,.segment button:hover{color:#F6F1E8}
+.segment .faol{background:rgba(228,193,150,.2);color:#F3DDBE;box-shadow:inset 0 0 0 1px rgba(228,193,150,.55)}
+.segment svg{width:18px;height:18px}
+.g-asosiy{display:grid;grid-template-columns:minmax(0,71fr) minmax(0,29fr);gap:16px;align-items:start}
+.asbob-1{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;margin-bottom:12px}
+.asbob-1 .davr-nav{justify-self:end;display:flex;gap:8px}
+.k-libos .ikki b,.k-libos .ikki small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media (max-width:1180px){.g-asosiy{grid-template-columns:minmax(0,1fr)}.kpilar{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:760px){.yon{max-width:none;flex-direction:row;align-items:center;overflow-x:auto;padding:8px 10px;border-right:0;border-bottom:1px solid rgba(228,193,150,.12)}.brend,.smena{display:none}.nav{flex:none}.mazmun{padding:16px}.sarlavha h1{font-size:34px}.kpilar{grid-template-columns:minmax(0,1fr)}}
+/* Bandlik */
+.asbob{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px}
+.davr{display:inline-flex;align-items:center;gap:6px}
+.davr b{min-width:190px;text-align:center;font:400 20px/1 Forum,serif}
+.maydon{flex:1 1 200px;display:flex;align-items:center;gap:10px;min-height:44px;padding:0 14px;border-radius:12px;background:rgba(8,11,18,.6);border:1px solid rgba(228,193,150,.22);color:#98A1B0}
+.maydon input{flex:1;min-width:0;background:none;border:0;outline:none;color:#F6F1E8;font:inherit}
+.tanlov{min-height:44px;padding:0 14px;border-radius:12px;background:rgba(8,11,18,.6);border:1px solid rgba(228,193,150,.22);color:#F6F1E8;font:inherit}
+.legenda{display:flex;flex-wrap:wrap;gap:8px 20px;margin-bottom:12px;color:#C7CED8}
+.legenda span{display:inline-flex;align-items:center;gap:8px}
+.legenda i{width:26px;height:12px;border-radius:6px}
+.jadval-k{min-width:700px}
+.k-qator{display:grid;grid-template-columns:184px repeat(7,minmax(0,1fr));align-items:stretch;min-height:68px;border-bottom:1px solid rgba(255,255,255,.06)}
+.k-bosh{min-height:54px;color:#C7CED8;font-weight:600;border-bottom-color:rgba(228,193,150,.16)}
+.k-kun{display:flex;flex-direction:column;align-items:center;justify-content:center;border-left:1px solid rgba(255,255,255,.05)}
+.k-kun small{color:#98A1B0;font-size:13px;font-weight:500}
+.k-kun.bugun{background:rgba(228,193,150,.07);color:#E4C196}
+.k-libos{display:flex;align-items:center;gap:10px;padding:8px 10px 8px 0;min-width:0}
+.k-katak{border-left:1px solid rgba(255,255,255,.05)}
+.k-katak.bugun{background:rgba(228,193,150,.07)}
+.bar{align-self:center;z-index:1;display:flex;flex-direction:column;justify-content:center;min-height:46px;margin:0 3px;padding:4px 7px;border-radius:12px;border:1px solid transparent;color:#F6F1E8;text-align:left;font-size:13px;line-height:1.25;overflow:hidden;white-space:nowrap}
+.bar>b{font-size:13.5px;overflow:hidden;text-overflow:ellipsis}
+.bar>span{color:#C7CED8;overflow:hidden;text-overflow:ellipsis}
+.bar.tanlandi{box-shadow:0 0 0 2px #F6F1E8}
+.b-bron{background:linear-gradient(110deg,rgba(204,152,102,.55),rgba(228,193,150,.32));border-color:rgba(228,193,150,.7)}
+.b-ber{background:rgba(141,180,232,.3);border-color:rgba(141,180,232,.7)}
+.b-kech{background:rgba(214,105,112,.35);border-color:rgba(255,155,146,.75)}
+.b-vaqt{background:rgba(242,196,109,.1);border:1px dashed #F2C46D}
+.b-toza{background:rgba(255,255,255,.07);border-color:rgba(255,255,255,.16);cursor:default;align-items:center}
+.b-toza>b{font-size:13px;font-weight:600;color:#C7CED8}
+.satr{display:flex;justify-content:space-between;gap:12px;padding:4px 0;font-variant-numeric:tabular-nums}
+.satr>span:first-child{color:#C7CED8}
+.kun-son{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:16px}
+.kun-son div{padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.04)}
+.kun-son b{display:block;font:400 24px/1.1 Forum,serif}
+</style>
+</helmet>
+<div class="ilova">
+  <nav class="yon" aria-label="Bo'limlar">
+    <a class="brend" href="Main.dc.html"><b>LIBOSA</b></a>
+    <a class="nav" href="Main.dc.html"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>Dashboard</a>
+    <a class="nav" href="Kassa.dc.html"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></svg>Kassa</a>
+    <a class="nav faol" href="Zakazlar.dc.html" aria-current="page"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8h14l-1 12H6z"/><path d="M9 8a3 3 0 0 1 6 0"/></svg>Zakazlar<span class="son">3</span></a>
+    <a class="nav" href="Liboslar.dc.html"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6l-1 5 4 13H6l4-13z"/></svg>Liboslar</a>
+    <a class="nav" href="MijozBolim.dc.html"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6 6 0 0 1 3.5 6"/></svg>Mijozlar</a>
+    <a class="nav" href="Foyda.dc.html"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21h18M6 17v-6M11 17V5M16 17v-9M20 17v-4"/></svg>Hisobotlar</a>
+    <a class="nav" href="SozlamaBolim.dc.html"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></svg>Sozlama</a>  </nav>
+
+  <main class="mazmun">
+    <div class="ustki">
+      <label class="qidiruv"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input type="search" placeholder="Zakaz, mijoz yoki telefon" aria-label="Qidirish"></label>
+      <div class="ong">
+        <button type="button" class="ikon-t" aria-label="Bildirishnomalar: 3"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><span class="nuqta">3</span></button>
+        <span class="tabletka"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21h18M5 21V8l7-5 7 5v13M9 21v-6h6v6"/></svg>Asosiy salon</span>
+        <span class="tabletka"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>8 noyabr, 2026</span>
+        <button type="button" class="xodim-t" aria-label="Xodim menyusi"><span class="avatar">NY</span><span>Nodira Yusupova<small>Rahbar</small></span></button>
+      </div>
+    </div>
+
+    <div class="sarlavha">
+      <div>
+        <h1>Bandlik kalendari</h1>
+        <p>Qaysi libos qachon band — bir qarashda</p>
+        <div class="segment" style="margin-top: 16px">
+          <a href="Zakazlar.dc.html"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></svg>Ro'yxat</a>
+          <a class="faol" href="Bandlik.dc.html" aria-current="page"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Bandlik kalendari</a>
+        </div>
+      </div>
+      <a class="btn" href="YangiZakaz.dc.html"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Yangi zakaz</a>
+    </div>
+
+    <div class="kpilar">
+      <div class="kpi"><span class="belgi"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6l-1 5 4 13H6l4-13z"/></svg></span><span><small>Bu hafta band</small><b>68%</b><em>25 libosdan</em></span></div>
+      <div class="kpi yashil"><span class="belgi"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg></span><span><small>Bo'sh libos-kunlar</small><b>56</b><em>shu hafta berish mumkin</em></span></div>
+      <div class="kpi ogoh"><span class="belgi"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></span><span><small>Vaqtinchalik bron</small><b>2</b><em>eng yaqini 5 soatda tugaydi</em></span></div>
+      <div class="kpi kok"><span class="belgi"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3c3 4 6 7 6 11a6 6 0 0 1-12 0c0-4 3-7 6-11z"/></svg></span><span><small>Tozalashda</small><b>2</b><em>ertaga tayyor</em></span></div>
+    </div>
+
+    <div class="g-asosiy">
+      <section class="panel" aria-label="Haftalik bandlik">
+        <div class="asbob-1">
+          <div class="segment" role="group" aria-label="Ko'rinish" style="justify-self: start"><button type="button">Kun</button><button type="button" class="faol" aria-pressed="true">Hafta</button><button type="button">Oy</button></div>
+          <b style="font: 400 22px/1 Forum, serif">8 – 14 noyabr</b>
+          <div class="davr-nav"><button type="button" class="btn-2 kichik" aria-label="Oldingi hafta">‹</button><button type="button" class="btn-2 kichik">Bugun</button><button type="button" class="btn-2 kichik" aria-label="Keyingi hafta">›</button></div>
+        </div>
+        <div class="asbob">
+          <label class="maydon"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input type="search" placeholder="Libos nomi yoki artikul" aria-label="Libos qidirish"></label>
+          <select class="tanlov" aria-label="Kategoriya"><option>Kategoriya: hammasi</option><option>To'y liboslari</option><option>Kechki</option><option>Milliy</option></select>
+        </div>
+        <div class="legenda">
+          <span><i class="b-bron" style="border: 1px solid rgba(228,193,150,.7)"></i>Bron</span>
+          <span><i class="b-ber" style="border: 1px solid rgba(141,180,232,.7)"></i>Mijozda</span>
+          <span><i class="b-kech" style="border: 1px solid rgba(255,155,146,.75)"></i>Kechikdi</span>
+          <span><i class="b-vaqt"></i>Vaqtinchalik</span>
+          <span><i class="b-toza" style="border: 1px solid rgba(255,255,255,.16)"></i>Tozalash</span>
+        </div>
+        <div style="overflow-x: auto">
+          <div class="jadval-k" role="grid" aria-label="Liboslar va kunlar">
+            <div class="k-qator k-bosh" role="row">
+              <div class="k-libos" role="columnheader" style="grid-row: 1; grid-column: 1">Libos</div>
+              <sc-for list="{{kunlar}}" as="d" hint-placeholder-count="7">
+                <div class="k-kun {{d.cls}}" role="columnheader" style="grid-row: 1; grid-column: {{d.gc}}"><span>{{d.k}} {{d.h}}</span><small>{{d.izoh}}</small></div>
+              </sc-for>
+            </div>
+            <sc-for list="{{qatorlar}}" as="r" hint-placeholder-count="6">
+              <div class="k-qator" role="row">
+                <div class="k-libos" role="rowheader" style="grid-row: 1; grid-column: 1"><img class="eskiz" src="{{r.rasm}}" alt=""><div class="ikki"><b>{{r.nom}}</b><small>{{r.sku}} · {{r.olcham}}</small></div></div>
+                <sc-for list="{{r.kataklar}}" as="c" hint-placeholder-count="7">
+                  <div class="k-katak {{c.cls}}" role="gridcell" style="grid-row: 1; grid-column: {{c.gc}}"></div>
+                </sc-for>
+                <sc-for list="{{r.barlar}}" as="b" hint-placeholder-count="1">
+                  <button type="button" class="bar {{b.cls}}" style="grid-row: 1; grid-column: {{b.gc}}" aria-label="{{b.aria}}" aria-pressed="{{b.tanlangan}}" onClick="{{b.bos}}"><b>{{b.t}}</b><span>{{b.s}}</span></button>
+                </sc-for>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+        <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 14px">
+          <span class="mute">25 libosdan 6 tasi ko'rsatildi</span>
+          <button type="button" class="btn-2 kichik">Hammasini ko'rsatish</button>
+        </div>
+      </section>
+
+      <aside class="panel" aria-label="Tanlangan kun">
+        <div class="panel-bosh"><h2><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>8 noyabr</h2><span class="mute">yakshanba, bugun</span></div>
+        <div class="kun-son">
+          <div><span class="mute">Beriladi</span><b>3</b></div>
+          <div><span class="mute">Qaytadi</span><b>2</b></div>
+          <div><span class="mute">Tozalashga</span><b>1</b></div>
+          <div><span class="mute">Bo'sh qoladi</span><b style="color: #7ED6A0">14</b></div>
+        </div>
+        <h3 style="margin: 0 0 10px; font: 400 20px/1.2 Forum, serif">Tanlangan bron</h3>
+        <div class="qator" style="margin-bottom: 10px">
+          <img class="eskiz" src="{{s.rasm}}" alt="" style="width: 56px; height: 72px; border-radius: 12px">
+          <div class="ikki"><b style="font-size: 16px">#{{s.id}} · {{s.mijoz}}</b><span class="mute">{{s.libos}}</span><span style="margin-top: 6px"><span class="holat {{s.holatCls}}">{{s.holat}}</span></span></div>
+        </div>
+        <div class="satr"><span>Ijara muddati</span><span>{{s.sana}}</span></div>
+        <div class="satr"><span>Ijara narxi</span><span>{{s.narx}} so'm</span></div>
+        <div class="satr"><span>To'langan</span><span>{{s.tolangan}} so'm</span></div>
+        <div class="satr"><span>Qoldiq</span><b style="color: #E4C196">{{s.qoldiq}} so'm</b></div>
+        <div class="satr"><span>Zalog</span><span>{{s.zalog}}</span></div>
+        <a class="btn-2" href="Zakazlar.dc.html" style="width: 100%; margin-top: 14px">Zakazni ochish</a>
+      </aside>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1040}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { tanlangan: 13 };
+  }
+  renderVals() {
+    const R = {
+      L1: '/_blob/78b3216f7738bdab0ea238adcec51f32', L2: '/_blob/7d80ca195130908ffa9854d230fd9af0',
+      L3: '/_blob/b28f71fbbeeeed9ca5c0052f387901a2', L4: '/_blob/ff22f88eaee9183133df1fc14998e6ee',
+      L5: '/_blob/cf292d70c86c681a76df49fe549f8887', L6: '/_blob/758947eb97690570420217f21f276a4b'
+    };
+    const KUNLAR = [['8', 'Ya', 'bugun'], ['9', 'Du', ''], ['10', 'Se', ''], ['11', 'Ch', ''], ['12', 'Pa', ''], ['13', 'Ju', ''], ['14', 'Sh', '']];
+    const BRON = {
+      13: { mijoz: 'Dilnoza Karimova', libos: 'Mira · M-0013', rasm: R.L3, holat: 'Bron · bugun beriladi', holatCls: 'h-bron', sana: '8 – 9 noyabr', narx: '2 000 000', tolangan: '400 000', qoldiq: '1 600 000', zalog: "500 000 so'm naqd" },
+      14: { mijoz: 'Madina Rahimova', libos: 'Bella · B-0021', rasm: R.L2, holat: 'Mijozda · bugun qaytadi', holatCls: 'h-ber', sana: '6 – 8 noyabr', narx: '3 000 000', tolangan: '3 000 000', qoldiq: '0', zalog: 'pasport nusxasi' },
+      15: { mijoz: 'Sabina Usmonova', libos: 'Zarina · Z-0007', rasm: R.L1, holat: 'Bron · bugun beriladi', holatCls: 'h-bron', sana: '8 – 10 noyabr', narx: '2 500 000', tolangan: '2 500 000', qoldiq: '0', zalog: "500 000 so'm naqd" },
+      9: { mijoz: 'Aziza Xolmatova', libos: 'Rubin · R-0056', rasm: R.L5, holat: 'Kechikdi · 1 kun', holatCls: 'h-kech', sana: '5 – 7 noyabr', narx: '2 200 000', tolangan: '1 700 000', qoldiq: '500 000', zalog: "500 000 so'm naqd" },
+      17: { mijoz: 'Gulnoza Saidova', libos: 'Luna · L-0042', rasm: R.L4, holat: 'Vaqtinchalik · 5 soat', holatCls: 'h-vaqt', sana: '8 – 9 noyabr', narx: '1 800 000', tolangan: '0', qoldiq: '1 800 000', zalog: 'hali olinmagan' },
+      21: { mijoz: 'Laylo Qodirova', libos: 'Rubin · R-0056', rasm: R.L5, holat: 'Vaqtinchalik · 22 soat', holatCls: 'h-vaqt', sana: '12 – 13 noyabr', narx: '2 200 000', tolangan: '0', qoldiq: '2 200 000', zalog: 'hali olinmagan' },
+      18: { mijoz: 'Munisa Asqarova', libos: "Oq ko'ylak · O-0031", rasm: R.L6, holat: 'Bron', holatCls: 'h-bron', sana: '12 – 14 noyabr', narx: '3 200 000', tolangan: '1 000 000', qoldiq: '2 200 000', zalog: "500 000 so'm naqd" }
+    };
+    const QATOR = [
+      { nom: 'Mira', sku: 'M-0013', olcham: '42', rasm: R.L3, barlar: [{ gc: '2 / 4', cls: 'b-bron', id: 13, t: '#13 Dilnoza', s: '8–9 noyabr' }, { gc: '4 / 5', cls: 'b-toza', t: 'Tozalash', s: '' }] },
+      { nom: 'Bella', sku: 'B-0021', olcham: '40', rasm: R.L2, barlar: [{ gc: '2 / 3', cls: 'b-ber', id: 14, t: '#14 Madina', s: 'qaytadi' }, { gc: '3 / 4', cls: 'b-toza', t: 'Tozalash', s: '' }] },
+      { nom: 'Zarina', sku: 'Z-0007', olcham: '44', rasm: R.L1, barlar: [{ gc: '2 / 5', cls: 'b-bron', id: 15, t: '#15 Sabina Usmonova', s: '8–10 noyabr' }, { gc: '5 / 6', cls: 'b-toza', t: 'Tozalash', s: '' }] },
+      { nom: 'Rubin', sku: 'R-0056', olcham: '46', rasm: R.L5, barlar: [{ gc: '2 / 3', cls: 'b-kech', id: 9, t: '#9 Aziza', s: 'kechikdi' }, { gc: '6 / 8', cls: 'b-vaqt', id: 21, t: '#21 Laylo', s: '12–13 noyabr' }] },
+      { nom: 'Luna', sku: 'L-0042', olcham: '38', rasm: R.L4, barlar: [{ gc: '2 / 4', cls: 'b-vaqt', id: 17, t: '#17 Gulnoza', s: '8–9 noyabr' }, { gc: '4 / 5', cls: 'b-toza', t: 'Tozalash', s: '' }] },
+      { nom: "Oq ko'ylak", sku: 'O-0031', olcham: '44', rasm: R.L6, barlar: [{ gc: '6 / 9', cls: 'b-bron', id: 18, t: '#18 Munisa Asqarova', s: '12–14 noyabr' }] }
+    ];
+    const s = this.state;
+    const kunlar = KUNLAR.map(([k, h, b], i) => ({ k, h, izoh: b ? 'bugun' : 'noyabr', cls: b ? 'bugun' : '', gc: String(i + 2) }));
+    const qatorlar = QATOR.map((r) => ({
+      ...r,
+      kataklar: KUNLAR.map((d, i) => ({ gc: String(i + 2), cls: i === 0 ? 'bugun' : '' })),
+      barlar: r.barlar.map((b) => {
+        const tan = b.id && b.id === s.tanlangan;
+        return {
+          ...b, cls: b.cls + (tan ? ' tanlandi' : ''), tanlangan: !!tan,
+          aria: b.id ? r.nom + ': ' + b.t + ', ' + b.s : r.nom + ': tozalash',
+          bos: b.id ? () => this.setState({ tanlangan: b.id }) : () => {}
+        };
+      })
+    }));
+    return { kunlar, qatorlar, s: { id: s.tanlangan, ...BRON[s.tanlangan] } };
+  }
+}
+</script>
+</body>
+</html>

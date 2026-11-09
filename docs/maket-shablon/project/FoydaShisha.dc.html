@@ -1,0 +1,440 @@
+<!doctype html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<title>Libosa — Oylik foyda (shisha)</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500;1,600&amp;family=Manrope:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0D1320}
+a{color:#F3BF70}a:hover{color:#F6DDB0}
+*{box-sizing:border-box}
+button{font:inherit;cursor:pointer}
+sc-for,sc-if{display:contents}
+.ilova{display:flex;flex-wrap:wrap;min-height:100vh;background:#0D1320;color:#F5F2EE;font:400 14px/1.45 Manrope,system-ui,sans-serif}
+svg.i{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.yon{flex:1 1 232px;max-width:248px;display:flex;flex-direction:column;gap:4px;padding:18px 14px;background:#0B0F17;border-right:1px solid rgba(243,191,112,.12)}
+.brend{display:block;padding:16px 10px 22px;margin-bottom:14px;border-bottom:1px solid rgba(243,191,112,.16);text-align:center;text-decoration:none}
+.brend b{font:600 32px/1 'Cormorant Garamond',serif;letter-spacing:.3em;margin-right:-.3em;color:#F3BF70;font-variant-numeric:lining-nums}
+.nav{display:flex;align-items:center;gap:12px;min-height:44px;padding:0 12px;border-radius:10px;color:#C9CCD4;font-weight:600;text-decoration:none}
+.nav:hover{color:#F5F2EE;background:rgba(255,255,255,.04)}
+.nav.faol{color:#F5F2EE;background:linear-gradient(90deg,rgba(243,191,112,.26),rgba(243,191,112,.05));box-shadow:inset 3px 0 0 #F3BF70}
+.nav.faol svg{color:#F3BF70}
+.nav .son{margin-left:auto;min-width:22px;padding:0 6px;border-radius:11px;background:#D9434F;color:#fff;font-size:13px;line-height:20px;text-align:center}
+.mazmun{flex:999 1 560px;min-width:0;position:relative;padding:20px 32px 48px}
+.mazmun::before{content:'';position:absolute;left:0;right:0;top:0;height:330px;background:linear-gradient(180deg,rgba(8,11,18,.3),rgba(8,11,18,.78) 60%,#0D1320),url(/_blob/c9a1861df1eef0d758b27417a77833a6) 50% 38%/cover;pointer-events:none}
+.mazmun>*{position:relative}
+.ustki{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.qidiruv{flex:1 1 260px;max-width:480px;display:flex;align-items:center;gap:10px;min-height:44px;padding:0 16px;border-radius:999px;background:rgba(10,14,22,.38);border:1px solid rgba(243,191,112,.24);color:#F3BF70;-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+.qidiruv input{flex:1;min-width:0;background:none;border:0;outline:none;color:#F5F2EE;font:inherit}
+.qidiruv input::placeholder{color:#B7BAC5}
+.ong{margin-left:auto;display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.tabletka{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 16px;border-radius:999px;background:rgba(10,14,22,.38);border:1px solid rgba(243,191,112,.24);color:#F5F2EE;font-weight:600;white-space:nowrap;-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+.tabletka svg{width:18px;height:18px;color:#F3BF70}
+.ikon-t{position:relative;width:44px;height:44px;display:grid;place-items:center;padding:0;border-radius:50%;background:rgba(10,14,22,.38);border:1px solid rgba(243,191,112,.24);color:#F5F2EE;-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+.ikon-t .nuqta{position:absolute;top:-4px;right:-4px;min-width:20px;height:20px;padding:0 5px;border-radius:10px;background:#D9434F;color:#fff;font-size:13px;line-height:20px;font-weight:700}
+.avatar{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;flex:none;background:rgba(243,191,112,.2);color:#F3BF70;font-weight:700}
+.xodim-t{display:inline-flex;align-items:center;gap:10px;min-height:44px;padding:2px 16px 2px 2px;border-radius:999px;background:rgba(10,14,22,.38);border:1px solid rgba(243,191,112,.24);color:#F5F2EE;text-align:left;-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+.xodim-t small{display:block;color:#B7BAC5;font-size:13px;line-height:1.1}
+.sarlavha{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px;margin:32px 0 24px}
+.sarlavha h1{margin:0;font:600 50px/1.05 'Cormorant Garamond',serif;font-variant-numeric:lining-nums}
+.sarlavha p{margin:8px 0 0;color:#D4D7DE;font-size:15px}
+.btn-2{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 18px;border-radius:999px;border:1px solid rgba(243,191,112,.5);background:transparent;color:#F5F2EE;font-weight:600;text-decoration:none;white-space:nowrap}
+.btn-2:hover{color:#F5F2EE;background:rgba(243,191,112,.1)}
+.panel{background:rgba(14,19,30,.42);border:1px solid rgba(243,191,112,.14);border-radius:18px;padding:24px;backdrop-filter:blur(12px)}
+.panel-bosh{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin-bottom:16px}
+.panel-bosh h2{display:flex;align-items:center;gap:10px;margin:0;font:600 24px/1.2 'Cormorant Garamond',serif;font-variant-numeric:lining-nums}
+.panel-bosh h2 svg{color:#F3BF70}
+.kpi{position:relative;display:flex;align-items:center;gap:14px;min-width:0;padding:18px 20px;border-radius:16px;border:1px solid rgba(243,191,112,.2);background:linear-gradient(135deg,rgba(243,191,112,.15),rgba(14,19,30,.42) 62%);color:#F5F2EE;text-align:left;-webkit-backdrop-filter:var(--shisha);backdrop-filter:var(--shisha)}
+.kpi .belgi{width:54px;height:54px;border-radius:50%;display:grid;place-items:center;flex:none;background:rgba(243,191,112,.16);color:#F3BF70}
+.kpi small{display:block;color:#D4D7DE;font-size:14px}
+.kpi b{display:block;font:800 29px/1.15 Manrope,sans-serif;font-variant-numeric:tabular-nums}
+.kpi em{display:block;font-style:normal;color:#B7BAC5;font-size:13px}
+.kpi.qizil{border-color:rgba(240,128,137,.28);background:linear-gradient(135deg,rgba(240,128,137,.2),rgba(14,19,30,.42) 62%);-webkit-backdrop-filter:var(--shisha);backdrop-filter:var(--shisha)}.kpi.qizil .belgi{background:rgba(240,128,137,.16);color:#F08089}
+.kpi.yashil{border-color:rgba(98,212,163,.3);background:linear-gradient(135deg,rgba(98,212,163,.16),rgba(14,19,30,.42) 62%);-webkit-backdrop-filter:var(--shisha);backdrop-filter:var(--shisha)}.kpi.yashil .belgi{background:rgba(98,212,163,.16);color:#62D4A3}
+.trend-pill{position:absolute;top:14px;right:14px;display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:999px;font-size:13px;font-weight:700}
+.trend-pill.osish{background:rgba(98,212,163,.14);color:#62D4A3;border:1px solid rgba(98,212,163,.35)}
+.trend-pill.tushish{background:rgba(240,128,137,.14);color:#F08089;border:1px solid rgba(240,128,137,.35)}
+.mute{color:#B7BAC5;font-size:13px}
+.chiplar{display:flex;flex-wrap:wrap;gap:6px}
+.chip{display:inline-flex;align-items:center;gap:6px;min-height:38px;padding:0 16px;border-radius:999px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);color:#D4D7DE;font-weight:600;white-space:nowrap}
+.chip:hover{color:#F5F2EE}
+.chip.faol{background:rgba(243,191,112,.18);border-color:#F3BF70;color:#F5F2EE}
+.segment{display:inline-flex;flex-wrap:wrap;gap:4px;padding:4px;border-radius:999px;background:rgba(10,14,22,.38);border:1px solid rgba(243,191,112,.2);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+.segment a{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:0 18px;border-radius:999px;color:#D4D7DE;font-weight:600;text-decoration:none;white-space:nowrap}
+.segment a:hover{color:#F5F2EE}
+.segment a.faol{background:rgba(243,191,112,.2);color:#F6DDB0;box-shadow:inset 0 0 0 1px rgba(243,191,112,.55)}
+.progress{height:8px;border-radius:8px;background:rgba(255,255,255,.08);overflow:hidden}
+.progress i{display:block;height:100%;border-radius:8px;background:linear-gradient(90deg,#E8AD5C,#F3BF70)}
+.progress.qizil i{background:linear-gradient(90deg,#D9434F,#E4867E)}
+.g-3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.g-2{display:grid;grid-template-columns:minmax(0,.85fr) minmax(0,1.15fr);gap:16px;align-items:stretch}
+.g-pastki{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr);gap:16px;align-items:stretch}
+@media (max-width:1100px){.g-3,.g-2,.g-pastki{grid-template-columns:minmax(0,1fr)}}
+@media (max-width:760px){.yon{max-width:none;flex-direction:row;align-items:center;overflow-x:auto;padding:8px 10px;border-right:0;border-bottom:1px solid rgba(243,191,112,.12)}.brend{display:none}.nav{flex:none}.mazmun{padding:16px}.sarlavha h1{font-size:34px}}
+/* Foyda */
+.guruh{margin-bottom:16px}
+.guruh h3{display:flex;justify-content:space-between;margin:0 0 8px;padding:10px 14px;border-radius:12px;font-size:15px;font-variant-numeric:tabular-nums}
+.guruh h3.kirdi{background:rgba(243,191,112,.1);color:#F3BF70}
+.guruh h3.chiqdi{background:rgba(240,128,137,.1);color:#F08089}
+.band{padding:6px 14px}
+.band-yuqori{display:flex;justify-content:space-between;gap:12px;margin-bottom:6px;font-variant-numeric:tabular-nums}
+.band-yuqori>span{color:#D4D7DE}
+.band-pastki{display:grid;grid-template-columns:minmax(0,1fr) 44px;gap:10px;align-items:center}
+.band-pastki em{font-style:normal;text-align:right;color:#B7BAC5;font-size:13px;font-variant-numeric:tabular-nums}
+.natija{display:flex;justify-content:space-between;align-items:baseline;padding:14px;border-radius:14px;border:1px solid rgba(98,212,163,.4);background:rgba(98,212,163,.1)}
+.natija>span{font:italic 500 22px/1 'Cormorant Garamond',serif;color:#62D4A3}
+.natija b{font-family:Manrope,sans-serif;font-style:normal;font-weight:800;font-size:27px;line-height:1;color:#62D4A3;font-variant-numeric:tabular-nums}
+.ustun-panel{display:flex;flex-direction:column}
+.ustun-panel>figure{flex:1;display:flex;flex-direction:column}
+.sh-quti{position:relative;flex:1;min-height:320px;margin:32px 0 0}
+.xulosa-r{margin-top:24px;display:flex;flex-direction:column;gap:8px}
+.xulosa-r div{display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:12px;background:rgba(255,255,255,.035);color:#D4D7DE}
+.xulosa-r svg{width:18px;height:18px;flex:none;margin-top:1px}
+.xulosa-r b{color:#F5F2EE}
+.sh-chiziq{position:absolute;left:72px;right:0;height:0;border-top:1px solid rgba(255,255,255,.07)}
+.sh-chiziq.asos{border-top-color:rgba(243,191,112,.35)}
+.sh-chiziq span{position:absolute;right:calc(100% + 10px);top:-9px;color:#B7BAC5;font-size:13px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.sh-ustunlar{position:absolute;left:72px;right:0;top:0;bottom:0;display:flex;gap:18px;padding:0 8px}
+.ustun-s{position:relative;flex:1;min-width:0}
+.ustun-s i{position:absolute;left:0;right:0;border-radius:8px 8px 3px 3px;box-shadow:inset 0 1px 0 rgba(255,255,255,.25)}
+.ustun-s .ulagich{position:absolute;left:100%;width:18px;height:0;border-top:1.5px dashed rgba(243,191,112,.55)}
+.ustun-s .yorliq{position:absolute;left:-12px;right:-12px;text-align:center;font-size:13px;font-weight:700;font-variant-numeric:tabular-nums;white-space:nowrap}
+.nomlar{display:flex;gap:18px;margin-left:72px;padding:10px 8px 0}
+.nomlar>span{flex:1;min-width:0;text-align:center;color:#D4D7DE;font-size:13px;line-height:1.3}
+.nomlar small{display:block;color:#B7BAC5;font-size:13px}
+.belgilar{display:flex;gap:16px;color:#D4D7DE;font-size:13px}
+.belgilar span{display:inline-flex;align-items:center;gap:8px}
+.grafik{position:relative;width:100%;aspect-ratio:560/250}
+.grafik svg{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.izoh-oyna{position:absolute;z-index:2;padding:8px 12px;border-radius:12px;border:1px solid rgba(243,191,112,.55);background:rgba(11,15,23,.94);box-shadow:0 12px 30px -10px rgba(0,0,0,.8);white-space:nowrap;pointer-events:none;transform:translate(-50%,calc(-100% - 18px))}
+.izoh-oyna>b{display:block;font-size:14px}
+.izoh-oyna>span{display:block;font-size:13px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.oylar{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+.oylar th{padding:10px 12px;text-align:right;color:#B7BAC5;font-size:13px;font-weight:600;border-bottom:1px solid rgba(243,191,112,.14)}
+.oylar th:first-child,.oylar td:first-child{text-align:left}
+.oylar td{padding:8px 12px;text-align:right;border-bottom:1px solid rgba(255,255,255,.05);white-space:nowrap}
+.oylar tr.tanlandi td{background:rgba(243,191,112,.08)}
+.oylar tr.tanlandi td:first-child{box-shadow:inset 3px 0 0 #F3BF70}
+.oy-tugma{min-height:40px;padding:0 12px;margin-left:-12px;border:0;border-radius:10px;background:none;color:#F5F2EE;font-weight:700;text-align:left}
+.oy-tugma:hover{background:rgba(255,255,255,.05)}
+.ulush{display:inline-block;min-width:56px;padding:2px 10px;border-radius:999px;border:1px solid rgba(98,212,163,.45);background:rgba(98,212,163,.1);color:#62D4A3;font-weight:700;text-align:center}
+
+/* ===== SHISHA qatlami — MainShisha / KassaShisha bilan bir xil material (gen-shisha-hamma.py) ===== */
+:root{--glass:rgba(14,19,30,.42);--line:rgba(236,190,120,.42);--yalt:linear-gradient(150deg,rgba(255,255,255,.15),rgba(255,255,255,.05) 34%,rgba(255,255,255,.015) 68%);--shisha:blur(10px) saturate(150%) brightness(.8)}
+h1,h2,h3{font-variant-numeric:lining-nums}
+.mazmun{isolation:isolate}
+.mazmun::before{content:'';position:absolute;z-index:-3;inset:0;height:auto;pointer-events:none;
+  background:linear-gradient(180deg,rgba(13,19,32,.30) 0,rgba(13,19,32,.42) 220px,rgba(13,19,32,.58) 420px,rgba(13,19,32,.70) 620px),linear-gradient(rgba(70,44,18,.22),rgba(70,44,18,.22)),url(/_blob/c9a1861df1eef0d758b27417a77833a6) center -40px/100% auto no-repeat;
+  -webkit-mask-image:linear-gradient(#000 540px,transparent 660px);mask-image:linear-gradient(#000 540px,transparent 660px)}
+.mazmun::after{content:'';position:absolute;z-index:-3;inset:560px 0 0;pointer-events:none;transform:scaleY(-1);
+  background:linear-gradient(rgba(13,19,32,.62),rgba(13,19,32,.62)),url(/_blob/c9a1861df1eef0d758b27417a77833a6) center bottom/100% auto no-repeat;
+  -webkit-mask-image:linear-gradient(to top,transparent 0,#000 110px,#000 calc(100% - 220px),rgba(0,0,0,.25) 100%),linear-gradient(to top,#000 520px,transparent 690px);-webkit-mask-composite:source-in;
+  mask-image:linear-gradient(to top,transparent 0,#000 110px,#000 calc(100% - 220px),rgba(0,0,0,.25) 100%),linear-gradient(to top,#000 520px,transparent 690px);mask-composite:intersect}
+.mazmun{background:radial-gradient(420px 320px at 12% 62%,rgba(243,191,112,.17),transparent 70%) 0 0/100% 760px repeat-y,radial-gradient(360px 300px at 94% 28%,rgba(121,169,242,.11),transparent 70%) 0 0/100% 760px repeat-y,radial-gradient(320px 260px at 58% 88%,rgba(217,123,170,.09),transparent 70%) 0 0/100% 760px repeat-y,#0D1320}
+.panel{border-color:var(--line);border-top-color:rgba(255,228,186,.55);border-radius:16px;background:var(--yalt),var(--glass);-webkit-backdrop-filter:var(--shisha);backdrop-filter:var(--shisha);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.22),inset 1px 0 0 rgba(255,255,255,.07),inset 0 -1px 0 rgba(243,191,112,.10),0 14px 34px rgba(0,0,0,.34)}
+.kpi{border-top-color:rgba(255,228,186,.45);-webkit-backdrop-filter:var(--shisha);backdrop-filter:var(--shisha);box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 10px 26px rgba(0,0,0,.28)}
+.qidiruv,.tabletka,.ikon-t,.xodim-t{border-color:rgba(255,255,255,.16);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+.btn{border:1px solid #FFD494;background:linear-gradient(120deg,#F9C97A,#E8AD5C);color:#171717}
+.btn:hover{color:#171717}
+.segment{border-color:rgba(243,191,112,.60);-webkit-backdrop-filter:var(--shisha);backdrop-filter:var(--shisha)}
+.segment a.faol{background:linear-gradient(135deg,#F9C97A,#E9AA50);color:#171717;font-weight:800;box-shadow:inset 0 1px 0 #FFE1A8}
+.sarlavha h1,.salom h1,.profil h1,.karta-bosh h1{text-shadow:0 2px 20px rgba(0,0,0,.5)}
+/* chap menyu — MainShisha bilan bir xil */
+.yon{background:rgba(12,18,30,.91);border-right:1px solid rgba(255,255,255,.09)}
+@media (min-width:761px){.ilova{flex-wrap:nowrap}.yon{flex:0 0 207px;max-width:207px;gap:6px;padding:20px 12px 16px}}
+.brend{margin:0 0 18px;padding:18px 8px 16px;border:1px solid rgba(236,190,120,.22);border-radius:16px;background:rgba(255,255,255,.02)}
+.brend b{font:600 34px/1 'Cormorant Garamond',serif;letter-spacing:.14em;margin-right:-.14em;color:#F3BF70}
+.nav{gap:14px;min-height:48px;padding:0 14px;border-radius:12px;color:#D4D7DE;font-size:14px}
+.nav svg{width:24px;height:24px;color:#C9CCD4}
+.nav.faol{color:#F5F2EE;background:linear-gradient(90deg,rgba(243,191,112,.30),rgba(243,191,112,.22) 35%,rgba(243,191,112,.05));box-shadow:inset 5px 0 #F3BF70}
+.nav.faol svg{color:#F3BF70}
+.nav .son{height:22px;border-radius:11px;background:#D9434F;font-size:12px;line-height:22px;font-weight:700}
+.yon-past{margin-top:auto;display:flex;flex-direction:column;gap:10px;padding-top:12px}
+.yp-promo{position:relative;height:155px;border-radius:14px;overflow:hidden;border:1px solid rgba(243,191,112,.45)}
+.yp-promo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:60% 15%}
+.yp-promo::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,rgba(13,19,32,.85),rgba(13,19,32,.15) 70%)}
+.yp-promo span{position:absolute;z-index:1;left:14px;top:14px;width:110px;font:italic 500 19px/1.2 'Cormorant Garamond',serif;color:#F3BF70}
+.yp-foyd{display:flex;align-items:center;gap:8px;min-height:60px;padding:10px 8px;border-radius:14px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);color:#F5F2EE}
+.yp-av{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;flex:none;background:linear-gradient(140deg,#F3BF70,#B9844A);color:#1A140C;font-weight:800;font-size:12px}
+.yp-ism{flex:1;min-width:0}
+.yp-ism b{display:block;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.yp-ism small{display:block;color:#B7BAC5;font-size:12px}
+.yp-foyd svg{width:16px;height:16px;color:#B7BAC5}
+.yp-chiqish{display:flex;align-items:center;gap:12px;min-height:44px;padding:0 14px;color:#C9CCD4;font-weight:600;text-decoration:none}
+.yp-chiqish:hover{color:#F5F2EE}
+@media (max-width:760px){.yon-past{display:none}}
+</style>
+</helmet>
+<div class="ilova">
+  <nav class="yon" aria-label="Bo'limlar">
+    <a class="brend" href="MainShisha.dc.html"><b>LIBOSA</b></a>
+    <a class="nav" href="MainShisha.dc.html"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11 12 3l9 8v10H3z"/><path d="M9 21v-6h6v6"/></svg>Dashboard</a>
+    <a class="nav" href="KassaShisha.dc.html"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4M8 14h2M14 14h2"/></svg>Kassa</a>
+    <a class="nav" href="ZakazlarShisha.dc.html"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4M8 14h.01M12 14h.01M16 14h.01M8 17h.01M12 17h.01"/></svg>Zakazlar<span class="son">3</span></a>
+    <a class="nav" href="LiboslarShisha.dc.html"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6l-1 5 4 13H6l4-13z"/></svg>Liboslar</a>
+    <a class="nav" href="MijozBolimShisha.dc.html"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6 6 0 0 1 3.5 6"/></svg>Mijozlar</a>
+    <a class="nav faol" href="FoydaShisha.dc.html" aria-current="page"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21V10M10 21V4M16 21v-8M21 21H3"/></svg>Hisobotlar</a>
+    <a class="nav" href="SozlamaBolimShisha.dc.html"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></svg>Sozlama</a>
+    <div class="yon-past">
+      <a class="yp-chiqish" href="#"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>Chiqish</a>
+    </div>
+  </nav>
+
+  <main class="mazmun">
+    <div class="ustki">
+      <label class="qidiruv"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input type="search" placeholder="Zakaz, mijoz yoki telefon" aria-label="Qidirish"></label>
+      <div class="ong">
+        <button type="button" class="ikon-t" aria-label="Bildirishnomalar: 3"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><span class="nuqta">3</span></button>
+        <span class="tabletka"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21h18M5 21V8l7-5 7 5v13M9 21v-6h6v6"/></svg>Asosiy salon</span>
+        <span class="tabletka"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>8 noyabr, 2026</span>
+        <button type="button" class="xodim-t" aria-label="Xodim menyusi"><span class="avatar">NY</span><span>Nodira Yusupova<small>Rahbar</small></span></button>
+      </div>
+    </div>
+
+    <div class="sarlavha">
+      <div>
+        <h1>Oylik foyda</h1>
+        <p>Kassa usuli: pul kirgan kuni — tushum, qaytarilgan pul — qaytarilgan kuni ayiriladi</p>
+        <nav class="segment" aria-label="Hisobotlar" style="margin-top: 16px">
+          <a href="HisobotBolimShisha.dc.html">Umumiy hisobot</a>
+          <a class="faol" href="FoydaShisha.dc.html" aria-current="page">Oylik foyda</a>
+          <a href="HisobotXarajatShisha.dc.html">Xarajatlar</a>
+          <a href="HisobotBonusShisha.dc.html">Sotuvchi bonusi</a>
+          <a href="HisobotGrafikShisha.dc.html">Grafik</a>
+        </nav>
+      </div>
+      <button type="button" class="btn-2"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>Excel'ga yuklab olish</button>
+    </div>
+
+    <div class="chiplar" role="group" aria-label="Oy" style="margin-bottom: 16px">
+      <sc-for list="{{oyTugmalar}}" as="o" hint-placeholder-count="4">
+        <button type="button" class="chip {{o.cls}}" aria-pressed="{{o.faol}}" onClick="{{o.bos}}">{{o.nom}}</button>
+      </sc-for>
+    </div>
+
+    <div class="g-3" style="margin-bottom: 16px">
+      <div class="kpi"><span class="belgi"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12l7 7 7-7"/></svg></span><span><small>Kirgan pul</small><b>{{o.kirdiM}}</b><em>avans, qoldiq, aksessuar, jarima</em></span></div>
+      <div class="kpi qizil"><span class="belgi"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg></span><span><small>Chiqqan pul</small><b>{{o.chiqdiM}}</b><em>kirgan pulning {{o.chiqdiUlush}}</em></span></div>
+      <div class="kpi yashil"><span class="belgi"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17 9 11l4 4 8-8"/><path d="M15 7h6v6"/></svg></span><span><small>Sof foyda</small><b>{{o.foydaM}}</b><em>{{o.qiyosIzoh}}</em></span><span class="trend-pill {{o.qiyosCls}}">{{o.qiyos}}</span></div>
+    </div>
+
+    <div class="g-2" style="margin-bottom: 16px">
+      <section class="panel" aria-label="Qayerdan keldi, qayerga ketdi">
+        <div class="panel-bosh"><h2><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></svg>Qayerdan keldi, qayerga ketdi</h2><span class="mute">{{o.nom}}</span></div>
+        <div class="guruh">
+          <h3 class="kirdi"><span>Kirdi</span><span>{{o.kirdiM}}</span></h3>
+          <sc-for list="{{o.kirdiR}}" as="r" hint-placeholder-count="3">
+            <div class="band"><div class="band-yuqori"><span>{{r.nom}}</span><b>{{r.m}}</b></div><div class="band-pastki"><div class="progress"><i style="width: {{r.foiz}}%"></i></div><em>{{r.foiz}}%</em></div></div>
+          </sc-for>
+        </div>
+        <div class="guruh">
+          <h3 class="chiqdi"><span>Chiqdi</span><span>− {{o.chiqdiM}}</span></h3>
+          <sc-for list="{{o.chiqdiR}}" as="r" hint-placeholder-count="4">
+            <div class="band"><div class="band-yuqori"><span>{{r.nom}}</span><b>− {{r.m}}</b></div><div class="band-pastki"><div class="progress qizil"><i style="width: {{r.foiz}}%"></i></div><em>{{r.foiz}}%</em></div></div>
+          </sc-for>
+        </div>
+        <div class="natija"><span>Sof foyda</span><b>{{o.foydaM}}</b></div>
+        <p class="mute" style="margin: 12px 0 0">Zalog hisobga kirmaydi — u mijozning puli, qaytariladi. Foizlar — o'z guruhi ichida.</p>
+      </section>
+
+      <section class="panel ustun-panel" aria-label="Foyda qanday hosil bo'ldi">
+        <div class="panel-bosh"><h2><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21h18M6 17v-6M11 17V5M16 17v-9M20 17v-4"/></svg>Foyda qanday hosil bo'ldi</h2><span class="mute">{{o.nom}} · so'm</span></div>
+        <figure style="margin: 0" role="img" aria-label="{{o.grafikAria}}">
+          <div class="sh-quti">
+            <sc-for list="{{o.belgilar}}" as="b" hint-placeholder-count="5">
+              <div class="sh-chiziq {{b.cls}}" style="bottom: {{b.b}}%"><span>{{b.m}}</span></div>
+            </sc-for>
+            <div class="sh-ustunlar">
+              <sc-for list="{{o.ustunlar}}" as="u" hint-placeholder-count="6">
+                <div class="ustun-s">
+                  <i style="bottom: {{u.past}}%; height: {{u.boy}}%; background: {{u.rang}}"></i>
+                  <sc-if value="{{u.ulagichBor}}" hint-placeholder-val="{{ false }}"><span class="ulagich" style="bottom: {{u.ulagich}}%"></span></sc-if>
+                  <span class="yorliq" style="bottom: calc({{u.tepa}}% + 8px); color: {{u.matnRang}}">{{u.m}}</span>
+                </div>
+              </sc-for>
+            </div>
+          </div>
+          <div class="nomlar" aria-hidden="true">
+            <sc-for list="{{o.ustunlar}}" as="u" hint-placeholder-count="6"><span>{{u.nom}}<small>{{u.ulush}}</small></span></sc-for>
+          </div>
+        </figure>
+        <div class="xulosa-r">
+          <div><svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="color: #62D4A3"><path d="m5 12 5 5 9-10"/></svg><span>Har 100 so'm tushumdan <b>{{o.har100}} so'm</b> foyda bo'lib qoldi.</span></div>
+          <div><svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="color: #F08089"><path d="M12 19V5M5 12l7-7 7 7"/></svg><span>Eng katta xarajat — <b>{{o.engNom}}</b>: kirgan pulning {{o.engUlush}}.</span></div>
+          <div><svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="color: #F3BF70"><path d="M12 5v14M5 12h14"/></svg><span>Aksessuar va jarima tushumga <b>{{o.qosh}}</b> qo'shdi.</span></div>
+        </div>
+      </section>
+    </div>
+
+    <div class="g-pastki">
+      <section class="panel" aria-label="Oxirgi 6 oy">
+        <div class="panel-bosh" style="margin-bottom: 4px">
+          <h2><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 17 9 11l4 4 8-8"/><path d="M15 7h6v6"/></svg>Oxirgi 6 oy</h2>
+          <div class="belgilar">
+            <span><svg width="22" height="10" aria-hidden="true"><line x1="0" y1="5" x2="22" y2="5" stroke="#F3BF70" stroke-width="2.5"/><circle cx="11" cy="5" r="3.5" fill="#F3BF70"/></svg>Kirdi</span>
+            <span><svg width="22" height="10" aria-hidden="true"><line x1="0" y1="5" x2="22" y2="5" stroke="#62D4A3" stroke-width="2.5"/><circle cx="11" cy="5" r="3.5" fill="#62D4A3"/></svg>Sof foyda</span>
+          </div>
+        </div>
+        <p class="mute" style="margin: 0 0 18px">{{t6.izoh}}</p>
+        <figure class="grafik" style="margin: 0">
+          <svg viewBox="0 0 560 250" role="img" aria-label="May–oktabr: kirgan pul va sof foyda. Eng yuqori — avgust: kirdi 41,2 mln, foyda 25,6 mln">
+            <defs>
+              <linearGradient id="kirdi-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#F3BF70" stop-opacity=".34"/><stop offset="1" stop-color="#E8AD5C" stop-opacity="0"/></linearGradient>
+              <linearGradient id="foyda-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#62D4A3" stop-opacity=".28"/><stop offset="1" stop-color="#62D4A3" stop-opacity="0"/></linearGradient>
+            </defs>
+            <g stroke="rgba(255,255,255,.07)" stroke-width="1">
+              <line x1="60" y1="20" x2="540" y2="20"/><line x1="60" y1="58.8" x2="540" y2="58.8"/><line x1="60" y1="97.6" x2="540" y2="97.6"/><line x1="60" y1="136.4" x2="540" y2="136.4"/><line x1="60" y1="175.2" x2="540" y2="175.2"/>
+              <line x1="60" y1="20" x2="60" y2="214"/><line x1="156" y1="20" x2="156" y2="214"/><line x1="252" y1="20" x2="252" y2="214"/><line x1="348" y1="20" x2="348" y2="214"/><line x1="444" y1="20" x2="444" y2="214"/><line x1="540" y1="20" x2="540" y2="214"/>
+            </g>
+            <line x1="60" y1="214" x2="540" y2="214" stroke="rgba(243,191,112,.3)" stroke-width="1"/>
+            <g fill="#B7BAC5" font-size="13" font-family="Manrope, sans-serif" text-anchor="end">
+              <text x="50" y="218">0</text><text x="50" y="179">10 mln</text><text x="50" y="140">20 mln</text><text x="50" y="102">30 mln</text><text x="50" y="63">40 mln</text><text x="50" y="24">50 mln</text>
+            </g>
+            <g fill="#B7BAC5" font-size="13" font-family="Manrope, sans-serif" text-anchor="middle">
+              <text x="60" y="238">May</text><text x="156" y="238">Iyun</text><text x="252" y="238">Iyul</text><text x="348" y="238">Avgust</text><text x="444" y="238">Sentabr</text><text x="540" y="238">Oktabr</text>
+            </g>
+            <rect x="{{t6.ustunX}}" y="20" width="60" height="194" rx="10" fill="rgba(243,191,112,.08)" opacity="{{t6.ustunOp}}"/>
+            <path d="{{t6.kirdiMaydon}}" fill="url(#kirdi-g)"/>
+            <path d="{{t6.foydaMaydon}}" fill="url(#foyda-g)"/>
+            <path d="{{t6.kirdi}}" fill="none" stroke="#F3BF70" stroke-width="2.6" stroke-linecap="round"/>
+            <path d="{{t6.foyda}}" fill="none" stroke="#62D4A3" stroke-width="2.6" stroke-linecap="round"/>
+            <path d="{{t6.kirdiNuqta}}" fill="#0B0F17" stroke="#F3BF70" stroke-width="2"/>
+            <path d="{{t6.foydaNuqta}}" fill="#0B0F17" stroke="#62D4A3" stroke-width="2"/>
+          </svg>
+          <sc-if value="{{t6.bor}}" hint-placeholder-val="{{ false }}">
+            <div class="izoh-oyna" style="left: {{t6.chap}}%; top: {{t6.tepa}}%">
+              <b>{{t6.oy}}</b>
+              <span style="color: #F3BF70">Kirdi: {{t6.k}}</span>
+              <span style="color: #62D4A3">Sof foyda: {{t6.f}}</span>
+            </div>
+          </sc-if>
+        </figure>
+      </section>
+
+      <section class="panel" aria-label="Oylar bo'yicha">
+        <div class="panel-bosh"><h2><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Oylar bo'yicha</h2><span class="mute">oyni bosing</span></div>
+        <div style="overflow-x: auto">
+          <table class="oylar">
+            <thead><tr><th>Oy</th><th>Kirdi</th><th>Chiqdi</th><th>Sof foyda</th><th>Ulush</th></tr></thead>
+            <tbody>
+              <sc-for list="{{jadval}}" as="j" hint-placeholder-count="4">
+                <tr class="{{j.cls}}"><td><button type="button" class="oy-tugma" aria-pressed="{{j.faol}}" onClick="{{j.bos}}">{{j.nom}}</button></td><td>{{j.kirdi}}</td><td style="color: #F08089">{{j.chiqdi}}</td><td style="color: #62D4A3; font-weight: 700">{{j.foyda}}</td><td><span class="ulush">{{j.ulush}}</span></td></tr>
+              </sc-for>
+            </tbody>
+          </table>
+        </div>
+        <p class="mute" style="margin: 14px 0 0">Ulush — kirgan pulning qancha qismi foyda bo'lib qoldi.</p>
+      </section>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1560}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { oy: 'noy' };
+  }
+  renderVals() {
+    const OY = {
+      noy: { nom: 'Noyabr, 1–8', kirdi: [['Avans va qoldiq', 8900000], ['Aksessuar ijarasi', 500000], ['Kechikish jarimasi', 200000]], chiqdi: [['Tozalash', 700000], ['Ish haqi va bonus', 2115000], ['Bino ijarasi', 1000000], ['Boshqa', 300000]], qiyos: '▲ 8%', qiyosCls: 'osish', qiyosIzoh: 'oktabrning 1–8 kuni: 5 090 000' },
+      okt: { nom: 'Oktabr', kirdi: [['Avans va qoldiq', 32600000], ['Aksessuar ijarasi', 1500000], ['Kechikish jarimasi', 700000]], chiqdi: [['Tozalash', 2600000], ['Ish haqi va bonus', 7400000], ['Bino ijarasi', 3000000], ['Boshqa', 1200000]], qiyos: '▲ 26%', qiyosCls: 'osish', qiyosIzoh: 'sentabrda: 16 400 000', t6: 5 },
+      sen: { nom: 'Sentabr', kirdi: [['Avans va qoldiq', 27800000], ['Aksessuar ijarasi', 1200000], ['Kechikish jarimasi', 500000]], chiqdi: [['Tozalash', 2300000], ['Ish haqi va bonus', 6900000], ['Bino ijarasi', 3000000], ['Boshqa', 900000]], qiyos: '▼ 36%', qiyosCls: 'tushish', qiyosIzoh: "avgustda: 25 600 000 — mavsum tugadi", t6: 4 },
+      avg: { nom: 'Avgust', kirdi: [['Avans va qoldiq', 38900000], ['Aksessuar ijarasi', 1700000], ['Kechikish jarimasi', 600000]], chiqdi: [['Tozalash', 2900000], ['Ish haqi va bonus', 8300000], ['Bino ijarasi', 3000000], ['Boshqa', 1400000]], qiyos: '▲ 18%', qiyosCls: 'osish', qiyosIzoh: 'iyulda: 21 700 000', t6: 3 }
+    };
+    const TARTIB = ['noy', 'okt', 'sen', 'avg'];
+    const fmt = (n) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+    const mlnQ = (n) => (n === 0 ? '0' : String(Math.round((n / 1e6) * 10) / 10).replace('.', ',') + ' mln');
+    const jam = (r) => r.reduce((a, x) => a + x[1], 0);
+    const s = this.state;
+    const o = OY[s.oy];
+    const K = jam(o.kirdi), C = jam(o.chiqdi), F = K - C;
+    // ulushlar «eng katta qoldiq» usulida — jami doim 100%
+    const ulush = (vals, jami) => {
+      const x = vals.map((v) => (v / jami) * 100), b = x.map((v) => Math.floor(v));
+      let qol = 100 - b.reduce((a, v) => a + v, 0);
+      x.map((v, i) => [v - Math.floor(v), i]).sort((a, c) => c[0] - a[0]).forEach(([, i]) => { if (qol > 0) { b[i] += 1; qol -= 1; } });
+      return b;
+    };
+    const shU = ulush(o.chiqdi.map((x) => x[1]).concat(F), K);
+    const kirU = ulush(o.kirdi.map((x) => x[1]), K), chiU = ulush(o.chiqdi.map((x) => x[1]), C);
+    const engI = o.chiqdi.reduce((m, x, i, a) => (x[1] > a[m][1] ? i : m), 0);
+
+    // sharshara: yaxlit shkala va panjara
+    const xom = K / 4, daraja = Math.pow(10, Math.floor(Math.log10(xom))), n = xom / daraja;
+    const qadam = (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * daraja;
+    const T = Math.ceil(K / qadam) * qadam;
+    const f = (v) => Math.round((v / T) * 1000) / 10;
+    const belgilar = [];
+    for (let v = 0; v <= T + 1; v += qadam) belgilar.push({ b: f(v), m: mlnQ(v), cls: v === 0 ? 'asos' : '' });
+    let tepa = K;
+    const ustunlar = [{ nom: 'Kirdi', ulush: '100%', past: 0, boy: f(K), tepa: f(K), m: mlnQ(K), rang: 'linear-gradient(180deg,#F6DDB0,#E8AD5C)', matnRang: '#F3BF70', ulagichBor: true, ulagich: f(K) }];
+    o.chiqdi.forEach(([nom, v], k) => {
+      const past = tepa - v;
+      ustunlar.push({ nom, ulush: shU[k] + '%', past: f(past), boy: f(v), tepa: f(tepa), m: '− ' + mlnQ(v), rang: 'linear-gradient(180deg,#E4867E,#A63F38)', matnRang: '#F08089', ulagichBor: true, ulagich: f(past) });
+      tepa = past;
+    });
+    ustunlar[ustunlar.length - 1].ulagichBor = true;
+    ustunlar.push({ nom: 'Sof foyda', ulush: shU[shU.length - 1] + '%', past: 0, boy: f(F), tepa: f(F), m: mlnQ(F), rang: 'linear-gradient(180deg,#A8EBC1,#3F9A66)', matnRang: '#62D4A3', ulagichBor: false, ulagich: 0 });
+
+    // oxirgi 6 oy (to'liq oylar)
+    const OYLAR6 = ['May', 'Iyun', 'Iyul', 'Avgust', 'Sentabr', 'Oktabr'];
+    const KIRDI6 = [22.4, 27.0, 34.9, 41.2, 29.5, 34.8], FOYDA6 = [11.8, 15.1, 21.7, 25.6, 16.4, 20.6];
+    const X0 = 60, X1 = 540, Y0 = 214, Y1 = 20, M6 = 50, W6 = 560, H6 = 250;
+    const q6 = (X1 - X0) / 5;
+    const xy = (v, i) => [X0 + i * q6, Y0 - (v / M6) * (Y0 - Y1)];
+    const silliq = (pts) => pts.map((p, i) => {
+      if (i === 0) return 'M' + p[0].toFixed(1) + ',' + p[1].toFixed(1);
+      const p0 = pts[i - 2] || pts[i - 1], p1 = pts[i - 1], p3 = pts[i + 1] || p;
+      const c1 = [p1[0] + (p[0] - p0[0]) / 6, Math.min(Y0, p1[1] + (p[1] - p0[1]) / 6)];
+      const c2 = [p[0] - (p3[0] - p1[0]) / 6, Math.min(Y0, p[1] - (p3[1] - p1[1]) / 6)];
+      return 'C' + [c1[0], c1[1], c2[0], c2[1], p[0], p[1]].map((z) => z.toFixed(1)).join(',');
+    }).join(' ');
+    const nuqta = (pts, r) => pts.map(([x, y]) => 'M' + (x - r).toFixed(1) + ',' + y.toFixed(1) + 'a' + r + ',' + r + ' 0 1,0 ' + 2 * r + ',0a' + r + ',' + r + ' 0 1,0 -' + 2 * r + ',0').join('');
+    const kp = KIRDI6.map(xy), fp = FOYDA6.map(xy);
+    const ki = silliq(kp), fo = silliq(fp);
+    const yop = (d) => d + ' L' + X1 + ',' + Y0 + ' L' + X0 + ',' + Y0 + ' Z';
+    const ti = o.t6;
+    const bor = ti !== undefined;
+    const t6 = {
+      kirdi: ki, foyda: fo, kirdiMaydon: yop(ki), foydaMaydon: yop(fo),
+      kirdiNuqta: nuqta(kp, 3.5), foydaNuqta: nuqta(fp, 3.5),
+      bor, ustunX: bor ? (kp[ti][0] - 30).toFixed(1) : '0', ustunOp: bor ? '1' : '0',
+      chap: bor ? (((kp[ti][0] / W6) * 100) - (ti === 5 ? 6 : 0)).toFixed(2) : '0',
+      tepa: bor ? ((kp[ti][1] / H6) * 100).toFixed(2) : '0',
+      oy: bor ? OYLAR6[ti] : '', k: bor ? fmt(KIRDI6[ti] * 1e6) + " so'm" : '', f: bor ? fmt(FOYDA6[ti] * 1e6) + " so'm" : '',
+      izoh: bor ? OYLAR6[ti] + ' ajratilgan — boshqa oyni tanlash uchun yuqoridagi tugmalar yoki jadval.' : "Noyabr hali tugamagan, shuning uchun grafikda yo'q. Oktabr, sentabr yoki avgustni tanlang."
+    };
+
+    const jadval = TARTIB.map((id) => {
+      const x = OY[id], k = jam(x.kirdi), c = jam(x.chiqdi);
+      return { nom: x.nom, kirdi: mlnQ(k), chiqdi: mlnQ(c), foyda: mlnQ(k - c), ulush: Math.round(((k - c) / k) * 100) + '%', faol: id === s.oy, cls: id === s.oy ? 'tanlandi' : '', bos: () => this.setState({ oy: id }) };
+    });
+    return {
+      oyTugmalar: TARTIB.map((id) => ({ nom: OY[id].nom, faol: id === s.oy, cls: id === s.oy ? 'faol' : '', bos: () => this.setState({ oy: id }) })),
+      o: {
+        nom: o.nom, kirdiM: fmt(K) + " so'm", chiqdiM: fmt(C) + " so'm", foydaM: fmt(F) + " so'm",
+        chiqdiUlush: (100 - shU[shU.length - 1]) + '%',
+        har100: shU[shU.length - 1],
+        engNom: o.chiqdi[engI][0].toLowerCase(),
+        engUlush: shU[engI] + '%',
+        qosh: fmt(o.kirdi[1][1] + o.kirdi[2][1]) + " so'm",
+        qiyos: o.qiyos, qiyosCls: o.qiyosCls, qiyosIzoh: o.qiyosIzoh,
+        kirdiR: o.kirdi.map(([nom, v], k) => ({ nom, m: fmt(v), foiz: kirU[k] })),
+        chiqdiR: o.chiqdi.map(([nom, v], k) => ({ nom, m: fmt(v), foiz: chiU[k] })),
+        belgilar, ustunlar,
+        grafikAria: o.nom + ': kirdi ' + mlnQ(K) + ', chiqdi ' + mlnQ(C) + ', sof foyda ' + mlnQ(F)
+      },
+      t6, jadval
+    };
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<title>Libosa — Shrift taqqoslash</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Forum&amp;family=Manrope:wght@400;600;700&amp;family=Spectral:wght@400;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#080B12}
+*{box-sizing:border-box}
+.quti{width:390px;padding:20px 16px 28px;background:#080B12;color:#F6F1E8;font:400 14px/1.45 Manrope,system-ui,sans-serif}
+.quti>h1{margin:0 0 4px;font:400 26px/1.15 Forum,serif}
+.quti>p{margin:0 0 18px;color:#C7CED8}
+.namuna{margin-bottom:16px;padding:16px;border-radius:16px;background:rgba(16,21,31,.92);border:1px solid rgba(228,193,150,.18)}
+.namuna-bosh{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid rgba(228,193,150,.16);font-family:Manrope,sans-serif}
+.namuna-bosh b{font-size:16px;color:#E4C196}
+.namuna-bosh span{color:#98A1B0;font-size:13px}
+.kpi small{display:block;color:#C7CED8;font-size:13px}
+.kpi strong{display:block;font-size:26px;font-weight:700;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.q{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.06)}
+.q:last-of-type{border-bottom:0}
+.q div{display:flex;flex-direction:column;min-width:0}
+.q b{font-weight:700;font-size:14px}
+.q small{color:#98A1B0;font-size:13px}
+.q em{font-style:normal;font-weight:700;font-size:14px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.izoh{margin:10px 0 0;color:#C7CED8;font-size:14px}
+</style>
+</helmet>
+<div class="quti">
+  <h1>Shrift taqqoslash</h1>
+  <p>Bir xil matn, bir xil o'lcham (14 / 13 px), telefon kengligi. Sarlavhalar ikkalasida ham Forum. <b style="color: #7ED6A0">Tanlandi: Manrope</b> (8 noyabr; Claude va Codex tavsiyasi).</p>
+
+  <section class="namuna" aria-label="A namuna — Spectral" style="font-family: Spectral, Georgia, serif">
+    <div class="namuna-bosh"><b>A · Spectral</b><span>hozir ilovada · almashtiriladi</span></div>
+    <div class="kpi"><small>Kassaga tushum, 14 kun</small><strong>14 900 000 so'm</strong></div>
+    <div class="q"><div><b>#13 · Dilnoza Karimova</b><small>Mira · 8–9 noyabr · bron</small></div><em>1 600 000</em></div>
+    <div class="q"><div><b>#18 · Munisa Asqarova</b><small>Oq ko'ylak · 12–14 noyabr</small></div><em>2 200 000</em></div>
+    <div class="q"><div><b>#9 · Aziza Xolmatova</b><small>Rubin · 1 kun kechikdi</small></div><em style="color: #FF9B92">500 000</em></div>
+    <p class="izoh">Qoldiq to'lanmagan — Mira bugun 10:00 da beriladi. Berishdan oldin qoldiq va zalog olinadi.</p>
+  </section>
+
+  <section class="namuna" aria-label="B namuna — Manrope, tanlangan" style="font-family: Manrope, system-ui, sans-serif; border-color: rgba(126,214,160,.5)">
+    <div class="namuna-bosh"><b>B · Manrope</b><span style="color: #7ED6A0">✓ tanlandi</span></div>
+    <div class="kpi"><small>Kassaga tushum, 14 kun</small><strong>14 900 000 so'm</strong></div>
+    <div class="q"><div><b>#13 · Dilnoza Karimova</b><small>Mira · 8–9 noyabr · bron</small></div><em>1 600 000</em></div>
+    <div class="q"><div><b>#18 · Munisa Asqarova</b><small>Oq ko'ylak · 12–14 noyabr</small></div><em>2 200 000</em></div>
+    <div class="q"><div><b>#9 · Aziza Xolmatova</b><small>Rubin · 1 kun kechikdi</small></div><em style="color: #FF9B92">500 000</em></div>
+    <p class="izoh">Qoldiq to'lanmagan — Mira bugun 10:00 da beriladi. Berishdan oldin qoldiq va zalog olinadi.</p>
+  </section>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":880}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

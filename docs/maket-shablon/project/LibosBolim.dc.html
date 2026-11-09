@@ -1,0 +1,598 @@
+<!doctype html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<title>Libosa — Liboslar bo'limlari</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,500;1,600&amp;family=Forum&amp;family=Manrope:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#080B12}
+a{color:#E4C196}a:hover{color:#F3DDBE}
+*{box-sizing:border-box}
+button{font:inherit;cursor:pointer}
+sc-for,sc-if{display:contents}
+.ilova{display:flex;flex-wrap:wrap;min-height:100vh;background:#080B12;color:#F6F1E8;font:400 14px/1.45 Manrope,system-ui,sans-serif}
+svg.i{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.yon{flex:1 1 232px;max-width:248px;display:flex;flex-direction:column;gap:4px;padding:18px 14px;background:#0B0F17;border-right:1px solid rgba(228,193,150,.12)}
+.brend{display:block;padding:16px 10px 22px;margin-bottom:14px;border-bottom:1px solid rgba(228,193,150,.16);text-align:center;text-decoration:none}
+.brend b{font:400 30px/1 Forum,serif;letter-spacing:.3em;margin-right:-.3em;color:#E4C196}
+.nav{display:flex;align-items:center;gap:12px;min-height:44px;padding:0 12px;border-radius:10px;color:#B9C0CC;font-weight:600;text-decoration:none}
+.nav:hover{color:#F6F1E8;background:rgba(255,255,255,.04)}
+.nav.faol{color:#F6F1E8;background:linear-gradient(90deg,rgba(228,193,150,.26),rgba(228,193,150,.05));box-shadow:inset 3px 0 0 #E4C196}
+.nav.faol svg{color:#E4C196}
+.nav .son{margin-left:auto;min-width:22px;padding:0 6px;border-radius:11px;background:#B8473F;color:#fff;font-size:13px;line-height:20px;text-align:center}
+.mazmun{flex:999 1 560px;min-width:0;position:relative;padding:20px 32px 48px}
+.mazmun::before{content:'';position:absolute;left:0;right:0;top:0;height:330px;background:linear-gradient(180deg,rgba(8,11,18,.3),rgba(8,11,18,.78) 60%,#080B12),url(/_blob/c9a1861df1eef0d758b27417a77833a6) 50% 38%/cover;pointer-events:none}
+.mazmun>*{position:relative}
+.ustki{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.qidiruv{flex:1 1 260px;max-width:480px;display:flex;align-items:center;gap:10px;min-height:44px;padding:0 16px;border-radius:999px;background:rgba(8,11,18,.74);border:1px solid rgba(228,193,150,.24);color:#E4C196}
+.qidiruv input{flex:1;min-width:0;background:none;border:0;outline:none;color:#F6F1E8;font:inherit}
+.qidiruv input::placeholder{color:#98A1B0}
+.ong{margin-left:auto;display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.tabletka{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 16px;border-radius:999px;background:rgba(8,11,18,.74);border:1px solid rgba(228,193,150,.24);color:#F6F1E8;font-weight:600;white-space:nowrap}
+.tabletka svg{width:18px;height:18px;color:#E4C196}
+.ikon-t{position:relative;width:44px;height:44px;display:grid;place-items:center;padding:0;border-radius:50%;background:rgba(8,11,18,.74);border:1px solid rgba(228,193,150,.24);color:#F6F1E8}
+.ikon-t .nuqta{position:absolute;top:-4px;right:-4px;min-width:20px;height:20px;padding:0 5px;border-radius:10px;background:#B8473F;color:#fff;font-size:13px;line-height:20px;font-weight:700}
+.avatar{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;flex:none;background:rgba(228,193,150,.2);color:#E4C196;font-weight:700}
+.xodim-t{display:inline-flex;align-items:center;gap:10px;min-height:44px;padding:2px 16px 2px 2px;border-radius:999px;background:rgba(8,11,18,.74);border:1px solid rgba(228,193,150,.24);color:#F6F1E8;text-align:left}
+.xodim-t small{display:block;color:#98A1B0;font-size:13px;line-height:1.1}
+.sarlavha{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px;margin:32px 0 24px}
+.sarlavha h1{margin:0;font:400 46px/1.05 Forum,serif}
+.sarlavha p{margin:8px 0 0;color:#C7CED8;font-size:15px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:0 24px;border-radius:999px;border:0;background:linear-gradient(110deg,#CC9866,#E4C196);color:#141B26;font-weight:700;font-size:15px;text-decoration:none;box-shadow:0 10px 28px -12px rgba(228,193,150,.8);white-space:nowrap}
+.btn:hover{color:#141B26;filter:brightness(1.06)}
+.btn-2{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 18px;border-radius:999px;border:1px solid rgba(228,193,150,.5);background:transparent;color:#F6F1E8;font-weight:600;text-decoration:none;white-space:nowrap}
+.btn-2:hover{color:#F6F1E8;background:rgba(228,193,150,.1)}
+.btn-2.kichik{min-height:36px;padding:0 14px;font-size:13.5px}
+.havola{background:none;border:0;padding:0;color:#E4C196;font-weight:600;text-decoration:none;white-space:nowrap}
+.panel{background:rgba(16,21,31,.86);border:1px solid rgba(228,193,150,.14);border-radius:18px;padding:24px;backdrop-filter:blur(12px)}
+.panel-bosh{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin-bottom:16px}
+.panel-bosh h2{display:flex;align-items:center;gap:10px;margin:0;font:400 22px/1.2 Forum,serif}
+.panel-bosh h2 svg{color:#E4C196}
+.kpilar{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-bottom:16px}
+.kpi{position:relative;display:flex;align-items:center;gap:14px;min-width:0;padding:16px 18px;border-radius:16px;border:1px solid rgba(228,193,150,.2);background:linear-gradient(135deg,rgba(228,193,150,.15),rgba(16,21,31,.88) 62%);color:#F6F1E8;text-align:left}
+.kpi .belgi{width:50px;height:50px;border-radius:50%;display:grid;place-items:center;flex:none;background:rgba(228,193,150,.16);color:#E4C196}
+.kpi small{display:block;color:#C7CED8;font-size:13.5px}
+.kpi b{display:block;font:400 26px/1.15 Forum,serif;font-variant-numeric:tabular-nums;white-space:nowrap}
+.kpi em{display:block;font-style:normal;color:#98A1B0;font-size:13px}
+.kpi.kok{border-color:rgba(141,180,232,.26);background:linear-gradient(135deg,rgba(141,180,232,.16),rgba(16,21,31,.88) 62%)}.kpi.kok .belgi{background:rgba(141,180,232,.16);color:#8DB4E8}
+.kpi.qizil{border-color:rgba(255,155,146,.28);background:linear-gradient(135deg,rgba(214,105,112,.2),rgba(16,21,31,.88) 62%)}.kpi.qizil .belgi{background:rgba(255,155,146,.16);color:#FF9B92}
+.kpi.yashil{border-color:rgba(126,214,160,.26);background:linear-gradient(135deg,rgba(126,214,160,.14),rgba(16,21,31,.88) 62%)}.kpi.yashil .belgi{background:rgba(126,214,160,.16);color:#7ED6A0}
+.kpi.ogoh{border-color:rgba(242,196,109,.3);background:linear-gradient(135deg,rgba(242,196,109,.15),rgba(16,21,31,.88) 62%)}.kpi.ogoh .belgi{background:rgba(242,196,109,.16);color:#F2C46D}
+.holat{display:inline-flex;align-items:center;gap:6px;min-height:26px;padding:0 12px;border-radius:999px;font-size:13px;font-weight:700;white-space:nowrap}
+.h-bosh{background:rgba(126,214,160,.16);color:#7ED6A0}
+.h-bron{background:rgba(228,193,150,.18);color:#E4C196}
+.h-mijoz{background:rgba(141,180,232,.18);color:#8DB4E8}
+.h-tamir{background:rgba(242,196,109,.16);color:#F2C46D}
+.h-yoq{background:rgba(255,155,146,.16);color:#FF9B92}
+.h-yopiq{background:rgba(255,255,255,.08);color:#C7CED8}
+.h-vaqt{border:1px dashed #F2C46D;color:#F2C46D}
+.ikki{display:flex;flex-direction:column;min-width:0}
+.ikki small,.mute{color:#98A1B0;font-size:13px}
+.segment{display:inline-flex;flex-wrap:wrap;gap:4px;padding:4px;border-radius:999px;background:rgba(8,11,18,.74);border:1px solid rgba(228,193,150,.2)}
+.segment a,.segment button{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:0 18px;border:0;border-radius:999px;background:none;color:#C7CED8;font-weight:600;text-decoration:none;white-space:nowrap}
+.segment a:hover,.segment button:hover{color:#F6F1E8}
+.segment .faol{background:rgba(228,193,150,.2);color:#F3DDBE;box-shadow:inset 0 0 0 1px rgba(228,193,150,.55)}
+.maydon{flex:1 1 220px;display:flex;align-items:center;gap:10px;min-height:44px;padding:0 14px;border-radius:12px;background:rgba(8,11,18,.6);border:1px solid rgba(228,193,150,.22);color:#98A1B0}
+.maydon input{flex:1;min-width:0;background:none;border:0;outline:none;color:#F6F1E8;font:inherit}
+.maydon input::placeholder{color:#98A1B0}
+.maydon:focus-within{border-color:#CC9866;box-shadow:0 0 0 3px rgba(204,152,102,.25)}
+.ust{display:grid;gap:12px;align-items:center;padding:12px 8px;border-bottom:1px solid rgba(255,255,255,.05);white-space:nowrap;font-variant-numeric:tabular-nums}
+.ust.bosh{padding-top:0;color:#98A1B0;font-size:13px;font-weight:600;border-bottom-color:rgba(228,193,150,.14)}
+.ust .raqam{text-align:right}
+.ust>.raqam+:not(.raqam):not(svg){padding-left:16px}
+button.ust{width:100%;border:0;border-bottom:1px solid rgba(255,255,255,.05);background:none;color:#F6F1E8;text-align:left;border-radius:12px}
+button.ust:hover{background:rgba(255,255,255,.03)}
+button.ust.tanlangan{background:rgba(228,193,150,.1);box-shadow:inset 0 0 0 1px rgba(228,193,150,.45)}
+.satr{display:flex;justify-content:space-between;gap:12px;padding:6px 0;font-variant-numeric:tabular-nums}
+.satr>span:first-child{color:#C7CED8}
+.izoh-q{display:flex;gap:10px;align-items:flex-start;margin-top:16px;color:#C7CED8;font-size:13.5px}
+.izoh-q svg{width:18px;height:18px;color:#8DB4E8;margin-top:1px}
+.g-asosiy{display:grid;grid-template-columns:minmax(0,62fr) minmax(0,38fr);gap:16px;align-items:start}
+.ustun{display:flex;flex-direction:column;gap:16px;min-width:0}
+.plitka{width:44px;height:44px;border-radius:12px;display:grid;place-items:center;flex:none;background:linear-gradient(140deg,rgba(228,193,150,.24),rgba(228,193,150,.05));border:1px solid rgba(228,193,150,.26);color:#E4C196}
+.plitka.katta{width:64px;height:64px;border-radius:16px}
+.plitka.katta svg{width:30px;height:30px}
+.eskiz{width:36px;height:46px;border-radius:8px;object-fit:cover;object-position:50% 12%;flex:none}
+.qator{display:flex;align-items:center;gap:12px;min-width:0}
+@media (max-width:1180px){.g-asosiy{grid-template-columns:minmax(0,1fr)}.kpilar{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:760px){.yon{max-width:none;flex-direction:row;align-items:center;overflow-x:auto;padding:8px 10px;border-right:0;border-bottom:1px solid rgba(228,193,150,.12)}.brend{display:none}.nav{flex:none}.mazmun{padding:16px}.sarlavha h1{font-size:34px}.kpilar{grid-template-columns:minmax(0,1fr)}}
+/* aksessuarlar */
+.kutish{display:flex;align-items:center;gap:12px;margin-bottom:16px;padding:12px 16px;border-radius:14px;border:1px solid rgba(242,196,109,.3);background:rgba(242,196,109,.07)}
+.kutish svg{color:#F2C46D}
+.aks-q{grid-template-columns:minmax(0,1.25fr) minmax(0,1fr) 64px 104px 20px}
+.donalar{display:flex;flex-wrap:wrap;gap:5px}
+.d-kv{width:18px;height:18px;border-radius:5px;display:block}
+/* holat rang bilan birga shakl bilan ham farqlanadi: bo'sh — to'liq, bron — halqa, mijozda — o'rtasi teshik */
+.d-bosh{background:#7ED6A0}
+.d-bron{background:transparent;box-shadow:inset 0 0 0 3px #E4C196}
+.d-mijoz{background:radial-gradient(circle,#10151F 0 3px,#8DB4E8 3.5px)}
+.d-tamir{background:repeating-linear-gradient(135deg,#F2C46D 0 3px,rgba(242,196,109,.28) 3px 6px);box-shadow:inset 0 0 0 1.5px #F2C46D}
+.d-yoq{background:transparent;border:2px solid #FF9B92;position:relative}
+.d-yoq::after{content:'';position:absolute;left:50%;top:-2px;bottom:-2px;width:2px;background:#FF9B92;transform:translateX(-50%) rotate(45deg)}
+.legenda-q{display:flex;flex-wrap:wrap;gap:16px;margin-top:16px;color:#C7CED8;font-size:13px}
+.legenda-q span{display:inline-flex;align-items:center;gap:8px}
+.legenda-q .d-kv{width:12px;height:12px;border-radius:3px}
+.dona-q{display:grid;grid-template-columns:60px minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+.dona-q:last-child{border-bottom:0}
+.dona-q>b{font-variant-numeric:tabular-nums}
+.tafsil-bosh{display:flex;align-items:center;gap:16px;margin-bottom:16px}
+.tafsil-bosh h2{margin:0;font:400 26px/1.15 Forum,serif}
+.ichki-quti{margin:16px 0;padding:4px 16px;border-radius:14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06)}
+.amallar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-top:16px}
+/* sanoq */
+.sanoq-bar{display:grid;grid-template-columns:auto minmax(0,1fr) auto;gap:20px;align-items:center;margin-bottom:16px;padding:16px 20px;border-radius:16px;border:1px solid rgba(228,193,150,.3);background:linear-gradient(110deg,rgba(228,193,150,.14),rgba(16,21,31,.9) 55%)}
+.puls{width:12px;height:12px;border-radius:50%;background:#7ED6A0;box-shadow:0 0 0 6px rgba(126,214,160,.18)}
+.progress{height:10px;border-radius:10px;background:rgba(255,255,255,.08);overflow:hidden}
+.progress i{display:block;height:100%;border-radius:10px;background:linear-gradient(90deg,#CC9866,#E4C196)}
+.skaner{display:flex;gap:8px}
+.skaner .maydon{min-height:56px;font-size:17px;border-radius:14px}
+.skaner .maydon input{font-size:17px;font-weight:600;letter-spacing:.02em}
+.takliflar{margin:8px 0 0;padding:6px;list-style:none;border-radius:14px;border:1px solid rgba(228,193,150,.22);background:rgba(8,11,18,.7)}
+.takliflar li{display:grid;grid-template-columns:72px minmax(0,1fr) auto;gap:12px;align-items:center;min-height:44px;padding:0 10px;border-radius:10px;cursor:pointer}
+.takliflar li:hover{background:rgba(228,193,150,.1)}
+.takliflar li.belgilangan{opacity:.55}
+.xabar{display:flex;gap:10px;align-items:center;margin-top:12px;padding:10px 14px;border-radius:12px;font-weight:600}
+.xabar.ok{background:rgba(126,214,160,.1);color:#7ED6A0}
+.xabar.ogoh{background:rgba(242,196,109,.1);color:#F2C46D}
+.lenta-q{display:grid;grid-template-columns:48px 72px minmax(0,1fr) auto;gap:10px;align-items:center;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.05);font-variant-numeric:tabular-nums}
+.lenta-q:last-child{border-bottom:0}
+.topilmagan-q{display:grid;grid-template-columns:36px minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+.guruh-nom{display:flex;align-items:center;gap:8px;margin:20px 0 4px;color:#C7CED8;font-weight:700;font-size:13.5px}
+.guruh-nom:first-of-type{margin-top:0}
+.guruh-nom .n{min-width:24px;padding:0 7px;border-radius:9px;background:rgba(255,255,255,.08);font-size:12.5px;text-align:center}
+.mini-plitka{width:36px;height:46px;border-radius:8px;display:grid;place-items:center;background:rgba(228,193,150,.1);color:#E4C196}
+.mini-plitka svg{width:18px;height:18px}
+.oldingi-q{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+.oldingi-q:last-child{border-bottom:0}
+.yakun{display:grid;grid-template-columns:minmax(0,1fr) minmax(200px,260px) auto auto;gap:12px;align-items:center;margin-top:16px;padding:16px 20px;border-radius:16px;border:1px solid rgba(228,193,150,.24);background:rgba(16,21,31,.92)}
+.yakun .maydon{min-height:48px}
+/* yetkazib beruvchilar */
+.yb-q{display:grid;grid-template-columns:44px minmax(0,1fr) auto;gap:12px;align-items:center;padding:12px}
+.yb-q .ikki b{font-size:15px}
+.uch-stat{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:16px 0}
+.uch-stat div{padding:14px 16px;border-radius:14px;background:rgba(255,255,255,.03);border:1px solid rgba(255,255,255,.06)}
+.uch-stat small{display:block;color:#98A1B0;font-size:13px}
+.uch-stat b{display:block;font:400 22px/1.2 Forum,serif;font-variant-numeric:tabular-nums;white-space:nowrap}
+.tolov-forma{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) auto;gap:8px;align-items:end;padding:16px;border-radius:14px;border:1px solid rgba(228,193,150,.24);background:rgba(228,193,150,.05)}
+.tolov-forma label{display:flex;flex-direction:column;gap:6px;color:#C7CED8;font-size:13px;font-weight:600}
+.tolov-forma .maydon{flex:none;min-height:44px}
+.kichik-sar{display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin:24px 0 4px}
+.kichik-sar h3{margin:0;font:italic 500 19px/1.2 'Cormorant Garamond',serif;color:#E4C196}
+.ybl-q{grid-template-columns:96px minmax(0,1fr) 110px 120px}
+.ybt-q{grid-template-columns:96px 120px minmax(0,1fr)}
+.yba-q{grid-template-columns:96px minmax(0,1fr) 56px 96px 110px}
+</style>
+</helmet>
+<div class="ilova">
+  <nav class="yon" aria-label="Bo'limlar">
+    <a class="brend" href="Main.dc.html"><b>LIBOSA</b></a>
+    <a class="nav" href="Main.dc.html"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>Dashboard</a>
+    <a class="nav" href="Kassa.dc.html"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></svg>Kassa</a>
+    <a class="nav" href="Zakazlar.dc.html"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8h14l-1 12H6z"/><path d="M9 8a3 3 0 0 1 6 0"/></svg>Zakazlar<span class="son">3</span></a>
+    <a class="nav faol" href="Liboslar.dc.html" aria-current="page"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6l-1 5 4 13H6l4-13z"/></svg>Liboslar</a>
+    <a class="nav" href="MijozBolim.dc.html"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6 6 0 0 1 3.5 6"/></svg>Mijozlar</a>
+    <a class="nav" href="HisobotBolim.dc.html"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21h18M6 17v-6M11 17V5M16 17v-9M20 17v-4"/></svg>Hisobotlar</a>
+    <a class="nav" href="SozlamaBolim.dc.html"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></svg>Sozlama</a>
+  </nav>
+
+  <main class="mazmun">
+    <div class="ustki">
+      <label class="qidiruv"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input type="search" placeholder="Zakaz, mijoz yoki telefon" aria-label="Qidirish"></label>
+      <div class="ong">
+        <button type="button" class="ikon-t" aria-label="Bildirishnomalar: 3"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><span class="nuqta">3</span></button>
+        <span class="tabletka"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21h18M5 21V8l7-5 7 5v13M9 21v-6h6v6"/></svg>Asosiy salon</span>
+        <span class="tabletka"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>8 noyabr, 2026</span>
+        <button type="button" class="xodim-t" aria-label="Xodim menyusi"><span class="avatar">NY</span><span>Nodira Yusupova<small>Rahbar</small></span></button>
+      </div>
+    </div>
+
+    <div class="sarlavha">
+      <div>
+        <h1>{{sarlavha}}</h1>
+        <p>{{izoh}}</p>
+        <nav class="segment" aria-label="Liboslar bo'limlari" style="margin-top: 16px">
+          <a href="Liboslar.dc.html">Ro'yxat</a>
+          <button type="button" class="{{t.aksessuar}}" onClick="{{tAks}}">Aksessuarlar</button>
+          <button type="button" class="{{t.sanoq}}" onClick="{{tSanoq}}">Sanoq</button>
+          <button type="button" class="{{t.yetkazib}}" onClick="{{tYb}}">Yetkazib beruvchilar</button>
+        </nav>
+      </div>
+      <sc-if value="{{b.aksessuar}}" hint-placeholder-val="{{ true }}">
+        <button type="button" class="btn"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Aksessuar qo'shish</button>
+      </sc-if>
+      <sc-if value="{{b.yetkazib}}" hint-placeholder-val="{{ false }}">
+        <button type="button" class="btn"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Yetkazib beruvchi qo'shish</button>
+      </sc-if>
+    </div>
+
+    <!-- ===================== AKSESSUARLAR ===================== -->
+    <sc-if value="{{b.aksessuar}}" hint-placeholder-val="{{ true }}">
+      <div class="kpilar">
+        <div class="kpi"><span class="belgi"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 18h18M4 18 3 8l5 4 4-7 4 7 5-4-1 10"/></svg></span><span><small>Jami donalar</small><b>17</b><em>5 tur aksessuar</em></span></div>
+        <div class="kpi yashil"><span class="belgi"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg></span><span><small>Ijaraga tayyor</small><b>11</b><em>hozir javonda, bo'sh</em></span></div>
+        <div class="kpi kok"><span class="belgi"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/></svg></span><span><small>Band</small><b>4</b><em>2 bron · 2 mijozda</em></span></div>
+        <div class="kpi ogoh"><span class="belgi"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L4 17l3 3 5.3-5.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z"/></svg></span><span><small>Ta'mirda yoki yo'qolgan</small><b>2</b><em>1 ta'mirda · 1 yo'qolgan</em></span></div>
+      </div>
+      <div class="kutish">
+        <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+        <span style="flex: 1"><b>Tasdiq kutmoqda:</b> Sochpopuk to'plami (SP) · 4 dona · Malika qo'shdi, bugun 11:20 — narx va tannarxni tasdiqlagach ijaraga chiqadi.</span>
+        <a class="havola" href="#">Qo'ng'iroqchada →</a>
+      </div>
+      <div class="g-asosiy">
+        <section class="panel" aria-label="Aksessuarlar ro'yxati">
+          <div class="panel-bosh" style="flex-wrap: nowrap">
+            <label class="maydon" style="max-width: 360px"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input type="search" placeholder="Nomi yoki kodi: FT, TJ…" aria-label="Aksessuar qidirish"></label>
+            <span class="mute">bosing — o'ngda donalari</span>
+          </div>
+          <div class="ust bosh aks-q"><span>Aksessuar</span><span>Donalar</span><span class="raqam">Tayyor</span><span class="raqam">Ijara narxi</span><span></span></div>
+          <sc-for list="{{aksessuarlar}}" as="a" hint-placeholder-count="5">
+            <button type="button" class="ust aks-q {{a.cls}}" aria-pressed="{{a.tanlangan}}" onClick="{{a.bos}}">
+              <span class="qator"><span class="plitka"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{a.ikon}}"/></svg></span><span class="ikki"><b>{{a.nom}}</b><small>{{a.kod}} · {{a.son}} dona</small></span></span>
+              <span class="donalar" aria-label="{{a.donaAria}}"><sc-for list="{{a.donalar}}" as="d" hint-placeholder-count="4"><i class="d-kv {{d.cls}}" title="{{d.kod}} — {{d.holat}}"></i></sc-for></span>
+              <b class="raqam">{{a.tayyor}}</b>
+              <span class="raqam">{{a.narx}}</span>
+              <svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="color: #98A1B0"><path d="m9 6 6 6-6 6"/></svg>
+            </button>
+          </sc-for>
+          <div class="legenda-q" aria-label="Rang belgilari">
+            <span><i class="d-kv d-bosh"></i>Bo'sh</span><span><i class="d-kv d-bron"></i>Bron</span><span><i class="d-kv d-mijoz"></i>Mijozda</span><span><i class="d-kv d-tamir"></i>Ta'mirda</span><span><i class="d-kv d-yoq"></i>Yo'qolgan</span>
+          </div>
+        </section>
+        <section class="panel" aria-label="Aksessuar tafsiloti">
+          <div class="tafsil-bosh">
+            <span class="plitka katta"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{ta.ikon}}"/></svg></span>
+            <span class="ikki"><h2>{{ta.nom}}</h2><small>{{ta.kod}} · {{ta.son}} dona · {{ta.qayerdan}}</small></span>
+          </div>
+          <div class="satr"><span>Ijara narxi · <button type="button" class="havola" style="font-size: 13px">o'zgartirish</button></span><b>{{ta.narx}} so'm</b></div>
+          <div class="satr"><span>Tannarx, 1 dona <span class="mute">· faqat rahbarga</span></span><span>{{ta.tannarx}} so'm</span></div>
+          <div class="satr"><span>2026 yilda ijaraga berildi</span><span>{{ta.marta}} marta</span></div>
+          <div class="ichki-quti">
+            <sc-for list="{{ta.donalar}}" as="d" hint-placeholder-count="3">
+              <div class="dona-q"><b>{{d.kod}}</b><span class="ikki"><span class="mute" style="color: #C7CED8">{{d.izoh}}</span></span><span class="holat {{d.hcls}}">{{d.holat}}</span></div>
+            </sc-for>
+          </div>
+          <div class="amallar">
+            <button type="button" class="btn-2 kichik"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="width: 16px; height: 16px"><path d="M14.7 6.3a4 4 0 0 0-5.4 5.4L4 17l3 3 5.3-5.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z"/></svg>Ta'mirga berish</button>
+            <button type="button" class="btn-2 kichik"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="width: 16px; height: 16px"><path d="M12 5v14M5 12h14"/></svg>Dona qo'shish</button>
+          </div>
+          <p class="izoh-q"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span>Har dona yorlig'idagi kod bilan yuradi — zakazda qaysi biri berilgani, sanoqda qaysi biri yo'qligi shu koddan ko'rinadi.</span></p>
+        </section>
+      </div>
+    </sc-if>
+
+    <!-- ===================== SANOQ ===================== -->
+    <sc-if value="{{b.sanoq}}" hint-placeholder-val="{{ false }}">
+      <div class="sanoq-bar">
+        <span class="puls" aria-hidden="true"></span>
+        <div>
+          <div style="display: flex; justify-content: space-between; gap: 12px; margin-bottom: 8px"><b>Sanoq ochiq · boshladi Malika Rahimova, bugun 09:40</b><b style="font-variant-numeric: tabular-nums">{{sq.topildi}} / {{sq.kutilgan}}</b></div>
+          <div class="progress" role="progressbar" aria-label="Sanoq jarayoni" aria-valuenow="{{sq.topildi}}" aria-valuemin="0" aria-valuemax="{{sq.kutilgan}}"><i style="width: {{sq.foiz}}%"></i></div>
+        </div>
+        <span class="mute">bir necha kishi birga<br>davom ettirishi mumkin</span>
+      </div>
+      <div class="kpilar">
+        <div class="kpi"><span class="belgi"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21h18M5 21V8l7-5 7 5v13"/></svg></span><span><small>Salonda bo'lishi kerak</small><b>{{sq.kutilgan}}</b><em>17 libos · 13 dona aksessuar</em></span></div>
+        <div class="kpi yashil"><span class="belgi"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg></span><span><small>Topildi</small><b>{{sq.topildi}}</b><em>javonda belgilandi</em></span></div>
+        <div class="kpi ogoh"><span class="belgi"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span><span><small>Hali topilmagan</small><b>{{sq.hali}}</b><em>izlash davom etmoqda</em></span></div>
+        <div class="kpi kok"><span class="belgi"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/></svg></span><span><small>Boshqa joyda</small><b>11</b><em>8 libos · 3 aksessuar</em></span></div>
+      </div>
+      <div class="g-asosiy" style="grid-template-columns: minmax(0, 54fr) minmax(0, 46fr)">
+        <div class="ustun">
+          <section class="panel" aria-label="Belgilash">
+            <div class="panel-bosh"><h2><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7V5a1 1 0 0 1 1-1h2M17 4h2a1 1 0 0 1 1 1v2M20 17v2a1 1 0 0 1-1 1h-2M7 20H5a1 1 0 0 1-1-1v-2M8 8v8M11 8v8M14 8v8M17 8v8"/></svg>Belgilash</h2><span class="mute">skaner yoki qo'lda</span></div>
+            <form class="skaner" onSubmit="{{sq.yubor}}">
+              <label class="maydon"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5v14M7 5v14M11 5v14M15 5v14M19 5v14"/></svg><input value="{{sq.q}}" onInput="{{sq.yoz}}" placeholder="Raqamini tering yoki skanerlang: L-0012" aria-label="Artikul" autocomplete="off"></label>
+              <button type="submit" class="btn-2" style="min-height: 56px; border-radius: 14px">Topildi</button>
+            </form>
+            <sc-if value="{{sq.taklifBor}}" hint-placeholder-val="{{ true }}">
+              <ul class="takliflar" role="listbox" aria-label="Mos buyumlar">
+                <sc-for list="{{sq.takliflar}}" as="t" hint-placeholder-count="5">
+                  <li role="option" class="{{t.cls}}" aria-selected="false" onClick="{{t.bos}}"><b>{{t.k}}</b><span>{{t.nom}}</span><span class="holat {{t.hcls}}">{{t.joy}}</span></li>
+                </sc-for>
+              </ul>
+            </sc-if>
+            <sc-if value="{{sq.xabarBor}}" hint-placeholder-val="{{ false }}">
+              <div class="xabar {{sq.xabarCls}}" role="status"><span>{{sq.xabar}}</span></div>
+            </sc-if>
+          </section>
+          <section class="panel" aria-label="Oxirgi belgilanganlar">
+            <div class="panel-bosh"><h2><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></svg>Oxirgi belgilanganlar</h2></div>
+            <sc-for list="{{sq.lenta}}" as="l" hint-placeholder-count="5">
+              <div class="lenta-q"><span class="mute">{{l.vaqt}}</span><b>{{l.k}}</b><span class="ikki"><span>{{l.nom}}</span></span><span class="mute">{{l.kim}}</span></div>
+            </sc-for>
+          </section>
+          <section class="panel" aria-label="Oldingi sanoqlar">
+            <div class="panel-bosh"><h2><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>Oldingi sanoqlar</h2></div>
+            <div class="oldingi-q"><span class="ikki"><b>1 noyabr · Sevara Qodirova</b><small>30 tadan 29 tasi joyida · TQ-03 Marjon to'plami yo'q</small></span><span class="holat h-yoq">1 ta yo'q</span></div>
+            <div class="oldingi-q"><span class="ikki"><b>25 oktabr · Malika Rahimova</b><small>31 tadan 31 tasi joyida</small></span><span class="holat h-bosh">hammasi joyida</span></div>
+            <div class="oldingi-q"><span class="ikki"><b>18 oktabr · Sevara Qodirova</b><small>Z-0007 Zarina javonda, tizimda mijozda edi — qaytgani kiritilmagan</small></span><span class="holat h-tamir">1 ta kiritilmagan</span></div>
+          </section>
+        </div>
+        <div class="ustun">
+          <section class="panel" aria-label="Hali topilmaganlar">
+            <div class="panel-bosh"><h2><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>Hali topilmaganlar</h2></div>
+            <div class="guruh-nom">Salonda bo'lishi kerak <span class="n">{{sq.hali}}</span></div>
+            <sc-for list="{{sq.yoqlar}}" as="y" hint-placeholder-count="5">
+              <div class="topilmagan-q">
+                <sc-if value="{{y.rasmBor}}" hint-placeholder-val="{{ true }}"><img class="eskiz" src="{{y.rasm}}" alt=""></sc-if>
+                <sc-if value="{{y.rasmYoq}}" hint-placeholder-val="{{ false }}"><span class="mini-plitka"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{y.ikon}}"/></svg></span></sc-if>
+                <span class="ikki"><b>{{y.k}} · {{y.nom}}</b><small>{{y.kat}}</small></span>
+                <button type="button" class="btn-2 kichik" onClick="{{y.bos}}">Topildi</button>
+              </div>
+            </sc-for>
+            <sc-if value="{{sq.hammasi}}" hint-placeholder-val="{{ false }}">
+              <p class="xabar ok" style="margin: 8px 0 0">Salondagilarning hammasi topildi.</p>
+            </sc-if>
+            <div class="guruh-nom" style="margin-top: 24px">Ta'mirda, tozalashda, mijozda <span class="n">{{sq.boshqaSon}}</span></div>
+            <p class="mute" style="margin: 0 0 4px">Javonda bo'lsa belgilang — bo'lmasa ham xato emas.</p>
+            <sc-for list="{{sq.boshqa}}" as="y" hint-placeholder-count="4">
+              <div class="topilmagan-q">
+                <sc-if value="{{y.rasmBor}}" hint-placeholder-val="{{ true }}"><img class="eskiz" src="{{y.rasm}}" alt=""></sc-if>
+                <sc-if value="{{y.rasmYoq}}" hint-placeholder-val="{{ false }}"><span class="mini-plitka"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{y.ikon}}"/></svg></span></sc-if>
+                <span class="ikki"><b>{{y.k}} · {{y.nom}}</b><small>{{y.kat}}</small></span>
+                <span class="holat {{y.hcls}}">{{y.joy}}</span>
+              </div>
+            </sc-for>
+            <p class="mute" style="margin: 12px 0 0">yana {{sq.boshqaYana}} ta · <button type="button" class="havola">hammasini ko'rsatish</button></p>
+          </section>
+        </div>
+      </div>
+      <div class="yakun">
+        <span class="ikki"><b>{{sq.yakunMatn}}</b><small>Yakunlansa, topilmaganlar «yo'q» deb rahbarga Telegramda boradi; keyin qayta belgilab bo'lmaydi.</small></span>
+        <label class="maydon"><input placeholder="Izoh: masalan, Oqqush fotosessiyada" aria-label="Izoh"></label>
+        <button type="button" class="btn-2">Bekor qilish</button>
+        <button type="button" class="btn"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>Sanoqni yakunlash</button>
+      </div>
+    </sc-if>
+
+    <!-- ===================== YETKAZIB BERUVCHILAR ===================== -->
+    <sc-if value="{{b.yetkazib}}" hint-placeholder-val="{{ false }}">
+      <div class="kpilar" style="grid-template-columns: repeat(3, minmax(0, 1fr))">
+        <div class="kpi"><span class="belgi"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7M7 19a2 2 0 1 0 0-.01M17 19a2 2 0 1 0 0-.01"/></svg></span><span><small>Yetkazib beruvchilar</small><b>4</b><em>22 libos · 13 dona aksessuar</em></span></div>
+        <div class="kpi qizil"><span class="belgi"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/></svg></span><span><small>Ularga qarzimiz</small><b>{{yb.jamiQarz}}</b><em>{{yb.qarzdorSon}} tasiga</em></span></div>
+        <div class="kpi"><span class="belgi"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg></span><span><small>Oxirgi to'lov</small><b>6 000 000</b><em>2 noyabr · Istanbul Bridal</em></span></div>
+      </div>
+      <div class="g-asosiy" style="grid-template-columns: minmax(0, 38fr) minmax(0, 62fr)">
+        <section class="panel" aria-label="Yetkazib beruvchilar ro'yxati">
+          <div class="panel-bosh"><h2><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h11v9H3zM14 10h4l3 3v3h-7M7 19a2 2 0 1 0 0-.01M17 19a2 2 0 1 0 0-.01"/></svg>Kimdan olamiz</h2><span class="mute">qarzi kattasi tepada</span></div>
+          <sc-for list="{{yb.royxat}}" as="y" hint-placeholder-count="4">
+            <button type="button" class="ust yb-q {{y.cls}}" aria-pressed="{{y.tanlangan}}" onClick="{{y.bos}}">
+              <span class="plitka"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{y.ikon}}"/></svg></span>
+              <span class="ikki"><b>{{y.nom}}</b><small>{{y.joy}}</small></span>
+              <span class="ikki" style="text-align: right"><b style="color: {{y.qarzRang}}">{{y.qarzMatn}}</b><small>{{y.soni}}</small></span>
+            </button>
+          </sc-for>
+          <p class="izoh-q"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span>Bu bo'limni faqat rahbar ko'radi. Qarz = olingan liboslar va aksessuarlar tannarxi − ularga to'langan pul.</span></p>
+        </section>
+        <section class="panel" aria-label="Yetkazib beruvchi tafsiloti">
+          <div class="tafsil-bosh" style="margin-bottom: 0">
+            <span class="plitka katta"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{yt.ikon}}"/></svg></span>
+            <span class="ikki" style="flex: 1"><h2>{{yt.nom}}</h2><small>{{yt.joy}} · {{yt.tel}}</small></span>
+            <button type="button" class="havola">Tahrirlash</button>
+          </div>
+          <div class="uch-stat">
+            <div><small>Olingan</small><b>{{yt.olingan}}</b></div>
+            <div><small>To'langan</small><b>{{yt.tolangan}}</b></div>
+            <div style="border-color: {{yt.qarzChegara}}"><small>Qarz</small><b style="color: {{yt.qarzRang}}">{{yt.qarz}}</b></div>
+          </div>
+          <sc-if value="{{yt.qarzBor}}" hint-placeholder-val="{{ true }}">
+            <div class="tolov-forma">
+              <label>To'lov summasi<span class="maydon"><input value="{{yt.summa}}" onInput="{{yt.yoz}}" inputmode="numeric" placeholder="{{yt.qarzOrin}}" aria-label="To'lov summasi"><span class="mute">so'm</span></span></label>
+              <label>Izoh<span class="maydon"><input placeholder="masalan: Oq ko'ylak — 3-qism" aria-label="Izoh"></span></label>
+              <button type="button" class="btn-2" style="min-height: 44px">To'lov yozish</button>
+              <span class="mute" style="grid-column: 1 / -1">{{yt.qoladi}} · <button type="button" class="havola" onClick="{{yt.toliq}}">qarzni to'liq yopish</button></span>
+            </div>
+          </sc-if>
+          <p class="izoh-q" style="margin-top: 12px"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span>Bu to'lov kassadan chiqmaydi va oylik foydaga kirmaydi — libos sarmoya, u ijaradan o'zini qaytaradi.</span></p>
+          <sc-if value="{{yt.libosBor}}" hint-placeholder-val="{{ true }}">
+            <div class="kichik-sar"><h3>Olingan liboslar</h3><span class="mute">{{yt.libosSon}} ta</span></div>
+            <div class="ust bosh ybl-q"><span>Sana</span><span>Libos</span><span>Hozir</span><span class="raqam">Tannarx</span></div>
+            <sc-for list="{{yt.liboslar}}" as="l" hint-placeholder-count="4">
+              <div class="ust ybl-q"><span class="mute">{{l.sana}}</span><span class="qator">
+                <sc-if value="{{l.rasmBor}}" hint-placeholder-val="{{ true }}"><img class="eskiz" src="{{l.rasm}}" alt="" style="width: 30px; height: 38px"></sc-if>
+                <sc-if value="{{l.rasmYoq}}" hint-placeholder-val="{{ false }}"><span class="mini-plitka" style="width: 30px; height: 38px"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6l-1 5 4 13H6l4-13z"/></svg></span></sc-if>
+                <span class="ikki"><b>{{l.nom}}</b><small>{{l.k}}</small></span></span><span><span class="holat {{l.hcls}}">{{l.holat}}</span></span><span class="raqam">{{l.tannarx}}</span></div>
+            </sc-for>
+            <sc-if value="{{yt.yanaBor}}" hint-placeholder-val="{{ true }}"><p class="mute" style="margin: 10px 8px 0">{{yt.yana}}</p></sc-if>
+          </sc-if>
+          <sc-if value="{{yt.aksBor}}" hint-placeholder-val="{{ false }}">
+            <div class="kichik-sar"><h3>Olingan aksessuarlar</h3></div>
+            <div class="ust bosh yba-q"><span>Sana</span><span>Aksessuar</span><span class="raqam">Soni</span><span class="raqam">1 dona</span><span class="raqam">Jami</span></div>
+            <sc-for list="{{yt.aks}}" as="a" hint-placeholder-count="2">
+              <div class="ust yba-q"><span class="mute">{{a.sana}}</span><span class="ikki"><b>{{a.nom}}</b><small>{{a.kod}}</small></span><span class="raqam">{{a.soni}}</span><span class="raqam">{{a.narx}}</span><b class="raqam">{{a.jami}}</b></div>
+            </sc-for>
+          </sc-if>
+          <div class="kichik-sar"><h3>To'lovlar</h3><span class="mute">{{yt.tolovSon}}</span></div>
+          <div class="ust bosh ybt-q"><span>Sana</span><span class="raqam">Summa</span><span>Izoh</span></div>
+          <sc-for list="{{yt.tolovlar}}" as="t" hint-placeholder-count="3">
+            <div class="ust ybt-q"><span class="mute">{{t.sana}}</span><b class="raqam">{{t.summa}}</b><span class="mute" style="color: #C7CED8">{{t.izoh}}</span></div>
+          </sc-for>
+        </section>
+      </div>
+    </sc-if>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"bolim":{"editor":"enum","options":["aksessuar","sanoq","yetkazib"],"default":"aksessuar"},"$preview":{"width":1440,"height":1040}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    const p = props || {};
+    this.state = { bolim: p.bolim || 'aksessuar', aks: 'TJ', q: 'FT-0', belg: [], lentaYangi: [], xabar: null, yb: 'istanbul', summa: '' };
+  }
+  renderVals() {
+    const s = this.state;
+    const fmt = (n) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+    const R = { L1: '/_blob/78b3216f7738bdab0ea238adcec51f32', L2: '/_blob/7d80ca195130908ffa9854d230fd9af0', L3: '/_blob/b28f71fbbeeeed9ca5c0052f387901a2', L4: '/_blob/ff22f88eaee9183133df1fc14998e6ee', L5: '/_blob/cf292d70c86c681a76df49fe549f8887', L6: '/_blob/758947eb97690570420217f21f276a4b' };
+    const IKON = {
+      FT: 'M12 3c-2.5 0-4 1.6-4 3.5C8 12 5.5 16 4 21h16c-1.5-5-4-9-4-14.5C16 4.6 14.5 3 12 3zM9 9.5c1.8.8 4.2.8 6 0',
+      TJ: 'M3 18h18M4 18 3 8l5 4 4-7 4 7 5-4-1 10',
+      TQ: 'M5 4c0 6 3 10 7 10s7-4 7-10M12 14v2.5M12 21a2.2 2.2 0 1 0 0-4.4 2.2 2.2 0 0 0 0 4.4',
+      KM: 'M2 9h7M15 9h7M2 15h7M15 15h7M9 8h6v8H9z',
+      QQ: 'M8 21v-8.5L6.2 9a1.4 1.4 0 0 1 2.4-1.4L10 9.5V4.5a1.4 1.4 0 0 1 2.8 0V9V3.8a1.4 1.4 0 0 1 2.8 0V9.5V5.5a1.4 1.4 0 0 1 2.8 0V15a6 6 0 0 1-6 6z',
+      LIBOS: 'M9 3h6l-1 5 4 13H6l4-13z'
+    };
+    const HOLAT = { bosh: ["Bo'sh", 'h-bosh', 'd-bosh'], bron: ['Bron', 'h-bron', 'd-bron'], vaqt: ['Vaqtinchalik', 'h-vaqt', 'd-bron'], mijoz: ['Mijozda', 'h-mijoz', 'd-mijoz'], tamir: ["Ta'mirda", 'h-tamir', 'd-tamir'], yoq: ["Yo'qolgan", 'h-yoq', 'd-yoq'] };
+    // ===== aksessuarlar: har dona alohida yorliq bilan =====
+    const AKS = [
+      { kod: 'TJ', nom: 'Kristalli toj', narx: 300000, tannarx: 900000, qayerdan: 'Gavhar aksessuar', marta: 14, donalar: [
+        ['TJ-01', 'bosh', 'Javonda · keyingi bron 12 noyabr'], ['TJ-02', 'mijoz', '#9 Aziza Xolmatova · Rubin bilan · 1 kun kechikdi'], ['TJ-03', 'tamir', "Tosh qo'yiladi · usta Rustam · 6 noyabrdan"]] },
+      { kod: 'FT', nom: 'Fata klassik, uzun', narx: 150000, tannarx: 300000, qayerdan: 'Durdona atelye', marta: 26, donalar: [
+        ['FT-01', 'bosh', 'Javonda'], ['FT-02', 'bron', '#13 Dilnoza Karimova · bugun beriladi'], ['FT-03', 'bosh', 'Javonda'], ['FT-04', 'mijoz', '#14 Madina Rahimova · bugun qaytadi'], ['FT-05', 'bosh', 'Javonda']] },
+      { kod: 'TQ', nom: "Marjon to'plami", narx: 250000, tannarx: 600000, qayerdan: 'Gavhar aksessuar', marta: 9, donalar: [
+        ['TQ-01', 'bosh', 'Javonda'], ['TQ-02', 'bosh', 'Javonda'], ['TQ-03', 'yoq', '1 noyabr sanog\'ida topilmadi · rahbarga yuborilgan']] },
+      { kod: 'KM', nom: 'Toshli kamar', narx: 200000, tannarx: 450000, qayerdan: 'Gavhar aksessuar', marta: 7, donalar: [
+        ['KM-01', 'bosh', 'Javonda'], ['KM-02', 'bron', '#15 Sabina Usmonova · bugun 15:00']] },
+      { kod: 'QQ', nom: "Atlas qo'lqop", narx: 80000, tannarx: 120000, qayerdan: "ko'rsatilmagan", marta: 11, donalar: [
+        ['QQ-01', 'bosh', 'Javonda'], ['QQ-02', 'bosh', 'Javonda'], ['QQ-03', 'bosh', 'Javonda'], ['QQ-04', 'bosh', 'Javonda']] }
+    ];
+    const aksessuarlar = AKS.map((a) => {
+      const tan = s.aks === a.kod;
+      const tayyor = a.donalar.filter((d) => d[1] === 'bosh').length;
+      return {
+        kod: a.kod, nom: a.nom, son: a.donalar.length, ikon: IKON[a.kod], narx: fmt(a.narx), tayyor: tayyor + ' / ' + a.donalar.length,
+        tanlangan: tan, cls: tan ? 'tanlangan' : '', bos: () => this.setState({ aks: a.kod }),
+        donaAria: a.donalar.map((d) => d[0] + ' ' + HOLAT[d[1]][0]).join(', '),
+        donalar: a.donalar.map(([kod, h]) => ({ kod, holat: HOLAT[h][0], cls: HOLAT[h][2] }))
+      };
+    });
+    const A = AKS.find((a) => a.kod === s.aks) || AKS[0];
+    // ===== sanoq =====
+    const SQ = [
+      { k: 'O-0031', nom: "Oq ko'ylak", kat: "To'y libosi · 44", joy: 'salonda', rasm: R.L6 },
+      { k: 'P-0009', nom: 'Oqqush', kat: 'Pachka · 36', joy: 'salonda' },
+      { k: 'K-0018', nom: 'Shampan', kat: 'Kechki · 40', joy: 'salonda' },
+      { k: 'FT-03', nom: 'Fata klassik', kat: 'Aksessuar donasi', joy: 'salonda', aks: 'FT' },
+      { k: 'FT-05', nom: 'Fata klassik', kat: 'Aksessuar donasi', joy: 'salonda', aks: 'FT' },
+      { k: 'FT-01', nom: 'Fata klassik', kat: 'Aksessuar donasi', joy: 'salonda', aks: 'FT', topildi: true },
+      { k: 'FT-02', nom: 'Fata klassik', kat: 'bron #13', joy: 'salonda', aks: 'FT', topildi: true },
+      { k: 'B-0021', nom: 'Bella', kat: '#14 Madina Rahimova · bugun qaytadi', joy: 'mijozda', rasm: R.L2 },
+      { k: 'R-0056', nom: 'Rubin', kat: '#9 Aziza Xolmatova · 1 kun kechikdi', joy: 'mijozda', rasm: R.L5 },
+      { k: 'FT-04', nom: 'Fata klassik', kat: '#14 Madina Rahimova', joy: 'mijozda', aks: 'FT' },
+      { k: 'TJ-02', nom: 'Kristalli toj', kat: '#9 Aziza Xolmatova', joy: 'mijozda', aks: 'TJ' },
+      { k: 'TJ-03', nom: 'Kristalli toj', kat: 'usta Rustam · 6 noyabrdan', joy: "ta'mirda", aks: 'TJ' }
+    ];
+    const isTop = (x) => x.topildi || s.belg.includes(x.k);
+    const salonda = SQ.filter((x) => x.joy === 'salonda');
+    const KUTILGAN = 30, BOSHQA_TOPILGAN = 23; // ro'yxatda ko'rinmagan, allaqachon belgilangan salon buyumlari
+    const topildi = BOSHQA_TOPILGAN + salonda.filter(isTop).length;
+    const hali = KUTILGAN - topildi;
+    const ikonOf = (x) => (x.aks ? IKON[x.aks] : IKON.LIBOS);
+    const belgila = (x) => {
+      if (isTop(x)) { this.setState({ xabar: ['ok', x.k + ' ' + x.nom + ' allaqachon belgilangan.'], q: '' }); return; }
+      const ogoh = x.joy !== 'salonda';
+      this.setState({
+        belg: [...s.belg, x.k], q: '',
+        lentaYangi: [{ vaqt: 'hozir', k: x.k, nom: x.nom, kim: 'Nodira' }, ...s.lentaYangi],
+        xabar: ogoh ? ['ogoh', '⚠ ' + x.k + ' ' + x.nom + ' — tizimda «' + x.joy + '» turibdi, lekin javonda. Qaytgani kiritilmaganmi?'] : ['ok', '✓ ' + x.k + ' ' + x.nom + ' belgilandi']
+      });
+    };
+    const q = s.q.trim().toLowerCase();
+    const takliflar = !q ? [] : SQ.filter((x) => x.k.toLowerCase().includes(q) || x.nom.toLowerCase().includes(q))
+      .sort((a, b) => (isTop(a) - isTop(b)) || a.k.localeCompare(b.k)).slice(0, 6)
+      .map((x) => ({
+        k: x.k, nom: x.nom + ' · ' + x.kat, cls: isTop(x) ? 'belgilangan' : '',
+        joy: isTop(x) ? '✓ belgilangan' : x.joy === 'salonda' ? 'salonda' : 'tizimda: ' + x.joy,
+        hcls: isTop(x) ? 'h-bosh' : x.joy === 'salonda' ? 'h-yopiq' : x.joy === 'mijozda' ? 'h-mijoz' : 'h-tamir',
+        bos: () => belgila(x)
+      }));
+    const LENTA = [
+      { vaqt: '10:06', k: 'FT-02', nom: 'Fata klassik · bron #13', kim: 'Malika' },
+      { vaqt: '10:05', k: 'FT-01', nom: 'Fata klassik', kim: 'Malika' },
+      { vaqt: '10:03', k: 'M-0013', nom: 'Mira · bron #13', kim: 'Malika' },
+      { vaqt: '10:02', k: 'L-0042', nom: 'Luna', kim: 'Sevara' },
+      { vaqt: '10:01', k: 'Z-0007', nom: 'Zarina · bron #15', kim: 'Sevara' }
+    ];
+    const qatorSq = (x) => ({ k: x.k, nom: x.nom, kat: x.kat, rasm: x.rasm || '', rasmBor: !!x.rasm, rasmYoq: !x.rasm, ikon: ikonOf(x), joy: x.joy, hcls: x.joy === 'mijozda' ? 'h-mijoz' : 'h-tamir', bos: () => belgila(x) });
+    // ===== yetkazib beruvchilar =====
+    const YB = [
+      { id: 'istanbul', nom: 'Istanbul Bridal', joy: "Istanbul · to'y liboslari", tel: '+90 532 418 22 10', ikon: IKON.LIBOS, libos: 9, dona: 0, olingan: 186000000, tolangan: 174000000,
+        liboslar: [['12 avg 2026', 'O-0031', "Oq ko'ylak", 'bosh', 30000000, R.L6], ['3 mar 2026', 'B-0021', 'Bella', 'mijoz', 28000000, R.L2], ['20 fev 2026', 'T-0004', 'Oydin', 'bosh', 21000000], ['9 yan 2026', 'T-0011', 'Nozanin', 'bosh', 19500000]],
+        yana: "yana 5 ta libos · 87 500 000", aks: [],
+        tolovlar: [['2 noy 2026', 6000000, "Oq ko'ylak — 2-qism"], ['12 avg 2026', 12000000, "Oq ko'ylak — avans"], ['3 mar 2026', 28000000, "Bella — to'liq"]], tolovSon: '7 ta · oxirgi 3 tasi' },
+      { id: 'durdona', nom: 'Durdona atelye', joy: 'Toshkent · kechki va pachka', tel: '+998 90 351 77 40', ikon: 'M6 3h12M12 3v4M7 21l5-14 5 14M9.5 14h5', libos: 6, dona: 5, olingan: 79500000, tolangan: 76000000,
+        liboslar: [['20 okt 2026', 'K-0018', 'Shampan', 'bosh', 16500000], ['4 may 2026', 'M-0013', 'Mira', 'bron', 15000000, R.L3], ['11 apr 2026', 'L-0042', 'Luna', 'vaqt', 12000000, R.L4]],
+        yana: 'yana 3 ta libos · 34 500 000', aks: [['4 okt 2026', 'FT', 'Fata klassik, uzun', 5, 300000]],
+        tolovlar: [['20 okt 2026', 13000000, 'Shampan — qisman'], ['4 okt 2026', 1500000, "Fata, 5 dona — to'liq"], ['4 may 2026', 15000000, "Mira — to'liq"]], tolovSon: '6 ta · oxirgi 3 tasi' },
+      { id: 'gavhar', nom: 'Gavhar aksessuar', joy: 'Toshkent · toj, taqinchoq, kamar', tel: '+998 99 870 40 12', ikon: IKON.TJ, libos: 0, dona: 8, olingan: 5400000, tolangan: 3900000,
+        liboslar: [], yana: '', aks: [['15 sen 2026', 'TJ', 'Kristalli toj', 3, 900000], ['15 sen 2026', 'TQ', "Marjon to'plami", 3, 600000], ['2 iyun 2026', 'KM', 'Toshli kamar', 2, 450000]],
+        tolovlar: [['15 sen 2026', 3000000, 'Toj va marjon — avans'], ['2 iyun 2026', 900000, "Kamar — to'liq"]], tolovSon: '2 ta' },
+      { id: 'atlas', nom: 'Atlas Milliy', joy: "Marg'ilon · milliy liboslar", tel: '+998 73 244 15 90', ikon: 'M12 3l2.5 5 5.5.8-4 3.9.9 5.5L12 15.6 7.1 18.2l.9-5.5-4-3.9 5.5-.8z', libos: 7, dona: 0, olingan: 112000000, tolangan: 112000000,
+        liboslar: [['30 avg 2025', 'Z-0007', 'Zarina', 'bron', 22000000, R.L1], ['30 avg 2025', 'R-0056', 'Rubin', 'mijoz', 18000000, R.L5]],
+        yana: 'yana 5 ta libos · 72 000 000', aks: [],
+        tolovlar: [['1 noy 2025', 56000000, "Qolgan qismi — to'liq yopildi"], ['30 avg 2025', 56000000, 'Avans, 7 libos']], tolovSon: '2 ta' }
+    ];
+    const qarzOf = (y) => y.olingan - y.tolangan;
+    const ybSort = [...YB].sort((a, b) => qarzOf(b) - qarzOf(a));
+    const Y = YB.find((y) => y.id === s.yb) || YB[0];
+    const yq = qarzOf(Y);
+    const summa = Number(String(s.summa).replace(/\D/g, '')) || 0;
+    const SARL = {
+      aksessuar: ['Aksessuarlar', "Fata, toj, taqinchoq — har dona o'z yorlig'i bilan hisobda"],
+      sanoq: ["Libos sanog'i", "Javondagini belgilang — yo'qolgan yoki zakazsiz berilgan buyum shu yerda ko'rinadi"],
+      yetkazib: ['Yetkazib beruvchilar', 'Libos va aksessuar kimdan olingan, kimga qancha qarz qoldi']
+    };
+    return {
+      sarlavha: SARL[s.bolim][0], izoh: SARL[s.bolim][1],
+      b: { aksessuar: s.bolim === 'aksessuar', sanoq: s.bolim === 'sanoq', yetkazib: s.bolim === 'yetkazib' },
+      t: { aksessuar: s.bolim === 'aksessuar' ? 'faol' : '', sanoq: s.bolim === 'sanoq' ? 'faol' : '', yetkazib: s.bolim === 'yetkazib' ? 'faol' : '' },
+      tAks: () => this.setState({ bolim: 'aksessuar' }), tSanoq: () => this.setState({ bolim: 'sanoq' }), tYb: () => this.setState({ bolim: 'yetkazib' }),
+      aksessuarlar,
+      ta: {
+        nom: A.nom, kod: A.kod, son: A.donalar.length, ikon: IKON[A.kod], narx: fmt(A.narx), tannarx: fmt(A.tannarx), qayerdan: A.qayerdan, marta: A.marta,
+        donalar: A.donalar.map(([kod, h, izoh]) => ({ kod, izoh, holat: HOLAT[h][0], hcls: HOLAT[h][1] }))
+      },
+      sq: {
+        kutilgan: KUTILGAN, topildi, hali, foiz: Math.round((topildi / KUTILGAN) * 100),
+        q: s.q, yoz: (e) => this.setState({ q: e.target.value, xabar: null }),
+        yubor: (e) => { e.preventDefault(); const x = SQ.find((z) => z.k.toLowerCase() === q); if (x) belgila(x); else if (takliflar[0]) takliflar[0].bos(); },
+        takliflar, taklifBor: takliflar.length > 0,
+        xabarBor: !!s.xabar, xabar: s.xabar ? s.xabar[1] : '', xabarCls: s.xabar ? s.xabar[0] : '',
+        lenta: [...s.lentaYangi, ...LENTA].slice(0, 6),
+        yoqlar: salonda.filter((x) => !isTop(x)).map(qatorSq),
+        hammasi: hali === 0,
+        boshqa: SQ.filter((x) => x.joy !== 'salonda' && !isTop(x)).slice(0, 4).map(qatorSq),
+        // 11 tadan javonda belgilanganlari ro'yxatdan chiqadi; 4 tasi ko'rinadi
+        boshqaSon: 11 - SQ.filter((x) => x.joy !== 'salonda' && isTop(x)).length,
+        boshqaYana: Math.max(11 - SQ.filter((x) => x.joy !== 'salonda' && isTop(x)).length - 4, 0),
+        yakunMatn: hali > 0 ? hali + ' ta buyum hali topilmagan' : 'Hammasi topildi — yakunlash mumkin'
+      },
+      yb: {
+        jamiQarz: fmt(YB.reduce((a, y) => a + Math.max(qarzOf(y), 0), 0)),
+        qarzdorSon: YB.filter((y) => qarzOf(y) > 0).length,
+        royxat: ybSort.map((y) => {
+          const qz = qarzOf(y), tan = y.id === Y.id;
+          return {
+            nom: y.nom, joy: y.joy, ikon: y.ikon, tanlangan: tan, cls: tan ? 'tanlangan' : '',
+            qarzMatn: qz > 0 ? fmt(qz) : "qarz yo'q", qarzRang: qz > 0 ? '#FF9B92' : '#98A1B0',
+            soni: [y.libos ? y.libos + ' libos' : '', y.dona ? y.dona + ' dona' : ''].filter(Boolean).join(' · '),
+            bos: () => this.setState({ yb: y.id, summa: '' })
+          };
+        })
+      },
+      yt: {
+        nom: Y.nom, joy: Y.joy, tel: Y.tel, ikon: Y.ikon,
+        olingan: fmt(Y.olingan), tolangan: fmt(Y.tolangan), qarz: yq > 0 ? fmt(yq) : "yo'q",
+        qarzRang: yq > 0 ? '#FF9B92' : '#7ED6A0', qarzChegara: yq > 0 ? 'rgba(255,155,146,.35)' : 'rgba(255,255,255,.06)',
+        qarzBor: yq > 0, qarzOrin: 'qarz: ' + fmt(yq),
+        summa: summa ? fmt(summa) : '', yoz: (e) => this.setState({ summa: e.target.value }),
+        toliq: () => this.setState({ summa: String(yq) }),
+        qoladi: !summa ? 'Qisman ham yozish mumkin' : summa >= yq ? "Qarz to'liq yopiladi" : "To'lovdan keyin qarz: " + fmt(yq - summa) + " so'm",
+        libosBor: Y.liboslar.length > 0, libosSon: Y.libos,
+        liboslar: Y.liboslar.map(([sana, k, nom, h, tannarx, rasm]) => ({ sana, k, nom, holat: HOLAT[h][0], hcls: HOLAT[h][1], tannarx: fmt(tannarx), rasm: rasm || '', rasmBor: !!rasm, rasmYoq: !rasm })),
+        yanaBor: !!Y.yana, yana: Y.yana,
+        aksBor: Y.aks.length > 0,
+        aks: Y.aks.map(([sana, kod, nom, soni, narx]) => ({ sana, kod, nom, soni, narx: fmt(narx), jami: fmt(soni * narx) })),
+        tolovlar: Y.tolovlar.map(([sana, sm, izoh]) => ({ sana, summa: fmt(sm), izoh })), tolovSon: Y.tolovSon
+      }
+    };
+  }
+}
+</script>
+</body>
+</html>

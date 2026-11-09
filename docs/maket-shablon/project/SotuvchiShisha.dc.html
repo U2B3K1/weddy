@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<title>Libosa — Sotuvchi bosh sahifasi (shisha)</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500;1,600&amp;family=Manrope:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#0D1320}
+a{color:#F3BF70}a:hover{color:#F6DDB0}
+*{box-sizing:border-box}
+button{font:inherit;cursor:pointer}
+sc-for,sc-if{display:contents}
+.ilova{display:flex;flex-wrap:wrap;min-height:100vh;background:#0D1320;color:#F5F2EE;font:400 14px/1.45 Manrope,system-ui,sans-serif}
+svg.i{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.yon{flex:1 1 232px;max-width:248px;display:flex;flex-direction:column;gap:4px;padding:18px 14px;background:#0B0F17;border-right:1px solid rgba(243,191,112,.12)}
+.brend{display:block;padding:16px 10px 22px;margin-bottom:14px;border-bottom:1px solid rgba(243,191,112,.16);text-align:center;text-decoration:none}
+.brend b{font:600 32px/1 'Cormorant Garamond',serif;letter-spacing:.3em;margin-right:-.3em;color:#F3BF70;font-variant-numeric:lining-nums}
+.nav{display:flex;align-items:center;gap:12px;min-height:44px;padding:0 12px;border-radius:10px;color:#C9CCD4;font-weight:600;text-decoration:none}
+.nav:hover{color:#F5F2EE;background:rgba(255,255,255,.04)}
+.nav.faol{color:#F5F2EE;background:linear-gradient(90deg,rgba(243,191,112,.26),rgba(243,191,112,.05));box-shadow:inset 3px 0 0 #F3BF70}
+.nav.faol svg{color:#F3BF70}
+.mazmun{flex:999 1 560px;min-width:0;position:relative;padding:20px 32px 48px}
+.mazmun::before{content:'';position:absolute;left:0;right:0;top:0;height:330px;background:linear-gradient(180deg,rgba(8,11,18,.3),rgba(8,11,18,.78) 60%,#0D1320),url(/_blob/c9a1861df1eef0d758b27417a77833a6) 50% 38%/cover;pointer-events:none}
+.mazmun>*{position:relative}
+.ustki{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.qidiruv{flex:1 1 260px;max-width:480px;display:flex;align-items:center;gap:10px;min-height:44px;padding:0 16px;border-radius:999px;background:rgba(10,14,22,.38);border:1px solid rgba(243,191,112,.24);color:#F3BF70;-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+.qidiruv input{flex:1;min-width:0;background:none;border:0;outline:none;color:#F5F2EE;font:inherit}
+.qidiruv input::placeholder{color:#B7BAC5}
+.ong{margin-left:auto;display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.tabletka{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 16px;border-radius:999px;background:rgba(10,14,22,.38);border:1px solid rgba(243,191,112,.24);color:#F5F2EE;font-weight:600;white-space:nowrap;-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+.tabletka svg{width:18px;height:18px;color:#F3BF70}
+.ikon-t{position:relative;width:44px;height:44px;display:grid;place-items:center;padding:0;border-radius:50%;background:rgba(10,14,22,.38);border:1px solid rgba(243,191,112,.24);color:#F5F2EE;-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+.ikon-t .nuqta{position:absolute;top:-4px;right:-4px;min-width:20px;height:20px;padding:0 5px;border-radius:10px;background:#D9434F;color:#fff;font-size:13px;line-height:20px;font-weight:700}
+.avatar{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;flex:none;background:rgba(243,191,112,.2);color:#F3BF70;font-weight:700}
+.xodim-t{display:inline-flex;align-items:center;gap:10px;min-height:44px;padding:2px 16px 2px 2px;border-radius:999px;background:rgba(10,14,22,.38);border:1px solid rgba(243,191,112,.24);color:#F5F2EE;text-align:left;-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+.xodim-t small{display:block;color:#B7BAC5;font-size:13px;line-height:1.1}
+.sarlavha{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px;margin:32px 0 24px}
+.sarlavha h1{margin:0;font:600 50px/1.05 'Cormorant Garamond',serif;font-variant-numeric:lining-nums}
+.sarlavha p{margin:8px 0 0;color:#D4D7DE;font-size:15px}
+.kursiv{font-family:'Cormorant Garamond',serif;font-style:italic;font-weight:500;color:#F3BF70}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:0 24px;border-radius:999px;border:0;background:linear-gradient(110deg,#E8AD5C,#F3BF70);color:#171717;font-weight:700;font-size:15px;text-decoration:none;box-shadow:0 10px 28px -12px rgba(243,191,112,.8)}
+.btn:hover{color:#171717;filter:brightness(1.06)}
+.btn-2{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 16px;border-radius:999px;border:1px solid rgba(243,191,112,.5);background:transparent;color:#F5F2EE;font-weight:600;text-decoration:none;white-space:nowrap}
+.btn-2:hover{color:#F5F2EE;background:rgba(243,191,112,.1)}
+.havola{background:none;border:0;padding:0;color:#F3BF70;font-weight:600;text-decoration:none;white-space:nowrap}
+.panel{background:rgba(14,19,30,.42);border:1px solid rgba(243,191,112,.14);border-radius:18px;padding:24px;backdrop-filter:blur(12px)}
+.panel-bosh{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin-bottom:16px}
+.panel-bosh h2{display:flex;align-items:center;gap:10px;margin:0;font:600 24px/1.2 'Cormorant Garamond',serif;font-variant-numeric:lining-nums}
+.panel-bosh h2 svg{color:#F3BF70}
+.kpilar{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-bottom:16px}
+.kpi{display:flex;align-items:center;gap:14px;min-width:0;padding:16px 18px;border-radius:16px;border:1px solid rgba(243,191,112,.2);background:linear-gradient(135deg,rgba(243,191,112,.15),rgba(14,19,30,.42) 62%);color:#F5F2EE;text-align:left;-webkit-backdrop-filter:var(--shisha);backdrop-filter:var(--shisha)}
+button.kpi:hover{border-color:rgba(243,191,112,.5)}
+.kpi.tanlandi{border-color:#F3BF70;box-shadow:0 0 0 1px #F3BF70}
+.kpi .belgi{width:50px;height:50px;border-radius:50%;display:grid;place-items:center;flex:none;background:rgba(243,191,112,.16);color:#F3BF70}
+.kpi small{display:block;color:#D4D7DE;font-size:13.5px}
+.kpi b{display:block;font:800 26px/1.15 Manrope,sans-serif;font-variant-numeric:tabular-nums}
+.kpi em{display:block;font-style:normal;color:#B7BAC5;font-size:13px}
+.kpi.neytral{border-color:rgba(255,255,255,.12);background:rgba(14,19,30,.42);-webkit-backdrop-filter:var(--shisha);backdrop-filter:var(--shisha)}.kpi.neytral .belgi{background:rgba(255,255,255,.08);color:#D4D7DE}
+.kpi.kok{border-color:rgba(121,169,242,.26);background:linear-gradient(135deg,rgba(121,169,242,.16),rgba(14,19,30,.42) 62%);-webkit-backdrop-filter:var(--shisha);backdrop-filter:var(--shisha)}.kpi.kok .belgi{background:rgba(121,169,242,.16);color:#79A9F2}
+.kpi.qizil{border-color:rgba(240,128,137,.28);background:linear-gradient(135deg,rgba(240,128,137,.2),rgba(14,19,30,.42) 62%);-webkit-backdrop-filter:var(--shisha);backdrop-filter:var(--shisha)}.kpi.qizil .belgi{background:rgba(240,128,137,.16);color:#F08089}
+.kpi.ogoh{border-color:rgba(242,196,109,.3);background:linear-gradient(135deg,rgba(242,196,109,.15),rgba(14,19,30,.42) 62%);-webkit-backdrop-filter:var(--shisha);backdrop-filter:var(--shisha)}.kpi.ogoh .belgi{background:rgba(242,196,109,.16);color:#F2C46D}
+.holat{display:inline-flex;align-items:center;gap:6px;min-height:26px;padding:0 12px;border-radius:999px;font-size:13px;font-weight:700;white-space:nowrap}
+.h-bron{background:rgba(243,191,112,.18);color:#F3BF70}
+.h-vaqt{border:1px dashed #F2C46D;color:#F2C46D}
+.h-ber{background:rgba(121,169,242,.18);color:#79A9F2}
+.h-kech{background:rgba(240,128,137,.16);color:#F08089}
+.h-kutish{background:rgba(242,196,109,.16);color:#F2C46D}
+.eskiz{width:40px;height:52px;border-radius:8px;object-fit:cover;object-position:50% 12%;flex:none;display:block}
+.qator{display:flex;align-items:center;gap:12px;min-width:0}
+.ikki{display:flex;flex-direction:column;min-width:0}
+.ikki small,.mute{color:#B7BAC5;font-size:13px}
+.g-asosiy{display:grid;grid-template-columns:minmax(0,70fr) minmax(0,30fr);gap:16px;align-items:start}
+.ustun{display:flex;flex-direction:column;gap:16px;min-width:0}
+@media (max-width:1180px){.g-asosiy{grid-template-columns:minmax(0,1fr)}.kpilar{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:760px){.yon{max-width:none;flex-direction:row;align-items:center;overflow-x:auto;padding:8px 10px;border-right:0;border-bottom:1px solid rgba(243,191,112,.12)}.brend{display:none}.nav{flex:none}.mazmun{padding:16px}.sarlavha h1{font-size:34px}.kpilar{grid-template-columns:minmax(0,1fr)}}
+/* Sotuvchi */
+.rejim{display:flex;align-items:flex-start;gap:12px;margin-bottom:16px;padding:12px 16px;border-radius:14px;border:1px solid rgba(121,169,242,.35);background:rgba(121,169,242,.08);color:#D4D7DE}
+.rejim svg{color:#79A9F2;margin-top:1px}
+.rejim b{color:#F5F2EE}
+.ishlar{min-width:640px}
+.ish-q{display:grid;grid-template-columns:96px minmax(0,1fr) 150px 112px 168px;gap:16px;align-items:center;padding:8px 6px;border-bottom:1px solid rgba(255,255,255,.05);white-space:nowrap}
+.ish-q:hover{background:rgba(255,255,255,.025)}
+.ish-bosh{padding-top:0;color:#B7BAC5;font-size:13px;font-weight:600;border-bottom-color:rgba(243,191,112,.14)}
+.ish-bosh:hover{background:none}
+.vaqt-ish{display:flex;flex-direction:column;gap:3px}
+.vaqt-ish>b{font:800 20px/1 Manrope,sans-serif;font-variant-numeric:tabular-nums}
+.ish{display:inline-flex;align-items:center;gap:6px;color:#D4D7DE;font-size:13.5px;font-weight:600}
+.ish svg{width:16px;height:16px}
+.ish-q .ikki>b,.ish-q .ikki>small{overflow:hidden;text-overflow:ellipsis}
+.raqam{text-align:right;font-variant-numeric:tabular-nums}
+.amal{display:flex;justify-content:flex-end}
+.royxat-q{display:flex;align-items:center;gap:12px;padding:10px;border-radius:12px;background:rgba(255,255,255,.03)}
+.royxat-q .vaqt{margin-left:auto;padding:2px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.18);color:#D4D7DE;font-weight:700;font-size:13px}
+
+/* ===== SHISHA qatlami — MainShisha / KassaShisha bilan bir xil material (gen-shisha-hamma.py) ===== */
+:root{--glass:rgba(14,19,30,.42);--line:rgba(236,190,120,.42);--yalt:linear-gradient(150deg,rgba(255,255,255,.15),rgba(255,255,255,.05) 34%,rgba(255,255,255,.015) 68%);--shisha:blur(10px) saturate(150%) brightness(.8)}
+h1,h2,h3{font-variant-numeric:lining-nums}
+.mazmun{isolation:isolate}
+.mazmun::before{content:'';position:absolute;z-index:-3;inset:0;height:auto;pointer-events:none;
+  background:linear-gradient(180deg,rgba(13,19,32,.30) 0,rgba(13,19,32,.42) 220px,rgba(13,19,32,.58) 420px,rgba(13,19,32,.70) 620px),linear-gradient(rgba(70,44,18,.22),rgba(70,44,18,.22)),url(/_blob/c9a1861df1eef0d758b27417a77833a6) center -40px/100% auto no-repeat;
+  -webkit-mask-image:linear-gradient(#000 540px,transparent 660px);mask-image:linear-gradient(#000 540px,transparent 660px)}
+.mazmun::after{content:'';position:absolute;z-index:-3;inset:560px 0 0;pointer-events:none;transform:scaleY(-1);
+  background:linear-gradient(rgba(13,19,32,.62),rgba(13,19,32,.62)),url(/_blob/c9a1861df1eef0d758b27417a77833a6) center bottom/100% auto no-repeat;
+  -webkit-mask-image:linear-gradient(to top,transparent 0,#000 110px,#000 calc(100% - 220px),rgba(0,0,0,.25) 100%),linear-gradient(to top,#000 520px,transparent 690px);-webkit-mask-composite:source-in;
+  mask-image:linear-gradient(to top,transparent 0,#000 110px,#000 calc(100% - 220px),rgba(0,0,0,.25) 100%),linear-gradient(to top,#000 520px,transparent 690px);mask-composite:intersect}
+.mazmun{background:radial-gradient(420px 320px at 12% 62%,rgba(243,191,112,.17),transparent 70%) 0 0/100% 760px repeat-y,radial-gradient(360px 300px at 94% 28%,rgba(121,169,242,.11),transparent 70%) 0 0/100% 760px repeat-y,radial-gradient(320px 260px at 58% 88%,rgba(217,123,170,.09),transparent 70%) 0 0/100% 760px repeat-y,#0D1320}
+.panel{border-color:var(--line);border-top-color:rgba(255,228,186,.55);border-radius:16px;background:var(--yalt),var(--glass);-webkit-backdrop-filter:var(--shisha);backdrop-filter:var(--shisha);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.22),inset 1px 0 0 rgba(255,255,255,.07),inset 0 -1px 0 rgba(243,191,112,.10),0 14px 34px rgba(0,0,0,.34)}
+.kpi{border-top-color:rgba(255,228,186,.45);-webkit-backdrop-filter:var(--shisha);backdrop-filter:var(--shisha);box-shadow:inset 0 1px 0 rgba(255,255,255,.18),0 10px 26px rgba(0,0,0,.28)}
+.qidiruv,.tabletka,.ikon-t,.xodim-t{border-color:rgba(255,255,255,.16);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px)}
+.btn{border:1px solid #FFD494;background:linear-gradient(120deg,#F9C97A,#E8AD5C);color:#171717}
+.btn:hover{color:#171717}
+.segment{border-color:rgba(243,191,112,.60);-webkit-backdrop-filter:var(--shisha);backdrop-filter:var(--shisha)}
+.segment a.faol{background:linear-gradient(135deg,#F9C97A,#E9AA50);color:#171717;font-weight:800;box-shadow:inset 0 1px 0 #FFE1A8}
+.sarlavha h1,.salom h1,.profil h1,.karta-bosh h1{text-shadow:0 2px 20px rgba(0,0,0,.5)}
+/* chap menyu — MainShisha bilan bir xil */
+.yon{background:rgba(12,18,30,.91);border-right:1px solid rgba(255,255,255,.09)}
+@media (min-width:761px){.ilova{flex-wrap:nowrap}.yon{flex:0 0 207px;max-width:207px;gap:6px;padding:20px 12px 16px}}
+.brend{margin:0 0 18px;padding:18px 8px 16px;border:1px solid rgba(236,190,120,.22);border-radius:16px;background:rgba(255,255,255,.02)}
+.brend b{font:600 34px/1 'Cormorant Garamond',serif;letter-spacing:.14em;margin-right:-.14em;color:#F3BF70}
+.nav{gap:14px;min-height:48px;padding:0 14px;border-radius:12px;color:#D4D7DE;font-size:14px}
+.nav svg{width:24px;height:24px;color:#C9CCD4}
+.nav.faol{color:#F5F2EE;background:linear-gradient(90deg,rgba(243,191,112,.30),rgba(243,191,112,.22) 35%,rgba(243,191,112,.05));box-shadow:inset 5px 0 #F3BF70}
+.nav.faol svg{color:#F3BF70}
+.nav .son{height:22px;border-radius:11px;background:#D9434F;font-size:12px;line-height:22px;font-weight:700}
+.yon-past{margin-top:auto;display:flex;flex-direction:column;gap:10px;padding-top:12px}
+.yp-promo{position:relative;height:155px;border-radius:14px;overflow:hidden;border:1px solid rgba(243,191,112,.45)}
+.yp-promo img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:60% 15%}
+.yp-promo::after{content:'';position:absolute;inset:0;background:linear-gradient(90deg,rgba(13,19,32,.85),rgba(13,19,32,.15) 70%)}
+.yp-promo span{position:absolute;z-index:1;left:14px;top:14px;width:110px;font:italic 500 19px/1.2 'Cormorant Garamond',serif;color:#F3BF70}
+.yp-foyd{display:flex;align-items:center;gap:8px;min-height:60px;padding:10px 8px;border-radius:14px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.03);color:#F5F2EE}
+.yp-av{width:32px;height:32px;border-radius:50%;display:grid;place-items:center;flex:none;background:linear-gradient(140deg,#F3BF70,#B9844A);color:#1A140C;font-weight:800;font-size:12px}
+.yp-ism{flex:1;min-width:0}
+.yp-ism b{display:block;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.yp-ism small{display:block;color:#B7BAC5;font-size:12px}
+.yp-foyd svg{width:16px;height:16px;color:#B7BAC5}
+.yp-chiqish{display:flex;align-items:center;gap:12px;min-height:44px;padding:0 14px;color:#C9CCD4;font-weight:600;text-decoration:none}
+.yp-chiqish:hover{color:#F5F2EE}
+@media (max-width:760px){.yon-past{display:none}}
+</style>
+</helmet>
+<div class="ilova">
+  <nav class="yon" aria-label="Bo'limlar">
+    <a class="brend" href="{{boshHref}}"><b>LIBOSA</b></a>
+    <a class="nav faol" href="{{boshHref}}" aria-current="page"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11 12 4l9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>Bosh</a>
+    <sc-if value="{{pulOladi}}" hint-placeholder-val="{{ true }}">
+      <a class="nav" href="KassaShisha.dc.html"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4M8 14h2M14 14h2"/></svg>Kassa</a>
+    </sc-if>
+    <a class="nav" href="ZakazlarShisha.dc.html"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4M8 14h.01M12 14h.01M16 14h.01M8 17h.01M12 17h.01"/></svg>Zakazlar</a>
+    <a class="nav" href="LiboslarShisha.dc.html"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6l-1 5 4 13H6l4-13z"/></svg>Liboslar</a>
+    <a class="nav" href="MijozBolimShisha.dc.html"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6 6 0 0 1 3.5 6"/></svg>Mijozlar</a>
+    <div class="yon-past">
+      <a class="yp-chiqish" href="#"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4M10 17l5-5-5-5M15 12H3"/></svg>Chiqish</a>
+    </div>
+  </nav>
+
+  <main class="mazmun">
+    <div class="ustki">
+      <label class="qidiruv"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input type="search" placeholder="Zakaz, mijoz yoki telefon" aria-label="Qidirish"></label>
+      <div class="ong">
+        <button type="button" class="ikon-t" aria-label="Bildirishnomalar: 2"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><span class="nuqta">2</span></button>
+        <span class="tabletka"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21h18M5 21V8l7-5 7 5v13M9 21v-6h6v6"/></svg>Asosiy salon</span>
+        <span class="tabletka"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>8 noyabr, 2026</span>
+        <button type="button" class="xodim-t" aria-label="Xodim menyusi"><span class="avatar">MR</span><span>Malika Rahimova<small>{{rol}}</small></span></button>
+      </div>
+    </div>
+
+    <div class="sarlavha">
+      <div>
+        <h1><span class="kursiv">Xayrli tong,</span> Malika</h1>
+        <p>Yakshanba, 8 noyabr · bugun {{ishSoni}} ta ish, birinchisi 10:00 da</p>
+      </div>
+      <a class="btn" href="YangiZakazShisha.dc.html"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>Yangi zakaz</a>
+    </div>
+
+    <sc-if value="{{kassir}}" hint-placeholder-val="{{ false }}">
+      <div class="rejim" role="note">
+        <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg>
+        <span><b>Bu salonda pulni kassir qabul qiladi.</b> To'lov kerak bo'lgan zakazlar «To'lov kutilmoqda» deb turadi — mijozni kassaga yo'naltiring. To'lov tushgach, libosni bera olasiz.</span>
+      </div>
+    </sc-if>
+
+    <div class="kpilar" role="group" aria-label="Tezkor filtrlar">
+      <sc-for list="{{kpilar}}" as="k" hint-placeholder-count="4">
+        <button type="button" class="kpi {{k.cls}}" aria-pressed="{{k.faol}}" onClick="{{k.bos}}">
+          <span class="belgi"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{k.d}}"/></svg></span>
+          <span><small>{{k.nom}}</small><b>{{k.son}}</b><em>{{k.izoh}}</em></span>
+        </button>
+      </sc-for>
+    </div>
+
+    <div class="g-asosiy">
+      <section class="panel" aria-label="Bugungi ishlar">
+        <div class="panel-bosh">
+          <h2><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Bugungi ishlar</h2>
+          <sc-if value="{{filtrBor}}" hint-placeholder-val="{{ false }}"><button type="button" class="havola" onClick="{{tozala}}">Hammasini ko'rsatish</button></sc-if>
+        </div>
+        <div style="overflow-x: auto">
+          <div class="ishlar" role="table" aria-label="Bugungi ishlar">
+            <div class="ish-q ish-bosh" role="row"><span role="columnheader">Vaqt</span><span role="columnheader">Mijoz</span><span role="columnheader">Libos</span><span role="columnheader" class="raqam">Qoldiq</span><span role="columnheader" class="raqam">Amal</span></div>
+            <sc-for list="{{qatorlar}}" as="q" hint-placeholder-count="5">
+              <div class="ish-q" role="row">
+                <div role="cell" class="vaqt-ish"><b>{{q.vaqt}}</b><span class="ish"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{q.ishD}}"/></svg>{{q.ish}}</span></div>
+                <div role="cell" class="ikki"><b>{{q.mijoz}}</b><small>#{{q.id}} · <span style="color: {{q.holatRang}}">{{q.holat}}</span></small></div>
+                <div role="cell" class="qator"><img class="eskiz" src="{{q.rasm}}" alt=""><div class="ikki"><span>{{q.libos}}</span><small>o'lcham {{q.olcham}}</small></div></div>
+                <div role="cell" class="raqam"><b style="color: {{q.qoldiqRang}}">{{q.qoldiqMatn}}</b></div>
+                <div role="cell" class="amal">
+                  <sc-if value="{{q.tugmaBor}}" hint-placeholder-val="{{ true }}"><button type="button" class="btn-2">{{q.amal}}</button></sc-if>
+                  <sc-if value="{{q.kutish}}" hint-placeholder-val="{{ false }}"><span class="holat h-kutish">To'lov kutilmoqda</span></sc-if>
+                </div>
+              </div>
+            </sc-for>
+          </div>
+        </div>
+      </section>
+
+      <div class="ustun">
+        <section class="panel" aria-label="Ertaga">
+          <div class="panel-bosh"><h2><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>Ertaga</h2><span class="mute">9 noyabr</span></div>
+          <div style="display: flex; flex-direction: column; gap: 8px">
+            <div class="royxat-q"><img class="eskiz" src="/_blob/b28f71fbbeeeed9ca5c0052f387901a2" alt="" style="width: 34px; height: 44px"><div class="ikki"><b>Dilnoza Karimova</b><small>qaytaradi · Mira</small></div><span class="vaqt">18:00</span></div>
+            <div class="royxat-q"><img class="eskiz" src="/_blob/ff22f88eaee9183133df1fc14998e6ee" alt="" style="width: 34px; height: 44px"><div class="ikki"><b>Gulnoza Saidova</b><small>qaytaradi · Luna</small></div><span class="vaqt">18:00</span></div>
+          </div>
+        </section>
+        <section class="panel" aria-label="Qo'ng'iroq qilish">
+          <div class="panel-bosh"><h2><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/></svg>Qo'ng'iroq qilish</h2><span class="mute">2 ta</span></div>
+          <div style="display: flex; flex-direction: column; gap: 8px">
+            <div class="royxat-q"><div class="ikki"><b>Munisa Asqarova</b><small>to'y 13 noyabr · qoldiq 2 200 000</small></div></div>
+            <div class="royxat-q"><div class="ikki"><b>Kamola Ergasheva</b><small style="color: #F2C46D">vaqtinchalik bron 22 soatda tugaydi</small></div></div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"kassirRejimi":{"editor":"boolean","default":false},"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { filtr: null };
+  }
+  renderVals() {
+    const kassir = this.props.kassirRejimi ?? false;
+    const CHIQ = 'M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5';
+    const QAYT = 'M9 14 4 9l5-5M4 9h11a5 5 0 0 1 0 10h-3';
+    const SOAT = 'M12 3a9 9 0 1 0 0 18a9 9 0 1 0 0-18M12 7v5l3 2';
+    const fmt = (n) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+    const ISH = [
+      { tur: 'beriladi', vaqt: '10:00', ish: 'Beriladi', ishD: CHIQ, mijoz: 'Dilnoza Karimova', id: 13, holat: 'bron', holatRang: '#F3BF70', libos: 'Mira', olcham: '42', rasm: '/_blob/b28f71fbbeeeed9ca5c0052f387901a2', qoldiq: 1600000, amal: "To'lov va berish" },
+      { tur: 'qaytadi', vaqt: '12:30', ish: 'Qaytadi', ishD: QAYT, mijoz: 'Madina Rahimova', id: 14, holat: 'mijozda', holatRang: '#79A9F2', libos: 'Bella', olcham: '40', rasm: '/_blob/7d80ca195130908ffa9854d230fd9af0', qoldiq: 0, amal: 'Qabul qilish' },
+      { tur: 'beriladi', vaqt: '15:00', ish: 'Beriladi', ishD: CHIQ, mijoz: 'Sabina Usmonova', id: 15, holat: 'bron', holatRang: '#F3BF70', libos: 'Zarina', olcham: '44', rasm: '/_blob/78b3216f7738bdab0ea238adcec51f32', qoldiq: 0, amal: 'Libosni berish' },
+      { tur: 'kech', vaqt: '7 noy', ish: 'Kechikdi', ishD: SOAT, mijoz: 'Aziza Xolmatova', id: 9, holat: '1 kun kechikdi', holatRang: '#F08089', libos: 'Rubin', olcham: '46', rasm: '/_blob/cf292d70c86c681a76df49fe549f8887', qoldiq: 500000, amal: "Qo'ng'iroq", qoldiqQizil: true },
+      { tur: 'beriladi', vaqt: '18:00', ish: 'Beriladi', ishD: CHIQ, mijoz: 'Gulnoza Saidova', id: 17, holat: 'vaqtinchalik, 5 soat', holatRang: '#F2C46D', libos: 'Luna', olcham: '38', rasm: '/_blob/ff22f88eaee9183133df1fc14998e6ee', qoldiq: 1800000, amal: 'Avans olish' }
+    ];
+    // kassir rejimida pul olinadigan amallar o'rniga «To'lov kutilmoqda»
+    const kutadi = (q) => kassir && q.tur === 'beriladi' && q.qoldiq > 0;
+    const FILTR = { beriladi: (q) => q.tur === 'beriladi', qaytadi: (q) => q.tur === 'qaytadi', kech: (q) => q.tur === 'kech', pul: (q) => q.qoldiq > 0 && q.tur === 'beriladi' };
+    const s = this.state;
+    const qatorlar = ISH.filter(s.filtr ? FILTR[s.filtr] : () => true).map((q) => ({
+      ...q,
+      qoldiqMatn: q.qoldiq ? fmt(q.qoldiq) : "to'liq",
+      qoldiqRang: q.qoldiq ? (q.qoldiqQizil ? '#F08089' : '#F3BF70') : '#B7BAC5',
+      kutish: kutadi(q), tugmaBor: !kutadi(q)
+    }));
+    const son = (f) => ISH.filter(f).length;
+    const pulJami = ISH.filter(FILTR.pul).reduce((a, q) => a + q.qoldiq, 0);
+    const kpi = [
+      { id: 'beriladi', nom: 'Bugun beriladi', son: son(FILTR.beriladi), izoh: 'birinchisi 10:00', rang: 'neytral', d: CHIQ },
+      { id: 'qaytadi', nom: 'Bugun qaytadi', son: son(FILTR.qaytadi), izoh: '12:30 · Bella', rang: 'neytral', d: QAYT },
+      { id: 'kech', nom: 'Kechikkan', son: son(FILTR.kech), izoh: 'qo\'ng\'iroq qiling', rang: 'qizil', d: SOAT },
+      kassir
+        ? { id: 'pul', nom: "To'lov kutilmoqda", son: son(FILTR.pul), izoh: 'mijoz kassaga boradi', rang: 'ogoh', d: 'M2 6h20v12H2zM12 9.5a2.5 2.5 0 1 0 0 5a2.5 2.5 0 1 0 0-5' }
+        : { id: 'pul', nom: 'Olinadigan qoldiq', son: fmt(pulJami), izoh: son(FILTR.pul) + ' ta zakazda', rang: 'ogoh', d: 'M2 6h20v12H2zM12 9.5a2.5 2.5 0 1 0 0 5a2.5 2.5 0 1 0 0-5' }
+    ];
+    return {
+      kassir, pulOladi: !kassir,
+      rol: kassir ? 'Sotuvchi · pulni kassir oladi' : 'Sotuvchi',
+      boshHref: kassir ? 'SotuvchiKassirShisha.dc.html' : 'SotuvchiShisha.dc.html',
+      ishSoni: ISH.length, qatorlar,
+      filtrBor: !!s.filtr,
+      tozala: () => this.setState({ filtr: null }),
+      kpilar: kpi.map((k) => ({ ...k, faol: s.filtr === k.id, cls: (k.rang + (s.filtr === k.id ? ' tanlandi' : '')).trim(), bos: () => this.setState({ filtr: s.filtr === k.id ? null : k.id }) }))
+    };
+  }
+}
+</script>
+</body>
+</html>

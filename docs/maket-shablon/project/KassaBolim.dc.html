@@ -1,0 +1,611 @@
+<!doctype html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<title>Libosa — Kassa bo'limlari</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@1,500;1,600&amp;family=Forum&amp;family=Manrope:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;background:#080B12}
+a{color:#E4C196}a:hover{color:#F3DDBE}
+*{box-sizing:border-box}
+button{font:inherit;cursor:pointer}
+sc-for,sc-if{display:contents}
+.ilova{position:relative;display:flex;flex-wrap:wrap;min-height:100vh;background:#080B12;color:#F6F1E8;font:400 14px/1.45 Manrope,system-ui,sans-serif}
+svg.i{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.yon{flex:1 1 232px;max-width:248px;display:flex;flex-direction:column;gap:4px;padding:18px 14px;background:#0B0F17;border-right:1px solid rgba(228,193,150,.12)}
+.brend{display:block;padding:16px 10px 22px;margin-bottom:14px;border-bottom:1px solid rgba(228,193,150,.16);text-align:center;text-decoration:none}
+.brend b{font:400 30px/1 Forum,serif;letter-spacing:.3em;margin-right:-.3em;color:#E4C196}
+.nav{display:flex;align-items:center;gap:12px;min-height:44px;padding:0 12px;border-radius:10px;color:#B9C0CC;font-weight:600;text-decoration:none}
+.nav:hover{color:#F6F1E8;background:rgba(255,255,255,.04)}
+.nav.faol{color:#F6F1E8;background:linear-gradient(90deg,rgba(228,193,150,.26),rgba(228,193,150,.05));box-shadow:inset 3px 0 0 #E4C196}
+.nav.faol svg{color:#E4C196}
+.mazmun{flex:999 1 560px;min-width:0;position:relative;padding:20px 32px 48px}
+.mazmun::before{content:'';position:absolute;left:0;right:0;top:0;height:330px;background:linear-gradient(180deg,rgba(8,11,18,.3),rgba(8,11,18,.78) 60%,#080B12),url(/_blob/c9a1861df1eef0d758b27417a77833a6) 50% 38%/cover;pointer-events:none}
+.mazmun>*{position:relative}
+.ustki{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.qidiruv{flex:1 1 260px;max-width:480px;display:flex;align-items:center;gap:10px;min-height:44px;padding:0 16px;border-radius:999px;background:rgba(8,11,18,.74);border:1px solid rgba(228,193,150,.24);color:#E4C196}
+.qidiruv input{flex:1;min-width:0;background:none;border:0;outline:none;color:#F6F1E8;font:inherit}
+.qidiruv input::placeholder{color:#98A1B0}
+.ong{margin-left:auto;display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+.tabletka{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 16px;border-radius:999px;background:rgba(8,11,18,.74);border:1px solid rgba(228,193,150,.24);color:#F6F1E8;font-weight:600;white-space:nowrap}
+.tabletka svg{width:18px;height:18px;color:#E4C196}
+.ikon-t{position:relative;width:44px;height:44px;display:grid;place-items:center;padding:0;border-radius:50%;background:rgba(8,11,18,.74);border:1px solid rgba(228,193,150,.24);color:#F6F1E8}
+.ikon-t .nuqta{position:absolute;top:-4px;right:-4px;min-width:20px;height:20px;padding:0 5px;border-radius:10px;background:#B8473F;color:#fff;font-size:13px;line-height:20px;font-weight:700}
+.avatar{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;flex:none;background:rgba(228,193,150,.2);color:#E4C196;font-weight:700}
+.xodim-t{display:inline-flex;align-items:center;gap:10px;min-height:44px;padding:2px 16px 2px 2px;border-radius:999px;background:rgba(8,11,18,.74);border:1px solid rgba(228,193,150,.24);color:#F6F1E8;text-align:left}
+.xodim-t small{display:block;color:#98A1B0;font-size:13px;line-height:1.1}
+.sarlavha{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:16px;margin:32px 0 24px}
+.sarlavha h1{margin:0;font:400 46px/1.05 Forum,serif}
+.sarlavha p{margin:8px 0 0;color:#C7CED8;font-size:15px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:0 24px;border-radius:999px;border:0;background:linear-gradient(110deg,#CC9866,#E4C196);color:#141B26;font-weight:700;font-size:15px;text-decoration:none;box-shadow:0 10px 28px -12px rgba(228,193,150,.8)}
+.btn:hover{color:#141B26;filter:brightness(1.06)}
+.btn[disabled]{opacity:.45;cursor:not-allowed;box-shadow:none}
+.btn-2{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 18px;border-radius:999px;border:1px solid rgba(228,193,150,.5);background:transparent;color:#F6F1E8;font-weight:600;text-decoration:none;white-space:nowrap}
+.btn-2:hover{color:#F6F1E8;background:rgba(228,193,150,.1)}
+.btn-2[disabled]{opacity:.45;cursor:not-allowed}
+.panel{background:rgba(16,21,31,.86);border:1px solid rgba(228,193,150,.14);border-radius:18px;padding:24px;backdrop-filter:blur(12px)}
+.panel-bosh{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;margin-bottom:16px}
+.panel-bosh h2{display:flex;align-items:center;gap:10px;margin:0;font:400 22px/1.2 Forum,serif}
+.panel-bosh h2 svg{color:#E4C196}
+.kpilar{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:16px;margin-bottom:16px}
+.kpi{display:flex;align-items:center;gap:14px;min-width:0;padding:16px 18px;border-radius:16px;border:1px solid rgba(228,193,150,.2);background:linear-gradient(135deg,rgba(228,193,150,.15),rgba(16,21,31,.88) 62%);color:#F6F1E8;text-align:left}
+.kpi .belgi{width:50px;height:50px;border-radius:50%;display:grid;place-items:center;flex:none;background:rgba(228,193,150,.16);color:#E4C196}
+.kpi small{display:block;color:#C7CED8;font-size:13.5px}
+.kpi b{display:block;font:400 26px/1.15 Forum,serif;font-variant-numeric:tabular-nums;white-space:nowrap}
+.kpi em{display:block;font-style:normal;color:#98A1B0;font-size:13px}
+.kpi.kok{border-color:rgba(141,180,232,.26);background:linear-gradient(135deg,rgba(141,180,232,.16),rgba(16,21,31,.88) 62%)}.kpi.kok .belgi{background:rgba(141,180,232,.16);color:#8DB4E8}
+.kpi.qizil{border-color:rgba(255,155,146,.28);background:linear-gradient(135deg,rgba(214,105,112,.2),rgba(16,21,31,.88) 62%)}.kpi.qizil .belgi{background:rgba(255,155,146,.16);color:#FF9B92}
+.kpi.yashil{border-color:rgba(126,214,160,.26);background:linear-gradient(135deg,rgba(126,214,160,.14),rgba(16,21,31,.88) 62%)}.kpi.yashil .belgi{background:rgba(126,214,160,.16);color:#7ED6A0}
+.kpi.binafsha{border-color:rgba(185,162,232,.28);background:linear-gradient(135deg,rgba(185,162,232,.16),rgba(16,21,31,.88) 62%)}.kpi.binafsha .belgi{background:rgba(185,162,232,.16);color:#B9A2E8}
+.kpi.neytral{border-color:rgba(255,255,255,.12);background:rgba(16,21,31,.88)}.kpi.neytral .belgi{background:rgba(255,255,255,.08);color:#C7CED8}
+.holat{display:inline-flex;align-items:center;gap:6px;min-height:26px;padding:0 12px;border-radius:999px;font-size:13px;font-weight:700;white-space:nowrap}
+.h-yashil{background:rgba(126,214,160,.16);color:#7ED6A0}
+.h-ogoh{background:rgba(242,196,109,.16);color:#F2C46D}
+.h-qizil{background:rgba(255,155,146,.16);color:#FF9B92}
+.h-kok{background:rgba(141,180,232,.18);color:#8DB4E8}
+.h-yopiq{background:rgba(255,255,255,.08);color:#C7CED8}
+.ikki{display:flex;flex-direction:column;min-width:0}
+.ikki small,.mute{color:#98A1B0;font-size:13px}
+.segment{display:inline-flex;flex-wrap:wrap;gap:4px;padding:4px;border-radius:999px;background:rgba(8,11,18,.74);border:1px solid rgba(228,193,150,.2)}
+.segment a,.segment button{display:inline-flex;align-items:center;gap:8px;min-height:40px;padding:0 18px;border:0;border-radius:999px;background:none;color:#C7CED8;font-weight:600;text-decoration:none;white-space:nowrap}
+.segment a:hover,.segment button:hover{color:#F6F1E8}
+.segment .faol{background:rgba(228,193,150,.2);color:#F3DDBE;box-shadow:inset 0 0 0 1px rgba(228,193,150,.55)}
+.smena-qator{display:flex;flex-wrap:wrap;align-items:center;gap:12px 28px;margin:16px 0;padding:12px 18px 12px 24px;border-color:rgba(126,214,160,.4);background:linear-gradient(90deg,rgba(126,214,160,.12),rgba(16,21,31,.88) 45%)}
+.smena-qator .ochiq{display:flex;align-items:center;gap:8px;color:#7ED6A0;font-weight:700}
+.smena-qator .ochiq::before{content:'';width:10px;height:10px;border-radius:50%;background:#7ED6A0;box-shadow:0 0 0 4px rgba(126,214,160,.2)}
+.smena-qator b{font-variant-numeric:tabular-nums}
+.g-2{display:grid;grid-template-columns:minmax(0,55fr) minmax(0,45fr);gap:16px;align-items:start;margin-bottom:16px}
+.g-asosiy{display:grid;grid-template-columns:minmax(0,70fr) minmax(0,30fr);gap:16px;align-items:start}
+@media (max-width:1180px){.g-2,.g-asosiy{grid-template-columns:minmax(0,1fr)}.kpilar{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:760px){.yon{max-width:none;flex-direction:row;align-items:center;overflow-x:auto;padding:8px 10px;border-right:0;border-bottom:1px solid rgba(228,193,150,.12)}.brend{display:none}.nav{flex:none}.mazmun{padding:16px}.sarlavha h1{font-size:34px}.kpilar{grid-template-columns:minmax(0,1fr)}}
+/* umumiy kassa elementlari */
+.summa{display:flex;align-items:center;justify-content:center;min-height:64px;margin-bottom:8px;border-radius:14px;border:1px solid #CC9866;background:rgba(8,11,18,.6);font:400 34px/1 Forum,serif;font-variant-numeric:tabular-nums}
+.klaviatura{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.tugma-k{min-height:48px;border-radius:12px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.05);color:#F6F1E8;font:400 22px/1 Forum,serif}
+.tugma-k:hover{background:rgba(255,255,255,.09)}
+.satr{display:flex;justify-content:space-between;gap:12px;padding:6px 0;font-variant-numeric:tabular-nums}
+.satr>span:first-child{color:#C7CED8}
+.hisob{margin:16px 0;padding:12px 16px;border-radius:14px;background:rgba(255,255,255,.035)}
+.izoh-q{display:flex;gap:10px;align-items:flex-start;margin-top:12px;color:#C7CED8;font-size:13.5px}
+.izoh-q svg{width:18px;height:18px;color:#8DB4E8;margin-top:1px}
+.xato{margin:0 0 8px;color:#FF9B92;font-weight:600}
+.maydon-y{width:100%;min-height:88px;padding:12px 14px;border-radius:12px;background:rgba(8,11,18,.6);border:1px solid rgba(228,193,150,.22);color:#F6F1E8;font:inherit;resize:vertical}
+.maydon-y:focus{outline:none;border-color:#CC9866;box-shadow:0 0 0 3px rgba(204,152,102,.25)}
+.yorliq{display:block;margin:16px 0 8px;color:#C7CED8;font-weight:600}
+.tanlov{min-height:44px;padding:0 14px;border-radius:999px;background:rgba(8,11,18,.6);border:1px solid rgba(228,193,150,.24);color:#F6F1E8;font:inherit;font-weight:600}
+.ust{display:grid;gap:12px;align-items:center;padding:12px 8px;border-bottom:1px solid rgba(255,255,255,.05);white-space:nowrap;font-variant-numeric:tabular-nums}
+.ust.bosh{padding-top:0;color:#98A1B0;font-size:13px;font-weight:600;border-bottom-color:rgba(228,193,150,.14)}
+.ust .raqam{text-align:right}
+button.ust{width:100%;border:0;border-bottom:1px solid rgba(255,255,255,.05);background:none;color:#F6F1E8;text-align:left}
+button.ust:hover{background:rgba(255,255,255,.03)}
+button.ust.tanlandi{background:rgba(228,193,150,.08);box-shadow:inset 3px 0 0 #E4C196}
+/* xarajat */
+.moddalar{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.modda{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;min-height:92px;border-radius:14px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.04);color:#C7CED8;font-weight:600}
+.modda svg{width:26px;height:26px;color:#E4C196}
+.modda.faol{border-color:#E4C196;background:rgba(228,193,150,.12);color:#F6F1E8;box-shadow:0 0 0 1px #E4C196}
+/* inkassatsiya */
+.oluvchi{display:flex;align-items:center;gap:12px;width:100%;min-height:64px;margin-bottom:8px;padding:10px 14px;border-radius:14px;border:1px solid rgba(255,255,255,.08);background:rgba(255,255,255,.035);color:#F6F1E8;text-align:left}
+.oluvchi.faol{border-color:#E4C196;background:rgba(228,193,150,.1);box-shadow:0 0 0 1px #E4C196}
+.oluvchi .radio{width:20px;height:20px;border-radius:50%;border:2px solid rgba(228,193,150,.6);flex:none;display:grid;place-items:center}
+.oluvchi.faol .radio::after{content:'';width:10px;height:10px;border-radius:50%;background:#E4C196}
+.qadamlar{display:grid;grid-template-columns:1fr auto 1fr auto 1fr;gap:12px;align-items:center}
+.qadam{display:flex;align-items:center;gap:12px;padding:14px;border-radius:14px;border:1px solid rgba(126,214,160,.3);background:rgba(126,214,160,.06)}
+.qadam .doira{width:40px;height:40px;border-radius:50%;display:grid;place-items:center;flex:none;background:rgba(126,214,160,.16);color:#7ED6A0}
+.strelka{color:#98A1B0}
+/* zalog */
+.belgilash{width:22px;height:22px;accent-color:#CC9866;margin:0}
+.zalog-q{grid-template-columns:36px minmax(0,1.25fr) minmax(0,1.2fr) minmax(0,1.3fr) 124px}
+.zalog-tugma{display:flex;flex-direction:column;align-items:flex-start;gap:2px;min-width:0;padding:0;border:0;background:none;color:#F6F1E8;text-align:left}
+.zalog-tugma b{color:#E4C196}
+.zalog-q .shart{white-space:normal;line-height:1.35}
+/* smena */
+.daftar .satr{padding:10px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+.daftar .satr:last-child{border-bottom:0}
+.final{display:flex;justify-content:space-between;align-items:baseline;margin-top:12px;padding:14px 16px;border-radius:14px;border:1px solid rgba(228,193,150,.5);background:rgba(228,193,150,.1)}
+.final>span{font:italic 500 20px/1 'Cormorant Garamond',serif;color:#E4C196}
+.final b{font:400 28px/1 Forum,serif;color:#E4C196;font-variant-numeric:tabular-nums}
+.harakat-q{grid-template-columns:56px minmax(0,1fr) 104px 120px}
+.tur{display:inline-flex;min-height:24px;align-items:center;padding:0 10px;border-radius:999px;font-size:13px;font-weight:600;background:rgba(255,255,255,.08);color:#C7CED8}
+/* tarix */
+.tarix-q{grid-template-columns:96px minmax(0,1fr) 120px 120px 120px 128px 104px}
+.tafsilot{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:16px;padding:16px;border-radius:14px;background:rgba(255,255,255,.035)}
+.tafsilot b{display:block;font:400 22px/1.2 Forum,serif;font-variant-numeric:tabular-nums}
+/* bank */
+.bank-q{grid-template-columns:minmax(0,1fr) 130px 110px 140px 170px 120px}
+.pul-input{width:100%;min-height:40px;padding:0 12px;border-radius:10px;background:rgba(8,11,18,.6);border:1px solid rgba(228,193,150,.3);color:#F6F1E8;font:inherit;font-weight:700;text-align:right;font-variant-numeric:tabular-nums}
+.pul-input:focus{outline:none;border-color:#CC9866;box-shadow:0 0 0 3px rgba(204,152,102,.25)}
+.jami-q{background:rgba(228,193,150,.08);border-radius:12px;font-weight:700}
+.kpilar.besh{grid-template-columns:repeat(5,minmax(0,1fr))}
+.kpilar.besh .kpi{padding:14px}
+.kpilar.besh .kpi .belgi{width:40px;height:40px}
+.kpilar.besh .kpi b{font-size:22px}
+/* yopish oynasi */
+.parda{position:absolute;inset:0;z-index:10;background:rgba(6,10,18,.66);backdrop-filter:blur(3px)}
+.oyna{position:absolute;z-index:11;left:50%;top:150px;transform:translateX(-50%);width:min(820px,calc(100% - 32px));display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);gap:24px;padding:28px;border-radius:22px;border:1px solid rgba(228,193,150,.4);background:rgba(14,19,29,.98);box-shadow:0 30px 80px -20px rgba(0,0,0,.9)}
+.oyna h2{grid-column:1/-1;display:flex;justify-content:space-between;align-items:center;margin:0;font:400 32px/1.1 Forum,serif}
+.farq{display:flex;justify-content:space-between;align-items:center;min-height:52px;margin:8px 0;padding:0 16px;border-radius:12px;font-weight:700;font-variant-numeric:tabular-nums}
+.farq.nol{background:rgba(126,214,160,.12);border:1px solid rgba(126,214,160,.45);color:#7ED6A0}
+.farq.kam{background:rgba(255,155,146,.12);border:1px solid rgba(255,155,146,.5);color:#FF9B92}
+.farq.kop{background:rgba(242,196,109,.12);border:1px solid rgba(242,196,109,.5);color:#F2C46D}
+.joy{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.joy button{min-height:48px;border-radius:12px;border:1px solid rgba(255,255,255,.1);background:rgba(255,255,255,.04);color:#C7CED8;font-weight:600}
+.joy button.faol{border-color:#E4C196;background:rgba(228,193,150,.12);color:#F6F1E8}
+</style>
+</helmet>
+<div class="ilova">
+  <nav class="yon" aria-label="Bo'limlar">
+    <a class="brend" href="{{boshHref}}"><b>LIBOSA</b></a>
+    <sc-if value="{{rahbar}}" hint-placeholder-val="{{ false }}">
+      <a class="nav" href="Main.dc.html"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>Dashboard</a>
+    </sc-if>
+    <sc-if value="{{sotuvchi}}" hint-placeholder-val="{{ true }}">
+      <a class="nav" href="Sotuvchi.dc.html"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11 12 4l9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>Bosh</a>
+    </sc-if>
+    <a class="nav faol" href="Kassa.dc.html" aria-current="page"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></svg>Kassa</a>
+    <a class="nav" href="Zakazlar.dc.html"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8h14l-1 12H6z"/><path d="M9 8a3 3 0 0 1 6 0"/></svg>Zakazlar</a>
+    <a class="nav" href="Liboslar.dc.html"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6l-1 5 4 13H6l4-13z"/></svg>Liboslar</a>
+    <a class="nav" href="MijozBolim.dc.html"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/><path d="M16 4.5a3.5 3.5 0 0 1 0 7M18 14a6 6 0 0 1 3.5 6"/></svg>Mijozlar</a>
+    <sc-if value="{{rahbar}}" hint-placeholder-val="{{ false }}">
+      <a class="nav" href="Foyda.dc.html"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21h18M6 17v-6M11 17V5M16 17v-9M20 17v-4"/></svg>Hisobotlar</a>
+      <a class="nav" href="SozlamaBolim.dc.html"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/></svg>Sozlama</a>
+    </sc-if>
+  </nav>
+
+  <main class="mazmun">
+    <div class="ustki">
+      <label class="qidiruv"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input type="search" placeholder="Zakaz, mijoz yoki telefon" aria-label="Qidirish"></label>
+      <div class="ong">
+        <button type="button" class="ikon-t" aria-label="Bildirishnomalar: 2"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><span class="nuqta">2</span></button>
+        <span class="tabletka"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21h18M5 21V8l7-5 7 5v13M9 21v-6h6v6"/></svg>Asosiy salon</span>
+        <span class="tabletka"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>8 noyabr, 2026</span>
+        <button type="button" class="xodim-t" aria-label="Xodim menyusi"><span class="avatar">{{xodim.bosh}}</span><span>{{xodim.ism}}<small>{{xodim.rol}}</small></span></button>
+      </div>
+    </div>
+
+    <div class="sarlavha">
+      <div>
+        <h1>Kassa</h1>
+        <p>{{izoh}}</p>
+      </div>
+    </div>
+
+    <nav class="segment" aria-label="Kassa bo'limlari">
+      <a href="Kassa.dc.html">To'lov qabul</a>
+      <sc-for list="{{tablar}}" as="t" hint-placeholder-count="6">
+        <button type="button" class="{{t.cls}}" aria-current="{{t.joriy}}" onClick="{{t.bos}}">{{t.nom}}</button>
+      </sc-for>
+    </nav>
+
+    <div class="panel smena-qator">
+      <span class="ochiq">Smena ochiq</span>
+      <span class="mute">Malika Rahimova · 09:02 dan</span>
+      <span>Naqd <b>1 250 000</b></span>
+      <span>Terminal <b>800 000</b></span>
+      <span>O'tkazma <b>300 000</b></span>
+      <button type="button" class="btn-2" style="margin-left: auto" onClick="{{yopishOch}}">Smenani yopish</button>
+    </div>
+
+    <!-- ===================== XARAJAT ===================== -->
+    <sc-if value="{{b.xarajat}}" hint-placeholder-val="{{ true }}">
+      <div class="g-2">
+        <section class="panel" aria-label="Xarajat moddasi">
+          <div class="panel-bosh"><h2><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16v12H4zM4 7l2-3h12l2 3M9 12h6"/></svg>Xarajat moddasi</h2><span class="mute">bittasini tanlang</span></div>
+          <div class="moddalar" role="group" aria-label="Xarajat moddasi">
+            <sc-for list="{{moddalar}}" as="m" hint-placeholder-count="6">
+              <button type="button" class="modda {{m.cls}}" aria-pressed="{{m.faol}}" onClick="{{m.bos}}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{m.d}}"/></svg>{{m.nom}}</button>
+            </sc-for>
+          </div>
+          <label class="yorliq" for="xarajat-izoh">Izoh</label>
+          <textarea id="xarajat-izoh" class="maydon-y" placeholder="Nima uchun? Masalan: Bella ustaxonaga olib borildi">Bella ustaxonaga olib borildi va qaytarildi</textarea>
+          <div style="display: flex; align-items: center; gap: 12px; margin-top: 12px">
+            <button type="button" class="btn-2"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h3l2-3h6l2 3h3v12H4z"/><circle cx="12" cy="13" r="3.5"/></svg>Chek rasmi</button>
+            <span class="mute">ixtiyoriy — rahbar tasdiqlashda ko'radi</span>
+          </div>
+        </section>
+
+        <section class="panel" aria-label="Xarajat summasi">
+          <div class="panel-bosh"><h2><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="{{x.d}}"/></svg>{{x.nom}}</h2><span class="holat h-ogoh">kassadan chiqadi</span></div>
+          <div class="summa" aria-live="polite"><span>{{x.summaMatn}} so'm</span></div>
+          <div class="klaviatura" role="group" aria-label="Raqamlar">
+            <sc-for list="{{xKlav}}" as="k" hint-placeholder-count="12"><button type="button" class="tugma-k" aria-label="{{k.aria}}" onClick="{{k.bos}}">{{k.matn}}</button></sc-for>
+          </div>
+          <div class="hisob">
+            <div class="satr"><span>Kassada naqd</span><span>1 250 000 so'm</span></div>
+            <div class="satr"><span>Yozilgandan keyin</span><b style="color: #E4C196">{{x.keyin}} so'm</b></div>
+          </div>
+          <sc-if value="{{x.kop}}" hint-placeholder-val="{{ false }}"><p class="xato">Kassadagi naqddan ko'p bo'lishi mumkin emas.</p></sc-if>
+          <button type="button" class="btn" style="width: 100%" disabled="{{x.yopiq}}"><span>{{x.summaMatn}} so'm xarajatni yozish</span></button>
+          <p class="izoh-q"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span>Xodim yozgan xarajat rahbar tasdiqlaguncha «kutilmoqda» bo'lib turadi.</span></p>
+        </section>
+      </div>
+      <section class="panel" aria-label="Bugungi xarajatlar">
+        <div class="panel-bosh"><h2><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></svg>Bugungi xarajatlar</h2><span class="mute">jami 50 000 so'm</span></div>
+        <div class="ust bosh" style="grid-template-columns: 72px 140px minmax(0,1fr) 140px 120px 140px"><span>Vaqt</span><span>Modda</span><span>Izoh</span><span>Kim</span><span class="raqam">Summa</span><span>Holat</span></div>
+        <div class="ust" style="grid-template-columns: 72px 140px minmax(0,1fr) 140px 120px 140px"><b>11:10</b><span>Transport</span><span class="mute" style="overflow: hidden; text-overflow: ellipsis">Rubin uchun taksi — Aziza Xolmatovaga borildi</span><span>Malika Rahimova</span><b class="raqam">−50 000</b><span class="mute">tasdiqlangan</span></div>
+      </section>
+    </sc-if>
+
+    <!-- ===================== INKASSATSIYA ===================== -->
+    <sc-if value="{{b.inkassatsiya}}" hint-placeholder-val="{{ false }}">
+      <div class="g-2">
+        <section class="panel" aria-label="Kimga topshirasiz">
+          <div class="panel-bosh"><h2><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>Kimga topshirasiz?</h2></div>
+          <sc-for list="{{oluvchilar}}" as="o" hint-placeholder-count="2">
+            <button type="button" class="oluvchi {{o.cls}}" aria-pressed="{{o.faol}}" onClick="{{o.bos}}"><span class="radio" aria-hidden="true"></span><span class="avatar">{{o.bosh}}</span><span class="ikki"><b>{{o.nom}}</b><small>{{o.rol}} · {{o.izoh}}</small></span></button>
+          </sc-for>
+          <p class="izoh-q"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span>Pul sizning hisobingizdan qabul qiluvchiga o'tadi. Qabul qiluvchi sanab, Telegram'da tasdiqlaydi — shundan keyin smenangizdan ayiriladi.</span></p>
+          <label class="yorliq" for="ink-izoh">Izoh</label>
+          <textarea id="ink-izoh" class="maydon-y" style="min-height: 64px">Kunduzgi naqdni rahbarga topshirish</textarea>
+        </section>
+        <section class="panel" aria-label="Topshiriladigan summa">
+          <div class="panel-bosh"><h2><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h14l-3-3M20 16H6l3 3"/></svg>Topshiriladigan summa</h2><button type="button" class="btn-2" style="min-height: 36px" onClick="{{iToliq}}">Hammasi · 1 250 000</button></div>
+          <div class="summa" aria-live="polite"><span>{{i.summaMatn}} so'm</span></div>
+          <div class="klaviatura" role="group" aria-label="Raqamlar">
+            <sc-for list="{{iKlav}}" as="k" hint-placeholder-count="12"><button type="button" class="tugma-k" aria-label="{{k.aria}}" onClick="{{k.bos}}">{{k.matn}}</button></sc-for>
+          </div>
+          <div class="hisob">
+            <div class="satr"><span>Sizda</span><span>1 250 000 so'm</span></div>
+            <div class="satr"><span>Topshiriladi</span><span>{{i.summaMatn}} so'm</span></div>
+            <div class="satr"><span>Keyin sizda</span><b style="color: #E4C196">{{i.keyin}} so'm</b></div>
+          </div>
+          <sc-if value="{{i.kop}}" hint-placeholder-val="{{ false }}"><p class="xato">Sizdagi naqddan ko'p topshirib bo'lmaydi.</p></sc-if>
+          <button type="button" class="btn" style="width: 100%" disabled="{{i.yopiq}}"><span>{{i.oluvchi}}ga topshirish so'rovini yuborish</span></button>
+        </section>
+      </div>
+      <section class="panel" aria-label="Bugungi topshirish">
+        <div class="panel-bosh"><h2><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h4l3 8 4-16 3 8h4"/></svg>Bugungi topshirish</h2><span class="mute">150 000 so'm · Nodira Yusupovaga</span></div>
+        <div class="qadamlar">
+          <div class="qadam"><span class="doira"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h12l4 4v12H4z"/><path d="M8 12h8M8 16h5"/></svg></span><span class="ikki"><b>So'rov</b><small>Malika yubordi · 11:30</small></span></div>
+          <span class="strelka" aria-hidden="true">→</span>
+          <div class="qadam"><span class="doira"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6"/></svg></span><span class="ikki"><b>Sanaldi</b><small>Nodira: 150 000 · 11:34</small></span></div>
+          <span class="strelka" aria-hidden="true">→</span>
+          <div class="qadam"><span class="doira"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg></span><span class="ikki"><b>Tasdiqlandi</b><small>Telegram orqali · 11:35</small></span></div>
+        </div>
+      </section>
+    </sc-if>
+
+    <!-- ===================== ZALOGLAR ===================== -->
+    <sc-if value="{{b.zaloglar}}" hint-placeholder-val="{{ false }}">
+      <div class="kpilar" style="grid-template-columns: repeat(3, minmax(0, 1fr))">
+        <div class="kpi"><span class="belgi"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v6c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12v6c0 1.7 3.1 3 7 3s7-1.3 7-3v-6"/></svg></span><span><small>Pul zaloglar</small><b>500 000 so'm</b><em>1 ta · seyfda</em></span></div>
+        <div class="kpi kok"><span class="belgi"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="11" r="2"/><path d="M14 10h4M14 14h4M6 16h6"/></svg></span><span><small>Hujjatlar</small><b>1</b><em>pasport nusxasi</em></span></div>
+        <div class="kpi binafsha"><span class="belgi"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12l3 6-9 12L3 9z"/><path d="M3 9h18"/></svg></span><span><small>Buyumlar</small><b>1</b><em>qarz to'languncha</em></span></div>
+      </div>
+      <div class="g-asosiy">
+        <section class="panel" aria-label="Saqlanayotgan zaloglar">
+          <div class="panel-bosh"><h2><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/></svg>Saqlanayotgan zaloglar</h2><span class="holat {{zJoyidaCls}}"><span>joyida tekshirildi: {{zJoyidaSon}} / 3</span></span></div>
+          <div class="ust bosh zalog-q"><span><span style="position: absolute; left: -9999px">Joyida</span></span><span>Zakaz · mijoz</span><span>Zalog</span><span>Qaytarish sharti</span><span>Tekshirildi</span></div>
+          <sc-for list="{{zaloglar}}" as="z" hint-placeholder-count="3">
+            <div class="ust zalog-q" style="{{z.uslub}}">
+              <input type="checkbox" class="belgilash" checked="{{z.joyida}}" onChange="{{z.almash}}" aria-label="{{z.aria}}">
+              <button type="button" class="zalog-tugma" onClick="{{z.tanla}}"><b>#{{z.id}}</b><span>{{z.mijoz}}</span></button>
+              <span class="ikki"><span>{{z.tur}}</span><small>{{z.tavsif}}</small></span>
+              <span class="shart">{{z.shart}}</span>
+              <span style="color: {{z.tekRang}}">{{z.tekMatn}}</span>
+            </div>
+          </sc-for>
+          <p class="izoh-q"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span>Smena yopilishidan oldin har bir zalogni seyfda ko'rib, «joyida» deb belgilang. Zalog ijara tushumiga kirmaydi — u mijozning puli yoki buyumi.</span></p>
+        </section>
+        <section class="panel" aria-label="Zalog tafsiloti">
+          <div class="panel-bosh"><h2><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 4 6v6c0 5 3.5 8 8 9 4.5-1 8-4 8-9V6z"/></svg><span>#{{zt.id}} zalog</span></h2><span class="holat {{zt.holatCls}}">{{zt.holat}}</span></div>
+          <div class="satr"><span>Mijoz</span><span>{{zt.mijoz}}</span></div>
+          <div class="satr"><span>Turi</span><span>{{zt.tur}}</span></div>
+          <div class="satr"><span>Tavsif</span><span>{{zt.tavsif}}</span></div>
+          <div class="satr"><span>Olingan</span><span>{{zt.olingan}}</span></div>
+          <div class="satr"><span>Saqlanadi</span><span>Seyf (kassa)</span></div>
+          <div role="separator" style="height: 1px; background: rgba(228,193,150,.14); margin: 16px 0"></div>
+          <div class="satr"><span>Qaytarish sharti</span><span style="text-align: right">{{zt.shart}}</span></div>
+          <div class="satr"><span>Qabul qilgan</span><span>{{zt.qabul}}</span></div>
+          <div class="satr"><span>Oxirgi tekshiruv</span><span>{{zt.tekMatn}}</span></div>
+          <a class="btn-2" href="Zakazlar.dc.html" style="width: 100%; margin-top: 16px">Zakazni ochish</a>
+        </section>
+      </div>
+    </sc-if>
+
+    <!-- ===================== SMENA HISOBOTI ===================== -->
+    <sc-if value="{{b.smena}}" hint-placeholder-val="{{ false }}">
+      <div class="kpilar">
+        <div class="kpi"><span class="belgi"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></svg></span><span><small>Kassada naqd</small><b>1 250 000</b><em>kun boshida 300 000</em></span></div>
+        <div class="kpi yashil"><span class="belgi"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12l7 7 7-7"/></svg></span><span><small>Kirgan naqd</small><b>1 150 000</b><em>avans, qoldiq, jarima</em></span></div>
+        <div class="kpi kok"><span class="belgi"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18v14H3zM3 10h18M7 15h4"/></svg></span><span><small>Terminal</small><b>800 000</b><em>chek bilan solishtiring</em></span></div>
+        <div class="kpi qizil"><span class="belgi"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5M5 12l7-7 7 7"/></svg></span><span><small>Chiqim</small><b>200 000</b><em>xarajat 50 000 · topshirildi 150 000</em></span></div>
+      </div>
+      <div class="g-2" style="grid-template-columns: minmax(0, 45fr) minmax(0, 55fr)">
+        <section class="panel daftar" aria-label="Naqd pul hisobi">
+          <div class="panel-bosh"><h2><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 6h13M8 12h13M8 18h13M3.5 6h.01M3.5 12h.01M3.5 18h.01"/></svg>Naqd pul hisobi</h2><span class="mute">smena 09:02 dan</span></div>
+          <div class="satr"><span>Kun boshidagi qoldiq</span><span>300 000</span></div>
+          <div class="satr"><span>+ Avans va qoldiq (naqd)</span><span style="color: #7ED6A0">+1 050 000</span></div>
+          <div class="satr"><span>+ Kechikish jarimasi</span><span style="color: #7ED6A0">+100 000</span></div>
+          <div class="satr"><span>+ Olingan pul zaloglar</span><span>0</span></div>
+          <div class="satr"><span>− Qaytarilgan zaloglar</span><span>0</span></div>
+          <div class="satr"><span>− Xarajatlar</span><span style="color: #FF9B92">−50 000</span></div>
+          <div class="satr"><span>− Topshirilgan (inkassatsiya)</span><span style="color: #FF9B92">−150 000</span></div>
+          <div class="final"><span>Hisobdagi qoldiq</span><b>1 250 000 so'm</b></div>
+          <p class="mute" style="margin: 12px 0 0">Terminal va o'tkazma kassadagi naqdga kirmaydi — ular bank orqali keladi.</p>
+        </section>
+        <section class="panel" aria-label="Pul harakatlari">
+          <div class="panel-bosh"><h2><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 4v16M4 7l3-3 3 3M17 20V4M14 17l3 3 3-3"/></svg>Pul harakatlari</h2><span class="mute">6 ta</span></div>
+          <div class="ust bosh harakat-q"><span>Vaqt</span><span>Tavsif</span><span>Turi</span><span class="raqam">Summa</span></div>
+          <div class="ust harakat-q"><b>09:40</b><span class="ikki"><span>Qoldiq · #15 Sabina Usmonova</span><small>Malika</small></span><span><span class="tur">Naqd</span></span><b class="raqam" style="color: #7ED6A0">+1 050 000</b></div>
+          <div class="ust harakat-q"><b>10:15</b><span class="ikki"><span>Jarima · #12 Shahnoza Tursunova</span><small>Malika</small></span><span><span class="tur">Naqd</span></span><b class="raqam" style="color: #7ED6A0">+100 000</b></div>
+          <div class="ust harakat-q"><b>10:30</b><span class="ikki"><span>Qoldiq · #19 Umida Karimova</span><small>Malika</small></span><span><span class="tur">Terminal</span></span><b class="raqam">+800 000</b></div>
+          <div class="ust harakat-q"><b>11:05</b><span class="ikki"><span>Avans · #18 Munisa Asqarova</span><small>Malika</small></span><span><span class="tur">O'tkazma</span></span><b class="raqam">+300 000</b></div>
+          <div class="ust harakat-q"><b>11:10</b><span class="ikki"><span>Xarajat · Transport</span><small>Malika · tasdiqlangan</small></span><span><span class="tur">Naqd</span></span><b class="raqam" style="color: #FF9B92">−50 000</b></div>
+          <div class="ust harakat-q"><b>11:35</b><span class="ikki"><span>Topshirildi · Nodira Yusupovaga</span><small>Telegram'da tasdiqlangan</small></span><span><span class="tur">Naqd</span></span><b class="raqam" style="color: #FF9B92">−150 000</b></div>
+        </section>
+      </div>
+    </sc-if>
+
+    <!-- ===================== SMENALAR TARIXI ===================== -->
+    <sc-if value="{{b.tarix}}" hint-placeholder-val="{{ false }}">
+      <section class="panel" aria-label="Smenalar tarixi" style="margin-bottom: 16px">
+        <div class="panel-bosh">
+          <h2><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/></svg>Smenalar</h2>
+          <div style="display: flex; gap: 8px"><select class="tanlov" aria-label="Davr"><option>31 oktabr – 8 noyabr</option><option>Oktabr</option></select><select class="tanlov" aria-label="Xodim"><option>Xodim: hammasi</option><option>Malika Rahimova</option><option>Sevara Qodirova</option></select></div>
+        </div>
+        <div class="ust bosh tarix-q"><span>Sana</span><span>Xodim</span><span>Vaqt</span><span class="raqam">Hisobda</span><span class="raqam">Sanaldi</span><span>Farq</span><span>Holat</span></div>
+        <sc-for list="{{smenalar}}" as="t" hint-placeholder-count="9">
+          <button type="button" class="ust tarix-q {{t.cls}}" aria-pressed="{{t.tanlangan}}" onClick="{{t.bos}}">
+            <b>{{t.sana}}</b><span>{{t.xodim}}</span><span class="mute">{{t.vaqt}}</span><span class="raqam">{{t.hisobda}}</span><span class="raqam">{{t.sanaldi}}</span><span><span class="holat {{t.farqCls}}">{{t.farqMatn}}</span></span><span><span class="holat {{t.holatCls}}">{{t.holat}}</span></span>
+          </button>
+        </sc-for>
+      </section>
+      <section class="panel" aria-label="Smena tafsiloti">
+        <div class="panel-bosh"><h2><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg><span>{{tt.sana}} · {{tt.xodim}}</span></h2><span class="holat {{tt.holatCls}}">{{tt.holat}}</span></div>
+        <div class="tafsilot">
+          <div><span class="mute">Vaqt</span><b>{{tt.vaqt}}</b></div>
+          <div><span class="mute">Hisobda</span><b>{{tt.hisobda}}</b></div>
+          <div><span class="mute">Sanaldi</span><b>{{tt.sanaldi}}</b></div>
+          <div><span class="mute">Farq</span><b style="color: {{tt.farqRang}}">{{tt.farqMatn}}</b></div>
+          <div><span class="mute">Pul qoldi</span><b>{{tt.joy}}</b></div>
+        </div>
+        <sc-if value="{{tt.tuzatilgan}}" hint-placeholder-val="{{ false }}">
+          <div class="izoh-q" style="padding: 12px 16px; border-radius: 12px; border: 1px solid rgba(242,196,109,.4); background: rgba(242,196,109,.06)"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="color: #F2C46D"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg><span><b style="color: #F6F1E8">Tuzatildi:</b> {{tt.tuzatish}}</span></div>
+        </sc-if>
+        <sc-if value="{{tt.oddiy}}" hint-placeholder-val="{{ true }}">
+          <p class="izoh-q"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span>{{tt.izoh}}</span></p>
+        </sc-if>
+      </section>
+    </sc-if>
+
+    <!-- ===================== BANK SOLISHTIRISH ===================== -->
+    <sc-if value="{{b.bank}}" hint-placeholder-val="{{ false }}">
+      <div class="kpilar besh">
+        <div class="kpi"><span class="belgi"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12l7 7 7-7"/></svg></span><span><small>Tizimdagi tushum</small><b>{{bk.tizim}}</b></span></div>
+        <div class="kpi neytral"><span class="belgi"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M19 5 5 19M7 8a1 1 0 1 0 0-2 1 1 0 0 0 0 2M17 18a1 1 0 1 0 0-2 1 1 0 0 0 0 2"/></svg></span><span><small>Komissiya</small><b>{{bk.kom}}</b></span></div>
+        <div class="kpi yashil"><span class="belgi"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg></span><span><small>Kutilgan sof</small><b>{{bk.kutilgan}}</b></span></div>
+        <div class="kpi binafsha"><span class="belgi"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21h18M5 21V10M19 21V10M9 21V10M15 21V10M2 10l10-7 10 7"/></svg></span><span><small>Bank ko'chirmasi</small><b>{{bk.bank}}</b></span></div>
+        <div class="kpi {{bk.farqKpi}}"><span class="belgi"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 20h20z"/><path d="M12 10v4M12 17h.01"/></svg></span><span><small>Farq</small><b>{{bk.farq}}</b></span></div>
+      </div>
+      <section class="panel" aria-label="To'lov usullari bo'yicha">
+        <div class="panel-bosh"><h2><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21h18M5 21V10M19 21V10M9 21V10M15 21V10M2 10l10-7 10 7"/></svg>To'lov usullari bo'yicha</h2><select class="tanlov" aria-label="Davr"><option>1 – 8 noyabr</option><option>Oktabr</option></select></div>
+        <div class="ust bosh bank-q"><span>To'lov usuli</span><span class="raqam">Tizimda</span><span class="raqam">Komissiya</span><span class="raqam">Kutilgan sof</span><span class="raqam">Bank ko'chirmasi</span><span class="raqam">Farq</span></div>
+        <sc-for list="{{bk.qatorlar}}" as="u" hint-placeholder-count="4">
+          <div class="ust bank-q">
+            <b>{{u.nom}}</b><span class="raqam">{{u.tizim}}</span><span class="raqam mute">{{u.kom}}</span><span class="raqam">{{u.kutilgan}}</span>
+            <input class="pul-input" inputmode="numeric" aria-label="{{u.aria}}" value="{{u.bank}}" onInput="{{u.yoz}}">
+            <span class="raqam"><span class="holat {{u.farqCls}}">{{u.farq}}</span></span>
+          </div>
+        </sc-for>
+        <div class="ust bank-q jami-q"><span>Jami</span><span class="raqam">{{bk.tizim}}</span><span class="raqam">{{bk.kom}}</span><span class="raqam">{{bk.kutilgan}}</span><span class="raqam">{{bk.bank}}</span><span class="raqam" style="color: {{bk.farqRang}}">{{bk.farq}}</span></div>
+        <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 16px; margin-top: 16px">
+          <p class="izoh-q" style="flex: 1; margin: 0"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v5M12 8h.01"/></svg><span>Farq = bank ko'chirmasi − (tizimdagi tushum − komissiya). Bank ustuniga ko'chirmadagi summani yozing — farq o'zi hisoblanadi. Saqlangan natija Hisobotlarda ko'rinadi.</span></p>
+          <button type="button" class="btn">Solishtirishni saqlash</button>
+        </div>
+      </section>
+    </sc-if>
+
+    <!-- ===================== SMENANI YOPISH OYNASI ===================== -->
+    <sc-if value="{{yopish}}" hint-placeholder-val="{{ false }}">
+      <div class="parda" onClick="{{yopishYop}}"></div>
+      <section class="oyna" role="dialog" aria-modal="true" aria-label="Smenani yopish">
+        <h2>Smenani yopish<button type="button" class="ikon-t" aria-label="Yopish" onClick="{{yopishYop}}"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg></button></h2>
+        <div>
+          <div class="satr" style="padding: 12px 16px; border-radius: 12px; background: rgba(228,193,150,.1); border: 1px solid rgba(228,193,150,.4)"><span>Tizim bo'yicha kassada</span><b style="color: #E4C196">1 250 000 so'm</b></div>
+          <span class="yorliq">Sanalgan naqd</span>
+          <div class="summa" aria-live="polite" style="justify-content: space-between; padding: 0 16px; font-size: 30px"><span>{{y.sanalgan}}</span><span class="mute" style="font: 600 14px Manrope, sans-serif">so'm</span></div>
+          <div class="farq {{y.farqCls}}" aria-live="polite"><span>Farq</span><span>{{y.farqMatn}}</span></div>
+          <span class="yorliq">Pul qayerda qoladi?</span>
+          <div class="joy" role="group" aria-label="Pul qayerda qoladi">
+            <sc-for list="{{y.joylar}}" as="j" hint-placeholder-count="2"><button type="button" class="{{j.cls}}" aria-pressed="{{j.faol}}" onClick="{{j.bos}}">{{j.nom}}</button></sc-for>
+          </div>
+          <label class="yorliq" for="yopish-izoh">{{y.izohYorliq}}</label>
+          <textarea id="yopish-izoh" class="maydon-y" style="min-height: 64px" placeholder="Masalan: 50 000 — taksi, chek seyfda"></textarea>
+        </div>
+        <div style="display: flex; flex-direction: column">
+          <div class="klaviatura" role="group" aria-label="Raqamlar">
+            <sc-for list="{{yKlav}}" as="k" hint-placeholder-count="12"><button type="button" class="tugma-k" aria-label="{{k.aria}}" onClick="{{k.bos}}">{{k.matn}}</button></sc-for>
+          </div>
+          <div style="margin-top: auto; display: flex; flex-direction: column; gap: 8px; padding-top: 16px">
+            <button type="button" class="btn" style="width: 100%"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v9M6.4 7.4a8 8 0 1 0 11.2 0"/></svg>Smenani yopish</button>
+            <button type="button" class="btn-2" style="width: 100%" onClick="{{yopishYop}}">Qaytish</button>
+          </div>
+        </div>
+        <p class="mute" style="grid-column: 1 / -1; margin: 0; padding-top: 16px; border-top: 1px solid rgba(228,193,150,.14)">Yopilgan smenani o'zgartirib bo'lmaydi — farqni faqat rahbar «Smenalar tarixi»da izoh bilan tuzatadi.</p>
+      </section>
+    </sc-if>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"bolim":{"editor":"enum","options":["xarajat","inkassatsiya","zaloglar","smena","tarix","bank"],"default":"xarajat"},"rahbar":{"editor":"boolean","default":false},"yopishOchiq":{"editor":"boolean","default":false},"$preview":{"width":1440,"height":1060}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    const p = props || {};
+    this.state = {
+      bolim: p.bolim || 'xarajat', yopish: !!p.yopishOchiq,
+      modda: 'transport', xSumma: '50000',
+      kimga: 'nodira', iSumma: '150000',
+      zTan: 9, zJoyida: { 9: true, 14: true, 12: false },
+      tTan: '31okt',
+      bank: { terminal: '5544000', click: '1183000', payme: '594000', otkazma: '1400000' },
+      ySumma: '1250000', yJoy: 'seyf'
+    };
+  }
+  renderVals() {
+    const s = this.state;
+    const rahbar = this.props.rahbar ?? false;
+    const fmt = (n) => (n < 0 ? '−' : '') + String(Math.abs(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+    const NAQD = 1250000;
+    const klav = (kalit) => ['1', '2', '3', '4', '5', '6', '7', '8', '9', '000', '0', '⌫'].map((r) => ({
+      matn: r, aria: r === '⌫' ? "Oxirgi raqamni o'chirish" : r,
+      bos: () => {
+        const v = this.state[kalit];
+        let n = r === '⌫' ? v.slice(0, -1) : (v === '0' ? '' : v) + r;
+        n = n.replace(/^0+(?=\d)/, '') || '0';
+        if (n.length <= 10) this.setState({ [kalit]: n });
+      }
+    }));
+    const TAB = [['xarajat', 'Xarajat'], ['inkassatsiya', 'Inkassatsiya'], ['zaloglar', 'Zaloglar'], ['smena', 'Smena hisoboti'], ['tarix', 'Smenalar tarixi']].concat(rahbar ? [['bank', 'Bank solishtirish']] : []);
+    const IZOH = {
+      xarajat: 'Xarajat — kassadan chiqqan pul, modda va izoh bilan',
+      inkassatsiya: 'Pul topshirish — kassadagi naqdni rahbarga yoki keyingi kassirga',
+      zaloglar: "Saqlanayotgan zaloglar — smena yopilishidan oldin seyf bilan solishtiring",
+      smena: "Smena hisoboti — naqd pul qayerdan keldi va qayerga ketdi",
+      tarix: 'Smenalar tarixi — har smenaning yakuni, farqlar va tuzatishlar',
+      bank: "Bank solishtirish — to'lov tizimlari bo'yicha tushum va bank ko'chirmasi"
+    };
+    // xarajat
+    const MODDA = [
+      ['tozalash', 'Tozalash', 'M12 3c3 4 6 7 6 11a6 6 0 0 1-12 0c0-4 3-7 6-11z'],
+      ['tamir', "Ta'mir", 'M14.7 6.3a4 4 0 0 0-5.4 5.4L4 17l3 3 5.3-5.3a4 4 0 0 0 5.4-5.4l-2.5 2.5-2.4-.6-.6-2.4z'],
+      ['kommunal', 'Kommunal', 'M13 2 4 14h7l-1 8 9-12h-7z'],
+      ['reklama', 'Reklama', 'M3 11v2a1 1 0 0 0 1 1h3l5 4V6L7 10H4a1 1 0 0 0-1 1zM16 8a5 5 0 0 1 0 8'],
+      ['transport', 'Transport', 'M3 7h11v9H3zM14 10h4l3 3v3h-7M5 18a2 2 0 1 0 4 0a2 2 0 1 0-4 0M15 18a2 2 0 1 0 4 0a2 2 0 1 0-4 0'],
+      ['boshqa', 'Boshqa', 'M5 12h.01M12 12h.01M19 12h.01']
+    ];
+    const xs = Number(s.xSumma), mod = MODDA.find((m) => m[0] === s.modda);
+    // inkassatsiya
+    const OLUVCHI = [
+      { id: 'nodira', nom: 'Nodira Yusupova', bosh: 'NY', rol: 'Rahbar', izoh: 'Telegram orqali tasdiqlaydi', qisqa: 'Nodira' },
+      { id: 'sevara', nom: 'Sevara Qodirova', bosh: 'SQ', rol: 'Kassir · ertangi smena', izoh: 'kelganda sanab qabul qiladi', qisqa: 'Sevara' }
+    ];
+    const is = Number(s.iSumma), olu = OLUVCHI.find((o) => o.id === s.kimga);
+    // zaloglar
+    const ZALOG = [
+      { id: 9, mijoz: 'Aziza Xolmatova', tur: 'Pul', tavsif: "500 000 so'm naqd", shart: 'Rubin qaytarilganda', olingan: '5 noyabr, 16:20', qabul: 'Malika Rahimova', holat: 'Libos mijozda', holatCls: 'h-kok' },
+      { id: 14, mijoz: 'Madina Rahimova', tur: 'Hujjat', tavsif: 'Pasport nusxasi · AB ***12', shart: 'Bella qaytarilganda (bugun 12:30)', olingan: '6 noyabr, 11:05', qabul: 'Malika Rahimova', holat: 'Libos mijozda', holatCls: 'h-kok' },
+      { id: 12, mijoz: 'Shahnoza Tursunova', tur: 'Buyum', tavsif: 'Oltin uzuk', shart: "Qarz 500 000 so'm to'langanda", olingan: '1 noyabr, 10:40', qabul: 'Sevara Qodirova', holat: "Qarz uchun ushlab turilibdi", holatCls: 'h-ogoh' }
+    ];
+    const zJ = s.zJoyida, joyidaSon = ZALOG.filter((z) => zJ[z.id]).length;
+    const tek = (z) => (zJ[z.id] ? 'bugun 09:05 ✓' : 'tekshirilmagan');
+    const zt = ZALOG.find((z) => z.id === s.zTan);
+    // tarix
+    const SMENA = [
+      { id: '8noy', sana: '8 noyabr', xodim: 'Malika Rahimova', vaqt: '09:02 –', hisobda: 1250000, sanaldi: null, ochiq: true },
+      { id: '7noy', sana: '7 noyabr', xodim: 'Malika Rahimova', vaqt: '09:00 – 20:15', hisobda: 2140000, sanaldi: 2140000, joy: 'Seyfda' },
+      { id: '6noy', sana: '6 noyabr', xodim: 'Sevara Qodirova', vaqt: '09:10 – 20:05', hisobda: 980000, sanaldi: 980000, joy: 'Rahbarga' },
+      { id: '5noy', sana: '5 noyabr', xodim: 'Malika Rahimova', vaqt: '09:05 – 20:00', hisobda: 1600000, sanaldi: 1600000, joy: 'Seyfda' },
+      { id: '4noy', sana: '4 noyabr', xodim: 'Sevara Qodirova', vaqt: '09:00 – 19:50', hisobda: 720000, sanaldi: 720000, joy: 'Seyfda' },
+      { id: '3noy', sana: '3 noyabr', xodim: 'Malika Rahimova', vaqt: '09:15 – 20:10', hisobda: 1310000, sanaldi: 1310000, joy: 'Rahbarga' },
+      { id: '2noy', sana: '2 noyabr', xodim: 'Sevara Qodirova', vaqt: '08:55 – 20:20', hisobda: 2050000, sanaldi: 2050000, joy: 'Seyfda' },
+      { id: '1noy', sana: '1 noyabr', xodim: 'Malika Rahimova', vaqt: '09:00 – 20:00', hisobda: 1480000, sanaldi: 1480000, joy: 'Seyfda' },
+      { id: '31okt', sana: '31 oktabr', xodim: 'Sevara Qodirova', vaqt: '09:05 – 20:10', hisobda: 890000, sanaldi: 840000, joy: 'Seyfda', tuzatish: "50 000 — taksi xarajati, chek keyin topildi. Nodira Yusupova, 1 noyabr 10:12" }
+    ];
+    const smenaQ = (t) => {
+      const farq = t.sanaldi === null ? null : t.sanaldi - t.hisobda;
+      return {
+        ...t,
+        hisobda: fmt(t.hisobda), sanaldi: t.sanaldi === null ? '—' : fmt(t.sanaldi),
+        farqMatn: farq === null ? '—' : farq === 0 ? "Farq yo'q" : fmt(farq),
+        farqCls: farq === null ? 'h-yopiq' : farq === 0 ? 'h-yashil' : 'h-qizil',
+        farqRang: farq === null ? '#C7CED8' : farq === 0 ? '#7ED6A0' : '#FF9B92',
+        holat: t.ochiq ? 'Ochiq' : t.tuzatish ? 'Tuzatildi' : 'Yopilgan',
+        holatCls: t.ochiq ? 'h-ogoh' : t.tuzatish ? 'h-ogoh' : 'h-yopiq',
+        joy: t.joy || '—', tuzatilgan: !!t.tuzatish, oddiy: !t.tuzatish,
+        izoh: t.ochiq ? 'Smena hali ochiq — yopilganda sanalgan summa va farq shu yerda chiqadi.' : 'Farq yo\'q — tuzatish kerak emas. Har o\'zgarish jurnalda qayd etiladi.'
+      };
+    };
+    // bank
+    const USUL = [
+      { id: 'terminal', nom: 'Terminal', tizim: 5600000, kom: 0.01 },
+      { id: 'click', nom: 'Click', tizim: 1200000, kom: 0.01 },
+      { id: 'payme', nom: 'Payme', tizim: 600000, kom: 0.01 },
+      { id: 'otkazma', nom: "Bank o'tkazmasi", tizim: 1400000, kom: 0 }
+    ];
+    let jT = 0, jK = 0, jKut = 0, jB = 0;
+    const bkQ = USUL.map((u) => {
+      const k = Math.round(u.tizim * u.kom), kut = u.tizim - k, b = Number(s.bank[u.id] || 0), f = b - kut;
+      jT += u.tizim; jK += k; jKut += kut; jB += b;
+      return {
+        nom: u.nom, tizim: fmt(u.tizim), kom: k ? fmt(k) : '—', kutilgan: fmt(kut), bank: fmt(b),
+        farq: f === 0 ? '0' : (f > 0 ? '+' : '') + fmt(f), farqCls: f === 0 ? 'h-yopiq' : f < 0 ? 'h-qizil' : 'h-ogoh',
+        aria: u.nom + ' — bank ko\'chirmasidagi summa',
+        yoz: (e) => this.setState({ bank: { ...this.state.bank, [u.id]: e.target.value.replace(/\D/g, '').slice(0, 10) } })
+      };
+    });
+    const jF = jB - jKut;
+    // yopish
+    const ys = Number(s.ySumma), yf = ys - NAQD;
+    return {
+      rahbar, sotuvchi: !rahbar,
+      boshHref: rahbar ? 'Main.dc.html' : 'Sotuvchi.dc.html',
+      xodim: rahbar ? { bosh: 'NY', ism: 'Nodira Yusupova', rol: 'Rahbar' } : { bosh: 'MR', ism: 'Malika Rahimova', rol: 'Sotuvchi' },
+      izoh: IZOH[s.bolim],
+      tablar: TAB.map(([id, nom]) => ({ nom, cls: s.bolim === id ? 'faol' : '', joriy: s.bolim === id ? 'page' : 'false', bos: () => this.setState({ bolim: id }) })),
+      b: { xarajat: s.bolim === 'xarajat', inkassatsiya: s.bolim === 'inkassatsiya', zaloglar: s.bolim === 'zaloglar', smena: s.bolim === 'smena', tarix: s.bolim === 'tarix', bank: s.bolim === 'bank' },
+      yopish: s.yopish,
+      yopishOch: () => this.setState({ yopish: true }),
+      yopishYop: () => this.setState({ yopish: false }),
+      moddalar: MODDA.map(([id, nom, d]) => ({ nom, d, faol: s.modda === id, cls: s.modda === id ? 'faol' : '', bos: () => this.setState({ modda: id }) })),
+      x: { nom: mod[1], d: mod[2], summaMatn: fmt(xs), keyin: fmt(NAQD - xs), kop: xs > NAQD, yopiq: xs <= 0 || xs > NAQD },
+      xKlav: klav('xSumma'),
+      oluvchilar: OLUVCHI.map((o) => ({ ...o, faol: s.kimga === o.id, cls: s.kimga === o.id ? 'faol' : '', bos: () => this.setState({ kimga: o.id }) })),
+      i: { summaMatn: fmt(is), keyin: fmt(NAQD - is), kop: is > NAQD, yopiq: is <= 0 || is > NAQD, oluvchi: olu.qisqa },
+      iKlav: klav('iSumma'),
+      iToliq: () => this.setState({ iSumma: String(NAQD) }),
+      zaloglar: ZALOG.map((z) => ({
+        ...z, joyida: !!zJ[z.id], tekMatn: tek(z), tekRang: zJ[z.id] ? '#7ED6A0' : '#F2C46D',
+        aria: '#' + z.id + ' zalog joyida', uslub: s.zTan === z.id ? 'background: rgba(228,193,150,.08); box-shadow: inset 3px 0 0 #E4C196' : '',
+        almash: () => this.setState({ zJoyida: { ...this.state.zJoyida, [z.id]: !this.state.zJoyida[z.id] } }),
+        tanla: () => this.setState({ zTan: z.id })
+      })),
+      zJoyidaSon: joyidaSon, zJoyidaCls: joyidaSon === 3 ? 'h-yashil' : 'h-ogoh',
+      zt: { ...zt, tekMatn: tek(zt) },
+      smenalar: SMENA.map((t) => ({ ...smenaQ(t), tanlangan: s.tTan === t.id, cls: s.tTan === t.id ? 'tanlandi' : '', bos: () => this.setState({ tTan: t.id }) })),
+      tt: smenaQ(SMENA.find((t) => t.id === s.tTan)),
+      bk: {
+        qatorlar: bkQ, tizim: fmt(jT), kom: fmt(jK), kutilgan: fmt(jKut), bank: fmt(jB),
+        farq: jF === 0 ? '0' : (jF > 0 ? '+' : '') + fmt(jF), farqRang: jF === 0 ? '#F6F1E8' : jF < 0 ? '#FF9B92' : '#F2C46D',
+        farqKpi: jF === 0 ? 'yashil' : jF < 0 ? 'qizil' : 'neytral'
+      },
+      yKlav: klav('ySumma'),
+      y: {
+        sanalgan: fmt(ys),
+        farqMatn: yf === 0 ? "0 so'm — farq yo'q" : (yf > 0 ? '+' : '') + fmt(yf) + " so'm " + (yf < 0 ? '(kam)' : "(ko'p)"),
+        farqCls: yf === 0 ? 'nol' : yf < 0 ? 'kam' : 'kop',
+        izohYorliq: yf === 0 ? 'Izoh (ixtiyoriy)' : 'Farq sababi — izoh yozing',
+        joylar: [['seyf', 'Seyfda — ertangi smenaga'], ['rahbar', 'Rahbarga topshiriladi']].map(([id, nom]) => ({ nom, faol: s.yJoy === id, cls: s.yJoy === id ? 'faol' : '', bos: () => this.setState({ yJoy: id }) }))
+      }
+    };
+  }
+}
+</script>
+</body>
+</html>

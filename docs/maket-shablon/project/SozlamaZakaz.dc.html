@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<title>Libosa — Sozlama, Zakaz qoidalari</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<style>
+body{margin:0;background:#080B12}
+</style>
+</helmet>
+<div style="min-height: 100vh; background: #080B12">
+<dc-import name="SozlamaBolim" bolim="zakaz" hint-size="100%,1890px"></dc-import>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1890}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

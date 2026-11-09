@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="uz">
+<head>
+<meta charset="utf-8">
+<title>Libosa — Kassa (minimal)</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link href="https://fonts.googleapis.com/css2?family=Forum&amp;family=Manrope:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+<style>
+/* Minimal yo'nalish (sinov, Claude + Codex 6-tur): uch aksent — tilla (asosiy amal, tanlov), qizil (kechikish, qarz),
+   sariq (muddati tugayotgan). Qolgani kulrang. Fon rasmi, soya, gradient, ichma-ich ramka yo'q; holat — guruh sarlavhasi va matn.
+   Qidiruv bitta va ro'yxatning o'zi ustida. Panel radiusi 12, boshqaruvlar 8. */
+:root{--fon:#0A0D14;--sirt:#10141C;--chiziq:rgba(255,255,255,.07);--matn:#F2EEE6;--ikki:#9AA2AE;--uch:#6E7683;--tilla:#E4C196;--qizil:#FF9B92;--sariq:#F2C46D}
+body{margin:0;background:var(--fon)}
+*{box-sizing:border-box}
+button{font:inherit;cursor:pointer}
+a{color:var(--tilla);text-decoration:none}
+sc-for,sc-if{display:contents}
+.ilova{display:flex;min-height:100vh;background:var(--fon);color:var(--matn);font:400 14px/1.5 Manrope,system-ui,sans-serif}
+svg.i{width:18px;height:18px;flex:none;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.yon{width:220px;flex:none;display:flex;flex-direction:column;gap:2px;padding:28px 14px;border-right:1px solid var(--chiziq)}
+.brend{padding:0 12px 28px;font:400 24px/1 Forum,serif;letter-spacing:.3em;color:var(--tilla)}
+.nav{display:flex;align-items:center;gap:12px;min-height:44px;padding:0 12px;border-radius:8px;color:var(--ikki);font-weight:500}
+.nav:hover{color:var(--matn)}
+.nav.faol{color:var(--matn);font-weight:600;box-shadow:inset 2px 0 0 var(--tilla)}
+.nav .son{margin-left:auto;color:var(--qizil);font-size:13px;font-weight:700}
+.mazmun{flex:1;min-width:0;padding:28px 40px 48px}
+.ustki{display:flex;align-items:center;gap:24px;margin-bottom:36px}
+.qidiruv{display:flex;align-items:center;gap:10px;min-height:46px;margin-bottom:4px;padding:0 14px;border-radius:8px;background:var(--sirt);color:var(--ikki)}
+.ikon-q{display:inline-flex;align-items:center;gap:8px;min-height:44px;padding:0 4px;border:0;background:none;color:var(--ikki);font-weight:500}
+.ikon-q:hover{color:var(--matn)}
+.sariq{color:var(--sariq)!important}
+.qidiruv:focus-within{box-shadow:0 0 0 1px var(--tilla)}
+.qidiruv input{flex:1;min-width:0;background:none;border:0;outline:none;color:var(--matn);font:inherit;font-size:15px}
+.qidiruv input::placeholder{color:var(--uch)}
+.qidiruv kbd{font:inherit;font-size:12px;color:var(--uch);border:1px solid var(--chiziq);border-radius:6px;padding:1px 6px}
+.ong{margin-left:auto;display:flex;align-items:center;gap:22px;color:var(--ikki);font-size:13.5px;white-space:nowrap}
+.ong b{color:var(--matn);font-weight:600}
+.qongiroq{position:relative;display:grid;place-items:center;width:44px;height:44px;padding:0;border:0;background:none;color:var(--ikki)}
+.qongiroq i{position:absolute;top:10px;right:11px;width:7px;height:7px;border-radius:50%;background:var(--qizil)}
+h1{margin:0;font:400 36px/1.1 Forum,serif}
+.tablar{display:flex;gap:28px;margin:20px 0 0;border-bottom:1px solid var(--chiziq)}
+.tablar a{padding:0 0 12px;color:var(--ikki);font-weight:500}
+.tablar a:hover{color:var(--matn)}
+.tablar a.faol{color:var(--matn);font-weight:600;box-shadow:inset 0 -2px 0 var(--tilla)}
+.smena{display:flex;flex-wrap:wrap;align-items:center;gap:8px 20px;padding:16px 0;color:var(--ikki);font-size:13.5px;font-variant-numeric:tabular-nums}
+.smena .ochiq{color:var(--matn);font-weight:600}
+.smena b{color:var(--matn);font-weight:600}
+.smena a{margin-left:auto;color:var(--ikki);font-weight:600}
+.smena a:hover{color:var(--matn)}
+.tor{display:grid;grid-template-columns:minmax(0,1fr) 400px;gap:40px;align-items:start;margin-top:12px}
+.guruh{margin:28px 0 6px;color:var(--uch);font-size:12px;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+.guruh:first-child{margin-top:8px}
+.qator{display:grid;grid-template-columns:56px minmax(0,1fr) auto;gap:16px;align-items:center;width:100%;min-height:64px;padding:10px 12px;border:0;border-bottom:1px solid var(--chiziq);background:none;color:var(--matn);text-align:left;border-radius:0}
+.qator:hover{background:rgba(255,255,255,.025)}
+.qator.tanlandi{background:rgba(228,193,150,.06);box-shadow:inset 2px 0 0 var(--tilla)}
+.qator .raqam-z{color:var(--uch);font-variant-numeric:tabular-nums}
+.qator .ikki{display:flex;flex-direction:column;min-width:0}
+.qator .ikki b{font-weight:600}
+.qator .ikki small{color:var(--ikki);font-size:13px}
+.qator .summa-q{text-align:right;font-weight:600;font-variant-numeric:tabular-nums}
+.qator .summa-q small{display:block;color:var(--uch);font-size:12px;font-weight:500}
+.qizil{color:var(--qizil)!important}
+.bosh-xabar{padding:32px 0;color:var(--ikki)}
+.tolov{position:sticky;top:24px;padding:28px;border-radius:12px;background:var(--sirt)}
+.tolov h2{margin:0;font:400 24px/1.2 Forum,serif}
+.tolov .kim{margin:4px 0 20px;color:var(--ikki)}
+.satr{display:flex;justify-content:space-between;padding:6px 0;color:var(--ikki);font-variant-numeric:tabular-nums}
+.satr b{color:var(--matn);font-weight:600}
+.katta{margin:20px 0 4px;padding-bottom:10px;border-bottom:1px solid var(--chiziq);font:400 40px/1.1 Forum,serif;font-variant-numeric:tabular-nums;text-align:right}
+.tez{display:flex;justify-content:flex-end;gap:18px;margin-bottom:16px}
+.tez button{min-height:36px;padding:0;border:0;background:none;color:var(--ikki);font-weight:600}
+.tez button:hover{color:var(--matn)}
+.klav{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.klav button{min-height:52px;border:0;border-radius:8px;background:rgba(255,255,255,.035);color:var(--matn);font-size:20px}
+.klav button:hover{background:rgba(255,255,255,.07)}
+.usul{display:flex;gap:4px;margin:16px 0 20px;padding:4px;border-radius:10px;background:rgba(255,255,255,.035)}
+.usul button{flex:1;min-height:40px;border:0;border-radius:7px;background:none;color:var(--ikki);font-weight:600}
+.usul button.faol{background:var(--fon);color:var(--matn)}
+.asosiy{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:54px;border:0;border-radius:12px;background:var(--tilla);color:#141B26;font-weight:700;font-size:15.5px}
+.asosiy[disabled]{opacity:.4;cursor:not-allowed}
+.izoh{margin:12px 0 0;color:var(--uch);font-size:13px;text-align:center}
+.xato{margin:0 0 10px;color:var(--qizil);font-weight:600;font-size:13.5px}
+@media (max-width:1100px){.tor{grid-template-columns:minmax(0,1fr)}.tolov{position:static}}
+@media (max-width:760px){.yon{display:none}.mazmun{padding:20px 16px}.ong span{display:none}}
+</style>
+</helmet>
+<div class="ilova">
+  <nav class="yon" aria-label="Bo'limlar">
+    <span class="brend">LIBOSA</span>
+    <a class="nav" href="Main.dc.html"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>Dashboard</a>
+    <a class="nav faol" href="KassaMinimal.dc.html" aria-current="page"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/></svg>Kassa</a>
+    <a class="nav" href="Zakazlar.dc.html"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 8h14l-1 12H6z"/><path d="M9 8a3 3 0 0 1 6 0"/></svg>Zakazlar<span class="son">3</span></a>
+    <a class="nav" href="Liboslar.dc.html"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6l-1 5 4 13H6l4-13z"/></svg>Liboslar</a>
+    <a class="nav" href="MijozBolim.dc.html"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0"/></svg>Mijozlar</a>
+    <a class="nav" href="HisobotBolim.dc.html"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21h18M6 17v-6M11 17V5M16 17v-9M20 17v-4"/></svg>Hisobotlar</a>
+    <a class="nav" href="SozlamaBolim.dc.html"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/></svg>Sozlama</a>
+  </nav>
+
+  <main class="mazmun">
+    <div class="ustki">
+      <button type="button" class="ikon-q" aria-label="Butun ilova bo'yicha qidirish"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>Hamma joydan qidirish</button>
+      <div class="ong">
+        <span>Asosiy salon</span>
+        <span>8 noyabr</span>
+        <button type="button" class="qongiroq" aria-label="Bildirishnomalar: 3"><svg class="i" viewBox="0 0 24 24" aria-hidden="true" style="width: 20px; height: 20px"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg><i></i></button>
+        <span><b>Malika Rahimova</b> · sotuvchi</span>
+      </div>
+    </div>
+
+    <h1>Kassa</h1>
+    <nav class="tablar" aria-label="Kassa bo'limlari">
+      <a class="faol" href="KassaMinimal.dc.html" aria-current="page">To'lov qabul</a>
+      <a href="KassaBolim.dc.html">Xarajat</a>
+      <a href="KassaInkassatsiya.dc.html">Inkassatsiya</a>
+      <a href="KassaZaloglar.dc.html">Zaloglar</a>
+      <a href="KassaSmena.dc.html">Smena</a>
+      <a href="KassaTarix.dc.html">Tarix</a>
+    </nav>
+    <div class="smena">
+      <span class="ochiq">Smena ochiq</span><span>Malika · 09:02 dan</span>
+      <span>Naqd <b>1 250 000</b></span><span>Terminal <b>800 000</b></span><span>O'tkazma <b>300 000</b></span>
+      <a href="KassaYopish.dc.html">Smenani yopish →</a>
+    </div>
+
+    <div class="tor">
+      <section aria-label="To'lov kutayotgan zakazlar">
+        <label class="qidiruv"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg><input type="search" value="{{q}}" onInput="{{qYoz}}" placeholder="To'lov kutayotganlardan: raqam, mijoz, telefon yoki libos" aria-label="To'lov kutayotganlarni qidirish"><kbd>/</kbd></label>
+        <sc-for list="{{guruhlar}}" as="g" hint-placeholder-count="3">
+          <div class="guruh">{{g.nom}}</div>
+          <sc-for list="{{g.qatorlar}}" as="k" hint-placeholder-count="2">
+            <button type="button" class="qator {{k.cls}}" aria-pressed="{{k.tanlangan}}" onClick="{{k.bos}}">
+              <span class="raqam-z">#{{k.id}}</span>
+              <span class="ikki"><b>{{k.mijoz}}</b><small>{{k.libos}} · <span class="{{k.izohCls}}">{{k.izoh}}</span></small></span>
+              <span class="summa-q {{k.qizil}}"><small>{{k.qoldiqNom}}</small>{{k.qoldiqMatn}}</span>
+            </button>
+          </sc-for>
+        </sc-for>
+        <sc-if value="{{bosh}}" hint-placeholder-val="{{ false }}"><p class="bosh-xabar">«{{q}}» bo'yicha to'lov kutayotgan zakaz yo'q.</p></sc-if>
+      </section>
+
+      <aside class="tolov" aria-label="To'lov">
+        <h2>#{{t.id}} · {{t.mijoz}}</h2>
+        <p class="kim">{{t.libos}} · {{t.holatNom}}</p>
+        <div class="satr"><span>Ijara</span><span>{{t.jamiMatn}}</span></div>
+        <div class="satr"><span>To'langan</span><span>{{t.tolanganMatn}}</span></div>
+        <div class="satr"><span>{{t.qoldiqSar}}</span><b class="{{t.qizil}}">{{t.qoldiqMatn}}</b></div>
+        <div class="katta" aria-live="polite">{{summaMatn}}</div>
+        <div class="tez"><button type="button" onClick="{{toliq}}">To'liq</button><button type="button" onClick="{{yarmi}}">Yarmi</button></div>
+        <div class="klav" role="group" aria-label="Raqamlar">
+          <sc-for list="{{tugmalar}}" as="b" hint-placeholder-count="12"><button type="button" aria-label="{{b.aria}}" onClick="{{b.bos}}">{{b.matn}}</button></sc-for>
+        </div>
+        <div class="usul" role="group" aria-label="To'lov usuli">
+          <sc-for list="{{usullar}}" as="u" hint-placeholder-count="4"><button type="button" class="{{u.cls}}" aria-pressed="{{u.faol}}" onClick="{{u.bos}}">{{u.nom}}</button></sc-for>
+        </div>
+        <sc-if value="{{kopmi}}" hint-placeholder-val="{{ false }}"><p class="xato">Qoldiqdan ko'p — {{t.qoldiqMatn}} dan oshmasin.</p></sc-if>
+        <button type="button" class="asosiy" disabled="{{otmaydi}}"><span>{{summaMatn}} so'm qabul qilish</span></button>
+        <p class="izoh">{{usulIzoh}}</p>
+      </aside>
+    </div>
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { tanlangan: 13, summa: '1600000', usul: 'naqd', q: '' };
+  }
+  renderVals() {
+    // Kassa.dc.html bilan bir xil ma'lumot; holat endi rangli nishon emas — guruh va kulrang izoh
+    const K = [
+      { id: 13, mijoz: 'Dilnoza Karimova', tel: '998901234567', libos: 'Mira', izoh: 'bugun 10:00 da oladi', guruh: 'bugun', holatNom: 'bron, bugun beriladi', jami: 2000000, tolangan: 400000, qoldiqNom: 'qoldiq' },
+      { id: 17, mijoz: 'Gulnoza Saidova', tel: '998906789012', libos: 'Luna', izoh: 'avanssiz, 5 soatda bo\'shaydi', guruh: 'bugun', holatNom: 'vaqtinchalik bron, avans kerak', jami: 1800000, tolangan: 0, qoldiqNom: 'avans kerak' },
+      { id: 18, mijoz: 'Munisa Asqarova', tel: '998917890123', libos: "Oq ko'ylak", izoh: '12–14 noyabr', guruh: 'keyin', holatNom: 'bron, 12 noyabr', jami: 3200000, tolangan: 1000000, qoldiqNom: 'qoldiq' },
+      { id: 9, mijoz: 'Aziza Xolmatova', tel: '998975678901', libos: 'Rubin', izoh: '1 kun kechikdi', guruh: 'qarz', holatNom: 'kechikdi, 1 kun', jami: 2200000, tolangan: 1700000, qoldiqNom: 'qarz' },
+      { id: 12, mijoz: 'Shahnoza Tursunova', tel: '998904456677', libos: 'Bella', izoh: 'qaytardi 3 noyabr', guruh: 'qarz', holatNom: 'qaytarildi, qarz qoldi', jami: 3000000, tolangan: 2500000, qoldiqNom: 'qarz' }
+    ];
+    const GURUH = [['bugun', 'Bugun'], ['keyin', 'Oldindan to\'lov'], ['qarz', 'Qarzi bor']];
+    const USUL = [['naqd', 'Naqd', "Naqd smena kassasiga qo'shiladi · kvitansiya chiqadi"], ['terminal', 'Terminal', 'Terminal chekini saqlang'], ['otkazma', "O'tkazma", "Rahbar Telegramda tasdiqlaydi"], ['click', 'Click', "Click orqali"]];
+    const fmt = (n) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+    const s = this.state;
+    const qoldiq = (k) => k.jami - k.tolangan;
+    const q = s.q.trim().toLowerCase().replace(/^#/, '');
+    // raqam terilsa — zakaz raqami yoki telefon; matn — ism yoki libos
+    const qd = q.replace(/[\s+-]/g, '');
+    const mos = (k) => !q || (k.mijoz + ' ' + k.libos).toLowerCase().includes(q) || (/^\d+$/.test(qd) && (String(k.id) === qd || (qd.length >= 4 && k.tel.includes(qd))));
+    const korinadi = K.filter(mos);
+    const tz = K.find((k) => k.id === s.tanlangan) || K[0];
+    const summa = Number(s.summa || 0);
+    const qoy = (v) => this.setState({ summa: String(Math.min(Number(v.replace(/^0+(?=\d)/, '') || 0), 999999999)) });
+    const qator = (k) => ({
+      id: k.id, mijoz: k.mijoz, libos: k.libos, izoh: k.izoh, qoldiqNom: k.qoldiqNom, qoldiqMatn: fmt(qoldiq(k)),
+      // sariq — muddati tugayotgan, qizil — kechikish (Codex: uchinchi aksent faqat shunga)
+      izohCls: k.id === 17 ? 'sariq' : k.id === 9 ? 'qizil' : '',
+      qizil: k.guruh === 'qarz' ? 'qizil' : '', tanlangan: k.id === tz.id, cls: k.id === tz.id ? 'tanlandi' : '',
+      bos: () => this.setState({ tanlangan: k.id, summa: String(qoldiq(k)) })
+    });
+    const raqamlar = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '000', '0'];
+    const usul = USUL.find((u) => u[0] === s.usul);
+    return {
+      q: s.q, qYoz: (e) => this.setState({ q: e.target.value }),
+      guruhlar: GURUH.map(([id, nom]) => ({ nom, qatorlar: korinadi.filter((k) => k.guruh === id).map(qator) })).filter((g) => g.qatorlar.length),
+      bosh: korinadi.length === 0,
+      tugmalar: raqamlar.map((r) => ({ matn: r, aria: r, bos: () => qoy((s.summa === '0' ? '' : s.summa) + r) }))
+        .concat([{ matn: '⌫', aria: "Oxirgi raqamni o'chirish", bos: () => qoy(s.summa.slice(0, -1) || '0') }]),
+      t: { ...tz, jamiMatn: fmt(tz.jami), tolanganMatn: fmt(tz.tolangan), qoldiqMatn: fmt(qoldiq(tz)), qizil: tz.guruh === 'qarz' ? 'qizil' : '', qoldiqSar: tz.qoldiqNom[0].toUpperCase() + tz.qoldiqNom.slice(1) },
+      summaMatn: fmt(summa),
+      kopmi: summa > qoldiq(tz), otmaydi: summa <= 0 || summa > qoldiq(tz),
+      usullar: USUL.map(([id, nom]) => ({ nom, faol: id === s.usul, cls: id === s.usul ? 'faol' : '', bos: () => this.setState({ usul: id }) })),
+      usulIzoh: usul[2],
+      toliq: () => this.setState({ summa: String(qoldiq(tz)) }),
+      yarmi: () => this.setState({ summa: String(Math.round(qoldiq(tz) / 2)) })
+    };
+  }
+}
+</script>
+</body>
+</html>
