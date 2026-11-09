@@ -388,7 +388,8 @@ class QurilmaTelegramTasdiqTests(Base):
         self.assertIn('eskirgan', self.start(111, havola))  # bir martalik
         self.assertTrue(self.holat().json()['tasdiqlangan'])
         self.assertEqual(self.pin(self.rahbar, '1111').status_code, 200)  # o'zi tasdiqladi — ikkinchi kod yo'q
-        self.assertEqual(self.pin(self.rahbar, '1111').status_code, 202)  # keyingi kirishda kod yana kerak
+        # tenants/0037: rahbar shu qurilmada 3 kun faol — keyingi kirishda kod so'ralmaydi (muddat — test_faol_rahbar_3_kun_telegramsiz_kiradi)
+        self.assertEqual(self.pin(self.rahbar, '1111').status_code, 200)
         self.assertTrue(Jurnal.objects.filter(harakat='qurilma_tasdiqlandi', obyekt__contains='Telegram havola').exists())
 
     def test_havola_muddati_otadi(self):
