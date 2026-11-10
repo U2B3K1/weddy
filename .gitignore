@@ -5,3 +5,6 @@ __pycache__/
 node_modules/
 dist/
 media/
+
+# Kanvas/ilova solishtirish skrinshotlari (44 MB, qayta olinadi)
+docs/maket-shablon/skrin/
