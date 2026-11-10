@@ -10,6 +10,7 @@ Eslatma: TZ 7.1 da aiogram tavsiya etilgan. Bitta bot uchun `getUpdates` (25 s l
 import json
 import urllib.error
 import urllib.request
+import uuid
 
 from django.conf import settings
 
@@ -96,3 +97,41 @@ def tekshir(token):
     """Tokenni tekshiradi (getMe) va bot nomini qaytaradi: {'username': ...}. Yaroqsiz bo'lsa TelegramXatosi."""
     j = api('getMe', _token=token)
     return {'username': (j or {}).get('username', '')}
+
+
+FAYL_MAKS_BAYT = 49 * 1024 * 1024  # Bot API fayl chegarasi 50 MB — biroz zaxira bilan
+FAYL_TIMEOUT = 120
+
+
+def fayl_yubor(chat_id, nom, mazmun, izoh='', token=None):
+    """Chatga fayl yuboradi (`sendDocument`, multipart). `mazmun` — bayt; `FAYL_MAKS_BAYT` dan oshmasligi kerak."""
+    token = token or token_ol()
+    if not token:
+        raise TelegramXatosi('Telegram bot sozlanmagan.')
+    if len(mazmun) > FAYL_MAKS_BAYT:
+        raise TelegramXatosi('Fayl Telegram chegarasidan katta.')
+    chegara = '----libosa' + uuid.uuid4().hex
+    xavfsiz_nom = ''.join(c for c in nom if c.isalnum() or c in '-_.') or 'fayl'
+    qismlar = []
+    for kalit, qiymat in (('chat_id', str(chat_id)), ('caption', izoh[:1000])):
+        if qiymat:
+            qismlar.append(f'--{chegara}\r\nContent-Disposition: form-data; name="{kalit}"\r\n\r\n{qiymat}\r\n'.encode())
+    qismlar.append((f'--{chegara}\r\nContent-Disposition: form-data; name="document"; filename="{xavfsiz_nom}"\r\n'
+                    'Content-Type: application/octet-stream\r\n\r\n').encode())
+    tana = b''.join(qismlar) + mazmun + f'\r\n--{chegara}--\r\n'.encode()
+    req = urllib.request.Request(f'https://api.telegram.org/bot{token}/sendDocument', data=tana,
+                                 headers={'Content-Type': f'multipart/form-data; boundary={chegara}'})
+    try:
+        with urllib.request.urlopen(req, timeout=FAYL_TIMEOUT) as r:
+            javob = json.loads(r.read())
+    except urllib.error.HTTPError as e:
+        try:
+            tavsif = str(json.loads(e.read()).get('description', '')).strip()
+        except Exception:  # noqa: BLE001 — javob JSON bo'lmasligi mumkin
+            tavsif = ''
+        raise TelegramXatosi(f'HTTP {e.code} {tavsif}'.strip())
+    except (urllib.error.URLError, TimeoutError, OSError, ValueError) as e:
+        raise TelegramXatosi(type(e).__name__)  # token URL ichida — xato matniga chiqarilmaydi
+    if not javob.get('ok'):
+        raise TelegramXatosi(str(javob.get('description', 'xato'))[:200])
+    return javob.get('result')

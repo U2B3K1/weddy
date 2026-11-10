@@ -30,7 +30,8 @@ class SobitBugunRunner(DiscoverRunner):
         # testlarni tasodifan 429 bilan yiqitardi. Faqat `chegara` keshi o'chiriladi (standart kesh — SMS tokeni
         # va boshqalar — odatdagidek ishlaydi). Chegaraning o'zi alohida testda yoqib tekshiriladi.
         from django.conf import settings
-        self._chegarasiz = override_settings(CACHES={
+        # XATO_XABARI: testlardagi atayin 500 lar platforma egasiga xabar yuborishga urinmasin (test_egaga o'zi yoqadi)
+        self._chegarasiz = override_settings(XATO_XABARI=False, CACHES={
             **settings.CACHES, 'chegara': {'BACKEND': 'django.core.cache.backends.dummy.DummyCache'}})
         self._chegarasiz.enable()
         logging.disable(logging.INFO)  # ilova INFO loglari test natijasini to'ldirib yubormasin

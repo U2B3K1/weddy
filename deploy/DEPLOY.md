@@ -278,6 +278,23 @@ sudo -u postgres pg_restore --clean --if-exists -d libosa /var/backups/libosa/ba
 tar -xzf /var/backups/libosa/media-YYYY-MM-DD.tar.gz -C /var/www/libosa/backend/
 ```
 
+**Telegram orqali egaga.** Baza nusxasi har kuni platforma egasining Telegramiga ham yuboriladi, nusxa olinmasa —
+xato xabari boradi. Buning uchun ega botga ulangan bo'lishi kerak (platforma paneli → Telegram → ulash). Nusxada
+mijozlar telefoni, hujjat raqamlari va integratsiya kalitlari bor, shuning uchun uni parol bilan shifrlang:
+
+```bash
+echo "ZAXIRA_PAROL='bu-yerga-uzun-parol'" > /etc/libosa-zaxira.conf && chmod 600 /etc/libosa-zaxira.conf
+# Parolni alohida joyga yozib qo'ying — usiz nusxa ochilmaydi. Ochish:
+#   openssl enc -d -aes-256-cbc -pbkdf2 -in baza-YYYY-MM-DD.dump.enc -out baza.dump
+```
+
+Cheklovlar: Telegram 50 MB dan katta faylni olmaydi (baza o'sib ketsa egaga ogohlantirish keladi — o'shanda rclone
+kerak); rasmlar (media) Telegramga yuborilmaydi. O'chirish: shu faylga `ZAXIRA_TELEGRAM=0`.
+
+**Server xatolari ham egaga boradi:** har bir 500 javob va ilova xatosi Telegramga qisqa xabar bo'lib keladi
+(manzil, xato turi, kod qatori; so'rov mazmuni yuborilmaydi). Bir xil xato 30 daqiqada bir marta, jami 10 daqiqada
+10 tadan ko'p emas. O'chirish: `.env` ga `XATO_XABARI=False`.
+
 **Nusxani server tashqarisiga ham yuboring** — server butunlay ishdan chiqsa, shu yerdagi nusxa ham yo'qoladi.
 Eng oddiy yo'li: `rclone` (Google Drive, Yandex Disk, S3) sozlab, `zaxira.sh` oxiridagi izohdagi qatorni yoqish.
 Oyda bir marta tiklashni sinov bazasida tekshirib ko'ring — tekshirilmagan nusxa nusxa emas.

@@ -181,10 +181,12 @@ LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
     'formatters': {'oddiy': {'format': '{asctime} {levelname} {name}: {message}', 'style': '{'}},
-    'handlers': {'konsol': {'class': 'logging.StreamHandler', 'formatter': 'oddiy'}},
-    'root': {'handlers': ['konsol'], 'level': env('LOG_LEVEL', default='INFO')},
+    'handlers': {'konsol': {'class': 'logging.StreamHandler', 'formatter': 'oddiy'},
+                 # 5xx va log.exception — platforma egasining Telegramiga (apps/notify/egaga.py)
+                 'egaga': {'class': 'apps.notify.egaga.XatoXabarchi', 'level': 'ERROR'}},
+    'root': {'handlers': ['konsol', 'egaga'], 'level': env('LOG_LEVEL', default='INFO')},
     'loggers': {
-        'django.request': {'handlers': ['konsol'], 'level': 'ERROR', 'propagate': False},
+        'django.request': {'handlers': ['konsol', 'egaga'], 'level': 'ERROR', 'propagate': False},
         'django.server': {'handlers': ['konsol'], 'level': 'INFO', 'propagate': False},
     },
 }
@@ -202,6 +204,9 @@ MEDIA_ROOT = BASE_DIR / 'media'
 RASM_MAKS_BAYT = 10 * 1024 * 1024   # yuklanadigan fayl chegarasi
 RASM_MAKS_PIKSEL = 50_000_000       # «decompression bomb»dan himoya
 LIBOS_MAKS_RASM = 10
+
+# Server xatolari haqida platforma egasiga Telegram xabar (DEBUG da o'chiq)
+XATO_XABARI = env.bool('XATO_XABARI', default=not DEBUG)
 
 # Telegram-bot (7.2). Token bo'sh bo'lsa xabarlar faqat navbatga yoziladi, yuborilmaydi.
 TELEGRAM_BOT_TOKEN = env('TELEGRAM_BOT_TOKEN', default='')
