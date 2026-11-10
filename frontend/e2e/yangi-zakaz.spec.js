@@ -2,9 +2,8 @@
 // (test-results/yangi-zakaz/*.png), telefonda sahifa gorizontal surilmasligi tekshiriladi.
 // zakaz-oqimi.spec.js dan oldin ishlaydi: boshqa sanalar (40–41 kun) va E2E-1 dan boshqa libos — u testga tegmaydi.
 import { expect, test } from '@playwright/test'
-import { kirish, xatolarniKuzat } from './yordam.js'
+import { bolimga, kirish, xatolarniKuzat } from './yordam.js'
 
-const nav = (page) => page.getByRole('navigation', { name: "Bo'limlar" })
 const iso = (kun) => { const t = new Date(); t.setDate(t.getDate() + kun); return t.toLocaleDateString('sv-SE') }
 const TELEFON = { width: 390, height: 844 }
 const KENG = { width: 1280, height: 860 }
@@ -41,7 +40,7 @@ test('yangi zakaz: har qadam ikki kenglikda', async ({ page }) => {
   const xatolar = xatolarniKuzat(page)
   await kirish(page, 'Sotuvchi', '2222')
   // aksessuarga rasm (Liboslar → Aksessuarlar → Rasm) — yangi zakazda ko'ylaklar kabi rasmli kartochka bo'lib chiqadi
-  await nav(page).getByRole('button', { name: 'Liboslar', exact: true }).click()
+  await bolimga(page, 'Liboslar')
   await page.getByRole('tab', { name: 'Aksessuarlar' }).click()
   await page.locator('.zakaz-katak', { hasText: 'Fata Klassik' }).click()
   await page.locator('.aks-tafsilot input[type=file]').first().setInputFiles('public/kelinlar/2.jpg')
@@ -49,7 +48,7 @@ test('yangi zakaz: har qadam ikki kenglikda', async ({ page }) => {
   await expect(page.locator('.aks-tafsilot img.aks-rasm')).toBeVisible()
   await suratlar(page, '0-aksessuar-rasm')
 
-  await nav(page).getByRole('button', { name: 'Kassa', exact: true }).click()  // «Yangi zakaz» — Kassa menyusida
+  await bolimga(page, 'Kassa')  // «Yangi zakaz» — Kassa menyusida
   await page.getByRole('tab', { name: 'Yangi zakaz', exact: true }).click()
   // qadamlar (Sana — Libos tanlash — Mijoz va tasdiq) — kanvasdagidek tepada, alohida panelda
   await expect(page.locator('.yz-qadamlar > ol.zakaz-ip').first()).toBeVisible()

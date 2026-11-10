@@ -1,9 +1,8 @@
 // Bandlik kalendari: bron — bir necha kunlik bitta tasma, kun sarlavhasida band liboslar soni, kun bosilsa — shu kun varaqasi.
 // Sinov zakazi uzoq sanaga (200 kundan keyin) qo'yiladi — boshqa testlarning libos va sanalariga tegmaydi.
 import { expect, test } from '@playwright/test'
-import { kirish, xatolarniKuzat } from './yordam.js'
+import { bolimga, kirish, xatolarniKuzat } from './yordam.js'
 
-const nav = (page) => page.getByRole('navigation', { name: "Bo'limlar" })
 const iso = (kun) => { const t = new Date(); t.setDate(t.getDate() + kun); return t.toLocaleDateString('sv-SE') }
 const TELEFON = { width: 390, height: 844 }
 const KENG = { width: 1280, height: 860 }
@@ -37,7 +36,7 @@ test('bandlik kalendari: bron tasmasi, kun soni va kun varaqasi', async ({ page 
   const z = await apiSorov(page, 'POST', '/zakazlar/', { telefon: '+998907770033', fio: 'Kalendar Sinov', dan, gacha, liboslar: [libos.id] })
   expect(z.raqam, JSON.stringify(z)).toBeTruthy()
 
-  await nav(page).getByRole('button', { name: 'Zakazlar', exact: true }).click()
+  await bolimga(page, 'Zakazlar')
   await page.getByRole('tab', { name: 'Bandlik kalendari' }).click()
   // sahifa sarlavhasi endi «Bandlik kalendari» (kanvas) — panel sarlavhasi aniq nom bilan
   await expect(page.getByRole('heading', { name: 'Bandlik kalendari', level: 1 })).toBeVisible()
@@ -91,7 +90,7 @@ test("bo'sh katak: shu libos va kunga oldindan to'ldirilgan Yangi zakaz", async 
   const xatolar = xatolarniKuzat(page)
   await page.setViewportSize(KENG)
   await kirish(page, 'Rahbar', '1111')
-  await nav(page).getByRole('button', { name: 'Zakazlar', exact: true }).click()
+  await bolimga(page, 'Zakazlar')
   await page.getByRole('tab', { name: 'Bandlik kalendari' }).click()
   await page.getByLabel('Davr boshi').fill(iso(250))  // uzoq sana — boshqa testlarning bronlari yo'q
   const katak = page.locator('.bosh-katak').first()

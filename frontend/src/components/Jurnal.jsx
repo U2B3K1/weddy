@@ -28,6 +28,7 @@ const HARAKAT = {
   sanoq_bekor_qilindi: 'Sanoq bekor qilindi', yetkazib_beruvchiga_tolov: "Yetkazib beruvchiga to'lov",
   yetkazib_beruvchi_tolovi_ochirildi: "Yetkazib beruvchiga to'lov o'chirildi", qurilma_pin_xato: "Qurilmada PIN xato terildi",
   platforma_yordam_kirishi: 'Texnik yordam kirdi', qurilma_filiali: "Qurilma filiali o'zgardi",
+  xodim_filial_ozgardi: "Xodim filiali o'zgardi",
 }
 const SOZ = [[/\bqoshildi\b/g, "qo'shildi"], [/\bozgardi\b/g, "o'zgardi"], [/\bochirildi\b/g, "o'chirildi"], [/\btolov/g, "to'lov"],
   [/\bozgartirildi\b/g, "o'zgartirildi"], [/\bruyxat/g, "ro'yxat"], [/\broyxat/g, "ro'yxat"]]

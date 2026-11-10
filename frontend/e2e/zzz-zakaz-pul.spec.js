@@ -3,7 +3,7 @@
 // berilgan zakazda qoldiq (C-03) va sotuvchi qo'ng'iroqchasi (C-24). Har test o'z libosini API orqali yaratadi (boshqa
 // testlar qoldirgan «tozalashda»/band holatga bog'liq emas) va uzoq sanalarda ishlaydi.
 import { expect, test } from '@playwright/test'
-import { QURILMA_HOLATI, kirish, xatolarniKuzat } from './yordam.js'
+import { bolimga, QURILMA_HOLATI, kirish, xatolarniKuzat } from './yordam.js'
 
 const iso = (kun) => { const t = new Date(); t.setDate(t.getDate() + kun); return t.toLocaleDateString('sv-SE') }
 const som = (n) => `${String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ')} so'm`
@@ -15,7 +15,6 @@ const apiSorov = (page, usul, yol, tana) => page.evaluate(async ([usul, yol, tan
   })
   return r.json()
 }, [usul, yol, tana])
-const nav = (page) => page.getByRole('navigation', { name: "Bo'limlar", exact: true })
 
 async function smenada(page) {
   const s = await apiSorov(page, 'GET', '/kassa/smena/')
@@ -23,7 +22,7 @@ async function smenada(page) {
   else if (!s.men_ishtirokchi) await apiSorov(page, 'POST', '/kassa/smena/qoshilish/')
 }
 async function kartaOch(page, raqam) {
-  await nav(page).getByRole('button', { name: 'Zakazlar', exact: true }).click()
+  await bolimga(page, 'Zakazlar')
   await page.locator('input.jadval-qidiruv').fill(String(raqam))
   await page.locator('.zakaz-katak', { hasText: `#${raqam} ` }).first().click()
   await expect(page.getByRole('heading', { name: `Zakaz #${raqam}` })).toBeVisible()

@@ -1,7 +1,7 @@
 // Brauzerda hali sinalmagan tahrirlash/qo'shish/o'chirish amallari (PROGRESS: 33–41-qismlar).
 // Fayl nomi «zz-» bilan — eng oxirida ishlaydi: filial qo'shadi, sozlamalarni o'zgartiradi, boshqa testlarga xalaqit bermasin.
 import { expect, test } from '@playwright/test'
-import { QURILMA_HOLATI, kirish, xatolarniKuzat } from './yordam.js'
+import { bolimga, QURILMA_HOLATI, kirish, xatolarniKuzat } from './yordam.js'
 
 const nav = (page) => page.getByRole('navigation', { name: "Bo'limlar" })
 const iso = (kun) => { const t = new Date(); t.setDate(t.getDate() + kun); return t.toLocaleDateString('sv-SE') }
@@ -25,10 +25,12 @@ const bolim = async (page, nom) => {
   await page.waitForLoadState('networkidle')
 }
 
-// _guruh — faqat o'qish uchun: bo'limlar Sozlama sahifasining o'zidagi chap ro'yxatda, guruhlar doim ochiq (Ndiz)
+// _guruh — faqat o'qish uchun: guruhlar doim ochiq. Keng ekranda Sozlama ro'yxati chap panelda — Sozlama ichida bo'lsak,
+// asosiy menyudagi «Sozlama» tugmasi yo'q, to'g'ridan-to'g'ri ro'yxatdan tanlanadi
 async function sozlama(page, _guruh, nom) {
-  await nav(page).getByRole('button', { name: 'Sozlama', exact: true }).click()
-  await page.getByRole('navigation', { name: 'Sozlama menyusi' }).getByRole('button', { name: nom, exact: true }).click()
+  const menyu = page.getByRole('navigation', { name: 'Sozlama menyusi' })
+  if (!(await menyu.isVisible())) await bolimga(page, 'Sozlama')
+  await menyu.getByRole('button', { name: nom, exact: true }).click()
   await page.waitForLoadState('networkidle')
 }
 

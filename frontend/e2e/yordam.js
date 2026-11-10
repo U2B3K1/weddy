@@ -27,3 +27,12 @@ export async function kirish(page, ism, pin) {
 }
 
 export const bolim = (page, nom) => page.getByRole('navigation', { name: "Bo'limlar" }).getByRole('button', { name: nom, exact: true })
+
+// Asosiy menyudagi bo'limga o'tish. Keng ekranda (≥1200) Kassa, Hisobotlar, Liboslar va Sozlama ichida chap panel shu bo'lim
+// ro'yxatiga aylanadi (2026-11-10) — avval «‹ Asosiy»
+export async function bolimga(page, nom) {
+  const nav = page.getByRole('navigation', { name: "Bo'limlar" })
+  const asosiy = nav.getByRole('button', { name: 'Asosiy', exact: true })
+  if (await asosiy.isVisible()) await asosiy.click()
+  await nav.getByRole('button', { name: nom, exact: true }).click()
+}

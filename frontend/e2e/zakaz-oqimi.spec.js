@@ -1,9 +1,8 @@
 // Asosiy ish kuni: smena → yangi zakaz → to'liq to'lov → libos berish (pul zalog) → qaytarish → smenani yopish.
 // Kassadagi naqd oxirida aniq: 1 000 000 (ijara) + 500 000 (zalog) − 500 000 (zalog qaytdi) = 1 000 000.
 import { expect, test } from '@playwright/test'
-import { kirish, xatolarniKuzat } from './yordam.js'
+import { bolimga, kirish, xatolarniKuzat } from './yordam.js'
 
-const nav = (page) => page.getByRole('navigation', { name: "Bo'limlar" })
 const iso = (kun) => { const t = new Date(); t.setDate(t.getDate() + kun); return t.toLocaleDateString('sv-SE') }
 
 async function summaTer(joy, raqamlar) {
@@ -23,7 +22,7 @@ test('sotuvchi: zakazdan smena yopilishigacha', async ({ page }) => {
   await kirish(page, 'Sotuvchi', '2222')
 
   await test.step('smenani ochish (0 so\'m)', async () => {
-    await nav(page).getByRole('button', { name: 'Kassa', exact: true }).click()
+    await bolimga(page, 'Kassa')
     // smena yopiq: «Smenani ochish» bitta (To'lov qabulda — «Smena yopiq» varaqasida, varaq yo'q bo'limda — panelda)
     await page.getByRole('button', { name: 'Smenani ochish' }).click()
     const oyna = page.getByRole('dialog', { name: 'Smenani ochish' })
@@ -85,7 +84,7 @@ test('sotuvchi: zakazdan smena yopilishigacha', async ({ page }) => {
   })
 
   await test.step('smena hisoboti va yopish — farq 0', async () => {
-    await nav(page).getByRole('button', { name: 'Kassa', exact: true }).click()
+    await bolimga(page, 'Kassa')
     await expect(page.locator('.smena-naqd')).toContainText("1 000 000 so'm")
     await page.locator('.smena-panel').getByRole('button', { name: 'Smenani yopish' }).click()
     const oyna = page.getByRole('dialog', { name: 'Smenani yopish' })

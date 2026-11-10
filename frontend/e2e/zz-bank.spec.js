@@ -1,7 +1,7 @@
 // Bank solishtirish: sotuvchi «karta» deb yozgan to'lov rahbarga tarixda ko'rinadi — kim, qachon, qaysi zakazga, qancha.
 // «zz-» — smena ochadi/qo'shiladi, boshqa testlardan keyin ishlasin.
 import { expect, test } from '@playwright/test'
-import { QURILMA_HOLATI, kirish, xatolarniKuzat } from './yordam.js'
+import { bolimga, QURILMA_HOLATI, kirish, xatolarniKuzat } from './yordam.js'
 
 const nav = (page) => page.getByRole('navigation', { name: "Bo'limlar" })
 const iso = (kun) => { const t = new Date(); t.setDate(t.getDate() + kun); return t.toLocaleDateString('sv-SE') }
@@ -31,7 +31,7 @@ test("bank solishtirish: karta to'lovlari tarixi — kim, qachon, qaysi zakazga"
   const xatolar = xatolarniKuzat(rahbar)
   await rahbar.setViewportSize({ width: 1280, height: 860 })
   await kirish(rahbar, 'Rahbar', '1111')
-  await nav(rahbar).getByRole('button', { name: 'Hisobotlar', exact: true }).click()
+  await bolimga(rahbar, 'Hisobotlar')
   await rahbar.getByRole('tab', { name: 'Bank solishtirish', exact: true }).click()
   await expect(rahbar.getByText('Nima uchun:')).toBeVisible()
   const tarix = rahbar.locator('details.bank-tarix', { hasText: 'Terminal' })  // kanvas: jadval ostida har usulning tarixi
@@ -48,7 +48,7 @@ test("bank solishtirish: karta to'lovlari tarixi — kim, qachon, qaysi zakazga"
   // «Salonni sozlash» → «Yashirish» butun ilovani qora ekranga aylantirmaydi
   // zakaz kartasi ochilganda chap panel asosiy menyuga qaytadi (R2) — «Asosiy» bosish shart emas
   await expect(nav(rahbar).getByRole('button', { name: 'Asosiy', exact: true })).toHaveCount(0)
-  await nav(rahbar).getByRole('button', { name: 'Dashboard', exact: true }).click()
+  await bolimga(rahbar, 'Dashboard')
   await rahbar.locator('.ustki-xodim').click()
   await rahbar.getByRole('menu').getByRole('menuitem', { name: 'Chiqish' }).click({ trial: true, timeout: 5000 })
   await rahbar.keyboard.press('Escape')

@@ -3,9 +3,8 @@
 // Smena shu testning o'zida ochilib yopiladi, zakaz bekor qilinadi — keyingi testlar (kassa-topshirish: smena yopiq) buzilmaydi.
 // Suratlar: test-results/kassa-davomi/*.png
 import { expect, test } from '@playwright/test'
-import { kirish, xatolarniKuzat } from './yordam.js'
+import { bolimga, kirish, xatolarniKuzat } from './yordam.js'
 
-const nav = (page) => page.getByRole('navigation', { name: "Bo'limlar" })
 const iso = (kun) => { const t = new Date(); t.setDate(t.getDate() + kun); return t.toLocaleDateString('sv-SE') }
 const TELEFON = { width: 390, height: 844 }
 const KENG = { width: 1280, height: 860 }
@@ -40,7 +39,7 @@ test("to'lovdan keyin «Libosni berish →» — zakaz kartasida berish formasi"
     dan: iso(0), gacha: iso(1), liboslar: [libos.id] })
   expect(z.id, JSON.stringify(z)).toBeTruthy()
   try {
-    await nav(page).getByRole('button', { name: 'Kassa', exact: true }).click()
+    await bolimga(page, 'Kassa')
     await expect(page.getByRole('tab', { name: "To'lov qabul", exact: true })).toHaveAttribute('aria-selected', 'true')
     // telefonda zakaz tanlanmaguncha bo'sh chek kartasi yo'q (keng ekranda — bor)
     await expect(page.getByRole('region', { name: "To'lov" })).toBeVisible()
@@ -99,7 +98,7 @@ test("QA-16: qaytarilgan zakaz qoldig'i to'langanda «Libosni berish →» yo'q"
     const q = await apiSorov(page, 'POST', `/zakazlar/${z.id}/qaytarish/`, {})
     expect(q.holat, JSON.stringify(q)).toBe('qaytarildi')  // C-03: qoldiq 100 000 hali olinmagan
 
-    await nav(page).getByRole('button', { name: 'Kassa', exact: true }).click()
+    await bolimga(page, 'Kassa')
     await page.locator('.pos-zakaz', { hasText: 'Qaytgan Sinov' }).click()
     const chek = page.getByRole('region', { name: "To'lov" })
     await chek.getByRole('button', { name: /^To'liq \d/ }).click()
@@ -127,7 +126,7 @@ test("Yangi zakaz oldindan to'ldirilgan: kalendar bo'sh katagi va mijoz kartasi"
   await kirish(page, 'Rahbar', '1111')
 
   await test.step("kalendar: bo'sh katak → sana va libos tanlangan 2-qadam", async () => {
-    await nav(page).getByRole('button', { name: 'Zakazlar', exact: true }).click()
+    await bolimga(page, 'Zakazlar')
     await page.getByRole('tab', { name: 'Bandlik kalendari' }).click()
     const katak = page.getByRole('button', { name: /^E2E-2 .*yangi zakaz$/ }).last()  // ko'rinib turgan oxirgi kun
     await katak.click()
@@ -138,15 +137,15 @@ test("Yangi zakaz oldindan to'ldirilgan: kalendar bo'sh katagi va mijoz kartasi"
     await expect(page.getByRole('button', { name: 'Davom etish', exact: true })).toBeEnabled()
     await rasm(page, '3-kalendardan-yangi-zakaz')
     // bo'limga qaytilganda boshlang'ich qayta qo'llanmaydi — sessiya qoralamasi davom etadi (sana saqlangan, libos qulfi bo'shagan)
-    await nav(page).getByRole('button', { name: 'Dashboard', exact: true }).click()
-    await nav(page).getByRole('button', { name: 'Kassa', exact: true }).click()
+    await bolimga(page, 'Dashboard')
+    await bolimga(page, 'Kassa')
     await page.getByRole('tab', { name: 'Yangi zakaz', exact: true }).click()
     await expect(page.locator('.zakaz-ip [aria-current="step"]')).toContainText('Libos')
     await expect(page.locator('.varaq-royxat li')).toHaveCount(0)
   })
 
   await test.step("mijoz kartasi: «Yangi zakaz» → 3-qadamda telefon to'ldirilgan, mavjud mijoz o'zi topiladi", async () => {
-    await nav(page).getByRole('button', { name: 'Mijozlar', exact: true }).click()
+    await bolimga(page, 'Mijozlar')
     await page.locator('.mijoz-jadval tbody tr', { hasText: 'Storno Mijoz' }).click()
     await expect(page.getByRole('heading', { name: 'Storno Mijoz' })).toBeVisible()
     await page.getByRole('main').getByRole('button', { name: 'Yangi zakaz', exact: true }).click()
@@ -175,6 +174,6 @@ test("Yangi zakaz oldindan to'ldirilgan: kalendar bo'sh katagi va mijoz kartasi"
     await expect(page.getByRole('button', { name: 'Zakazni saqlash' })).toBeDisabled()
   })
   // zakaz saqlanmaydi: bo'limdan chiqilganda libos qulfi bo'shaydi
-  await nav(page).getByRole('button', { name: 'Dashboard', exact: true }).click()
+  await bolimga(page, 'Dashboard')
   expect(xatolar).toEqual([])
 })

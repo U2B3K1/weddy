@@ -14,3 +14,9 @@ export function BoshAmal({ children }) {
   const { amal } = useContext(BoshJoyi)
   return amal ? createPortal(children, amal) : null
 }
+
+// Sozlama bo'limlari ro'yxati: keng ekranda (≥1200) chap panelga — App joy bersa; aks holda sahifaning o'zida (planshet, ☰)
+export function SozlamaYon({ children }) {
+  const { sozlamaYon } = useContext(BoshJoyi)
+  return sozlamaYon ? createPortal(children, sozlamaYon) : children
+}

@@ -2228,7 +2228,9 @@ label > .info .info-matn, th .info .info-matn { left: auto; right: 0; }
 .kpi-plitka.qizil { color: var(--h-qarz); background: rgba(255, 155, 146, .14); }
 :where(.ilova) .kpi-filtr-tugma { position: static; min-height: 0; padding: 0; border: 0; background: none; box-shadow: none;
   font: italic 500 16px/1.2 var(--kursiv); color: var(--matn-2); text-align: left; cursor: pointer; }
-:where(.ilova) .kpi-filtr-tugma:hover { filter: none; }
+/* filter tugmani ::after uchun konteynerga aylantiradi — butun kartani qoplagan qatlam tugma matni o'lchamiga qisqarib, hover
+   yo'qolib-qaytib karta «o'ynardi». Umumiy `button:hover:not(:disabled)` (0,2,1) dan kuchliroq bo'lishi shart */
+:where(.ilova) .kpi-filtr-tugma:hover:not(:disabled) { filter: none; }
 :where(.ilova) .kpi-filtr-tugma:active:not(:disabled) { transform: none; }
 .kpi-filtr-tugma::after { content: ''; position: absolute; inset: 0; border-radius: inherit; }
 .kpi-filtr:has(.kpi-filtr-tugma:focus-visible) { outline: 2px solid var(--tilla); outline-offset: 2px; }

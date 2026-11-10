@@ -1,9 +1,8 @@
 // «Mijozlar»: ro'yxat (jadval panel) va mijoz kartasi (varaq: to'y kuni, raqamlar, o'lchamlar; tarix).
 // Har ko'rinish keng ekranda va telefonda suratga olinadi (test-results/mijozlar/*.png).
 import { expect, test } from '@playwright/test'
-import { kirish, xatolarniKuzat } from './yordam.js'
+import { bolimga, kirish, xatolarniKuzat } from './yordam.js'
 
-const nav = (page) => page.getByRole('navigation', { name: "Bo'limlar" })
 const iso = (kun) => { const t = new Date(); t.setDate(t.getDate() + kun); return t.toLocaleDateString('sv-SE') }
 const TELEFON = { width: 390, height: 844 }
 const KENG = { width: 1280, height: 860 }
@@ -22,7 +21,7 @@ async function suratlar(page, nom) {
 test('mijozlar: ro\'yxat va mijoz varaqasi', async ({ page }) => {
   const xatolar = xatolarniKuzat(page)
   await kirish(page, 'Rahbar', '1111')
-  await nav(page).getByRole('button', { name: 'Mijozlar', exact: true }).click()
+  await bolimga(page, 'Mijozlar')
   const qator = page.locator('.mijoz-jadval tbody tr', { hasText: 'Storno Mijoz' })
   await expect(qator).toBeVisible()
   await suratlar(page, '1-royxat')

@@ -460,10 +460,13 @@ function Tasdiq({ a, onYuborish }) {
 function Forma({ kats, rahbar, ybs = [], onYuborish }) {
   const [f, setF] = useState({ soni: '1' })
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value })
+  // rahbar qo'shgani darhol katalogga chiqadi — tannarxsiz bo'lmasin (foyda va qoplash noto'g'ri hisoblanardi)
+  const tannarxBor = f.tannarx !== undefined && f.tannarx !== ''
+  const yetishmaydi = [!f.nomi && 'Nomi', !f.kod && 'Kod', rahbar && !tannarxBor && 'Tannarx (1 dona)'].filter(Boolean)
   const yubor = async () => {
     const body = {
       nomi: f.nomi, kod: f.kod, kategoriya: Number(f.kategoriya || kats[0].id), soni: Number(f.soni || 1),
-      ijara_narxi: Number(f.ijara_narxi || 0), ...(rahbar && f.tannarx ? { tannarx: Number(f.tannarx) } : {}),
+      ijara_narxi: Number(f.ijara_narxi || 0), ...(rahbar && tannarxBor ? { tannarx: Number(f.tannarx) } : {}),
       // bo'sh qoldirilsa — tannarx × soni to'liq to'langan; kami — yetkazib beruvchiga qarz
       ...(rahbar && f.yetkazib_beruvchi ? { yetkazib_beruvchi: Number(f.yetkazib_beruvchi), ...(f.tolandi ? { tolandi: Number(f.tolandi) } : {}) } : {}),
     }
@@ -481,7 +484,7 @@ function Forma({ kats, rahbar, ybs = [], onYuborish }) {
         <div className="libos-narxlar">
           <label>Ijara narxi<SummaInput value={f.ijara_narxi || ''} onChange={set('ijara_narxi')} /></label>
           <label>Dona soni<input type="number" min="1" max="200" value={f.soni} onChange={set('soni')} /></label>
-          {rahbar && <label>Tannarx (1 dona)<SummaInput value={f.tannarx || ''} onChange={set('tannarx')} /><Info nom="Tannarx">Bir donani sotib olishga ketgan pul. Faqat rahbarga ko'rinadi. Keyin qo'shiladigan donalar uchun ham odatiy narx bo'ladi.</Info></label>}
+          {rahbar && <label>Tannarx (1 dona) *<SummaInput value={f.tannarx ?? ''} onChange={set('tannarx')} /><Info nom="Tannarx">Bir donani sotib olishga ketgan pul. Faqat rahbarga ko'rinadi. Keyin qo'shiladigan donalar uchun ham odatiy narx bo'ladi.</Info></label>}
         </div>
         {rahbar && ybs.length > 0 && (
           <div className="libos-narxlar">
@@ -499,8 +502,8 @@ function Forma({ kats, rahbar, ybs = [], onYuborish }) {
         {rahbar && f.yetkazib_beruvchi && f.tolandi && Number(f.tolandi) < Number(f.tannarx || 0) * Number(f.soni || 1) && (
           <p className="malumot">Yetkazib beruvchiga qarz: <b>{som(Number(f.tannarx) * Number(f.soni || 1) - Number(f.tolandi))}</b></p>
         )}
-        <button disabled={!f.nomi || !f.kod} onClick={yubor}>Qo'shish</button>
-        {(!f.nomi || !f.kod) && <p className="malumot r2-sabab">To'ldiring: {[!f.nomi && 'Nomi', !f.kod && 'Kod'].filter(Boolean).join(', ')}</p>}
+        <button disabled={yetishmaydi.length > 0} onClick={yubor}>Qo'shish</button>
+        {yetishmaydi.length > 0 && <p className="malumot r2-sabab">To'ldiring: {yetishmaydi.join(', ')}</p>}
     </div>
   )
 }

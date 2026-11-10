@@ -8,7 +8,7 @@ import NavIkona from '../components/NavIkona'
 import Sahifali from '../components/Sahifalash'
 import Oyna from '../components/Oyna'
 import Tasdiq from '../components/Tasdiq'
-import { BoshAmal } from '../components/BoshJoy'
+import { BoshAmal, SozlamaYon } from '../components/BoshJoy'
 import { Almash, BelgiKarta, Qadam, RadioKarta, SPanel, SQator, Yorliq } from '../components/SozlamaUI'
 import { ESKI_BOLIM, GURUHLAR, SOZLAMA_BOLIMLAR, sozlamaQidir } from './sozlamaBolimlari'
 import {
@@ -257,9 +257,8 @@ export default function Sozlamalar({ menId, bolim, onBolim }) {
     ),
     katalog: () => (
       <SPanel id="katalog" ikon="katalog" nomi="Libos qo'shish va manekin" izoh="Kim katalogga libos va aksessuar qo'sha oladi">
-        {almashQator('sotuvchi_libos_qoshadi', "Sotuvchi libos va aksessuar qo'sha oladi", "O'chirilsa — faqat rahbar qo'shadi.")}
-        {almashQator('libos_tasdigi', "Sotuvchi qo'shganini rahbar tasdiqlaydi",
-          s.libos_tasdigi ? 'Narx va tannarx tasdiqlangach ijaraga chiqadi.' : "O'chiq: sotuvchi libosi darhol katalogga chiqadi, tannarxni keyin kiritasiz.")}
+        {almashQator('sotuvchi_libos_qoshadi', "Sotuvchi libos va aksessuar qo'sha oladi",
+          "Rahbar narx va tannarxni kiritib tasdiqlagach ijaraga chiqadi — tannarxsiz libos katalogga tushmaydi. O'chirilsa — faqat rahbar qo'shadi.")}
         {almashQator('manekin', 'Raqamli manekin', "Libos rasmini fonsiz qilib manekinda ko'rsatadi.")}
       </SPanel>
     ),
@@ -295,14 +294,14 @@ export default function Sozlamalar({ menId, bolim, onBolim }) {
         ong={<button type="button" className="ikkinchi kichik" onClick={() => setXodimOyna(true)}>Xodim qo'shish</button>}>
         <div className="soz-xq bosh" aria-hidden="true"><span>Xodim</span><span>Rol</span><span>PIN</span><span>Telegram</span><span /></div>
         {xodimlar.map((x) => (
-          <Xodim key={x.id} x={x} men={x.id === menId} onOzgartir={(b, ok) => bajar(() => xodimOzgartir(x.id, b), ok)} />
+          <Xodim key={x.id} x={x} men={x.id === menId} filiallar={fil} onOzgartir={(b, ok) => bajar(() => xodimOzgartir(x.id, b), ok)} />
         ))}
         {xodimlar.some((x) => x.faol && !x.telegram_ulangan) && (
           <p className="soz-izoh">Telegram ulanmagan xodimga pul topshirish tasdig'i va eslatmalar bormaydi — xodim menyusidan ulang.</p>
         )}
         {xodimOyna && (
           <Oyna sarlavha="Xodim qo'shish" onYop={() => setXodimOyna(false)}>
-            <XodimForma onYuborish={async (b) => { const ok = await bajar(() => xodimQosh(b), "Xodim qo'shildi."); if (ok) setXodimOyna(false); return ok }} />
+            <XodimForma filiallar={fil} onYuborish={async (b) => { const ok = await bajar(() => xodimQosh(b), "Xodim qo'shildi."); if (ok) setXodimOyna(false); return ok }} />
           </Oyna>
         )}
       </SPanel>
@@ -470,7 +469,7 @@ export default function Sozlamalar({ menId, bolim, onBolim }) {
     shartnoma: `${(sa.shartnoma_bandlari || []).length} band`,
     mavsumiy: sa.mavsumiy_narx ? 'yoqilgan' : "o'chiq",
     promokod: sa.promokodlar_bolimi ? 'yoqilgan' : "o'chiq",
-    katalog: !sa.sotuvchi_libos_qoshadi ? 'faqat rahbar' : sa.libos_tasdigi ? "rahbar tasdig'i bilan" : 'tasdiqsiz',
+    katalog: !sa.sotuvchi_libos_qoshadi ? 'faqat rahbar' : "rahbar tasdig'i bilan",
     artikul: sa.artikul_avto ? `avtomatik${sa.artikul_prefiks ? ` · ${sa.artikul_prefiks}` : ''}` : "qo'lda",
     xodimlar: `${faolXodim.length} xodim`,
     bonus: sa.sotuvchi_bonusi ? `${sa.bonus_foiz}%` : "o'chiq",
@@ -483,14 +482,6 @@ export default function Sozlamalar({ menId, bolim, onBolim }) {
     yordam: yordam ? (yordam.amalda ? 'ochiq' : 'yopiq') : '',
   }
   const diqqat = new Set([kutQur && 'qurilmalar', faolXodim.some((x) => !x.telegram_ulangan) && 'xodimlar'].filter(Boolean))
-  const telegramsiz = faolXodim.filter((x) => !x.telegram_ulangan)
-  const etibor = [
-    kutQur > 0 && { matn: `${kutQur} ta yangi qurilma ruxsat kutmoqda`, tugma: 'Qurilmalar', bolim: 'qurilmalar' },
-    telegramsiz.length > 0 && {
-      matn: telegramsiz.length === 1 ? `${telegramsiz[0].ism} Telegramni ulamagan — xabarlar unga bormaydi`
-        : `${telegramsiz.length} xodim Telegramni ulamagan — xabarlar ularga bormaydi`,
-      tugma: 'Xodimlar', bolim: 'xodimlar' },
-  ].filter(Boolean)
 
   // 'bosh' — «Barcha sozlamalar»: guruhlar kartalar to'rida; aks holda tanlangan bo'lim guruhi (hamma panellari)
   const joriyId = ESKI_BOLIM[bolim] || bolim
@@ -499,14 +490,17 @@ export default function Sozlamalar({ menId, bolim, onBolim }) {
 
   return (
     <div className="sozlama-joy">
-    {/* Shisha uslubi: keng ekranda bo'limlar ro'yxati sahifaning o'zida chapda (chap panel asosiy menyuda qoladi); telefonda — ☰ menyu */}
-    <nav className="sozlama-yon" aria-label="Sozlama menyusi">
-      <div className="sozlama-guruh">
-        <button type="button" className={bolim === 'bosh' ? 'faol' : ''} aria-current={bolim === 'bosh' ? 'page' : undefined}
-          onClick={() => onBolim('bosh')}><NavIkona nom="bosh" /><span>Barcha sozlamalar</span></button>
-      </div>
-      <BolimRoyxati bolim={joriyId} guruh={guruh} onTanla={onBolim} diqqat={diqqat} />
-    </nav>
+    {/* Bo'limlar ro'yxati: keng ekranda (≥1200) chap panelda — App joy beradi (foydalanuvchi qarori); 1024–1199 da sahifaning
+        o'zida chapda; telefon va planshetda — ☰ menyu */}
+    <SozlamaYon>
+      <nav className="sozlama-yon" aria-label="Sozlama menyusi">
+        <div className="sozlama-guruh">
+          <button type="button" className={bolim === 'bosh' ? 'faol' : ''} aria-current={bolim === 'bosh' ? 'page' : undefined}
+            onClick={() => onBolim('bosh')}><NavIkona nom="bosh" /><span>Barcha sozlamalar</span></button>
+        </div>
+        <BolimRoyxati bolim={joriyId} guruh={guruh} onTanla={onBolim} diqqat={diqqat} />
+      </nav>
+    </SozlamaYon>
     <div className="sozlama-mazmun">
       <div className="sozlama-menu">
         <button type="button" className="sozlama-menu-tugma" aria-expanded={menuOchiq}
@@ -546,7 +540,7 @@ export default function Sozlamalar({ menId, bolim, onBolim }) {
       </div>
       </BoshAmal>
       {guruh === null
-        ? <SozlamaMarkazi onTanla={onBolim} qiymat={qiymat} diqqat={diqqat} etibor={etibor} />
+        ? <SozlamaMarkazi onTanla={onBolim} qiymat={qiymat} diqqat={diqqat} />
         : (
           <>
             <nav className="soz-yol" aria-label="Sozlama yo'li">
@@ -653,25 +647,13 @@ function QurilmaFiliali({ q, fil, onSaqla }) {
   )
 }
 
-// «Barcha sozlamalar» (kanvas SozlamaBolimShisha): tepada e'tibor talab qiladigan holatlar; 6 guruh — ikki ustunda kartalar,
-// har qator — bo'lim nomi va joriy qiymati (tilla), bosilsa bo'lim ochiladi. Qisqa izoh — sichqoncha ostida (title).
-function SozlamaMarkazi({ onTanla, qiymat, diqqat, etibor }) {
+// «Barcha sozlamalar» (kanvas SozlamaBolimShisha): 6 guruh — ikki ustunda kartalar, har qator — bo'lim nomi va joriy qiymati
+// (tilla), bosilsa bo'lim ochiladi. Qisqa izoh — sichqoncha ostida (title). E'tibor talab qiladigan holatlar (Telegram ulamagan xodim,
+// ruxsat kutayotgan qurilma) — qo'ng'iroqchada (foydalanuvchi so'rovi); bu yerda faqat qiymat rangi va chap ro'yxatdagi nuqta.
+function SozlamaMarkazi({ onTanla, qiymat, diqqat }) {
   const ustunlar = [GURUHLAR.slice(0, 3), GURUHLAR.slice(3)]
   return (
     <div className="sozlama-umumiy">
-      {etibor.length > 0 && (
-        <div className="ogohlantirish sozlama-etibor" role="status">
-          <NavIkona nom="qalqon" className="tugma-ikon" />
-          <p><b>E'tibor:</b> {etibor.map((e) => e.matn).join('. ')}.</p>
-          <span className="sozlama-etibor-tugmalar">
-            {etibor.map((e) => (
-              <button key={e.bolim} type="button" className="havola" onClick={() => onTanla(e.bolim)}>
-                {e.tugma}<NavIkona nom="ong" className="tugma-ikon" />
-              </button>
-            ))}
-          </span>
-        </div>
-      )}
       <div className="sozlama-tor ikki-ustun" role="group" aria-label="Sozlama bo'limlari">
         {ustunlar.map((guruhlar, i) => (
           <div key={i} className="sozlama-ustun">
@@ -749,20 +731,23 @@ function FilialTahrir({ f, onSaqla, onFaol }) {
 }
 
 // Xodim qatori (kanvas jadvali): ism va telefon, rol, PIN, Telegram; «···» — tahrirlash menyusi qator ostida ochiladi
-function Xodim({ x, men, onOzgartir }) {
+function Xodim({ x, men, filiallar, onOzgartir }) {
   const [ochiq, setOchiq] = useState(false)
   const [yangiRol, setYangiRol] = useState(null)
   const [pin, setPin] = useState('')
   const [ism, setIsm] = useState(x.ism)
   const [telefon, setTelefon] = useState(x.telefon || '')
   const rolNomi = ROLLAR.find(([k]) => k === x.rol)?.[1]
+  // Filial — faqat salonda filial bo'lsa (biriktirilmagan xodim — barcha filiallarda)
+  const filialBor = filiallar.some((f) => f.faol) || x.filial != null
+  const filialNomi = filialBor ? (filiallar.find((f) => f.id === x.filial)?.nomi || 'barcha filiallar') : null
   return (
     <div className={`soz-xodim${x.faol ? '' : ' nofaol'}`}>
       <div className="soz-xq">
         <span className="soz-xodim-ism">
           <i className="soz-avatar" aria-hidden="true">{boshHarf(x.ism)}</i>
           <span className="soz-matn"><b className="xodim-ism">{x.ism}</b>
-            <small>{[x.telefon, men && 'siz', !x.faol && 'nofaol'].filter(Boolean).join(' · ') || '—'}</small></span>
+            <small>{[x.telefon, filialNomi, men && 'siz', !x.faol && 'nofaol'].filter(Boolean).join(' · ') || '—'}</small></span>
         </span>
         <span><Yorliq tur={x.rol === 'rahbar' ? 'tilla' : 'yopiq'}>{rolNomi}</Yorliq></span>
         <span className="soz-mute">{x.bloklangan ? <Yorliq tur="qizil">bloklangan</Yorliq> : "o'rnatilgan"}</span>
@@ -790,6 +775,17 @@ function Xodim({ x, men, onOzgartir }) {
               {ROLLAR.map(([k, nom]) => <option key={k} value={k}>{nom}</option>)}
             </select>
           </label>
+          {filialBor && (
+            <label>Filial
+              <select value={x.filial ?? ''} onChange={(e) => onOzgartir({ filial: e.target.value ? Number(e.target.value) : null }, "Xodim filiali o'zgartirildi.")}>
+                <option value="">Barcha filiallar</option>
+                {filiallar.filter((f) => f.faol || f.id === x.filial).map((f) => (
+                  <option key={f.id} value={f.id}>{f.nomi}{f.faol ? '' : ' (nofaol)'}</option>
+                ))}
+              </select>
+              <small className="soz-izoh">Kirish ekranida shu filial planshetida birinchi chiqadi; boshqa filialda ham kira oladi.</small>
+            </label>
+          )}
           {yangiRol && (
             <Tasdiq sarlavha={`${x.ism} — ${ROLLAR.find(([k]) => k === yangiRol)[1]}?`} tugma="Ha, rolni o'zgartirish"
               xavfli={yangiRol === 'rahbar'}
@@ -850,8 +846,9 @@ function XodimTelegram({ x }) {
   )
 }
 
-function XodimForma({ onYuborish }) {
+function XodimForma({ filiallar, onYuborish }) {
   const [f, setF] = useState({ rol: 'sotuvchi' })
+  const faollar = filiallar.filter((v) => v.faol)
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value })
   return (
     <div className="stack">
@@ -862,11 +859,20 @@ function XodimForma({ onYuborish }) {
             {ROLLAR.map(([k, nom]) => <option key={k} value={k}>{nom}</option>)}
           </select>
         </label>
+        {faollar.length > 0 && (
+          <label>Filial
+            <select value={f.filial || ''} onChange={set('filial')}>
+              <option value="">Barcha filiallar</option>
+              {faollar.map((v) => <option key={v.id} value={v.id}>{v.nomi}</option>)}
+            </select>
+          </label>
+        )}
         <label>PIN (4–6 raqam) *
           <input type="password" inputMode="numeric" maxLength={6} value={f.pin || ''} onChange={set('pin')} />
         </label>
         <button disabled={!f.ism?.trim() || !/^\d{4,6}$/.test(f.pin || '')}
-          onClick={() => onYuborish({ ism: f.ism, telefon: f.telefon || '', rol: f.rol, pin: f.pin }).then((ok) => ok && setF({ rol: 'sotuvchi' }))}>
+          onClick={() => onYuborish({ ism: f.ism, telefon: f.telefon || '', rol: f.rol, pin: f.pin, filial: f.filial ? Number(f.filial) : null })
+            .then((ok) => ok && setF({ rol: 'sotuvchi' }))}>
           Qo'shish
         </button>
         {(!f.ism?.trim() || !/^\d{4,6}$/.test(f.pin || '')) && (

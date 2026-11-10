@@ -87,7 +87,7 @@ const TUSHUM_EMAS = new Set(['libos', 'kategoriya', 'sotuvchi', 'salonchi', 'man
 // Avvalgi «Grafik» bo'limi olib tashlandi (Dashboard grafigini takrorlardi): «grafik» chaqirilsa — Oylik foyda,
 // sahifa grafikka suriladi. `onBolim` (ixtiyoriy) — boshqa bo'limga o'tish («Ko'rsatish» havolalari uchun).
 export default function Hisobotlar({ bolim, onZakaz, onBolim }) {
-  if (bolim === 'pnl' || bolim === 'grafik') return <PnlBolim grafikka={bolim === 'grafik'} onBolim={onBolim} />
+  if (bolim === 'pnl' || bolim === 'grafik') return <PnlBolim grafikka={bolim === 'grafik'} />
   if (bolim === 'xarajat') return <div className="stack hisobot-sahifa"><Xarajatlar /></div>
   if (bolim === 'bonus') return <div className="stack hisobot-sahifa"><Bonus onBolim={onBolim} /></div>
   if (bolim === 'bank') return <div className="stack hisobot-sahifa"><Bank onZakaz={onZakaz} /></div>
@@ -476,7 +476,7 @@ const yaxlitQadam = (oraliq) => {
   return (n <= 1 ? 1 : n <= 2 ? 2 : n <= 2.5 ? 2.5 : n <= 5 ? 5 : 10) * d
 }
 
-function PnlBolim({ grafikka, onBolim }) {
+function PnlBolim({ grafikka }) {
   const [joriy] = useState(() => OyTanlash.joriy())
   const [hisobot, setHisobot] = useState(null)
   const [oy, setOy] = useState(joriy)
@@ -530,14 +530,14 @@ function PnlBolim({ grafikka, onBolim }) {
       {xato && <p className="xato">{xato}</p>}
       {pnlFilial && <p className="malumot">Filial natijasi: filialga biriktirilmagan (umumiy) xarajatlar, liboslar va zakazlar bu ko'rinishga kirmaydi.</p>}
       {hisobot?.yopilgan && <p className="malumot">Bu oy yopilgan: ma'lumotlarini faqat rahbar o'zgartira oladi.</p>}
-      {hisobot && <Pnl r={hisobot} oyNom={oyYorliq(oy, joriy)} filial={pnlFilial} onBolim={onBolim} />}
+      {hisobot && <Pnl r={hisobot} oyNom={oyYorliq(oy, joriy)} filial={pnlFilial} />}
       {oylik && <FoydaOylar oylik={oylik} oy={oy} joriy={joriy} onOy={setOy} grafikRef={grafikRef} />}
       {hisobot && <PnlQoshimcha r={hisobot} />}
     </div>
   )
 }
 
-function Pnl({ r, oyNom, filial, onBolim }) {
+function Pnl({ r, oyNom, filial }) {
   // Kassa usuli: pul kirgan kun tushum. Kirdi − chiqdi = sof foyda (jarima kirdi, qaytarilgan/kelmagan/xarajat/bonus chiqdi)
   const kirdi = [
     { nom: 'Avans va qoldiq', v: r.kirim, kalit: 'kirim' },
@@ -587,18 +587,7 @@ function Pnl({ r, oyNom, filial, onBolim }) {
           izoh={otgan ? `${taqqosNomi(otgan)}: ${som(otgan.sof_foyda)}` : 'kirdi − chiqdi'}
           trend={otgan && <Taqqos hozir={r.sof_foyda} oldin={otgan.sof_foyda} nomi={`${taqqosNomi(otgan)} bilan`} />} />
       </section>
-      {r.tannarxsiz_liboslar > 0 && (
-        <p className="ogohlantirish r2-ogoh">
-          <span>{r.tannarxsiz_liboslar} ta libosning tannarxi kiritilmagan, foyda haqiqatdagidan yuqori ko'rinishi mumkin.</span>
-          {onBolim && <button type="button" className="havola" onClick={() => onBolim('katalog:liboslar')}>Ko'rsatish</button>}
-        </p>
-      )}
-      {r.tasdiqlanmagan_xarajatlar > 0 && (
-        <p className="ogohlantirish r2-ogoh">
-          <span>{r.tasdiqlanmagan_xarajatlar} ta xarajat hali tasdiqlanmagan va hisobga kirmagan.</span>
-          {onBolim && <button type="button" className="havola" onClick={() => onBolim('hisobotlar:xarajat')}>Ko'rsatish</button>}
-        </p>
-      )}
+      {/* «tannarxi kiritilmagan» va «tasdiqlanmagan xarajat» ogohlantirishlari — qo'ng'iroqchada (foydalanuvchi so'rovi, 2026-11-10) */}
       <div className="fy-ikki">
         <section className="blok hisobot-panel" aria-label="Qayerdan keldi, qayerga ketdi">
           <div className="hisobot-panel-bosh"><h3>Qayerdan keldi, qayerga ketdi</h3><span className="malumot">{oyNom}</span></div>

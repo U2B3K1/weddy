@@ -559,14 +559,17 @@ function LibosForma({ kats, rahbar, ybs = [], onYuborish, onBekor, olchamlar = [
   }, [])
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value })
   const artikul = (f.artikul || '').trim()
+  // rahbar qo'shgani darhol katalogga chiqadi — narx va tannarxsiz bo'lmasin (sotuvchinikini rahbar tasdiqlashda to'ldiradi)
+  const tannarxBor = f.tannarx !== undefined && f.tannarx !== ''
   const yetishmaydi = [!(art.artikul || (artikul && artikul !== art.prefiks)) && 'Artikul', !f.nomi?.trim() && 'Nomi',
-    !(f.kategoriya || kats[0]) && 'Kategoriya'].filter(Boolean)
+    !(f.kategoriya || kats[0]) && 'Kategoriya', rahbar && !(Number(f.ijara_narxi) > 0) && 'Ijara narxi',
+    rahbar && !tannarxBor && 'Tannarx'].filter(Boolean)
   const tayyor = yetishmaydi.length === 0
   const yubor = async () => {
     const body = {
       artikul, nomi: f.nomi, kategoriya: Number(f.kategoriya || kats[0].id), olcham: f.olcham || '',
       rang: f.rang || '', ijara_narxi: Number(f.ijara_narxi || 0), zalog: Number(f.zalog || 0),
-      ...(rahbar && f.tannarx ? { tannarx: Number(f.tannarx) } : {}),
+      ...(rahbar && tannarxBor ? { tannarx: Number(f.tannarx) } : {}),
       // bo'sh qoldirilsa — tannarx to'liq to'langan; kami — yetkazib beruvchiga qarz
       ...(rahbar && f.yetkazib_beruvchi ? { yetkazib_beruvchi: Number(f.yetkazib_beruvchi), ...(f.tolandi !== undefined && f.tolandi !== '' ? { tolandi: Number(f.tolandi) } : {}) } : {}),
     }
@@ -632,10 +635,10 @@ function LibosForma({ kats, rahbar, ybs = [], onYuborish, onBekor, olchamlar = [
       <fieldset className="lf-bolim">
         <legend>Narx</legend>
         <div className="libos-narxlar">
-          <label>Ijara narxi<SummaInput value={f.ijara_narxi || ''} onChange={set('ijara_narxi')} /></label>
+          <label>Ijara narxi{rahbar ? ' *' : ''}<SummaInput value={f.ijara_narxi || ''} onChange={set('ijara_narxi')} /></label>
           <label>Tavsiya etilgan zalog<SummaInput value={f.zalog || ''} onChange={set('zalog')} /><Info nom="Zalog">{ZALOG_INFO}</Info></label>
           {rahbar && (
-            <label className="lf-tannarx">Tannarx<SummaInput value={f.tannarx || ''} onChange={set('tannarx')} /><Info nom="Tannarx">{TANNARX_INFO}</Info>
+            <label className="lf-tannarx">Tannarx *<SummaInput value={f.tannarx ?? ''} onChange={set('tannarx')} /><Info nom="Tannarx">{TANNARX_INFO}</Info>
               <small className="soz-mute">faqat rahbar ko'radi</small>
             </label>
           )}

@@ -157,6 +157,7 @@ function SalonKirish({ setXato, onTayyor }) {
 
 function XodimTanlash({ setXato, onKirdi, onQurilmaOchirildi }) {
   const [royxat, setRoyxat] = useState([])
+  const [hammasi, setHammasi] = useState(false)  // «Boshqa filial xodimi» bosilgan — boshqa filiallar xodimlari ham
   const [tanlangan, setTanlangan] = useState(null)
   const [pin, setPin] = useState('')
   const [kutilmoqda, setKutilmoqda] = useState(false)
@@ -253,14 +254,21 @@ function XodimTanlash({ setXato, onKirdi, onQurilmaOchirildi }) {
 
 
   if (!tanlangan) {
+    // Avval shu qurilma filiali xodimlari, filialsizlar va rahbar (backend `asosiy`); boshqa filial xodimi — tugma ortida
+    // (yordamga kelgan sotuvchi ham kiradi). Eski backend `asosiy` bermasa — hamma ko'rinadi.
+    const korinadi = hammasi ? royxat : royxat.filter((x) => x.asosiy !== false)
+    const boshqa = royxat.length - royxat.filter((x) => x.asosiy !== false).length
     return (
       <div className="xodimlar">
         <p className="kirish-sarlavha">Kim <em>kirmoqda?</em></p>
         <div className="xodim-kartalar">
-          {royxat.map((x) => (
+          {korinadi.map((x) => (
             <XodimKarta key={x.id} x={x} onClick={() => setTanlangan(x)} />
           ))}
         </div>
+        {!hammasi && boshqa > 0 && (
+          <button type="button" className="havola-tugma kirish-boshqa" onClick={() => setHammasi(true)}>Boshqa filial xodimi ({boshqa})</button>
+        )}
         <button type="button" className="havola-tugma kirish-chiqish" onClick={onQurilmaOchirildi}>Chiqish</button>
       </div>
     )

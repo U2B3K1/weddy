@@ -3,12 +3,11 @@
 // sotuvchi yopib pulni rahbarga beradi (seyfda 0 qoladi). Keyin «Alohida kassir» rejimida sotuvchi ekrani.
 // Skrinshotlar: test-results/kassa/*.png (ko'z bilan tekshirish uchun).
 import { expect, test } from '@playwright/test'
-import { QURILMA_HOLATI, kirish, xatolarniKuzat } from './yordam.js'
+import { bolimga, QURILMA_HOLATI, kirish, xatolarniKuzat } from './yordam.js'
 
-const nav = (page) => page.getByRole('navigation', { name: "Bo'limlar" })
 const rasm = (page, nom) => page.screenshot({ path: `test-results/kassa/${nom}.png`, fullPage: true })
 // Sahifa yangilansa Dashboard ochiladi — kassa holatini qayta yuklash uchun yangilab, Kassaga o'tamiz
-const kassaga = async (p) => { await p.reload(); await nav(p).getByRole('button', { name: 'Kassa', exact: true }).click() }
+const kassaga = async (p) => { await p.reload(); await bolimga(p, 'Kassa') }
 const iso = (kun) => { const t = new Date(); t.setDate(t.getDate() + kun); return t.toLocaleDateString('sv-SE') }
 
 async function summaTer(joy, raqamlar) {
@@ -29,7 +28,7 @@ const apiSorov = (page, usul, yol, tana) => page.evaluate(async ([usul, yol, tan
 test('pul topshirish: rahbar → sotuvchi → rahbar; kassir rejimi', async ({ page, browser }) => {
   const xatolar = xatolarniKuzat(page)
   await kirish(page, 'Rahbar', '1111')
-  await nav(page).getByRole('button', { name: 'Kassa', exact: true }).click()
+  await bolimga(page, 'Kassa')
 
   await test.step('rahbar smenani ochadi va 2 000 000 avans oladi', async () => {
     // smena yopiq: «Smenani ochish» bitta (To'lov qabulda — «Smena yopiq» varaqasida, varaq yo'q bo'limda — panelda)
@@ -54,7 +53,7 @@ test('pul topshirish: rahbar → sotuvchi → rahbar; kassir rejimi', async ({ p
   const sotuvchi = await ctx.newPage()
   const xatolar2 = xatolarniKuzat(sotuvchi)
   await kirish(sotuvchi, 'Sotuvchi', '2222')
-  await nav(sotuvchi).getByRole('button', { name: 'Kassa', exact: true }).click()
+  await bolimga(sotuvchi, 'Kassa')
 
   await test.step('sotuvchi qo\'shiladi; rahbar pulini unga topshirib chiqadi', async () => {
     await sotuvchi.locator('.smena-panel').getByRole('button', { name: "Smenaga qo'shilish" }).click()
@@ -138,7 +137,7 @@ test('pul topshirish: rahbar → sotuvchi → rahbar; kassir rejimi', async ({ p
   })
 
   await test.step('«Alohida kassir» rejimi: sozlama va sotuvchi ekrani', async () => {
-    await nav(page).getByRole('button', { name: 'Sozlama', exact: true }).click()
+    await bolimga(page, 'Sozlama')
     await page.getByRole('navigation', { name: 'Sozlama menyusi' }).getByRole('button', { name: 'Kassa', exact: true }).click()  // B-36: «Salon va xodimlar» guruhida
     await page.getByLabel('Alohida kassir').check()
     await rasm(page, '5-sozlama-kassa')

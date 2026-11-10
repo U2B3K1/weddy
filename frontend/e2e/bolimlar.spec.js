@@ -1,7 +1,7 @@
 // Tutun testi: rahbar va sotuvchi har bir bo'lim va ichki bo'limni ochadi — JS xatosi va 5xx bo'lmasligi kerak.
 import { expect, test } from '@playwright/test'
 import { GURUHLAR, SOZLAMA_BOLIMLAR } from '../src/pages/sozlamaBolimlari.js'
-import { bolim, kirish, xatolarniKuzat } from './yordam.js'
+import { bolim, bolimga, kirish, xatolarniKuzat } from './yordam.js'
 
 // Ichki bo'limlari sahifa tepasidagi tablarda bo'lgan bo'limlar (App.jsx: kassaRoyxat, HISOBOT_ROYXAT; Ndiz — shisha uslubi)
 const ICHKI = {
@@ -13,7 +13,7 @@ const ICHKI = {
 const nav = (page) => page.getByRole('navigation', { name: "Bo'limlar" })
 
 async function och(page, nomi) {
-  await nav(page).getByRole('button', { name: nomi, exact: true }).click()
+  await bolimga(page, nomi)  // keng ekranda Kassa/Hisobotlar/Liboslar/Sozlama ichidan — «‹ Asosiy» orqali
   await page.waitForLoadState('networkidle')
 }
 async function tabOch(page, nomi) {

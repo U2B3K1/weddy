@@ -23,7 +23,6 @@ import Sozlamalar from './pages/Sozlamalar'
 import YangiZakaz from './pages/YangiZakaz'
 import Zakazlar from './pages/Zakazlar'
 import { BELGI_D } from './pages/ezazBelgi'
-import { GURUHLAR, SOZLAMA_BOLIMLAR } from './pages/sozlamaBolimlari'
 
 const HARAKATSIZLIK_MS = 10 * 60 * 1000
 const OGOHLANTIRISH_MS = 30 * 1000 // chiqishdan 30 soniya oldin «Davom etyapsizmi?»
@@ -46,8 +45,17 @@ export default function App() {
   const [sozlamaBolim, setSozlamaBolim] = useState('bosh')  // 'bosh' — «Barcha sozlamalar» (guruhlar kartalar to'rida)
   // Chap panel rejimi: Kassa, Hisobotlar yoki Sozlama bosilganda panel o'sha bo'lim menyusiga aylanadi; «Asosiy» — asosiy menyuga qaytish
   const [navRejim, setNavRejim] = useState(null)
-  // Sozlama menyusida ochiq guruh (akkordeon — bir vaqtda bittasi)
-  const [sozlamaGuruh, setSozlamaGuruh] = useState(null)
+  // Sozlama ochiq bo'lsa keng ekranda (≥1200, matnli chap panel) chap panel Sozlama bo'limlari ro'yxatiga aylanadi (foydalanuvchi
+  // qarori, 2026-11-10). «‹ Asosiy» — asosiy menyuni ko'rsatadi (boshqa bo'limga o'tilganda yana avvalgidek).
+  // 768–1199 px da panel 80 px'lik belgilar — ro'yxat sig'maydi, u sahifaning o'zida qoladi.
+  const [kengPanel, setKengPanel] = useState(() => window.matchMedia('(min-width: 1200px)').matches)
+  useEffect(() => {
+    const m = window.matchMedia('(min-width: 1200px)'); const h = (e) => setKengPanel(e.matches)
+    m.addEventListener('change', h)
+    return () => m.removeEventListener('change', h)
+  }, [])
+  const [asosiyMenyu, setAsosiyMenyu] = useState(false)
+  const [sozlamaYonJoy, setSozlamaYonJoy] = useState(null)  // chap paneldagi joy — Sozlamalar ro'yxatini portal orqali chizadi
   // Ichki bo'limlar faqat sahifa tepasidagi segmentda chiqadi; chap panel doim asosiy bo'limlarni ko'rsatadi.
   const [zakazlarBolim, setZakazlarBolim] = useState('royxat')
   // Dashboard «Tezkor amallar» → «Libos qo'shish»: Liboslar ochilib qo'shish oynasi ko'rinadi (n — har bosishda yangi)
@@ -67,7 +75,7 @@ export default function App() {
   // Bo'lim boshidagi joylar (xulosa va o'ngdagi tugma) — sahifalar BoshXulosa/BoshAmal bilan to'ldiradi
   const [xulosaJoy, setXulosaJoy] = useState(null)
   const [amalJoy, setAmalJoy] = useState(null)
-  const boshJoyi = useMemo(() => ({ xulosa: xulosaJoy, amal: amalJoy }), [xulosaJoy, amalJoy])
+  const boshJoyi = useMemo(() => ({ xulosa: xulosaJoy, amal: amalJoy, sozlamaYon: sozlamaYonJoy }), [xulosaJoy, amalJoy, sozlamaYonJoy])
   // «Davom etyapsizmi?» — chiqish vaqti (ms) yoki null; faollikRef — taymerni qayta boshlash (oynadagi «Davom etish»)
   const [uxlayapti, setUxlayapti] = useState(null)
   const faollikRef = useRef(null)
@@ -218,13 +226,10 @@ export default function App() {
     }
     if (k === 'kalendar') { k = 'zakazlar'; setZakazlarBolim('bandlik') }
     if (k === 'zakazlar') setZakazId(null)
-    // Shisha uslubi (Ndiz): chap panel doim asosiy bo'limlarda. Kassa va Hisobotlar bo'limlari — sahifa tepasidagi ikonkali tablar,
-    // Sozlama bo'limlari — Sozlama sahifasining o'zidagi chap ro'yxat (Sozlamalar.jsx, .sozlama-yon)
+    // Shisha uslubi (Ndiz): Kassa va Hisobotlar bo'limlari — sahifa tepasidagi ikonkali tablar; Sozlama bo'limlari — keng ekranda
+    // chap panelda (Sozlamalar.jsx ro'yxati portal orqali), torroqda sahifaning o'zida
     setNavRejim(null)
-    if (k === 'sozlamalar') {
-      const b = ich || sozlamaBolim
-      setSozlamaGuruh(SOZLAMA_BOLIMLAR.find((x) => x.id === b)?.guruh || GURUHLAR[0].nomi)
-    }
+    setAsosiyMenyu(false)
     setSahifaXom(k)
     setLibosQosh(false)  // Dashboard'dan «Libos qo'shish» belgisi faqat o'sha o'tishga tegishli
     setMenyu(false)
@@ -271,11 +276,20 @@ export default function App() {
     kassa: { joriy: kassaBolim, tanla: setKassaBolim, royxat: kassaRoyxat },
     hisobotlar: { joriy: hisobotlarBolim, tanla: setHisobotlarBolim, royxat: HISOBOT_ROYXAT },
   }[sahifa]
-  // Chap paneldagi guruhsiz bo'lim menyulari (Kassa, Hisobotlar); Sozlama — guruhlangan, alohida
-  const navTekis = {
+  // Keng ekranda (≥1200) ko'p bo'limli sahifalarning ichki bo'limlari Sozlama kabi chap panelda (foydalanuvchi so'rovi, 2026-11-10):
+  // Kassa, Hisobotlar, Liboslar. Zakazlar va Mijozlar (2 tadan) — tepada tab: sotuvchi ular orasida bir bosishda o'tadi.
+  // «‹ Asosiy» — asosiy menyu (asosiyMenyu); boshqa bo'limga o'tilganda yana avvalgidek. Torroqda — tepadagi tablar.
+  const LIBOS_IKON = { liboslar: 'katalog', aksessuarlar: 'yorliq', sanoq: 'bajarildi', yetkazib: 'bino' }
+  const yonBolimlar = kengPanel ? {
     kassa: { nomi: 'Kassa', royxat: kassaRoyxat, joriy: kassaBolim, tanla: setKassaBolim },
     ...(rahbar ? { hisobotlar: { nomi: 'Hisobotlar', royxat: HISOBOT_ROYXAT, joriy: hisobotlarBolim, tanla: setHisobotlarBolim } } : {}),
-  }[navRejim]
+    katalog: { nomi: 'Liboslar', royxat: ichki?.royxat.map(([id, nomi]) => [id, nomi, LIBOS_IKON[id]]), joriy: katalogBolim, tanla: setKatalogBolim },
+  }[sahifa] || null : null
+  // bitta bo'lim (masalan, kassir rejimidagi sotuvchi) — chap menyu kerak emas, tepada ham tab chiqmaydi
+  const yonda = yonBolimlar?.royxat?.length > 1 ? yonBolimlar : null
+  // «‹ Asosiy» bosilganda chap panelda asosiy menyu; tepadagi tablar baribir chiqmaydi (eski ko'rinish aralashmasin) —
+  // asosiy menyudagi shu bo'lim (masalan, Liboslar) qayta bosilsa, ro'yxat qaytadi (Sozlama bilan bir xil)
+  const navTekis = yonda && !menyu && !asosiyMenyu ? yonda : null
   const tabBar = [['bosh', 'Dashboard'], ['zakazlar', 'Zakazlar'], pulOladi ? ['kassa', 'Kassa'] : ['mijozlar', 'Mijozlar']]
   // Qo'ng'iroqcha ro'yxati: har biri bosilganda aynan kerakli bo'limni ochadi
   const t = xabarD?.tasdiq_kutmoqda, og = xabarD?.ogohlantirishlar
@@ -290,12 +304,14 @@ export default function App() {
   // Rahbarga: avval qarorlar, keyin bugungi ishlar (umumiy manba — /bildirishnomalar/), oxirida ogohlantirishlar
   const xabarlar = !rahbar ? xodimXabarlari : !xabarD ? xodimXabarlari : [
     t.otkazmalar > 0 && { matn: `${t.otkazmalar} ta o'tkazma: hisobingizga kelganini tasdiqlang`, soni: t.otkazmalar, bolim: 'kassa:tolov', tur: 'vaqt' },
+    og.kutayotgan_qurilmalar > 0 && { matn: `${og.kutayotgan_qurilmalar} ta yangi qurilma ruxsat kutmoqda`, soni: og.kutayotgan_qurilmalar, bolim: 'sozlamalar:qurilmalar', tur: 'vaqt' },
     ...xodimXabarlari,
     xabarD.bugun.kechikkan > 0 && og.kechikish_jarimasi_yoqilgan === false && { matn: "Kechikkan qaytarishlar bor, lekin kechikish jarimasi o'chirilgan", soni: 1, bolim: 'sozlamalar:kechikish', tur: 'vaqt' },
     og.kassa_farqi !== 0 && { matn: `Kassa farqi (${og.kassa_farqi_sana}): ${som(og.kassa_farqi)}`, soni: 1, bolim: 'kassa:tarix', tur: 'qarz' },
-    og.tannarxsiz_liboslar > 0 && { matn: `${og.tannarxsiz_liboslar} ta libosning tannarxi kiritilmagan`, soni: 1, bolim: 'katalog', tur: 'vaqt' },
+    og.tannarxsiz_liboslar > 0 && { matn: `${og.tannarxsiz_liboslar} ta libosning tannarxi kiritilmagan — foyda haqiqatdagidan yuqori ko'rinadi`, soni: 1, bolim: 'katalog', tur: 'vaqt' },
     og.saqlanayotgan_zaloglar > 0 && { matn: `${og.saqlanayotgan_zaloglar} ta hujjat/tillo zalog saqlanmoqda`, soni: 1, bolim: 'kassa:zalog', tur: 'yopildi' },
     og.tugayotgan_promokodlar > 0 && { matn: `${og.tugayotgan_promokodlar} ta promokod muddati 7 kun ichida tugaydi`, soni: 1, bolim: 'sozlamalar:promokod', tur: 'yopildi' },
+    og.telegramsiz_xodimlar > 0 && { matn: `${og.telegramsiz_xodimlar} xodim Telegramni ulamagan — xabarlar ularga bormaydi`, soni: 1, bolim: 'sozlamalar:xodimlar', tur: 'yopildi' },
   ].filter(Boolean)
   const hozir = new Date()
   const soat = hozir.getHours()
@@ -377,7 +393,7 @@ export default function App() {
         {/* Kanvas: tablar chapda, bo'limning asosiy tugmasi o'ngda (sahifa BoshAmal bilan qo'yadi) */}
         <div className="bolim-qator">
           {ichki && ichki.royxat.length > 1 && !(sahifa === 'zakazlar' && zakazId) && (
-            <div className={`ichki-segment${navTekis && navRejim === sahifa ? ' faqat-telefon' : ''}`} role="tablist" ref={segmentRef}>
+            <div className={`ichki-segment${yonda ? ' faqat-telefon' : ''}`} role="tablist" ref={segmentRef}>
               {ichki.royxat.map(([id, nomi, ikon]) => (
                 <button key={id} type="button" role="tab" aria-selected={ichki.joriy === id} className={ichki.joriy === id ? 'faol' : ''}
                   onClick={() => ichki.tanla(id)}>{ikon && <NavIkona nom={ikon} />}{nomi}</button>
@@ -441,53 +457,31 @@ export default function App() {
           <svg viewBox="-60 -40 640 640" aria-hidden="true"><path d={BELGI_D} fill="currentColor" /></svg>
           <span className="nav-brend-matn"><b>LIBOSA</b></span>{/* salon nomi bu yerda ortiqcha (foydalanuvchi) — xodim menyusida bor */}
         </div>
-        {navTekis && !menyu ? (
+        {navTekis ? (
           <div className="nav-asosiy nav-sozlama">
-            <button type="button" className="nav-orqaga" onClick={() => setNavRejim(null)}>
+            <button type="button" className="nav-orqaga" onClick={() => setAsosiyMenyu(true)}>
               <NavIkona nom="chap" /><span className="nav-nom">Asosiy</span>
             </button>
             <p className="nav-bolim-nom">{navTekis.nomi}</p>
-            {navTekis.royxat.map(([id, nomi, ikon]) => (
-              <button key={id} type="button" className={sahifa === navRejim && navTekis.joriy === id ? 'faol' : undefined}
-                aria-current={sahifa === navRejim && navTekis.joriy === id ? 'page' : undefined}
-                disabled={faqatKorish && id === 'yangi'} title={faqatKorish && id === 'yangi' ? YOPIQ_SABAB : undefined}
-                onClick={() => { navTekis.tanla(id); setSahifaXom(navRejim); setMenyu(false); window.scrollTo(0, 0) }}>
-                <NavIkona nom={ikon} /><span className="nav-nom">{nomi}</span>
-              </button>
-            ))}
+            {/* tepadagi tablar o'rnida — vertikal tablar (sahifa mazmunini almashtiradi) */}
+            <div className="nav-tablar" role="tablist" aria-orientation="vertical" aria-label={`${navTekis.nomi} bo'limlari`}>
+              {navTekis.royxat.map(([id, nomi, ikon]) => (
+                <button key={id} type="button" role="tab" aria-selected={navTekis.joriy === id} className={navTekis.joriy === id ? 'faol' : undefined}
+                  disabled={faqatKorish && id === 'yangi'} title={faqatKorish && id === 'yangi' ? YOPIQ_SABAB : undefined}
+                  onClick={() => { navTekis.tanla(id); window.scrollTo(0, 0) }}>
+                  <NavIkona nom={ikon || 'doira'} /><span className="nav-nom">{nomi}</span>
+                </button>
+              ))}
+            </div>
           </div>
-        ) : navRejim === 'sozlamalar' && rahbar && !menyu ? (
+        ) : sahifa === 'sozlamalar' && rahbar && kengPanel && !menyu && !asosiyMenyu ? (
           <div className="nav-asosiy nav-sozlama">
-            <button type="button" className="nav-orqaga" onClick={() => setNavRejim(null)}>
+            <button type="button" className="nav-orqaga" onClick={() => setAsosiyMenyu(true)}>
               <NavIkona nom="chap" /><span className="nav-nom">Asosiy</span>
             </button>
             <p className="nav-bolim-nom">Sozlama</p>
-            <button type="button" className={`nav-barcha${sahifa === 'sozlamalar' && sozlamaBolim === 'bosh' ? ' faol' : ''}`}
-              aria-current={sahifa === 'sozlamalar' && sozlamaBolim === 'bosh' ? 'page' : undefined}
-              onClick={() => { setSozlamaBolim('bosh'); setSahifaXom('sozlamalar'); setMenyu(false); window.scrollTo(0, 0) }}>
-              <NavIkona nom="katalog" /><span className="nav-nom">Barcha sozlamalar</span>
-            </button>
-            {GURUHLAR.map((g) => {
-              const ochiq = sozlamaGuruh === g.nomi
-              return (
-                <div key={g.nomi} className={`nav-guruh${ochiq ? ' ochiq' : ''}`}>
-                  <button type="button" className="nav-guruh-tugma" aria-expanded={ochiq} onClick={() => setSozlamaGuruh(ochiq ? null : g.nomi)}>
-                    <NavIkona nom={g.ikon} /><span className="nav-nom">{g.nomi}</span><NavIkona nom="ong" className="tugma-ikon nav-chevron" />
-                  </button>
-                  {ochiq && (
-                    <div className="nav-guruh-ichi">
-                      {SOZLAMA_BOLIMLAR.filter((b) => b.guruh === g.nomi).map((b) => (
-                        <button key={b.id} type="button" className={sahifa === 'sozlamalar' && sozlamaBolim === b.id ? 'faol' : undefined}
-                          aria-current={sahifa === 'sozlamalar' && sozlamaBolim === b.id ? 'page' : undefined}
-                          onClick={() => { setSozlamaBolim(b.id); setSahifaXom('sozlamalar'); setMenyu(false); window.scrollTo(0, 0) }}>
-                          <NavIkona nom={b.ikon} /><span className="nav-nom">{b.nomi}</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )
-            })}
+            {/* Sozlamalar.jsx shu yerga o'z ro'yxatini chizadi (e'tibor nuqtalari, faol bo'lim, guruh nomlari bilan) */}
+            <div className="nav-sozlama-joy" ref={setSozlamaYonJoy} />
           </div>
         ) : (
         <div className="nav-asosiy">

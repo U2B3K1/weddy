@@ -2,9 +2,8 @@
 // ijara sanasi va «qachon?» belgisi (N kun qoldi / kechikdi), raqam bo'yicha qidiruvda aniq zakaz birinchi.
 // Keng ekranda va telefonda suratga olinadi (test-results/zakazlar/*.png).
 import { expect, test } from '@playwright/test'
-import { kirish, xatolarniKuzat } from './yordam.js'
+import { bolimga, kirish, xatolarniKuzat } from './yordam.js'
 
-const nav = (page) => page.getByRole('navigation', { name: "Bo'limlar" })
 const TELEFON = { width: 390, height: 844 }
 const KENG = { width: 1280, height: 860 }
 
@@ -22,7 +21,7 @@ async function suratlar(page, nom) {
 test("zakazlar: ro'yxat — sonli tablar, ijara sanasi va muddat", async ({ page }) => {
   const xatolar = xatolarniKuzat(page)
   await kirish(page, 'Rahbar', '1111')
-  await nav(page).getByRole('button', { name: 'Zakazlar', exact: true }).click()
+  await bolimga(page, 'Zakazlar')
   const qatorlar = page.locator('.zakaz-jadval tbody tr')
   await expect(qatorlar.first()).toBeVisible()
   // standart tab — «Faol» (ish davom etayotganlar): soni jadval qatorlariga teng (20 dan ko'p bo'lsa — birinchi sahifa)
