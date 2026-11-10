@@ -227,10 +227,12 @@ function TelefonZakazlar({ boshTab, onOch, onYangi, yangiYopiq, onBandlik }) {
         <button type="button" className="ikkinchi zt-yana" onClick={() => setSoni(soni + SAHIFA)}>Yana ko'rsatish ({r.jami - r.royxat.length} ta qoldi)</button>
       )}
       {onYangi && (
-        <button type="button" className="bosh-tugma zt-yangi" onClick={onYangi} disabled={Boolean(yangiYopiq)} title={yangiYopiq || undefined}>
+        <button type="button" className="bosh-tugma zt-yangi" onClick={onYangi} disabled={Boolean(yangiYopiq)} title={yangiYopiq || undefined} aria-describedby={yangiYopiq ? 'zt-yopiq' : undefined}>
           <NavIkona nom="qosh" className="tugma-ikon" />Yangi zakaz
         </button>
       )}
+      {/* Telefonda `title` ko'rinmaydi — tugma nega bosilmasligi ostida yozib qo'yiladi */}
+      {onYangi && yangiYopiq && <p className="zt-yopiq" id="zt-yopiq">{yangiYopiq}</p>}
       {onBandlik && <button type="button" className="havola zt-bandlik" onClick={onBandlik}>Bandlik kalendari →</button>}
     </div>
   )
@@ -1064,7 +1066,7 @@ function BerishForma({ onYuborish, soz, libosZalogi, olibKetish, pulsiz, kutilay
   const kerak = yetmaydi.filter(Boolean)
   return (
     <Amal sarlavha="Libosni berish (garov)" id="asosiy-amal">
-      {kutilayotgan > 0 && <p className="ogohlantirish">{som(kutilayotgan)} o'tkazma rahbar tasdig'ini kutmoqda — pul kelmasa, qoldiq mijozdan qayta olinadi.</p>}
+      {kutilayotgan > 0 && <p className="ogohlantirish">{som(kutilayotgan)} o'tkazma rahbar tasdig'ini kutmoqda — rahbar «Keldi» deb belgilagach libos beriladi.</p>}
       <label>Garov turi
         <select value={turi} onChange={(e) => { setTuri(e.target.value); setF({}) }}>
           {TURLAR.map(([t, nom]) => <option key={t} value={t}>{nom}</option>)}
@@ -1080,8 +1082,10 @@ function BerishForma({ onYuborish, soz, libosZalogi, olibKetish, pulsiz, kutilay
         <label>Og'irligi, g *<input type="number" step="0.01" value={f.ogirlik_gr || ''} onChange={set('ogirlik_gr')} /></label>
         <label>Taxminiy qiymat<SummaInput onChange={set('summa')} /></label>
       </>)}
-      <button disabled={kerak.length > 0} onClick={() => (ertaMi() ? setSurov(true) : onYuborish([zalog], false))}>Garovni qabul qilib berish</button>
+      {/* Foydalanuvchi qarori 2026-11-10: pul kelgani tasdiqlanmaguncha libos berilmaydi (backend ham rad etadi) */}
+      <button disabled={kerak.length > 0 || kutilayotgan > 0} onClick={() => (ertaMi() ? setSurov(true) : onYuborish([zalog], false))}>Garovni qabul qilib berish</button>
       {kerak.length > 0 && <p className="malumot tugma-sabab">To'ldiring: {kerak.join(', ')}.</p>}
+      {kerak.length === 0 && kutilayotgan > 0 && <p className="malumot tugma-sabab">O'tkazma tasdiqlanmaguncha libos berilmaydi.</p>}
       {surov && (
         <Tasdiq sarlavha="Libos oldinroq beriladimi?" tugma="Ha, hozir berish" xavfli={false}
           matn={`Olib ketish sanasi ${sanaMatni(olibKetish)} — hali kelmagan. Libos hozir berilsa, bron bugundan boshlanadi (shu kunlarda libos boshqa zakazda band bo'lsa, berib bo'lmaydi).`}

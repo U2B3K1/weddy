@@ -42,6 +42,21 @@ TOLANGAN = (Coalesce(Sum('tolovlar__summa', filter=~Q(tolovlar__tasdiq='kelmadi'
     Tolov.Tur.AVANS, Tolov.Tur.QOLDIQ])), 0)
             - Coalesce(Sum('tolovlar__summa', filter=Q(tolovlar__tur=Tolov.Tur.VOZVRAT)), 0))
 AVANSSIZ = (Zakaz.Holat.VAQTINCHALIK, Zakaz.Holat.CHEGIRMA_KUTILMOQDA)
+QARZ_HOLATLARI = (Zakaz.Holat.BERILDI, Zakaz.Holat.QAYTARILDI)  # libos mijozga chiqqan — to'lanmagani qarz
+
+
+def qarz_jami(salon, zf=None):
+    """Dashbord: (qarzdor zakazlar soni, jami qarz, eng eski qarz sanasi) — `QarzdorlarView` bilan bir xil ta'rif."""
+    soni, jami, eng_eski = 0, 0, None
+    for z in (Zakaz.objects.filter(salon=salon, holat__in=QARZ_HOLATLARI, **(zf or {})).annotate(tolangan_s=TOLANGAN)
+              .select_related('qaytarish_akti')):
+        akt = getattr(z, 'qaytarish_akti', None)
+        qarz = (akt.qarz if akt else 0) + max(0, z.jami - z.tolangan_s)
+        if qarz > 0:
+            soni, jami = soni + 1, jami + qarz
+            sana = akt.sana if akt else z.qaytarish
+            eng_eski = sana if eng_eski is None else min(eng_eski, sana)
+    return {'soni': soni, 'jami': jami, 'eng_eski': eng_eski}
 
 
 def _bron_muddati_sq():
@@ -204,7 +219,7 @@ def _butun(qiymat, standart, kichik=0, katta=None):
     except (TypeError, ValueError):
         return standart
     n = max(kichik, n)
-    return min(n, katta) if katta is not None else n
+    return min(n, katta if katta is not None else 10 ** 9)  # yuqori chegara: juda katta son bazada «bigint out of range» berardi
 
 
 def sahifala(request, qs):
@@ -453,8 +468,7 @@ class RahbarDashbordView(APIView):
             o_boshi = o_oxiri.replace(day=1)
             oldingi_oy_foyda = _davr_bloki(salon, o_boshi, o_boshi.replace(day=min(bugun.day, o_oxiri.day)), filial)['taxminiy_sof_foyda']
         from django.db.models import Min
-        qz = Zakaz.objects.filter(salon=salon, holat=Zakaz.Holat.QAYTARILDI, qaytarish_akti__qarz__gt=0, **zf).aggregate(
-            soni=Count('id'), jami=Sum('qaytarish_akti__qarz'), eng_eski=Min('qaytarish_akti__sana'))
+        qz = qarz_jami(salon, zf)
         xodimlar_kassasi = [{'ism': r['xodim__ism'], 'summa': r['s']} for r in Tolov.objects.filter(
             reports.tolov_filiali(filial), Tolov.HAQIQIY, salon=salon, vaqt__date__range=(davr_dan, bugun),
             tur__in=[Tolov.Tur.AVANS, Tolov.Tur.QOLDIQ, Tolov.Tur.JARIMA]).values('xodim__ism').annotate(s=Sum('summa')).order_by('-s')[:5]]
@@ -500,7 +514,7 @@ class RahbarDashbordView(APIView):
                 'tugayotgan_promokodlar': tugayotgan,
                 'kassa_farqi': oxirgi_smena.farq if oxirgi_smena and oxirgi_smena.farq else 0,
                 'kassa_farqi_sana': oxirgi_smena.sana if oxirgi_smena and oxirgi_smena.farq else None,
-                'qarzdorlar': Zakaz.objects.filter(salon=salon, holat=Zakaz.Holat.QAYTARILDI).count(),
+                'qarzdorlar': qz['soni'],
                 'saqlanayotgan_zaloglar': Zalog.objects.filter(
                     salon=salon, holat__in=[Zalog.Holat.SAQLANMOQDA, Zalog.Holat.USHLAB_QOLINDI]
                 ).exclude(turi=Zalog.Turi.PUL).count(),
@@ -589,10 +603,17 @@ class QarzdorlarView(APIView):
 
     def get(self, request):
         # Jadval qatori bosh ekrandagi boshqa tablar bilan bir xil (A-28): rasm, to'langan, qoldiq
-        qarzdorlar = [
-            {**_jadval_qatori(request, zk), 'qarz': zk.qaytarish_akti.qarz, 'qaytarilgan': zk.qaytarish_akti.sana}
-            for zk in _jadval_qs(_zakazlar(request.salon).filter(holat=Zakaz.Holat.QAYTARILDI, qaytarish_akti__qarz__gt=0)
-                                 .select_related('qaytarish_akti')).order_by('qaytarish_akti__sana')]
+        # Qarz = jarima qarzi + to'lanmagan ijara qoldig'i (o'tkazma «kelmadi» bo'lgan): libos berilgan yoki qaytarilgan,
+        # pul esa olinmagan. Avval faqat jarima qarzi chiqardi — «kelmadi» qoldig'i hech bir ro'yxatda ko'rinmasdi.
+        qarzdorlar = []
+        for zk in (_jadval_qs(_zakazlar(request.salon).filter(holat__in=QARZ_HOLATLARI)).select_related('qaytarish_akti')
+                   .order_by('qaytarish', 'raqam')):
+            akt = getattr(zk, 'qaytarish_akti', None)
+            qator = _jadval_qatori(request, zk)
+            qarz = (akt.qarz if akt else 0) + qator['qoldiq']
+            if qarz > 0:
+                qarzdorlar.append({**qator, 'qarz': qarz, 'jarima_qarzi': akt.qarz if akt else 0,
+                                   'qaytarilgan': akt.sana if akt else None})
         kutilmoqda = []
         for zk in _jadval_qs(_zakazlar(request.salon).filter(holat=Zakaz.Holat.BRON)).order_by('olib_ketish'):
             qator = _jadval_qatori(request, zk)

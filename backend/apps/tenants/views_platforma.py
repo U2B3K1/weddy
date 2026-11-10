@@ -187,7 +187,7 @@ class PlatformaChiqishView(PlatformaView):
         if not s:
             raise NotFound('Salon topilmadi.')
         try:
-            s = arxiv.salon_chiqdi(s, str(request.data.get('izoh', '')))
+            s = arxiv.salon_chiqdi(s, str(request.data.get('izoh', ''))[:300])
         except arxiv.ArxivXatosi as e:
             return Response({'detail': str(e)}, status=409)
         return Response(salon_json(s))

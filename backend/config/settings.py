@@ -68,6 +68,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'apps.tenants.kiritish.NulRadMiddleware',  # NUL baytli so'rov — 400 (aks holda bazada 500)
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -158,6 +159,10 @@ if DEBUG and env.bool('DEV_LAN', default=False):
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': ['apps.tenants.auth.StaffTokenAuthentication'],
     'DEFAULT_PERMISSION_CLASSES': ['apps.tenants.permissions.IsStaff'],
+    'EXCEPTION_HANDLER': 'apps.tenants.kiritish.xato_ishlovchi',  # bazaga sig'maydigan qiymat — 400
+    # JSON tanasi har doim lug'at (ro'yxat/son kelsa 400), NUL bayt rad etiladi — apps/tenants/kiritish.py
+    'DEFAULT_PARSER_CLASSES': ['apps.tenants.kiritish.LugatJSONParser', 'rest_framework.parsers.FormParser',
+                               'rest_framework.parsers.MultiPartParser'],
     # Umumiy so'rov chegarasi (skript yoki xato sikl serverni bosib qolmasin). Kirish paroli/PIN uchun alohida,
     # qattiqroq cheklov bor (tenants/cheklov.py). Hisob jarayon xotirasida: gunicorn har workeri o'zicha sanaydi.
     'DEFAULT_THROTTLE_CLASSES': ['apps.tenants.sorov_chegarasi.AnonChegara', 'apps.tenants.sorov_chegarasi.FoydalanuvchiChegara'],

@@ -75,7 +75,9 @@ test("to'lovdan keyin «Libosni berish →» — zakaz kartasida berish formasi"
   expect(xatolar).toEqual([])
 })
 
-test("QA-16: qaytarilgan zakaz qoldig'i to'langanda «Libosni berish →» yo'q", async ({ page }) => {
+// 2026-11-10: tasdiqlanmagan o'tkazma bilan libos berilmaydi — «libos qaytgan, qoldiq kelmagan» holatini API orqali yasab
+// bo'lmaydi (faqat eski ma'lumotda uchraydi). Backend tomoni `orders/test_r3.py` `KelmadiQoldiqTests` da sinaladi.
+test.skip("QA-16: qaytarilgan zakaz qoldig'i to'langanda «Libosni berish →» yo'q", async ({ page }) => {
   const xatolar = xatolarniKuzat(page)
   await page.setViewportSize(KENG)
   await kirish(page, 'Rahbar', '1111')

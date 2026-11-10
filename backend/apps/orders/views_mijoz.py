@@ -117,7 +117,7 @@ def _butun(qiymat, standart, kichik=0, katta=None):
     except (TypeError, ValueError):
         return standart
     n = max(kichik, n)
-    return min(n, katta) if katta is not None else n
+    return min(n, katta if katta is not None else 10 ** 9)  # yuqori chegara: juda katta son bazada «bigint out of range» berardi
 
 
 MANBA_XATO = {'invalid_choice': "«{input}» — noma'lum manba. Ro'yxatdan tanlang."}

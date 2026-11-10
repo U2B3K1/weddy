@@ -6,6 +6,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.tenants.models import Jurnal, Xodim, jurnalga_yoz, sozlama
+from apps.tenants.kiritish import id_yoki_yoq
 from apps.tenants.permissions import IsRahbar, IsStaff, SalonYozishRuxsati, yozish_taqiqi
 
 from apps.cash.services import KassaXatosi, xato_tanasi
@@ -126,6 +127,11 @@ class KeyingiArtikulView(APIView):
                          'artikul': keyingi_artikul(request.salon, soz) if soz.artikul_avto else None})
 
 
+# Katalog ro'yxati bitta so'rovda keladi. Chegara faqat himoya uchun (avval 300 edi: 300 dan ortiq libosli salonda
+# qolganlari ro'yxatda jimgina ko'rinmay qolardi).
+LIBOS_ROYXAT_MAKS = 3000
+
+
 class LiboslarView(APIView):
     permission_classes = [IsStaff]
 
@@ -138,8 +144,8 @@ class LiboslarView(APIView):
             qs = qs.filter(holat=p['holat'])
         elif not _rahbar(request) or p.get('faol') == '1':
             qs = qs.exclude(holat__in=[Libos.Holat.SOTILDI, Libos.Holat.HISOBDAN_CHIQARILDI, Libos.Holat.ARXIV])
-        if p.get('kategoriya'):
-            qs = qs.filter(kategoriya_id=p['kategoriya'])
+        if p.get('kategoriya', '').isdigit():
+            qs = qs.filter(kategoriya_id=int(p['kategoriya']))
         if p.get('filial', '').isdigit():
             qs = qs.filter(filial_id=int(p['filial']))
         if p.get('q'):
@@ -148,7 +154,7 @@ class LiboslarView(APIView):
         mijozda = mijozdagi_liboslar(request.salon)  # bitta so'rov butun ro'yxat uchun
         bu_oy, keyingi = ijara_korsatkichlari(request.salon)
         return Response([{**libos_json(l, rahbar, request, mijozda=mijozda), 'bu_oy': bu_oy.get(l.id, 0),
-                          'keyingi_bron': keyingi.get(l.id)} for l in qs.order_by('artikul')[:300]])
+                          'keyingi_bron': keyingi.get(l.id)} for l in qs.order_by('artikul')[:LIBOS_ROYXAT_MAKS]])
 
     def post(self, request):
         if (rad := yozish_taqiqi(request, self)):  # o'zbekcha sabab bilan (C-12)
@@ -223,7 +229,8 @@ class LibosTafsilotView(APIView):
             ser.validated_data['kategoriya'] = kat
         yb_ozgaradi, yb = 'yetkazib_beruvchi' in request.data, None
         if yb_ozgaradi and request.data['yetkazib_beruvchi']:
-            yb = YetkazibBeruvchi.objects.filter(salon=request.salon, id=request.data['yetkazib_beruvchi']).first()
+            yb_id = id_yoki_yoq(request.data['yetkazib_beruvchi'])
+            yb = YetkazibBeruvchi.objects.filter(salon=request.salon, id=yb_id).first() if yb_id else None
             if not yb:
                 return Response({'yetkazib_beruvchi': ['Topilmadi.']}, status=400)
         filial_ozgaradi, filial = 'filial' in request.data, None

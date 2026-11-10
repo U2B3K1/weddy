@@ -14,6 +14,7 @@ KICHIK = (300, 450)    # galereya
 KATTA_MAKS = 300 * 1024
 KICHIK_MAKS = 50 * 1024
 RUXSAT = {'JPEG', 'PNG', 'WEBP'}
+KENGAYTMA = {'JPEG': 'jpg', 'PNG': 'png', 'WEBP': 'webp'}  # asl nusxa kengaytmasi — tekshirilgan formatdan
 NISBAT = 2 / 3
 NISBAT_TOLERANTLIK = 0.12   # 2:3 dan shuncha farq qilsa «standart emas»
 MIN_PIKSEL = (400, 600)     # bundan kichik rasm sifatsiz hisoblanadi
@@ -94,8 +95,11 @@ def rasm_yuklash(*, salon, xodim, libos, fayl):
     if soni >= settings.LIBOS_MAKS_RASM:
         raise KatalogXatosi(f'Bitta libosga {settings.LIBOS_MAKS_RASM} tadan ortiq rasm qo\'shib bo\'lmaydi.')
     katta, kichik, standart = qayta_ishla(fayl)
+    # Kengaytma fayl nomidan emas, tekshirilgan formatdan olinadi: «rasm.html» deb nomlangan (ichida skript yashiringan)
+    # rasm /media/ dan HTML sahifa bo'lib ochilmasin.
     fayl.seek(0)
-    asl_kengaytma = (fayl.name.rsplit('.', 1)[-1] if '.' in fayl.name else 'jpg').lower()[:5]
+    asl_kengaytma = KENGAYTMA[Image.open(fayl).format]
+    fayl.seek(0)
     rasm = Rasm(salon=salon, libos=libos, standart=standart, tartib=soni, yuklagan=xodim)
     rasm.asl.save(f'asl.{asl_kengaytma}', ContentFile(fayl.read()), save=False)
     rasm.katta.save('katta.webp', ContentFile(katta), save=False)

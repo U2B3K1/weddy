@@ -59,6 +59,10 @@ def shablon(salon, tur):
     from apps.tenants.models import Integratsiya
     i = Integratsiya.objects.filter(salon_id=getattr(salon, 'id', salon)).first()
     oz = i and {'olib_ketish_ertaga': i.sms_shablon_olib_ketish, 'qaytarish_ertaga': i.sms_shablon_qaytarish}[tur]
+    # Eski (qat'iy tekshiruvdan oldin saqlangan) shablonda begona `{...}` bo'lsa — standart shablon: bitta salonning
+    # buzuq shabloni hamma salonning SMS eslatmasini (cron) to'xtatib qo'ymasin.
+    if oz and ('{' in re.sub(r'\{(salon|sana|tel|qoldiq)\}', '', oz) or '}' in re.sub(r'\{(salon|sana|tel|qoldiq)\}', '', oz)):
+        oz = ''
     return oz or SHABLONLAR[tur]
 
 

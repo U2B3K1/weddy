@@ -216,14 +216,10 @@ select option { color: #0e1a2b; background: #fff; }
   .hujjat { max-width: none; padding: 0; }
   .ilova > main > *:not(.hujjat-oyna) { display: none; }
 }
-
-.platforma-havola { text-align: center; margin-top: 24px; }
 .obuna-banner { max-width: 480px; margin: 0 auto 8px; width: calc(100% - 32px); }
 
 .olcham-tor { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 8px; }
 .olcham-tor input { width: 100%; }
-
-.chiplar { display: flex; flex-wrap: wrap; gap: 6px; }
 .filtrlar select { flex: 1; min-width: 0; padding: 10px; font-size: 14px; }
 .filtrlar .narx-filtr { width: 120px !important; padding: 10px; font-size: 14px; }
 .havola { padding: 0; background: none; color: var(--tilla); font-weight: 700; text-decoration: underline; }
@@ -273,9 +269,6 @@ button.havola.qator-matn { display: block; margin: 6px 0; color: inherit; }
 .manekin-sahna img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; pointer-events: none; transform-origin: center; }
 .rasm-manekin { display: block; width: 100%; margin-top: 4px; padding: 4px; font-size: 12px; }
 
-.davr-tugmalar { flex-wrap: wrap; }
-.davr-tugmalar button { flex: 1; }
-
 .olcham-qator { flex-wrap: wrap; }
 .olcham-qator > label { flex: 1 1 28%; }
 textarea {
@@ -291,8 +284,6 @@ textarea:focus {
 
 .manekin-qatlamlar { flex-wrap: wrap; }
 .manekin-sahna img.faol { outline: 1px dashed var(--rang); outline-offset: -2px; }
-
-.havola-matn { overflow-wrap: anywhere; }
 
 /* Sozlamalar: bo'limlar chap paneldagi umumiy navda (App.jsx) chiqadi; bu yerda faqat
    tanlangan bo'limning mazmuni va pastda yopishib turadigan «saqlash» paneli. */
@@ -353,46 +344,18 @@ textarea:focus {
 
 /* Rahbar dashbordi: KPI kartalar va uch ustunli joylashuv */
 .ilova main:has(.dashbord-sahifa) { max-width: 1100px; }
-.kpi-tor { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 4px; }
 .kpi { display: flex; flex-direction: column; gap: 4px; padding: 14px 16px; background: rgba(253, 250, 245, .08); border: 1px solid rgba(255, 255, 255, .16); border-radius: 14px; backdrop-filter: blur(12px); }
 .kpi-nom { font-size: 12px; color: rgba(251, 246, 238, .62); letter-spacing: .02em; }
-.kpi-qiymat { font-size: 22px; font-weight: 700; color: var(--oq); }
-.kpi-qiymat.qizil { color: var(--xato); }
-.kpi-izoh { font-size: 11px; color: rgba(251, 246, 238, .55); }
 /* Birlashtirilgan bildirishnoma va diqqat bloklari ichidagi kichik sarlavhalar */
 .dashbord-sahifa .blok h4 { margin: 10px 0 4px; font-size: 13px; color: rgba(251, 246, 238, .78); }
 .dashbord-sahifa .tasdiq { padding: 10px 12px; border: 1px solid rgba(255, 255, 255, .16); border-radius: 12px; background: rgba(253, 250, 245, .05); }
-.dashbord-ustunlar { display: grid; grid-template-columns: 1fr; gap: 12px; }
-@media (min-width: 768px) {
-  .kpi-tor { grid-template-columns: repeat(3, 1fr); }
-  .dashbord-ustunlar { grid-template-columns: repeat(3, 1fr); align-items: start; }
-}
 
 /* Dashbord sarlavhasi (toolbar): sarlavha + sana + davr + filial — bir qatorda */
-.dashbord-bosh {
-  display: flex; flex-wrap: wrap; align-items: center; gap: 10px;
-  padding: 14px 16px; margin-bottom: 4px;
-  background: rgba(253, 250, 245, .08); border: 1px solid rgba(255, 255, 255, .16);
-  border-radius: 16px; backdrop-filter: blur(12px);
-}
-.dashbord-sarlavha { display: flex; flex-direction: column; gap: 2px; }
-.dashbord-sarlavha h1 { margin: 0; text-align: left; font-size: 24px; letter-spacing: .01em; }
-.dashbord-sarlavha .sana { font-size: 13px; color: rgba(251, 246, 238, .6); }
-.dashbord-bosh .oraliq { flex: 1; min-width: 24px; }
-.dashbord-bosh .segment { flex: 0 0 auto; gap: 4px; }
-.dashbord-bosh .segment button { flex: none; padding: 8px 14px; font-size: 14px; border-radius: 10px; }
-.dashbord-bosh select { flex: 0 0 auto; padding: 9px 12px; font-size: 14px; border-radius: 10px; min-width: 160px; }
-
-.kpi-qiymat { font-variant-numeric: tabular-nums; }
 
 /* KPI kartaning sarlavhasi: belgi + nom bir qatorda (Lucide uslubidagi inline SVG) */
-.kpi-bosh { display: flex; align-items: center; gap: 7px; margin-bottom: 2px; }
 .kpi-ikon { width: 16px; height: 16px; color: var(--matn-3); flex: none; }
-.kpi-bosh .kpi-nom { margin: 0; }
 
 /* Asosiy KPI — bugungi tushum: bir pog'ona yorug' yuza va kattaroq qiymat (oltin bezaksiz) */
-.kpi-asosiy { background: var(--yuza-2); }
-.kpi-asosiy .kpi-qiymat { font-size: 30px; letter-spacing: -.01em; }
 
 /* Shu oy — o'tgan oy trend qatori (P&L taqqos ma'lumotlaridan) */
 .trend {
@@ -401,19 +364,8 @@ textarea:focus {
   background: rgba(253, 250, 245, .05); border: 1px solid rgba(255, 255, 255, .14);
   border-radius: 12px; backdrop-filter: blur(12px);
 }
-.trend-nom { font-size: 12px; color: rgba(251, 246, 238, .62); }
-.trend-qator { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
-.trend-qator b { font-weight: 600; color: rgba(251, 246, 238, .78); }
-.kpi-delta { font-weight: 600; font-variant-numeric: tabular-nums; }
-.kpi-delta.yaxshi { color: var(--yaxshi); }
-.kpi-delta.past { color: var(--xato); }
 
 /* «Barchasi joyida» bo'sh holat belgisi */
-.barchasi-joyida {
-  margin: 0; padding: 12px 14px; border-radius: 12px; font-size: 14px;
-  color: var(--yaxshi); background: rgba(126, 203, 143, .1);
-  border: 1px solid rgba(126, 203, 143, .3);
-}
 
 
 /* Klaviatura foydalanuvchilari uchun fokus halqasi (butun ilova) */
@@ -432,18 +384,16 @@ button:focus-visible, a:focus-visible, select:focus-visible, input:focus-visible
   animation: skelet 1.4s ease-in-out infinite;
 }
 @keyframes skelet { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
-.skelet-bosh { height: 64px; margin-bottom: 12px; }
 .skelet-kpi { height: 96px; }
 
 /* Shapka (components/Shapka.jsx): keng ekranda faqat o'ng qism ko'rinadi, menyu tugmasi va logo — telefonda */
 .shapka-ong { flex: 1; display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-.shapka-menyu, .ilova-logo, .faqat-tor { display: none; }
+.shapka-menyu, .ilova-logo { display: none; }
 .yuqori:has(> .shapka-ong:empty) { display: none; }
 
 /* ---------- Telefon (767px gacha) ---------- */
 @media (max-width: 767px) {
   .faqat-keng { display: none; }
-  .faqat-tor { display: inline; }
 
   /* Shapka bosh sahifadagidek: chapda menyu tugmasi va logo; aylantirganda tepada yopishib turadi */
   .yuqori {

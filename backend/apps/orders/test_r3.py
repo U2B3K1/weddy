@@ -54,14 +54,22 @@ class Base(TestCase):
 
 
 class KelmadiQoldiqTests(Base):
-    """C-03: «kelmadi» o'tkazma qoldiq bo'lib qoladi — zakaz to'lanmaguncha yopilmaydi."""
+    """C-03: «kelmadi» o'tkazma qoldiq bo'lib qoladi — zakaz to'lanmaguncha yopilmaydi.
+
+    2026-11-10 dan tasdiqlanmagan o'tkazma bilan libos berilmaydi, shuning uchun bu holat faqat eski ma'lumotda uchraydi:
+    testlar uni `eski_berish` bilan yasaydi (berish paytida tasdiq vaqtincha olib qo'yiladi)."""
+
+    def eski_berish(self, z, t, zaloglar):
+        Tolov.objects.filter(id=t.id).update(tasdiq=Tolov.Tasdiq.KERAK_EMAS)
+        libos_berish(salon=self.salon, xodim=self.xodim, zakaz=z, zaloglar=zaloglar)
+        Tolov.objects.filter(id=t.id).update(tasdiq=Tolov.Tasdiq.KUTILMOQDA)
 
     def test_kelmadi_berilgan_zakaz_qaytarishda_yopilmaydi_qoldiq_tolangach_yopiladi(self):
         z = self.zakaz(dan=kun(0), gacha=kun(1))
         self.tolov(z, Tolov.Tur.AVANS, 1_500_000)
         t = self.tolov(z, Tolov.Tur.QOLDIQ, 1_500_000, usul=Tolov.Usul.OTKAZMA)
         self.assertEqual(t.tasdiq, Tolov.Tasdiq.KUTILMOQDA)
-        libos_berish(salon=self.salon, xodim=self.xodim, zakaz=z, zaloglar=[PUL])
+        self.eski_berish(z, t, [PUL])
         otkazma_tasdiqlash(salon=self.salon, rahbar=self.rahbar, tolov=t, keldi=False)
         z.refresh_from_db()
         self.assertEqual((z.holat, tolangan_summa(z)), (Zakaz.Holat.BERILDI, 1_500_000))
@@ -75,7 +83,7 @@ class KelmadiQoldiqTests(Base):
     def test_yopilgan_zakazda_kelmadi_qayta_qaytarildi(self):
         z = self.zakaz(dan=kun(0), gacha=kun(1))
         t = self.tolov(z, Tolov.Tur.AVANS, 3_000_000, usul=Tolov.Usul.OTKAZMA)
-        libos_berish(salon=self.salon, xodim=self.xodim, zakaz=z, zaloglar=[PUL])
+        self.eski_berish(z, t, [PUL])
         z = libos_qaytarish(salon=self.salon, xodim=self.xodim, zakaz=z)
         self.assertEqual(z.holat, Zakaz.Holat.YOPILDI)
         otkazma_tasdiqlash(salon=self.salon, rahbar=self.rahbar, tolov=t, keldi=False)
@@ -86,8 +94,7 @@ class KelmadiQoldiqTests(Base):
         z = self.zakaz(dan=kun(0), gacha=kun(1))
         self.tolov(z, Tolov.Tur.AVANS, 1_000_000)
         t = self.tolov(z, Tolov.Tur.QOLDIQ, 2_000_000, usul=Tolov.Usul.OTKAZMA)
-        libos_berish(salon=self.salon, xodim=self.xodim, zakaz=z, zaloglar=[{'turi': 'hujjat', 'hujjat_turi': 'pasport',
-                                                                             'hujjat_raqami': 'AA1'}])
+        self.eski_berish(z, t, [{'turi': 'hujjat', 'hujjat_turi': 'pasport', 'hujjat_raqami': 'AA1'}])
         otkazma_tasdiqlash(salon=self.salon, rahbar=self.rahbar, tolov=t, keldi=False)
         z = libos_qaytarish(salon=self.salon, xodim=self.xodim, zakaz=z, jarima=100_000)
         z = qarzni_tolash(salon=self.salon, xodim=self.xodim, zakaz=z, summa=100_000, usul=Tolov.Usul.KARTA)

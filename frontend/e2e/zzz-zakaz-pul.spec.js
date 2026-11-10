@@ -159,7 +159,7 @@ test("tayyor chegirma: summa, tasdiq, olib tashlash; so'rovni qaytarib olish (C-
   expect(xatolar).toEqual([])
 })
 
-test("o'tkazma kelmadi: berilgan zakazda qoldiq formasi va sotuvchiga bildirishnoma (C-03, C-18, C-24)", async ({ page, browser }) => {
+test("o'tkazma tasdiqlanmaguncha libos berilmaydi; kelmadi — sotuvchiga bildirishnoma (C-18, C-24)", async ({ page, browser }) => {
   const xatolar = xatolarniKuzat(page)
   await page.setViewportSize({ width: 1280, height: 860 })
   const { ctx, rahbar } = await rahbarOch(browser)
@@ -171,7 +171,7 @@ test("o'tkazma kelmadi: berilgan zakazda qoldiq formasi va sotuvchiga bildirishn
   const t = await apiSorov(page, 'POST', '/kassa/tolovlar/', { zakaz: z.id, tur: 'avans', usul: 'otkazma', summa: 1_000_000 })
   expect(t.id, JSON.stringify(t)).toBeTruthy()  // o'tkazma — rahbar tasdig'ini kutadi
 
-  await test.step('berish formasi: avval tekshiruv, tasdiq kutayotgan o\'tkazma haqida qator', async () => {
+  await test.step("berish formasi: tasdiq kutayotgan o'tkazma haqida qator; tasdiqlanmaguncha libos berilmaydi", async () => {
     await kartaOch(page, z.raqam)
     const forma = page.locator('#asosiy-amal')
     await expect(forma).toContainText(`${som(1_000_000)} o'tkazma rahbar tasdig'ini kutmoqda`)
@@ -180,26 +180,29 @@ test("o'tkazma kelmadi: berilgan zakazda qoldiq formasi va sotuvchiga bildirishn
     await expect(forma).toContainText("To'ldiring: hujjat turi, hujjat raqami.")
     await forma.locator('label', { hasText: /^Hujjat turi/ }).locator('input').fill('pasport')
     await forma.locator('label', { hasText: /^Raqami/ }).locator('input').fill('AA7770099')
-    await forma.getByRole('button', { name: 'Garovni qabul qilib berish' }).click()
-    await expect(page.getByText('Libos berildi.')).toBeVisible()
+    // Foydalanuvchi qarori 2026-11-10: pul kelgani tasdiqlangandan keyingina libos beriladi — tugma o'chiq, sababi yozilgan
+    await expect(forma.getByRole('button', { name: 'Garovni qabul qilib berish' })).toBeDisabled()
+    await expect(forma).toContainText("O'tkazma tasdiqlanmaguncha libos berilmaydi.")
+    // server ham rad etadi (tugmani chetlab o'tib bo'lmaydi)
+    const rad = await apiSorov(page, 'POST', `/zakazlar/${z.id}/berish/`, { zaloglar: [{ turi: 'hujjat', hujjat_turi: 'pasport', hujjat_raqami: 'AA7770099' }] })
+    expect(JSON.stringify(rad)).toContain("O'tkazma hali tasdiqlanmagan")
+    expect((await apiSorov(page, 'GET', `/zakazlar/${z.id}/`)).holat).toBe('bron')
   })
 
-  await test.step('rahbar «kelmadi» deydi → kartada qoldiq formasi, qo\'ng\'iroqchada xabar, to\'lov qabul qilinadi', async () => {
+  await test.step("rahbar «kelmadi» deydi → sotuvchiga xabar, zakaz yana avanssiz bron (libos pulsiz band qolmaydi)", async () => {
     const q = await apiSorov(rahbar, 'POST', `/kassa/tolovlar/${t.id}/tasdiq/`, { keldi: false })
     expect(q.tasdiq, JSON.stringify(q)).toBe('kelmadi')
     await page.reload()
-    await kartaOch(page, z.raqam)
-    await expect(page.locator('.karta-bosh .holat')).toHaveText('Berildi')
-    const forma = page.locator('details.amal', { has: page.locator('summary', { hasText: "Qoldiq to'lov (o'tkazma kelmagan)" }) })
-    await expect(forma).toContainText(`${som(1_000_000)} mijozdan qayta olinadi`)
+    expect((await apiSorov(page, 'GET', `/zakazlar/${z.id}/`)).holat).toBe('vaqtinchalik')
     const tugma = page.getByRole('button', { name: /^Bildirishnomalar/ })
     await tugma.click()
     await expect(page.getByRole('menuitem', { name: new RegExp(`#${z.raqam} .*o'tkazma kelmadi`) })).toBeVisible()
     await page.keyboard.press('Escape')
-    if (!(await forma.evaluate((d) => d.open))) await forma.locator('summary').click()
-    await forma.getByRole('button', { name: 'Qabul qilish', exact: true }).click()
-    await expect(page.getByText("To'lov qabul qilindi.")).toBeVisible()
-    await expect(page.locator('details.amal', { has: page.locator('summary', { hasText: "Qoldiq to'lov (o'tkazma kelmagan)" }) })).toHaveCount(0)
+    // pul naqd qayta olinadi → bron yana mustahkam, endi libos beriladi
+    const t2 = await apiSorov(page, 'POST', '/kassa/tolovlar/', { zakaz: z.id, tur: 'avans', usul: 'naqd', summa: 1_000_000 })
+    expect(t2.id, JSON.stringify(t2)).toBeTruthy()
+    const b = await apiSorov(page, 'POST', `/zakazlar/${z.id}/berish/`, { zaloglar: [{ turi: 'hujjat', hujjat_turi: 'pasport', hujjat_raqami: 'AA7770099' }] })
+    expect(b.holat, JSON.stringify(b)).toBe('berildi')
   })
   await ctx.close()
   expect(xatolar).toEqual([])

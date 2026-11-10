@@ -110,6 +110,14 @@ def _tushum_farqi(zakaz, tolangan):
         TushumFarqi.objects.create(salon=zakaz.salon, zakaz=zakaz, summa=farq, sana=sana)
 
 
+def _otkazma_kutilmasin(zakaz, amal):
+    """Rahbar hali «keldi» demagan o'tkazma to'langan hisoblanadi. Shu holatda mijozga pul qaytarilsa va o'tkazma keyin
+    «kelmadi» bo'lsa — salon kelmagan pulni naqd berib yuborgan bo'ladi. Avval rahbar qarori."""
+    if zakaz.tolovlar.filter(tasdiq=Tolov.Tasdiq.KUTILMOQDA).exists():
+        raise OzgartirishXatosi(f"Bu zakazda rahbar tasdig'ini kutayotgan o'tkazma bor: {amal} — avval rahbar «Keldi» yoki "
+                                "«Kelmadi» deb belgilasin.")
+
+
 def _ortiqchani_qaytar(zakaz, xodim, usul):
     """C-07: to'liq (yoki ko'p) to'langan zakazda narx kamaysa — farq mijozga qaytariladi (VOZVRAT, tanlangan usulda).
 
@@ -118,6 +126,7 @@ def _ortiqchani_qaytar(zakaz, xodim, usul):
     """
     ortiqcha = tolangan_summa(zakaz) - zakaz.jami
     if ortiqcha > 0:
+        _otkazma_kutilmasin(zakaz, "farqni qaytarib bo'lmaydi")
         tolov_qabul(salon=zakaz.salon, xodim=xodim, tur=Tolov.Tur.VOZVRAT, summa=ortiqcha, usul=usul or Tolov.Usul.NAQD,
                     zakaz=zakaz, izoh=f"Zakaz #{zakaz.raqam}: narx kamaydi — farq qaytarildi")
     zakaz.qaytarildi_summa = max(ortiqcha, 0)
@@ -323,6 +332,7 @@ def zakazni_bekor_qilish(*, salon, xodim, zakaz, sabab, qaytariladigan_foiz_over
     h = bekor_hisobi(zakaz, xodim, qaytariladigan_foiz_override, qoida, asos)
     tolangan, avans, foiz, qaytariladi = h['tolangan'], h['avans'], h['foiz'], h['qaytariladi']
     if qaytariladi:
+        _otkazma_kutilmasin(zakaz, "pulni qaytarib bo'lmaydi")
         tolov_qabul(salon=salon, xodim=xodim, tur=Tolov.Tur.VOZVRAT, summa=qaytariladi,
                     usul=usul, zakaz=zakaz, izoh=f'Zakaz #{zakaz.raqam} bekor qilindi')
 

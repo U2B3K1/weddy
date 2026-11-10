@@ -62,9 +62,11 @@ class IntegratsiyaSerializer(serializers.Serializer):
         from apps.notify import sms
         for maydon, tur in (('sms_shablon_olib_ketish', 'olib_ketish_ertaga'), ('sms_shablon_qaytarish', 'qaytarish_ertaga')):
             if d.get(maydon):
-                try:  # shablonda faqat ma'lum o'zgaruvchilar bo'lishi mumkin
-                    d[maydon].format(salon='S', sana='01.01', tel='T', qoldiq='0')
-                except (KeyError, IndexError, ValueError):
+                # Shablonda faqat shu to'rt o'zgaruvchi, aynan `{nom}` ko'rinishida: `{salon:>999999999}` kabi format
+                # ko'rsatkichi gigabaytli matn yasab serverni to'xtatardi, `{tel.__class__}` esa ichki ma'lumotni chiqarardi.
+                import re
+                qolgan = re.sub(r'\{(salon|sana|tel|qoldiq)\}', '', d[maydon])
+                if '{' in qolgan or '}' in qolgan:
                     raise serializers.ValidationError({maydon: "Shablonda faqat {salon}, {sana}, {tel}, {qoldiq} ishlatiladi."})
         del sms
         return d

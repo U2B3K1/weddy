@@ -26,11 +26,15 @@ test('libos pasporti: hozir kimda, kelgusi bronlar; samaradorlik faqat rahbarga'
     const jami = await kartalar.count()
     // «Ijaraga tayyor» kartasi — filtr ustunidagi «Ijaraga tayyor» bilan bir xil holat va son
     const tayyor = kpi.getByRole('button', { name: /^Ijaraga tayyor: \d+$/ })
-    const soni = Number((await tayyor.getAttribute('aria-label')).split(': ')[1])
+    await page.waitForLoadState('networkidle')  // ko'rsatkich soni ma'lumot yuklangach to'g'ri bo'ladi (yuk ostida 0 o'qilib qolardi)
     await tayyor.click()
     await expect(tayyor).toHaveAttribute('aria-pressed', 'true')
     await expect(filtr.getByRole('button', { name: /^Ijaraga tayyor/ })).toHaveAttribute('aria-pressed', 'true')
-    await expect(kartalar).toHaveCount(soni)
+    // son tugma bosilgandan keyin qayta o'qiladi — ko'rsatkich va ro'yxat bir xil ma'lumotdan
+    await expect(async () => {
+      const n = Number((await tayyor.getAttribute('aria-label')).split(': ')[1])
+      await expect(kartalar).toHaveCount(n, { timeout: 2000 })
+    }).toPass({ timeout: 15000 })
     await page.screenshot({ path: 'test-results/liboslar/1-kpi-filtr-1280.png', animations: 'disabled' })
     await filtr.getByRole('button', { name: 'Filtrlarni tozalash' }).click()
     await expect(faol).toHaveAttribute('aria-pressed', 'true')

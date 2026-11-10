@@ -171,11 +171,15 @@ def tolov_qabul(*, salon, xodim, tur, summa, usul=Tolov.Usul.NAQD, zakaz=None, i
         if zakaz.holat == Zakaz.Holat.CHEGIRMA_KUTILMOQDA:
             raise KassaXatosi('Chegirma tasdig\'i kutilmoqda.')
         # bron avans bilan tasdiqlanadi; tasdiqlangan bronda (o'tkazma «kelmadi» bo'lsa ham) qoldiq qabul qilinadi
-        if tur == Tolov.Tur.QOLDIQ and tolangan_summa(zakaz) == 0 and zakaz.holat == Zakaz.Holat.VAQTINCHALIK:
+        # Avansi «kelmadi» bo'lgan zakaz yana vaqtinchalik (otkazma_tasdiqlash) — unda keyingi to'lov qanday nomlansa ham
+        # qabul qilinadi va bronni qayta mustahkamlaydi
+        kelmagan = zakaz.tolovlar.filter(tasdiq=Tolov.Tasdiq.KELMADI).exists()
+        if (tur == Tolov.Tur.QOLDIQ and tolangan_summa(zakaz) == 0 and zakaz.holat == Zakaz.Holat.VAQTINCHALIK
+                and not kelmagan):
             raise KassaXatosi('Avval avans kiritiladi.')
         if tolangan_summa(zakaz) + summa > zakaz.jami:
             raise KassaXatosi('To\'lov zakaz summasidan oshib ketadi.')
-        if tur == Tolov.Tur.AVANS and zakaz.holat == Zakaz.Holat.VAQTINCHALIK and not _bronlar_joyida(zakaz):
+        if zakaz.holat == Zakaz.Holat.VAQTINCHALIK and not _bronlar_joyida(zakaz):
             raise KassaXatosi("Vaqtinchalik bron muddati o'tib, libos yoki aksessuar boshqa zakazga berilgan. "
                               "Bu zakazni bekor qilib, qaytadan rasmiylashtiring.")
 
@@ -192,7 +196,7 @@ def tolov_qabul(*, salon, xodim, tur, summa, usul=Tolov.Usul.NAQD, zakaz=None, i
     if tur in Tolov.CHIQIM and usul == Tolov.Usul.NAQD:
         _manfiy_hisob_xabari(smena, xodim)
 
-    if tur == Tolov.Tur.AVANS and zakaz.holat == Zakaz.Holat.VAQTINCHALIK:
+    if tur in (Tolov.Tur.AVANS, Tolov.Tur.QOLDIQ) and zakaz.holat == Zakaz.Holat.VAQTINCHALIK:
         zakaz.holat = Zakaz.Holat.BRON
         Bron.objects.filter(zakaz=zakaz).update(turi=Bron.Turi.MUSTAHKAM, muddati=None)
         AksessuarBron.objects.filter(zakaz=zakaz).update(turi=Bron.Turi.MUSTAHKAM, muddati=None)
@@ -254,6 +258,15 @@ def otkazma_tasdiqlash(*, salon, rahbar, tolov, keldi):
         z = t.zakaz
         if z and z.tolangan_sana and tolangan_summa(z) < z.jami:  # to'liq to'lanmagan bo'lib qoldi
             Zakaz.objects.filter(id=z.id).update(tolangan_sana=None)
+        if z and z.holat == Zakaz.Holat.BRON and tolangan_summa(z) <= 0:
+            # Bronni mustahkamlagan yagona pul kelmadi: zakaz yana avanssiz (vaqtinchalik) bo'ladi va muddat qaytadan
+            # sanaladi — avans kiritilmasa o'zi bekor bo'lib, libos bo'shaydi (aks holda pulsiz cheksiz band turardi)
+            from apps.bookings.services import _yangi_muddat
+            muddat = _yangi_muddat(salon)
+            Zakaz.objects.filter(id=z.id).update(holat=Zakaz.Holat.VAQTINCHALIK)
+            z.holat = Zakaz.Holat.VAQTINCHALIK
+            Bron.objects.filter(zakaz=z).update(turi=Bron.Turi.VAQTINCHALIK, muddati=muddat)
+            AksessuarBron.objects.filter(zakaz=z).update(turi=Bron.Turi.VAQTINCHALIK, muddati=muddat)
         if z:
             # C-03: yopilgan zakaz qoldig'i paydo bo'ldi — u yana «Qaytarildi» (qoldiq olinguncha yopilmaydi)
             if z.holat == Zakaz.Holat.YOPILDI and tolangan_summa(z) < z.jami:

@@ -79,9 +79,7 @@
 .ilova :is(.blok h2, .karta-bosh h2) svg { color: var(--tilla); }
 .ilova .dash-karta-bosh h3 { font: 700 17px/1.2 var(--sans); }
 .ilova .dash-karta-ikon { width: 22px; height: 22px; }
-.ilova .kpi-qiymat { font-family: var(--sans); font-weight: 800; }
 .ilova :is(.kpi-nom, .kpi-matn .kpi-nom, .dash-savol-nom) { font: 600 13.5px/1.3 var(--sans); font-style: normal; color: #ECEAE5; }
-.ilova .dash-savol > b { font: 700 17px/1.25 var(--sans); }
 .ilova .dash-tushum-jami b { font: 800 26px/1.1 var(--sans); color: var(--oq); }
 
 /* ---------- Ko'rsatkich kartalari: har biri o'z aksenti bilan (ikonka asosi va chapdan yengil nur) ---------- */
@@ -107,7 +105,6 @@
 .ilova .dash-kpi-karta .kpi-matn { flex: 1 1 auto; max-width: 100%; }
 /* jadvalning yopishqoq birinchi ustuni — shisha bilan bir tusda (gorizontal aylantirishda ostidagi matn ko'rinmasin) */
 .ilova .hisobot td:first-child, .ilova .hisobot th:first-child { background: rgba(20, 25, 37, .94); }
-.ilova .kpi-matn .kpi-jami { font-size: 18px; font-weight: 700; color: var(--matn-3); }
 .ilova .kpi-matn > small { font-size: 12px; color: var(--matn-3); }
 .ilova .trend-pill { padding: 2px 8px; font-size: 11.5px; font-weight: 800; }
 .ilova .trend-pill.osish { color: var(--yaxshi); background: rgba(98, 212, 163, .18); }
@@ -244,10 +241,6 @@
     url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 200 56' preserveAspectRatio='none'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0' x2='1'%3E%3Cstop offset='0' stop-color='%23F3BF70' stop-opacity='0'/%3E%3Cstop offset='1' stop-color='%23F3BF70' stop-opacity='.55'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath d='M0,54 C50,52 90,46 120,36 C150,26 175,14 200,4' fill='none' stroke='url(%23g)' stroke-width='1.5'/%3E%3Cpath d='M0,56 C60,55 100,52 130,44 C160,36 182,26 200,16' fill='none' stroke='url(%23g)' stroke-width='1' opacity='.6'/%3E%3C/svg%3E") right bottom / 64% 60px no-repeat,
     radial-gradient(90% 120% at 100% 100%, rgba(243, 191, 112, .14), transparent 60%), var(--sh-yalt), var(--yuza-1);
 }
-.ilova .dash-tez-tugma {
-  border: 1px solid rgba(255, 255, 255, .12); border-radius: 14px; color: var(--oq);
-  background: linear-gradient(180deg, rgba(255, 255, 255, .09), rgba(255, 255, 255, .02)); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .12);
-}
 
 /* ---------- Kassa: smena qatori — yashil shisha, ✓ doira ---------- */
 .ilova .smena-panel:not(.yopiq) {
@@ -370,7 +363,6 @@
 /* ---------- Eski kichik ko'rsatkichlar (.kpi) — shisha karta, Manrope raqam ---------- */
 .ilova .kpi { padding: 14px 16px; border: 1px solid var(--sh-chet); border-top-color: rgba(255, 228, 186, .55); border-radius: 16px;
   background: var(--sh-yalt), var(--yuza-1); box-shadow: var(--sh-soya); }
-.ilova .kpi .kpi-qiymat { font: 800 24px/1.15 var(--sans); }
 
 /* ---------- Varaqa (zakaz kartasi, chek): ichki tilla hoshiyasiz, ism — Cormorant (qo'lyozma emas) ---------- */
 .ilova .varaq { border: 1px solid var(--sh-chet); border-top-color: rgba(255, 228, 186, .55); border-radius: 16px;
@@ -1040,7 +1032,6 @@
   .ilova .sh-nomlar { margin-left: 48px; gap: 8px; }
   .ilova .sh-ustunlar { gap: 8px; padding: 0 4px; }
 }
-.ilova .foyda-sahifa .r2-ogoh { margin: 0; padding: 9px 14px; font-size: 14px; }
 
 /* ---------- Sozlama umumiy ko'rinishi (kanvas SozlamaBolimShisha) ---------- */
 /* chap ro'yxatda guruh ichidagi bo'limlar belgisiz (kanvasdagidek faqat nom); «Barcha sozlamalar» belgisi qoladi */
@@ -2114,6 +2105,9 @@
   /* 2-qator: filial | lupa | qo'ng'iroqcha | xodim belgisi (belgi shapkada turadi — shu qatorning o'ng chetiga qo'yiladi) */
   .ilova .shapka-ong { position: absolute; top: 76px; right: 16px; margin: 0; }
   .ilova .shapka-xodim .xodim-chip > i { width: 46px; height: 46px; }
+  /* Ogohlantirish tasmasi (obuna, internet yo'q) shapka va 2-qator orasiga tushsa, xodim belgisi tasma ustiga chiqib qolardi
+     (belgi shapkaga nisbatan qo'yilgan) — telefonda tasma eng tepada, logodan oldin turadi */
+  .ilova > .obuna-banner { order: -1; max-width: none; width: auto; margin: 12px 16px 0; font-size: 13.5px; line-height: 1.4; background: rgba(46, 18, 18, .78); }
   .ilova .ustki { gap: 10px; padding-right: 56px; margin-bottom: 18px; }
   .ilova .ustki > .filial-joy { display: block; order: 1; flex: 1 1 0; min-width: 0; margin-right: auto; }
   .ilova .ustki .filial-pill { display: inline-flex; width: 100%; max-width: 200px; min-height: 46px; justify-content: space-between; border-radius: 12px; font-size: 15px; }
@@ -2234,6 +2228,7 @@
     background: linear-gradient(120deg, #E9C685, #C79A4F); border-color: #EAC98E; }
   .ilova .zt-yana { width: 100%; }
   .ilova .zt-bandlik { align-self: center; padding: 8px; }
+  .ilova .zt-yopiq { margin: -4px 0 0; text-align: center; font-size: 13.5px; line-height: 1.4; color: #E9A3A3; }
   .zt-bosh { text-align: center; padding: 18px 0; }
   /* Kassa (telefon): bosh ekran */
   .kassa-uy { display: flex; flex-direction: column; gap: 12px; }

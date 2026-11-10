@@ -134,3 +134,67 @@ class MantiqTests(Base):
         kun = date(2026, 10, 1)
         for k, fn in HISOBOTLAR.items():
             self.assertEqual(SARLAVHALAR[k], fn(self.salon, kun, kun)['sarlavha'], k)
+
+
+class OtkazmaMantiqTests(Base):
+    """2026-11-10 mantiq ko'rigi: tasdiqlanmagan va «kelmadi» o'tkazmalar atrofidagi uch xato."""
+
+    def otkazma(self, z, summa, tur=Tolov.Tur.AVANS):
+        from apps.cash.services import tolov_qabul
+        return tolov_qabul(salon=self.salon, xodim=self.xodim, tur=tur, summa=summa, zakaz=z, usul=Tolov.Usul.OTKAZMA)
+
+    def kelmadi(self, t):
+        from apps.cash.services import otkazma_tasdiqlash
+        return otkazma_tasdiqlash(salon=self.salon, rahbar=self.rahbar, tolov=t, keldi=False)
+
+    def test_tasdiq_kutayotgan_otkazma_bilan_bekor_qilinsa_pul_qaytarilmaydi(self):
+        z = self.zakaz()
+        t = self.otkazma(z, 1_000_000)
+        with self.assertRaisesMessage(OzgartirishXatosi, "kutayotgan o'tkazma"):
+            zakazni_bekor_qilish(salon=self.salon, xodim=self.xodim, zakaz=z, sabab='x')
+        self.assertFalse(Tolov.objects.filter(zakaz=z, tur=Tolov.Tur.VOZVRAT).exists())
+        self.kelmadi(t)  # rahbar qaroridan keyin bekor qilinadi, qaytariladigan pul yo'q
+        z = zakazni_bekor_qilish(salon=self.salon, xodim=self.xodim, zakaz=Zakaz.objects.get(id=z.id), sabab='x')
+        self.assertEqual((z.holat, z.qaytarilgan_avans), (Zakaz.Holat.BEKOR, 0))
+
+    def test_avans_kelmasa_bron_yana_vaqtinchalik_va_ozi_bekor_boladi(self):
+        from .changes import muddati_otganlarni_bekor_qil
+        z = self.zakaz()
+        self.kelmadi(self.otkazma(z, 300_000))
+        z.refresh_from_db()
+        b = Bron.objects.get(zakaz=z)
+        self.assertEqual((z.holat, b.turi), (Zakaz.Holat.VAQTINCHALIK, Bron.Turi.VAQTINCHALIK))
+        self.assertGreater(b.muddati, timezone.now())  # muddat qaytadan sanaladi
+        Bron.objects.filter(zakaz=z).update(muddati=timezone.now() - timedelta(hours=1))
+        self.assertEqual(muddati_otganlarni_bekor_qil(salon=self.salon), 1)
+
+    def test_qisman_kelmagan_otkazmada_bron_mustahkam_qoladi(self):
+        z = self.zakaz()
+        self.tola(z, 300_000)
+        self.kelmadi(self.otkazma(z, 700_000, Tolov.Tur.QOLDIQ))
+        z.refresh_from_db()
+        self.assertEqual((z.holat, Bron.objects.get(zakaz=z).turi), (Zakaz.Holat.BRON, Bron.Turi.MUSTAHKAM))
+
+    def test_kelmagan_qoldiq_qarzdorlar_royxatida(self):
+        from rest_framework.test import APIClient
+        from apps.tenants.auth import make_staff_token
+        from .rental import libos_qaytarish
+        from .views_royxat import qarz_jami
+        z = self.zakaz(dan=timezone.localdate())
+        self.tola(z, 300_000)
+        t = self.otkazma(z, 700_000, Tolov.Tur.QOLDIQ)
+        garov = [{'turi': 'hujjat', 'hujjat_turi': 'pasport', 'hujjat_raqami': 'AA1'}]
+        with self.assertRaisesMessage(BerishXatosi, 'tasdiqlanmagan'):  # pul tasdiqlanmaguncha libos berilmaydi
+            libos_berish(salon=self.salon, xodim=self.xodim, zakaz=z, zaloglar=garov)
+        # Eski ma'lumot (qoida kiritilishidan oldin berilgan libos): tasdiq keyin «kelmadi» bo'lgan
+        Tolov.objects.filter(id=t.id).update(tasdiq=Tolov.Tasdiq.KELDI)
+        libos_berish(salon=self.salon, xodim=self.xodim, zakaz=z, zaloglar=garov)
+        Tolov.objects.filter(id=t.id).update(tasdiq=Tolov.Tasdiq.KELMADI)
+        self.assertEqual(qarz_jami(self.salon)['jami'], 700_000)  # libos mijozda, pul kelmagan
+        libos_qaytarish(salon=self.salon, xodim=self.xodim, zakaz=z)
+        q = qarz_jami(self.salon)
+        self.assertEqual((q['soni'], q['jami']), (1, 700_000))
+        c = APIClient()
+        c.credentials(HTTP_AUTHORIZATION=f'Bearer {make_staff_token(self.rahbar)}')
+        r = c.get('/api/hisobotlar/qarzdorlar/')
+        self.assertEqual([(x['qarz'], x['jarima_qarzi']) for x in r.data['qarzdorlar']], [(700_000, 0)])

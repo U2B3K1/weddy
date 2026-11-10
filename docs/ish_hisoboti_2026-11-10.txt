@@ -1,0 +1,161 @@
+LIBOSA (weddy) - TOPSHIRISHDAN OLDINGI TO'LIQ TEKSHIRUV HISOBOTI
+Sana: 2026-11-10 · Tarmoq: Ndiz · Bajaruvchi: claude (Fable 5.2)
+=================================================================
+
+QISQA XULOSA
+------------
+Loyiha kodi mijozga topshirishga tayyor: jiddiy (pul yo'qotadigan yoki ma'lumot sizdiradigan) xato topilmadi.
+Tekshiruvda 11 ta kamchilik topildi va hammasi tuzatildi; 2 tasi sezilarli (pastda 1 va 2).
+Lekin jonli saytga (libosa.uz) chiqishi uchun SIZ bajaradigan 3 qadam qoldi - "SIZDAN KERAK" bo'limiga qarang.
+
+Sinov natijalari (tuzatishlardan keyin):
+  - Backend testlari: 952 tadan 952 tasi o'tdi (shundan 13 tasi yangi)
+  - Brauzer (E2E) testlari: 37 tasi o'tdi, 2 tasi ataylab o'tkazib yuborilgan (skrinshot testi va endi uchramaydigan holat testi)
+  - Kutubxona zaifliklari: frontend (npm audit) - 0 ta, backend (pip-audit) - 0 ta
+  - Django production tekshiruvi (check --deploy): muammo yo'q
+  - Frontend lint: xato yo'q (14 ta ogohlantirish - ishlashga ta'sir qilmaydi), build o'tdi
+
+Holat: hech narsa COMMIT QILINMAGAN (so'ramaguningizcha commit qilmayman).
+
+
+NIMA TEKSHIRILDI
+----------------
+  1. Xavfsizlik: kirish (salon paroli, PIN, Telegram kod), ruxsatlar (rahbar/sotuvchi/platforma egasi),
+     salonlar bir-birining ma'lumotini ko'ra olmasligi, fayl yuklash, parol tanlashga qarshi cheklovlar.
+  2. Bardoshlilik: barcha 151 ta API manzilga ataylab noto'g'ri ma'lumot yuborildi (matn o'rniga ro'yxat,
+     juda katta son, buzuq sana, mavjud bo'lmagan id) - server "yiqiladigan" joylar qidirildi.
+  3. Kod: xabarlar (Telegram, SMS), katalog, sozlamalar, platforma paneli, hisobotlar (statistika).
+  4. Jonli sayt (libosa.uz): sarlavhalar, siqish, kesh - tashqaridan o'qib ko'rildi (hech narsa o'zgartirilmadi).
+  5. Ilova brauzerda: production ko'rinishidagi (siqilgan) build bilan rahbar sifatida kirib, barcha bo'lim,
+     ichki tab va 20 ta sozlama bo'limi aylanib chiqildi; telefon kengligida ham.
+  6. Deploy fayllari: nginx, gunicorn, cron, zaxira skripti, qo'llanma.
+
+
+TOPILGAN VA TUZATILGAN KAMCHILIKLAR
+-----------------------------------
+1. [SEZILARLI] Jonli sayt sekin ochilardi: JS va CSS siqilmasdan ketyapti.
+   libosa.uz hozir ilovani 1,35 MB qilib yuboradi (JS 944 KB + CSS 401 KB); siqilsa ~0,35 MB bo'ladi.
+   Sabab: Ubuntu nginx'i standart holda faqat HTML ni siqadi. Telefon internetida bu bir necha soniya farq.
+   Tuzatildi: deploy/nginx-libosa.uz.conf ga siqish (gzip) qo'shildi.
+   Serverda qo'llash kerak (pastda 2-qadam).
+
+2. [SEZILARLI] 300 tadan ortiq libosli salonda qolgan liboslar ro'yxatda ko'rinmay qolardi.
+   Katalog ro'yxati jimgina birinchi 300 ta libos bilan cheklangan edi (xato ham, ogohlantirish ham yo'q).
+   Tuzatildi: chegara 3000 ga ko'tarildi (backend/apps/catalog/views.py). Test: 320 ta libos ko'rinadi.
+
+3. Noto'g'ri kiritishda "server xatosi" (500) chiqadigan joylar topildi (8 xil holat).
+   Masalan: narxga 1 trillion yozilsa, qidiruvga maxsus belgi tushsa, so'rov buzuq ko'rinishda kelsa.
+   Ma'lumot buzilmasdi, lekin xodim tushunarsiz "Xatolik yuz berdi" ko'rardi.
+   Tuzatildi (yangi fayl backend/apps/tenants/kiritish.py): endi hammasi tushunarli rad javobi bilan tugaydi,
+   masalan: "Kiritilgan qiymat juda katta yoki juda uzun. Tekshirib, qayta kiriting."
+   Yangi doimiy test (test_bardosh.py) barcha manzillarni o'zi yig'ib tekshiradi - keyin qo'shilgan
+   manzil ham avtomatik sinaladi.
+
+4. Ba'zi rad javoblari xodimga INGLIZCHA chiqardi ("A valid integer is required." kabi).
+   Tuzatildi: 34 xil standart javob o'zbekchaga o'girildi ("Butun son kiriting.", "Sana noto'g'ri kiritilgan.",
+   "Juda ko'p so'rov yuborildi. 30 soniyadan keyin qayta urinib ko'ring." va h.k.).
+
+5. Rasm yuklash: asl nusxa fayl kengaytmasi foydalanuvchi bergan nomdan olinardi.
+   "rasm.html" deb nomlangan (ichiga skript yashirilgan) rasm serverda .html bo'lib saqlanardi. Amalda
+   ekspluatatsiya qilish juda qiyin edi (fayl manzili taxmin qilib bo'lmaydigan), lekin bo'shliq yopildi:
+   kengaytma endi tekshirilgan formatdan olinadi (jpg/png/webp), nginx esa /media/ dan faqat rasm beradi.
+
+6. SMS shabloni orqali serverni to'xtatish mumkin edi.
+   Rahbar shablonga "{salon:>999999999}" kabi yozuv kiritsa, server gigabaytli matn yasashga urinardi, bitta
+   salonning buzuq shabloni esa hamma salonning SMS eslatmasini to'xtatib qo'yishi mumkin edi.
+   Tuzatildi: shablonda faqat {salon}, {sana}, {tel}, {qoldiq} qabul qilinadi; eski buzuq shablon bo'lsa -
+   standart matn ishlatiladi.
+
+7. PIN kodni tanlab topishga qarshi himoyada tirqish.
+   Bir vaqtda yuborilgan so'rovlar "5 ta xatodan keyin blok" hisobini aylanib o'tib, ko'proq PIN sinay olardi.
+   Tuzatildi: tekshiruv va hisoblagich endi bitta qulflangan amalda (backend/apps/tenants/views.py).
+
+8. Sayt sahifalarida xavfsizlik sarlavhalari yo'q edi (faqat API javoblarida bor edi).
+   Tuzatildi (nginx): HSTS, nosniff, X-Frame-Options, Referrer-Policy va Content-Security-Policy qo'shildi.
+   CSP - sahifa faqat o'z domenidan skript yuklaydi; begona skript kirib qolsa ham ishlamaydi.
+   Bu siyosat bilan ilova lokal sinaldi: barcha bo'limlar xatosiz ishladi.
+   Serverda qo'llash kerak (pastda 2-qadam).
+
+9. /assets/ fayllari keshlanmayapti (jonli saytda).
+   Repodagi nginx sozlamasida uzoq kesh bor, lekin serverdagi nusxa eskiroq - har kirishda qayta yuklanadi.
+   2-qadam bilan birga tuzaladi.
+
+10. "Libosni berish" formasi yangi qoidaga moslandi.
+    Bugungi qaroringiz: o'tkazma tasdiqlanmaguncha libos berilmaydi. Avval tugma bosilardi va server rad etardi,
+    matn esa eski qoidani aytardi. Endi tugma o'chiq turadi va ostida sababi yozilgan:
+    "O'tkazma tasdiqlanmaguncha libos berilmaydi."
+
+11. Mayda: katalog filtriga buzuq qiymat kelsa xato; platformada chiqish izohi 300 belgidan uzun bo'lsa xato;
+    zakazga salonchi biriktirishda buzuq id xato berardi - hammasi tuzatildi.
+
+Shu sessiyada avvalroq qilingan (sizga xabar berilgan, bu ham commit qilinmagan):
+  - Tasdiqlanmagan o'tkazma bilan libos berilmaydi va pul qaytarilmaydi.
+  - Avans "kelmadi" bo'lsa zakaz avanssiz bronga qaytadi va muddati o'tsa o'zi bekor bo'ladi.
+  - Qarzdorlar ro'yxati to'lanmagan ijara pulini ham ko'rsatadi.
+  - Telefon: ogohlantirish tasmasi profil belgisi ustiga chiqmaydi; o'chiq "Yangi zakaz" sababi yoziladi.
+  - CSS tozalash, 1-bosqich (ishlatilmaydigan qoidalar olib tashlandi).
+
+
+MUAMMO TOPILMAGAN JOYLAR
+------------------------
+  - Salonlar izolyatsiyasi: bir salon xodimi boshqa salon ma'lumotiga yeta olmaydi (barcha so'rovlar salon
+    bo'yicha filtrlangan; Telegram tugmalari ham salonni tekshiradi).
+  - Ruxsatlar: sotuvchi tannarx, hisobot va sozlamalarni ko'rmaydi/o'zgartira olmaydi; platforma egasi salon
+    ichini faqat rahbar bergan muddatli ruxsat bilan ko'radi va bu jurnalga yoziladi.
+  - Sirlar: parol va PIN xeshlangan; Telegram tokeni va Eskiz paroli API orqali qaytarilmaydi; repoda sir yo'q.
+  - Obuna tugagan salon: yozish yopiq, boshlangan zakazni yakunlash ochiq - barcha yozuvchi manzillar qamralgan.
+  - Zaxira nusxa skripti, cron ishlari, gunicorn xizmati - to'g'ri yozilgan.
+
+
+SIZDAN KERAK (jonli saytga chiqishi uchun)
+------------------------------------------
+1. Commit va push - aytsangiz qilaman (Ndiz ga; serverga chiqishi uchun master ga qo'shiladi).
+   Yangi migratsiya yo'q.
+
+2. Serverda odatdagi yangilash (deploy/DEPLOY.md 14-bo'lim) + BU SAFAR nginx sozlamasini ham yangilash:
+     sudo cp /etc/nginx/sites-available/libosa.uz /etc/nginx/sites-available/libosa.uz.zaxira
+     sudo cp /var/www/libosa/deploy/nginx-libosa.uz.conf /etc/nginx/sites-available/libosa.uz
+     sudo nginx -t && sudo systemctl reload nginx
+   "nginx -t" xato bersa sayt eski sozlamada ishlayveradi - zaxirani qaytaring va menga xato matnini yuboring.
+   MUHIM: nginx sozlamasini men haqiqiy nginx'da sinay olmadim (kompyuterda nginx yo'q, internetdan yuklamadim).
+   Sintaksisni qo'lda tekshirdim, xavfsizlik siyosatining o'zini esa lokal serverda sinadim.
+
+3. Yangilangach saytni bir marta aylanib chiqing: kirish -> Liboslar (rasmlar ko'rinadimi) -> Zakazlar.
+   Biror narsa ko'rinmay qolsa - zaxira nusxani qaytaring (qo'llanmada yozilgan).
+
+
+TEKSHIRILMAGAN / BILIB QO'YING
+------------------------------
+  - Telegram bot va Eskiz SMS haqiqiy xizmat bilan sinalmagan (testlarda soxta javoblar). Birinchi haqiqiy
+    salonda bitta xabar va bitta SMS yuborib ko'rish kerak.
+  - Filial kassasi (har filialda alohida smena) va platformada tarif tahriri brauzerda qo'lda sinalmagan.
+  - Yuklama sinovi (bir vaqtda ko'p foydalanuvchi) o'tkazilmagan. Server sozlamasi (3 worker) bir necha
+    o'nlab salonga yetadi.
+  - Ilova JS fayli bitta bo'lak (siqilganda 267 KB). Reklama sahifasi va ichki ilovani alohida bo'laklarga
+    ajratish mumkin - hozir shart emas, siqish yoqilgach tezlik yetarli.
+  - Frontend'da 3 ta ishlatilmaydigan funksiya bor (BoshVideo, kalendar, toj) - zarari yo'q, tegilmadi.
+  - Rasmlar serverning o'zida saqlanadi; zaxira skripti ularni haftada bir marta nusxalaydi. Nusxani boshqa
+    joyga yuborish (rclone) hali sozlanmagan - server diski buzilsa nusxa ham yo'qoladi.
+
+
+O'ZGARGAN FAYLLAR (bu tekshiruvda)
+----------------------------------
+Yangi:
+  backend/apps/tenants/kiritish.py        - kiritishni umumiy tozalash, o'zbekcha rad javoblari
+  backend/apps/tenants/test_bardosh.py    - barcha manzillarga noto'g'ri kiritish testi
+  backend/apps/tenants/test_kiritish.py   - yangi himoyalar uchun 10 ta test
+  docs/ish_hisoboti_2026-11-10.txt        - shu hisobot
+O'zgargan:
+  backend/config/settings.py              - yangi himoya qatlamlari ulangan
+  backend/apps/catalog/views.py           - 300 chegarasi, filtr
+  backend/apps/catalog/rasm.py            - asl rasm kengaytmasi
+  backend/apps/catalog/test_rasm.py       - 2 ta yangi test
+  backend/apps/tenants/views.py           - PIN qulfi
+  backend/apps/tenants/views_integratsiya.py, backend/apps/notify/sms.py - SMS shabloni
+  backend/apps/tenants/views_platforma.py, backend/apps/orders/views_salonchi.py,
+  backend/apps/orders/views_mijoz.py, backend/apps/orders/views_royxat.py - mayda tuzatishlar
+  frontend/src/pages/Zakazlar.jsx         - berish tugmasi
+  frontend/e2e/zzz-zakaz-pul.spec.js      - test yangi tugmaga moslandi
+  deploy/nginx-libosa.uz.conf             - siqish va xavfsizlik sarlavhalari
+  deploy/DEPLOY.md                        - nginx yangilash qadami
+  PROGRESS.md, docs/PROGRESS_ARXIV.md     - jurnal (eski yozuvlar arxivga ko'chirildi)

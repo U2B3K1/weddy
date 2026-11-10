@@ -193,21 +193,27 @@ class XodimlarRoyxatiView(OchiqView):
 
 def pin_tekshir(xodim, pin):
     """PIN ni tekshiradi; 5 marta xato bo'lsa 15 daqiqaga bloklaydi (FT-1.7). Xatoda istisno ko'taradi."""
-    if xodim.bloklangan:
-        raise PermissionDenied("PIN ko'p marta xato kiritildi: kirish 15 daqiqaga to'xtatildi.")
-    if not xodim.check_pin(pin):
-        xodim.xato_urinish += 1
-        if xodim.xato_urinish >= settings.PIN_MAX_ATTEMPTS:
-            xodim.bloklangan_gacha = timezone.now() + timedelta(minutes=settings.PIN_LOCK_MINUTES)
+    # Xodim qatori qulflanadi: parallel so'rovlar hisoblagichni bir xil qiymatdan o'qib, 5 tadan ortiq PIN sinab
+    # ko'ra olmasin (tekshiruv va hisoblagich bitta tranzaksiyada).
+    with transaction.atomic():
+        xodim = Xodim.objects.select_for_update().select_related('salon').get(id=xodim.id)
+        if xodim.bloklangan:
+            raise PermissionDenied("PIN ko'p marta xato kiritildi: kirish 15 daqiqaga to'xtatildi.")
+        togri = xodim.check_pin(pin)
+        if not togri:
+            xodim.xato_urinish += 1
+            if xodim.xato_urinish >= settings.PIN_MAX_ATTEMPTS:
+                xodim.bloklangan_gacha = timezone.now() + timedelta(minutes=settings.PIN_LOCK_MINUTES)
+                xodim.xato_urinish = 0
+                from apps.notify.services import rahbarlarga  # FT-1.7: rahbarga xabar boradi
+                rahbarlarga(xodim.salon, 'pin_bloklandi',
+                            f"{xodim.ism} PIN kodi 5 marta xato kiritildi va 15 daqiqaga bloklandi.")
+            xodim.save(update_fields=['xato_urinish', 'bloklangan_gacha'])
+        elif xodim.xato_urinish:
             xodim.xato_urinish = 0
-            from apps.notify.services import rahbarlarga  # FT-1.7: rahbarga xabar boradi
-            rahbarlarga(xodim.salon, 'pin_bloklandi',
-                        f"{xodim.ism} PIN kodi 5 marta xato kiritildi va 15 daqiqaga bloklandi.")
-        xodim.save(update_fields=['xato_urinish', 'bloklangan_gacha'])
+            xodim.save(update_fields=['xato_urinish'])
+    if not togri:  # tranzaksiyadan tashqarida: istisno hisoblagich yozuvini bekor qilmasin
         raise AuthenticationFailed("PIN noto'g'ri.")
-    if xodim.xato_urinish:
-        xodim.xato_urinish = 0
-        xodim.save(update_fields=['xato_urinish'])
 
 
 class PinLoginView(OchiqView):

@@ -35,6 +35,9 @@ def libos_berish(*, salon, xodim, zakaz, zaloglar, usul=Tolov.Usul.NAQD, erta=Tr
         raise BerishXatosi('Faqat bron holatidagi zakaz beriladi.')
     if tolangan_summa(zakaz) < zakaz.jami:
         raise BerishXatosi("Qoldiq to'lanmaguncha libos berilmaydi.")
+    # Foydalanuvchi qarori (2026-11-10): pul kelgani ko'rilib tasdiqlangandan keyingina libos beriladi
+    if zakaz.tolovlar.filter(tasdiq=Tolov.Tasdiq.KUTILMOQDA).exists():
+        raise BerishXatosi("O'tkazma hali tasdiqlanmagan: rahbar «Keldi» deb belgilagandan keyin libos beriladi.")
     if not zaloglar:
         raise BerishXatosi('Garov olinmagan.')
     if zakaz.olib_ketish > timezone.localdate() and not erta:

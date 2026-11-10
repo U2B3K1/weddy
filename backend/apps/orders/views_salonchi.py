@@ -148,7 +148,9 @@ class ZakazSalonchiView(APIView):
         sid = request.data.get('salonchi')
         salonchi = None
         if sid:
-            salonchi = Salonchi.objects.filter(salon=request.salon, id=sid).first()
+            from apps.tenants.kiritish import id_yoki_yoq
+            sid = id_yoki_yoq(sid)
+            salonchi = Salonchi.objects.filter(salon=request.salon, id=sid).first() if sid else None
             if not salonchi:
                 raise NotFound('Salonchi topilmadi.')
         eski = zakaz.salonchi.ism if zakaz.salonchi_id else ''

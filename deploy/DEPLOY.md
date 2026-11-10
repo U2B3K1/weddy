@@ -223,6 +223,30 @@ cd ../frontend && sudo -u libosa npm install && sudo -u libosa npm run build && 
 sudo systemctl restart libosa.service libosa-telegram.service
 ```
 
+### nginx sozlamasi o'zgargan bo'lsa
+
+`deploy/nginx-libosa.uz.conf` o'zgargan deployda (masalan, 2026-11-10: siqish va xavfsizlik sarlavhalari qo'shildi)
+serverdagi nusxa ham yangilanadi — `git pull` uni o'zi almashtirmaydi:
+
+```bash
+sudo cp /etc/nginx/sites-available/libosa.uz /etc/nginx/sites-available/libosa.uz.zaxira   # eski nusxa
+sudo cp /var/www/libosa/deploy/nginx-libosa.uz.conf /etc/nginx/sites-available/libosa.uz
+sudo nginx -t && sudo systemctl reload nginx
+# `nginx -t` xato bersa — reload qilinmaydi (sayt eski sozlamada ishlayveradi); zaxirani qaytaring:
+#   sudo cp /etc/nginx/sites-available/libosa.uz.zaxira /etc/nginx/sites-available/libosa.uz
+```
+
+Tekshirish (istalgan kompyuterdan):
+
+```bash
+curl -sI -H "Accept-Encoding: gzip" https://libosa.uz/ | grep -iE "content-encoding|content-security|strict-transport"
+# JS fayli siqilganmi (Content-Encoding: gzip chiqishi kerak):
+curl -s https://libosa.uz/ | grep -oE '/assets/index-[A-Za-z0-9_-]+\.js' | head -1 |   xargs -I{} curl -sI -H "Accept-Encoding: gzip" https://libosa.uz{} | grep -iE "content-encoding|cache-control"
+```
+
+Keyin saytni brauzerda ochib, kirish → Liboslar (rasmlar ko'rinishi) → Zakazlar ni bir marta aylanib chiqing.
+Biror narsa ko'rinmay qolsa (brauzer konsolida «Content Security Policy» xatosi) — zaxira nusxani qaytaring.
+
 Deploy'dan **oldin** (mahalliy kompyuterda) kutubxona zaifliklari tekshiriladi. Topilsa — lock/requirements
 mahalliy tuzatilib push qilinadi. Serverda `npm audit fix` ishlatilmaydi: `package-lock.json` o'zgarib,
 keyingi `git pull` to'qnashadi.

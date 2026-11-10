@@ -254,3 +254,17 @@ class AksessuarRasmTests(RasmBase):
         self.assertFalse(self.fata.rasm)
         self.assertFalse(os.path.exists(fayl))
         self.assertIsNone(self.api(self.rahbar).get(f'/api/aksessuarlar/{self.fata.id}/').data['rasm'])
+
+
+class RasmKengaytmaTests(RasmBase):
+    """Asl nusxa kengaytmasi fayl nomidan emas, tekshirilgan formatdan olinadi (/media/ dan HTML bo'lib ochilmasin)."""
+
+    def test_html_deb_nomlangan_rasm_jpg_bolib_saqlanadi(self):
+        r = self.yukla(self.malika, rasm_fayl((600, 900), nom='rasm.html'))
+        self.assertEqual(r.status_code, 201, r.content)
+        self.assertTrue(Rasm.objects.get().asl.name.endswith('.jpg'))
+
+    def test_png_kengaytmasi_formatdan(self):
+        r = self.yukla(self.malika, rasm_fayl((600, 900), format='PNG', nom='nomsiz'))
+        self.assertEqual(r.status_code, 201, r.content)
+        self.assertTrue(Rasm.objects.get().asl.name.endswith('.png'))
