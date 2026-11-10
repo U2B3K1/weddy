@@ -23,7 +23,7 @@ const HARAKAT = {
   libos_qoshildi: "Libos qo'shildi", libos_tasdiqlandi: 'Libos tasdiqlandi', libos_holati: "Libos holati o'zgardi",
   libos_filiali: "Libos filiali o'zgardi", libos_kategoriyasi: "Libos kategoriyasi o'zgardi",
   libos_yetkazib_beruvchisi: "Libos yetkazib beruvchisi o'zgardi", ijara_narxi_ozgardi: "Ijara narxi o'zgardi",
-  tannarx_ozgardi: "Tannarx o'zgardi", zalog_ozgardi: "Zalog summasi o'zgardi", aksessuar_qoshildi: "Aksessuar qo'shildi",
+  tannarx_ozgardi: "Tannarx o'zgardi", zalog_ozgardi: "Garov summasi o'zgardi", aksessuar_qoshildi: "Aksessuar qo'shildi",
   dona_holati: "Dona holati o'zgardi", sozlama_ozgardi: "Sozlama o'zgardi", oy_yopildi: 'Oy yopildi', oy_qayta_ochildi: 'Oy qayta ochildi',
   sanoq_bekor_qilindi: 'Sanoq bekor qilindi', yetkazib_beruvchiga_tolov: "Yetkazib beruvchiga to'lov",
   yetkazib_beruvchi_tolovi_ochirildi: "Yetkazib beruvchiga to'lov o'chirildi", qurilma_pin_xato: "Qurilmada PIN xato terildi",
@@ -51,7 +51,7 @@ const qiymat = (v) => {
   const t = String(v)
   if (/^-?\d{4,}$/.test(t)) return som(t)
   if (HOLAT_NOMI[t]) return holatNomi(t)
-  return t.replace(/\b(narx|tannarx|zalog|summa|bonus|komissiya|chegirma)\s+(-?\d+)\b/g, (_, soz, n) => `${soz} ${som(n)}`)
+  return t.replace(/\b(narx|tannarx|zalog|garov|summa|bonus|komissiya|chegirma)\s+(-?\d+)\b/g, (_, soz, n) => `${soz} ${som(n)}`)
     .replace(/\bholat\s+([a-z_]+)/g, (_, k) => `holat: ${holatNomi(k)}`)
 }
 // Ilova B: rahbar kim nimani o'zgartirganini ko'radi (oxirgi 200 ta). Telegram xabarlari — bot ishlayaptimi,

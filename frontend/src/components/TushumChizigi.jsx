@@ -23,21 +23,22 @@ function qadam(maks) {
   return [1, 2, 2.5, 5, 10].map((k) => k * daraja).find((q) => q >= xom) || daraja * 10
 }
 
-export default function TushumChizigi({ kunlar, rang = '#B9833A' }) {
+// `past` — eng kichik balandlik (telefon kartasida ixchamroq grafik)
+export default function TushumChizigi({ kunlar, rang = '#B9833A', past = ENG_PAST }) {
   const ref = useRef(null)
   const [en, setEn] = useState(600)
-  const [BALAND, setBaland] = useState(ENG_PAST)
+  const [BALAND, setBaland] = useState(past)
   const [tanlangan, setTanlangan] = useState(null)
   useEffect(() => {
     const el = ref.current
     if (!el || typeof ResizeObserver === 'undefined') return undefined
     const k = new ResizeObserver(([e]) => {
       setEn(Math.max(280, Math.round(e.contentRect.width)))
-      setBaland(Math.max(ENG_PAST, Math.round(e.contentRect.height)))
+      setBaland(Math.max(past, Math.round(e.contentRect.height)))
     })
     k.observe(el)
     return () => k.disconnect()
-  }, [])
+  }, [past])
 
   const n = kunlar.length
   const maks = Math.max(1, ...kunlar.map((k) => Math.max(k.summa, k.oldingi)))

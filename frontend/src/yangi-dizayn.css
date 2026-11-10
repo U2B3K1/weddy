@@ -1075,7 +1075,7 @@
 .ilova .libos-sahifa .jadval-asboblar .libos-qidiruv { flex: 1 1 280px; max-width: none; }
 .ilova .libos-sahifa .jadval-asboblar .libos-qidiruv .jadval-qidiruv { width: 100%; }
 
-/* ---------- Kassa tablari (kanvas KassaBolimShisha): Xarajat, Inkassatsiya, Zaloglar, Smena hisoboti, Smenalar tarixi ---------- */
+/* ---------- Kassa tablari (kanvas KassaBolimShisha): Xarajat, Inkassatsiya, Garovlar, Smena hisoboti, Smenalar tarixi ---------- */
 .ilova .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .ilova .kassa-ikki { display: grid; grid-template-columns: minmax(0, 55fr) minmax(0, 45fr); gap: 16px; align-items: start; }
 .ilova .kassa-asosiy { display: grid; grid-template-columns: minmax(0, 70fr) minmax(0, 30fr); gap: 16px; align-items: start; }
@@ -1148,7 +1148,7 @@
 .ilova .kassa-ikki-qator { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .ilova .kassa-ikki-qator small { color: var(--matn-3); font-size: 12.5px; }
 .ilova .kassa-tur { display: inline-flex; align-items: center; min-height: 24px; padding: 0 10px; border-radius: 999px; background: rgba(255, 255, 255, .08); color: var(--matn-2); font: 600 12.5px/1 var(--sans); white-space: nowrap; }
-/* zaloglar */
+/* garovlar */
 .ilova .zalog-kpi { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-bottom: 0; }
 .ilova .zalog-belgi { width: 22px; height: 22px; margin: 0; accent-color: var(--tilla-toq); cursor: pointer; }
 .ilova .zalog-tugma { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-width: 0; min-height: 0; padding: 0; border: 0; background: none; color: var(--oq); text-align: left; box-shadow: none; font: 500 14px/1.3 var(--sans); }
@@ -1271,7 +1271,7 @@
 .ilova .soz-tanlov, .ilova input.soz-tanlov, .ilova select.soz-tanlov { width: auto; min-height: 40px; padding: 0 12px; border-radius: 10px; background: var(--fon-chuqur);
   border: 1px solid rgba(243, 191, 112, .24); color: var(--oq); font: 600 14px/1 var(--sans); }
 .ilova input.soz-prefiks { width: 120px; }
-/* uchta qiymat kartasi (bron) va belgilanadigan kartalar (zalog) */
+/* uchta qiymat kartasi (bron) va belgilanadigan kartalar (garov) */
 .ilova .soz-uch { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; padding: 12px 0 6px; }
 .ilova .soz-qiymat-k { display: flex; flex-direction: column; gap: 10px; padding: 16px; border-radius: 14px; border: 1px solid rgba(243, 191, 112, .2);
   background: linear-gradient(140deg, rgba(243, 191, 112, .1), rgba(16, 21, 31, .6) 70%); }
@@ -2097,3 +2097,658 @@
 /* ---------- Kassa, Hisobotlar, Liboslar bo'limlari chap panelda (≥1200, Sozlama kabi; foydalanuvchi so'rovi 2026-11-10) ---------- */
 /* App.jsx `navTekis`: «‹ Asosiy», bo'lim nomi va vertikal tablar; tepadagi tablar bu sahifalarda keng ekranda yashirin (faqat-telefon) */
 .ilova .pastki .nav-tablar { display: flex; flex-direction: column; gap: 6px; }
+
+/* =================== Telefon qobig'i (maket 2026-11-10): shapka, sarlavha, pastki panel =================== */
+.ilova .ustki-qidir-tugma, .ilova .ustki-nom-ikon, .ilova .nom-tor, .ilova-logo-matn small { display: none; }
+.ilova-logo-matn { display: contents; }
+.ilova-logo-matn b { font-weight: inherit; }
+@media (max-width: 767px) {
+  /* 1-qator: logo va shior; sahifa bilan birga suriladi */
+  .ilova .yuqori { position: relative; z-index: 4; height: 64px; padding: 14px 16px 0; align-items: flex-start; background: none; border: 0;
+    -webkit-backdrop-filter: none; backdrop-filter: none; box-shadow: none; }
+  .ilova .ilova-logo { gap: 10px; align-items: center; letter-spacing: 0; }
+  .ilova .ilova-logo svg { width: 38px; height: 38px; }
+  .ilova-logo-matn { display: flex; flex-direction: column; gap: 1px; }
+  .ilova-logo-matn b { font: 600 27px/1 var(--serif); letter-spacing: .02em; color: var(--oq); }
+  .ilova-logo-matn small { display: block; font: 500 13px/1.2 var(--sans); letter-spacing: 0; color: #D4D7DE; }
+  /* 2-qator: filial | lupa | qo'ng'iroqcha | xodim belgisi (belgi shapkada turadi — shu qatorning o'ng chetiga qo'yiladi) */
+  .ilova .shapka-ong { position: absolute; top: 76px; right: 16px; margin: 0; }
+  .ilova .shapka-xodim .xodim-chip > i { width: 46px; height: 46px; }
+  .ilova .ustki { gap: 10px; padding-right: 56px; margin-bottom: 18px; }
+  .ilova .ustki > .filial-joy { display: block; order: 1; flex: 1 1 0; min-width: 0; margin-right: auto; }
+  .ilova .ustki .filial-pill { display: inline-flex; width: 100%; max-width: 200px; min-height: 46px; justify-content: space-between; border-radius: 12px; font-size: 15px; }
+  .ilova .ustki > .filial-pill { order: 1; margin-right: auto; }
+  .ilova .filial-pill > .nav-ikon:first-child { display: none; }
+  .ilova .ustki .filial-joy .ustki-menyu { left: 0; right: auto; }
+  .ilova .ustki-qidir-tugma { display: inline-flex; align-items: center; justify-content: center; order: 2; margin-left: auto; padding: 0; }
+  .ilova .ustki-tugma { border-radius: 12px; }
+  .ilova .ustki > .ustki-joy:not(.filial-joy) { order: 2; }
+  .ilova .ustki-qidiruv { display: none !important; }
+  .ilova .ustki-qidiruv.ochiq { display: flex !important; order: 4; flex: 1 1 100%; margin-right: -56px; }
+  /* sarlavha: belgi + qalin nom, ostida bir qatorli izoh */
+  .ilova .ustki-nom { padding-top: 8px; margin-right: -56px; }
+  .ilova .ustki-nom h1 { display: flex; align-items: center; gap: 12px; font: 700 27px/1.15 var(--sans); white-space: normal; }
+  .ilova .ustki-nom-ikon { display: block; flex: none; width: 34px; height: 34px; color: var(--tilla); }
+  .ilova .nom-keng { display: none; }
+  .ilova .nom-tor { display: inline; }
+  .ilova p.nom-tor { display: block; }
+  .ilova .ustki-nom h1 + p, .ilova .ustki-nom .ustki-xulosa, .ilova .ustki-nom p { margin: 4px 0 0 46px; font: 500 15px/1.35 var(--sans); color: #D4D7DE; }
+  /* pastki panel: butun enda, yuqori burchaklari yumaloq, 4 bo'lim */
+  .ilova .tab-bar { left: 0; right: 0; bottom: 0; height: calc(76px + env(safe-area-inset-bottom, 0px)); padding: 0 8px env(safe-area-inset-bottom, 0px);
+    grid-template-columns: repeat(4, 1fr); border-radius: 22px 22px 0 0; border: 1px solid var(--sh-chet); border-bottom: 0;
+    background: rgba(24, 20, 18, .9); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); box-shadow: 0 -10px 30px -12px rgba(0, 0, 0, .7); }
+  .ilova .tab-bar button { gap: 5px; color: #E6E2DA; }
+  .ilova .tab-bar button .nav-ikon { width: 28px; height: 28px; }
+  .ilova .tab-bar button span { font-size: 14px; font-weight: 600; }
+  .ilova .tab-bar button.faol { color: var(--tilla); }
+}
+
+
+/* =================== Telefon (maket 2026-11-10): iliq ohang va Rahbar paneli =================== */
+@media (max-width: 767px) {
+  /* iliq jigarrang shisha — salon surati ohangida (kompyuterdagi ko'k-to'q o'rniga) */
+  .ilova {
+    --fon: #17120F; --yuza-1: rgba(38, 29, 23, .58); --fon-chuqur: rgba(20, 15, 12, .42);
+    --sh-chet: rgba(226, 190, 132, .46);
+    --sh-yalt: linear-gradient(150deg, rgba(255, 240, 215, .10), rgba(255, 240, 215, .03) 40%, rgba(255, 240, 215, .01) 70%);
+    --sh-filtr: blur(12px) saturate(120%) brightness(.78);
+  }
+  .ilova > .platforma-fon.nurli {
+    background:
+      radial-gradient(420px 320px at 12% 62%, rgba(243, 191, 112, .14), transparent 70%) 0 0 / 100% 760px repeat-y,
+      #17120F;
+  }
+  .ilova > .platforma-fon.nurli img { min-height: 560px; }
+  .ilova > .platforma-fon.nurli .pf-siyoh {
+    background:
+      linear-gradient(180deg, rgba(23, 18, 15, .18) 0, rgba(23, 18, 15, .46) 240px, rgba(23, 18, 15, .70) 460px, rgba(23, 18, 15, .84) 640px, transparent 760px),
+      linear-gradient(rgba(96, 62, 30, .30), rgba(96, 62, 30, .30));
+  }
+  .ilova > .platforma-fon.nurli .pf-nur { background: linear-gradient(rgba(23, 18, 15, .78), rgba(23, 18, 15, .78)), url(/kelinlar/saroy.jpg) center bottom / 100% auto no-repeat; }
+
+  .tb { display: flex; flex-direction: column; gap: 12px; }
+  /* tablar: bitta shisha tasma, faoli — tilla */
+  .ilova .tb-tablar, .ilova main > .bolim-qator > .ichki-segment { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 0; padding: 5px; margin: 0;
+    border: 1px solid var(--sh-chet); border-radius: 14px; background: var(--yuza-1); -webkit-backdrop-filter: var(--sh-filtr); backdrop-filter: var(--sh-filtr); }
+  .ilova .tb-tablar button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 46px; padding: 0 8px; border: 0; border-radius: 10px;
+    background: none; box-shadow: none; color: var(--oq); font: 600 16px/1 var(--sans); }
+  .ilova .tb-tablar button + button:not(.faol) { box-shadow: -1px 0 0 rgba(255, 255, 255, .08); }
+  .ilova .tb-tablar button .nav-ikon { width: 22px; height: 22px; }
+  .ilova .tb-tablar button.faol { background: linear-gradient(120deg, #E9C685, #C79A4F); color: #1B1510; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .4), 0 6px 16px -8px rgba(0, 0, 0, .8); }
+  .ilova .tb-tablar button:hover:not(:disabled) { filter: none; }
+  /* kartalar */
+  .ilova .tb-karta { margin: 0; padding: 16px 18px; border-radius: 16px; }
+  .ilova .tb-karta h3 { display: flex; align-items: center; gap: 10px; margin: 0; font: 600 17px/1.2 var(--sans); color: var(--oq); }
+  .ilova .tb-karta h3 .nav-ikon { width: 22px; height: 22px; color: var(--tilla); }
+  .tb-karta-bosh { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .ilova select.tb-davr { width: auto; min-height: 0; padding: 2px 22px 2px 6px; border: 0; background-color: transparent; box-shadow: none; color: var(--oq); font: 600 15px/1.2 var(--sans); }
+  .tb-tushum-jami { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 6px 0 8px; }
+  .tb-tushum-jami b { font: 800 30px/1.1 var(--sans); color: var(--oq); font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .ilova .tb .trend-pill { position: static; padding: 5px 10px; border-radius: 8px; font-size: 14px; border: 1px solid rgba(98, 212, 163, .45); }
+  .ilova .tb .trend-pill.tushish { border-color: rgba(240, 128, 137, .45); }
+  .tb-legenda { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 22px; margin: 8px 0 0; font: 500 13px/1.2 var(--sans); color: #D4D7DE; }
+  .tb-legenda span { display: inline-flex; align-items: center; gap: 8px; }
+  .tb-legenda i { width: 28px; height: 0; border-top: 3px solid var(--tilla); border-radius: 2px; }
+  .tb-legenda i.otgan { border-top: 2px dotted #D4D7DE; }
+  .tb-juft { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .ilova .tb-son h3 { font-size: 15.5px; gap: 8px; }
+  .tb-son > div { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 10px; }
+  .tb-son b { font: 800 30px/1 var(--sans); color: var(--oq); font-variant-numeric: tabular-nums; }
+  .ilova button.tb-qator { display: flex; align-items: center; gap: 14px; width: 100%; min-height: 56px; text-align: left; color: var(--oq); font: 600 17px/1.2 var(--sans);
+    border: 1px solid var(--sh-chet); background: var(--sh-yalt), var(--yuza-1); }
+  .ilova button.tb-qator:hover:not(:disabled) { filter: none; }
+  .ilova .tb-qator > .nav-ikon:first-child { width: 26px; height: 26px; color: var(--tilla); flex: none; }
+  .tb-qator span { flex: 1; }
+  .tb-qator b { min-width: 34px; padding: 4px 10px; border-radius: 8px; background: rgba(255, 255, 255, .08); font: 700 16px/1.2 var(--sans); text-align: center; }
+  .tb-qator b.qizil { background: rgba(240, 128, 137, .30); border: 1px solid rgba(240, 128, 137, .55); color: #FFD9DC; }
+  .ilova .tb-ong { width: 20px; height: 20px; color: var(--oq); flex: none; }
+  .tb-holat-chiziq { display: flex; height: 22px; margin: 14px 0 12px; border-radius: 6px; overflow: hidden; }
+  .tb-holat-chiziq i { flex: 1 0 0; min-width: 6px; }
+  .tb-holat-legenda { display: flex; flex-wrap: wrap; gap: 6px 22px; margin: 0; padding: 0; list-style: none; font: 500 14.5px/1.2 var(--sans); color: var(--oq); }
+  .tb-holat-legenda li { display: inline-flex; align-items: center; gap: 8px; }
+  .tb-holat-legenda i { width: 12px; height: 12px; border-radius: 50%; }
+}
+
+
+@media (max-width: 767px) {
+  /* Zakazlar (telefon): rasmli kartalar, pastda «Yangi zakaz»; Ro'yxat/Bandlik tablari o'rnida — pastdagi havola */
+  .ilova main:has(.zt) .bolim-qator, .ilova main:has(.kassa-tel) .bolim-qator { display: none; }
+  .zt { display: flex; flex-direction: column; gap: 12px; }
+  .zt-royxat { display: flex; flex-direction: column; gap: 12px; margin: 0; padding: 0; list-style: none; }
+  .ilova button.zt-karta { display: flex; align-items: center; gap: 16px; width: 100%; margin: 0; padding: 12px 14px 12px 12px; border-radius: 16px; text-align: left;
+    border: 1px solid var(--sh-chet); background: var(--sh-yalt), var(--yuza-1); color: var(--oq); }
+  .ilova button.zt-karta:hover:not(:disabled) { filter: none; }
+  .zt-rasm { flex: none; width: 96px; height: 96px; border-radius: 12px; overflow: hidden; background: rgba(255, 255, 255, .06); display: grid; place-items: center; }
+  .zt-rasm img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 12%; }
+  .zt-rasm svg { width: 54px; height: 54px; color: var(--tilla); opacity: .8; }
+  .zt-matn { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 5px; }
+  .zt-matn b { font: 700 18px/1.2 var(--sans); }
+  .zt-matn small { font: 500 15px/1.25 var(--sans); color: #D4D7DE; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 100%; }
+  .zt-belgi { display: inline-flex; align-items: center; gap: 7px; margin-top: 3px; padding: 5px 11px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, .18);
+    background: rgba(255, 255, 255, .06); font: 600 14px/1.2 var(--sans); }
+  .zt-belgi .nav-ikon { width: 17px; height: 17px; }
+  .zt-belgi.kech { border-color: rgba(240, 128, 137, .6); background: rgba(240, 128, 137, .22); color: #FFD9DC; }
+  .zt-belgi.bugun { border-color: rgba(243, 191, 112, .6); background: rgba(243, 191, 112, .16); color: #F6DDB0; }
+  .ilova .zt-ong { flex: none; width: 22px; height: 22px; color: var(--oq); }
+  .ilova .zt-yangi { width: 100%; min-height: 62px; margin-top: 6px; border-radius: 14px; justify-content: center; font-size: 19px;
+    background: linear-gradient(120deg, #E9C685, #C79A4F); border-color: #EAC98E; }
+  .ilova .zt-yana { width: 100%; }
+  .ilova .zt-bandlik { align-self: center; padding: 8px; }
+  .zt-bosh { text-align: center; padding: 18px 0; }
+  /* Kassa (telefon): bosh ekran */
+  .kassa-uy { display: flex; flex-direction: column; gap: 12px; }
+  .ku-smena { align-self: flex-end; display: inline-flex; align-items: center; gap: 9px; margin: -66px 0 22px; padding: 8px 13px; border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, .22); background: rgba(40, 32, 26, .7); font: 600 14.5px/1 var(--sans); color: var(--oq); }
+  .ku-smena i { width: 11px; height: 11px; border-radius: 50%; background: #B7BAC5; }
+  .ku-smena.ochiq { border-color: rgba(98, 212, 163, .5); background: rgba(34, 58, 46, .78); }
+  .ku-smena.ochiq i { background: var(--yaxshi); box-shadow: 0 0 0 3px rgba(98, 212, 163, .22); }
+  .ilova .ku-naqd > b { display: block; margin-top: 14px; font: 800 38px/1.1 var(--sans); color: var(--oq); font-variant-numeric: tabular-nums; }
+  .ilova .ku-naqd h3 .nav-ikon { width: 30px; height: 30px; }
+  .ilova .ku-naqd h3 { font-size: 19px; }
+  .ilova .ku-kirim > b { display: block; margin-top: 10px; font: 800 30px/1.1 var(--sans); color: var(--oq); }
+  .ilova .ku-kirim small { display: block; margin-top: 6px; font: 500 15px/1.3 var(--sans); color: #D4D7DE; }
+  .ilova .ku-kirim h3 .nav-ikon { transform: rotate(-90deg); }
+  .ilova button.ku-amal { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; min-height: 104px; color: var(--oq);
+    border: 1px solid var(--sh-chet); background: var(--sh-yalt), var(--yuza-1); font: 700 20px/1 var(--sans); }
+  .ilova button.ku-amal:hover:not(:disabled) { filter: none; }
+  .ilova .ku-amal .nav-ikon { width: 30px; height: 30px; color: var(--tilla); stroke-width: 2.6; }
+  .ku-minus { width: 26px; height: 0; margin: 13px 0; border-top: 4px solid var(--tilla); border-radius: 2px; }
+  .ilova .kassa-orqaga { display: inline-flex; align-items: center; gap: 4px; align-self: flex-start; margin: -6px 0 10px; padding: 6px 4px; text-decoration: none; color: var(--tilla); font: 600 16px/1 var(--sans); }
+  .ilova .kassa-orqaga .tugma-ikon { width: 18px; height: 18px; }
+}
+@media (min-width: 768px) { .ilova .kassa-orqaga, .ku-smena { display: none; } }
+
+/* --- maketga yaqinlashtirish (1:1 so'rovi, 2026-11-10) --- */
+.logo-tor { display: none; }
+@media (max-width: 767px) {
+  .logo-keng { display: none; }
+  .logo-tor { display: inline; }
+  .ilova-logo-matn b { font: 500 30px/1 var(--serif); letter-spacing: .01em; }
+  .ilova-logo-matn small { font-size: 13.5px; color: #E6E2DA; }
+  /* xodim belgisi: tilla halqa ichida bosh harflar */
+  .ilova .shapka-xodim .xodim-chip > i { width: 46px; height: 46px; border: 2px solid #D9B46E; box-shadow: none; background: rgba(40, 30, 22, .72); color: #F6DDB0;
+    font: 700 16px/1 var(--sans); opacity: 1; }
+  .ilova .shapka-xodim { opacity: 1; }
+  .ilova .ustki .filial-pill, .ilova .ustki-tugma { border: 1px solid rgba(255, 255, 255, .28); background: rgba(34, 27, 22, .62); }
+  .ilova .ustki-nom h1 { font-size: 26px; }
+  .ilova .ustki-nom h1 + p, .ilova .ustki-nom .ustki-xulosa, .ilova .ustki-nom p { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* pastki panel: chetlardan ajralgan yumaloq to'rtburchak */
+  .ilova .tab-bar { left: 8px; right: 8px; bottom: calc(8px + env(safe-area-inset-bottom, 0px)); height: 82px; padding: 0 8px; border-radius: 20px;
+    border: 1px solid rgba(255, 255, 255, .22); background: rgba(30, 24, 20, .92); }
+  .ilova .tab-bar button .nav-ikon { width: 30px; height: 30px; stroke-width: 1.6; }
+  .ilova .tab-bar button.faol { text-shadow: 0 0 14px rgba(243, 191, 112, .55); }
+  .ilova > main { padding-bottom: 112px; }
+  .ilova .tb-karta, .ilova button.zt-karta, .ilova .tb-tablar { border-color: rgba(255, 255, 255, .24); border-top-color: rgba(255, 236, 205, .38); }
+  .tb-legenda { flex-wrap: nowrap; gap: 16px; font-size: 12.5px; }
+  .tb-tushum-jami b { font-size: 31px; }
+}
+@media (max-width: 767px) { .ilova .tb-tushum .tushum-chizigi { flex: none; height: 160px; min-height: 0; } }
+
+@media (max-width: 767px) {
+  /* Profil sahifasi (maket): xodim kartasi, bo'limlar ro'yxati, Chiqish */
+  .ilova main:has(.profil-sahifa) .ustki-nom { display: none; }
+  .profil-sahifa { display: flex; flex-direction: column; gap: 12px; }
+  .ilova .profil-karta { display: flex; align-items: center; gap: 18px; padding: 18px; margin-bottom: 8px; }
+  .profil-rasm { flex: none; width: 110px; height: 122px; border-radius: 12px; overflow: hidden; display: grid; place-items: center; background: rgba(255, 255, 255, .07); }
+  .profil-rasm img { width: 100%; height: 100%; object-fit: cover; }
+  .profil-rasm b { font: 600 46px/1 var(--serif); color: var(--tilla); }
+  .profil-matn { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; min-width: 0; }
+  .profil-matn > b { font: 700 23px/1.15 var(--sans); color: var(--oq); }
+  .profil-matn > small { font: 500 17px/1.2 var(--sans); color: #D4D7DE; }
+  .ilova .profil-matn .filial-pill { display: inline-flex; margin-top: 6px; min-height: 40px; padding: 0 14px; border-radius: 10px; border: 1px solid rgba(243, 191, 112, .6);
+    background: rgba(243, 191, 112, .12); font: 600 16px/1 var(--sans); color: var(--oq); }
+  .ilova .profil-matn .filial-pill > .nav-ikon:first-child { display: block; color: var(--tilla); }
+  .ilova .profil-sahifa .tb-qator { min-height: 64px; font-size: 19px; }
+  .ilova .profil-sahifa .tb-qator > .nav-ikon:first-child { width: 30px; height: 30px; }
+  .profil-chiqish { margin-top: 8px; }
+  .ilova .profil-chiqish .yon-joy { display: block; }
+  .ilova .profil-chiqish .yon-chiqish { display: flex; align-items: center; gap: 14px; width: 100%; min-height: 64px; padding: 16px 18px; border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, .24); background: var(--sh-yalt), var(--yuza-1); color: #F2A7AD; font: 600 19px/1.2 var(--sans); box-shadow: none; }
+  .ilova .profil-chiqish .yon-chiqish .tugma-ikon { width: 30px; height: 30px; color: #F08089; }
+}
+@media (max-width: 767px) { .ilova .profil-karta { flex-direction: row; } }
+@media (max-width: 767px) { .ilova .profil-chiqish .yon-chiqish { justify-content: flex-start; } }
+
+@media (max-width: 767px) {
+  /* telefon sarlavhasi berilgan bo'lsa (maket) — kompyuterdagi izoh/xulosa takrorlanmaydi */
+  .ilova .ustki-nom:has(.nom-tor-izoh) > p:not(.nom-tor), .ilova .ustki-nom:has(.nom-tor-izoh) .ustki-xulosa { display: none; }
+  /* panel sarlavhalari — serif o'rniga qalin sans (maket) */
+  .ilova .blok h3, .ilova .panel-nom, .ilova .dash-karta-bosh h3, .ilova .hisobot-panel-bosh h3, .ilova .sanoq-panel-bosh h3 { font: 600 17.5px/1.25 var(--sans); letter-spacing: 0; }
+  .ilova .blok { border-radius: 16px; }
+  /* Kassa ichki ekranlari: smena paneli — ixcham bir qator (holat bosh ekranda ko'rinadi) */
+  .ilova .kassa-tel .smena-panel { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 10px 14px; border-radius: 12px; }
+  .ilova .kassa-tel .smena-panel .smena-holat { font-size: 14px; }
+  .ilova .kassa-tel .smena-panel .smena-naqd { display: none; }
+  .ilova .kassa-tel .smena-panel .smena-amallar { margin-left: auto; }
+  .ilova .kassa-tel .smena-panel .smena-amallar button { min-height: 36px; padding: 0 12px; font-size: 13.5px; }
+  .ilova .kassa-orqaga { margin: -8px 0 6px; }
+}
+@media (max-width: 767px) {
+  /* bo'lim tablari (Liboslar, Mijozlar, Hisobotlar…): maketdagi to'rtburchak tasma, faoli tilla; sig'masa yonga aylanadi */
+  .ilova main > .bolim-qator > .ichki-segment { display: flex; overflow-x: auto; scrollbar-width: none; width: 100%; }
+  .ilova main > .bolim-qator > .ichki-segment::-webkit-scrollbar { display: none; }
+  .ilova main > .bolim-qator > .ichki-segment button { flex: 1 0 auto; min-height: 46px; padding: 0 14px; border-radius: 10px; border: 0; background: none; box-shadow: none;
+    color: var(--oq); font: 600 15.5px/1 var(--sans); white-space: nowrap; }
+  .ilova main > .bolim-qator > .ichki-segment button.faol { background: linear-gradient(120deg, #E9C685, #C79A4F); color: #1B1510; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .4); }
+  .ilova main > .bolim-qator > .ichki-segment button.faol .nav-ikon { color: #1B1510; }
+  /* asosiy tugma — maketdagi keng tilla to'rtburchak */
+  .ilova .bosh-tugma { min-height: 58px; border-radius: 14px; font-size: 18px; background: linear-gradient(120deg, #E9C685, #C79A4F); border-color: #EAC98E; color: #1B1510; }
+  .ilova .sozlama-tor.ikki-ustun .dash-karta-bosh h3 { font: 600 18px/1.25 var(--sans); }
+}
+@media (max-width: 767px) {
+  /* Zakaz kartasi (telefon, maket): sarlavha — «‹ Zakaz #…», varaq bezaklari (muhr, kursiv) yo'q, hammasi sans */
+  .ilova main:has(.stack.karta) .ustki-nom { display: none; }
+  .ilova .stack.karta .karta-bosh h2, .ilova .stack.karta .karta-bosh h3 { font: 700 26px/1.15 var(--sans); }
+  .ilova .stack.karta .muhr, .ilova .stack.karta .muhr-joy, .ilova .stack.karta .varaq-bezak { display: none; }
+  .ilova .stack.karta :is(.varaq-kimga, .varaq-jami, .varaq-jami b, .varaq-hisob, .varaq-hisob b, .varaq-hisob-matn, .varaq-izoh, .varaq-telefon, .varaq-qarz, i, em) { font-family: var(--sans); font-style: normal; }
+  .ilova .stack.karta .varaq-kimga { font-weight: 700; font-size: 21px; line-height: 1.2; color: var(--oq); }
+  .ilova .stack.karta .varaq-jami b { font-weight: 800; font-size: 26px; }
+  .ilova .stack.karta .blok.amal > summary, .ilova .stack.karta details > summary { font: 600 17px/1.3 var(--sans); }
+}
+@media (max-width: 767px) {
+  /* maket: telefonda butun matn — bitta sans shrift (serif faqat logoda); kursiv yo'q */
+  .ilova > main, .ilova > main *, .ilova .oyna, .ilova .oyna * { font-family: var(--sans) !important; font-style: normal !important; }
+}
+.zk-tel { display: none; }
+@media (max-width: 767px) {
+  /* Zakaz kartasi (telefon, maket): rasmli bosh karta, qatorlar, keyin asosiy amal; tafsilotlar pastda */
+  .ilova .stack.karta { gap: 12px; }
+  .ilova .stack.karta > .karta-bosh { order: -4; }
+  .zk-tel { display: flex; flex-direction: column; gap: 12px; order: -3; }
+  .ilova .stack.karta > .asosiy-tugma { order: -2; min-height: 60px; border-radius: 14px; font: 700 19px/1.2 var(--sans); background: linear-gradient(120deg, #E9C685, #C79A4F); border: 1px solid #EAC98E; color: #1B1510; }
+  .ilova .stack.karta > .qadam-ip, .ilova .stack.karta .km-mijoz, .ilova .stack.karta .km-sanalar, .ilova .stack.karta .karta-chop { display: none; }
+  .ilova .stack.karta > .qadam-izoh-tel { order: -1; margin: 0; }
+  .ilova .zk-bosh { display: flex; flex-direction: row; align-items: stretch; gap: 16px; padding: 14px; }
+  .zk-rasm { flex: none; width: 128px; min-height: 164px; border-radius: 12px; overflow: hidden; background: rgba(255, 255, 255, .06); display: grid; place-items: center; }
+  .zk-rasm img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 10%; }
+  .zk-rasm svg { width: 64px; height: 64px; color: var(--tilla); opacity: .8; }
+  .zk-matn { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 7px; }
+  .zk-matn > b { font-size: 20px; font-weight: 700; line-height: 1.2; color: var(--oq); }
+  .zk-matn > span, .zk-matn > a { display: inline-flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 500; color: #E6E2DA; text-decoration: none; }
+  .zk-matn > a { color: var(--tilla); }
+  .zk-matn .nav-ikon { flex: none; width: 18px; height: 18px; color: var(--tilla); }
+  .ilova .zk-matn .zt-belgi { margin-top: 4px; font-size: 15px; font-weight: 600; }
+  .ilova .zk-matn .zt-belgi.kech .nav-ikon { color: #FFD9DC; }
+  .zk-qiymat { margin-left: auto; font-size: 15.5px; font-weight: 600; color: var(--oq); text-align: right; background: none !important; border: 0 !important; padding: 0 !important; min-width: 0 !important; }
+  .ilova .zk-tel .tb-qator span { flex: 0 0 auto; }
+}
+@media (max-width: 767px) {
+  /* eski to'q ko'k elementlar — telefonda iliq jigarrang ohangga (foydalanuvchi: «eski dizayn elementlarini to'g'irla») */
+  .ilova .bandlik-ora { --bandlik-fon: #2A211B; }
+  .ilova .bandlik thead th, .ilova .bandlik tbody th, .ilova .bandlik .bandlik-libos { background: #2A211B; }
+  .ilova .hisobot td:first-child, .ilova .hisobot th:first-child { background: rgba(42, 33, 27, .97); }
+  .ilova .ustki-menyu, .ilova .yuqori .ustki-menyu, .ilova .ustki .ustki-menyu { background: #2A211B; border-color: rgba(255, 255, 255, .22); }
+  .ilova .oyna-parda { background: rgba(12, 9, 7, .7); }
+  .ilova .oyna:not(.oyna-yon), .ilova .oyna.oyna-yon, .ilova .oyna-yon .oyna-bosh { background: #241C17; }
+  .ilova .zakaz-joy > .varaq, .ilova .lf-past, .ilova .soz-past { background: rgba(36, 28, 23, .97); }
+  .ilova .aks-k.mijozda { box-shadow: inset 0 0 0 5px var(--ber), inset 0 0 0 9px #2A211B; }
+  .ilova .pastki { background: #211A15; }
+}
+
+@media (max-width: 767px) {
+  /* Yangi zakaz (telefon, maket): smena qatori va «‹ Kassa» yo'q; kalendar ixcham; sanalar va «Davom etish» — kalendar ostida (ekranni yopmaydi) */
+  .ilova .kassa-yangi > .kassa-orqaga, .ilova .kassa-yangi > .smena-panel { display: none; }
+  .ilova .kuz { padding: 14px 12px 12px; border-radius: 16px; }
+  .ilova .kuz .kuz-oy { font-size: 22px !important; font-weight: 600; }
+  .ilova .kuz-bosh { margin-bottom: 8px; gap: 0; }
+  .ilova .kuz-yil-nav { margin-top: 2px; }
+  .ilova .kuz-strelka { width: 38px; height: 38px; min-height: 38px; }
+  .ilova .zakaz-joy > .varaq { position: static; background: none; border: 0; box-shadow: none; padding: 0; gap: 12px; -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .ilova .zakaz-joy > .varaq::before, .ilova .zakaz-joy > .varaq .yz-varaq-nom { display: none; }
+  .ilova .zakaz-joy > .varaq .varaq-sana { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .ilova .zakaz-joy > .varaq .varaq-sana > div { flex-direction: column !important; align-items: flex-start !important; gap: 6px !important; padding: 14px 16px; border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, .24); background: var(--sh-yalt), var(--yuza-1); font-size: 18px; font-weight: 700; color: var(--oq); }
+  .ilova .zakaz-joy > .varaq .varaq-sana small { display: block !important; font-size: 14.5px; font-weight: 500; color: #E6E2DA; }
+  .ilova .zakaz-joy > .varaq .yz-bosh { margin: 0; padding: 14px 16px; border-radius: 14px; border: 1px solid rgba(255, 255, 255, .24); background: var(--sh-yalt), var(--yuza-1); font-size: 15.5px; font-weight: 600; }
+  .ilova .zakaz-joy > .varaq .zakaz-tugmalar button, .ilova .yz-xulosa .zakaz-tugmalar button:not(.ikkinchi) { width: 100%; min-height: 60px; border-radius: 14px; font-size: 18px; font-weight: 700;
+    background: linear-gradient(120deg, #E9C685, #C79A4F); border: 1px solid #EAC98E; color: #1B1510; }
+}
+@media (max-width: 767px) {
+  /* sanalar: Olib ketish │ Qaytarish yonma-yon, ostida muddat qatori */
+  .ilova .zakaz-joy > .varaq .varaq-sana > :nth-child(2):not(:last-child) { grid-column: 1 / -1; order: 3; flex-direction: row !important; justify-content: space-between; align-items: center !important;
+    font-size: 17px; }
+  .ilova .zakaz-joy > .varaq .varaq-sana > :nth-child(2):not(:last-child)::before { content: 'Ijara muddati'; font-weight: 600; color: var(--oq); }
+}
+@media (max-width: 767px) {
+  .ilova .zakaz-joy > .varaq .varaq-sana > :nth-child(2):not(:last-child) { display: flex; padding: 14px 16px; border-radius: 14px; border: 1px solid rgba(255, 255, 255, .24);
+    background: var(--sh-yalt), var(--yuza-1); color: var(--tilla); font-weight: 700; }
+  .ilova .zakaz-joy > .varaq .varaq-sana > :nth-child(2):not(:last-child)::after { display: none; }
+}
+/* Yangi zakaz filtrlari: `.libos-filtr` nomi Liboslar sahifasidagi yon ustun bilan to'qnashib, 1280 dan torda yashirinib qolgan edi */
+@media (max-width: 1279px) { .ilova section.jadval-panel.libos-filtr { display: block; } }
+@media (max-width: 767px) {
+  /* Yangi zakaz, 2-qadam (telefon, maket): qidiruv va kategoriya chiplari, rasmda tanlov doirasi, pastda yopishgan «jami + Davom etish» */
+  .ilova section.jadval-panel.libos-filtr { padding: 0; border: 0; background: none; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; display: flex; flex-direction: column-reverse; gap: 10px; }
+  .ilova .libos-filtr .jadval-asboblar { padding: 0; border: 0; gap: 8px; flex-wrap: wrap; }
+  .ilova .libos-filtr .tezkor-tablar { flex: 1 1 100%; display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 0; border: 0; background: none; }
+  .ilova .libos-filtr .tezkor-tablar::-webkit-scrollbar { display: none; }
+  .ilova .libos-filtr .tezkor-tablar button { flex: none; min-height: 42px; padding: 0 16px; border-radius: 21px; border: 1px solid rgba(255, 255, 255, .24); background: var(--sh-yalt), var(--yuza-1);
+    color: var(--oq); font-size: 15px; font-weight: 600; white-space: nowrap; }
+  .ilova .libos-filtr .tezkor-tablar button.faol { background: linear-gradient(120deg, #E9C685, #C79A4F); border-color: #EAC98E; color: #1B1510; }
+  .ilova .libos-filtr .filtr-amal { display: none; }
+  .ilova .libos-filtr .qidiruv-maydon { flex: 1 1 0; min-width: 0; }
+  .ilova .libos-filtr .jadval-qidiruv { min-height: 48px; border-radius: 14px; font-size: 16px; }
+  .ilova .libos-filtr .filtr-tugma { min-height: 48px; border-radius: 14px; padding: 0 16px; font-size: 15px; }
+  .ilova .libos-grid > li:not(.band):not(.tanlandi):not(.libos-bosh) .libos-rasm::after { content: ''; position: absolute; top: 10px; right: 10px; width: 26px; height: 26px; border-radius: 50%;
+    border: 2px solid rgba(255, 255, 255, .85); background: rgba(27, 21, 16, .35); }
+  .ilova .zakaz-joy:has(> .yz-q2) { padding-bottom: 8px; }
+  .ilova aside.yz-q2 { position: sticky; bottom: calc(98px + env(safe-area-inset-bottom, 0px)); z-index: 5; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 12px;
+    padding: 10px 10px 10px 16px; border-radius: 18px; background: rgba(36, 28, 23, .97); border: 1px solid rgba(243, 191, 112, .45); box-shadow: 0 10px 28px rgba(0, 0, 0, .45); }
+  .ilova aside.yz-q2 > :not(.yz-jami):not(.yz-tugmalar) { display: none; }
+  .ilova aside.yz-q2 .yz-jami { flex-direction: column; align-items: flex-start; gap: 3px; padding: 0; border: 0; min-width: 0; }
+  .ilova aside.yz-q2 .yz-jami span { font-size: 13.5px; font-weight: 500; color: #E6E2DA; }
+  .ilova aside.yz-q2 .yz-jami b { font-size: 21px; white-space: nowrap; }
+  .ilova aside.yz-q2 .yz-tugmalar { margin: 0; padding: 0; }
+  .ilova aside.yz-q2 .yz-tugmalar .ikkinchi { display: none; }
+  .ilova aside.yz-q2 .yz-tugmalar button:not(.ikkinchi) { width: auto; min-height: 52px; padding: 0 20px; font-size: 17px; }
+  /* 3-qadam: maydonlar va saqlash tugmasi yirik */
+  .ilova .yz-mijoz input, .ilova .yz-mijoz select { min-height: 52px; font-size: 17px; }
+  .ilova aside.yz-q3 .yz-tugmalar .ikkinchi { min-height: 52px; border-radius: 14px; font-size: 16px; }
+}
+.yz-jami-son { display: none; }
+@media (max-width: 767px) {
+  .ilova .libos-filtr .tezkor-tablar { flex-wrap: nowrap !important; }
+  .ilova .libos-filtr .filtr-tugma { align-items: center; justify-content: center; }
+  .ilova .libos-filtr .qidiruv-maydon .tugma-ikon { left: 14px; width: 20px; height: 20px; color: var(--tilla); z-index: 1; }
+  .ilova .libos-filtr .qidiruv-maydon input { padding-left: 44px; }
+  .ilova aside.yz-q2 .yz-jami > span { display: none; }
+  .ilova aside.yz-q2 .yz-jami-son { display: block; font-size: 13.5px; font-weight: 500; color: #E6E2DA; order: -1; }
+}
+@media (max-width: 767px) {
+  /* Kassa ichki ekranlari (telefon): smena qatori — bitta ingichka qator (asosiy ish ekranning yuqorisida boshlansin) */
+  .ilova .kassa-tel > .smena-panel:not(.yopiq) { flex-wrap: nowrap; min-height: 52px; padding: 6px 8px 6px 14px; }
+  .ilova .kassa-tel > .smena-panel:not(.yopiq) .smena-holat { flex: 1 1 0; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ilova .kassa-tel > .smena-panel:not(.yopiq) :is(.smena-ajratgich, .smena-kim) { display: none; }
+  .ilova .kassa-tel > .smena-panel .smena-amallar { flex: none; flex-wrap: nowrap; }
+  /* Garovlar: uch ko'rsatkich — ixcham qatorlar (nom chapda, qiymat o'ngda) */
+  .ilova .dash-kpi.zalog-kpi { display: flex; flex-direction: column; gap: 0; border-radius: 16px; border: 1px solid rgba(255, 255, 255, .24); background: var(--sh-yalt), var(--yuza-1); overflow: hidden; }
+  .ilova .zalog-kpi .dash-kpi-karta { display: flex; align-items: center; gap: 12px; min-height: 68px; padding: 10px 16px; border: 0; border-radius: 0; background: none; box-shadow: none;
+    -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .ilova .zalog-kpi .dash-kpi-karta + .dash-kpi-karta { border-top: 1px solid rgba(255, 255, 255, .12); }
+  .ilova .zalog-kpi .kpi-plitka { position: static; flex: none; }
+  .ilova .zalog-kpi .kpi-matn { flex: 1; min-width: 0; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 2px 12px; padding: 0; }
+  .ilova .zalog-kpi .kpi-matn .kpi-nom { padding: 0; font-size: 16px; font-weight: 600; color: var(--oq); }
+  .ilova .zalog-kpi .kpi-matn b { grid-column: 2; grid-row: 1 / span 2; font-size: 18px; white-space: nowrap; }
+  .ilova .zalog-kpi .kpi-matn small { grid-column: 1; font-size: 13.5px; }
+  /* Smena hisoboti: to'rt ko'rsatkichda summa bir qatorga sig'adi */
+  .ilova .smena-kpi .kpi-matn b { font-size: 19px; white-space: nowrap; letter-spacing: -.01em; }
+}
+@media (max-width: 767px) {
+  .ilova .kassa-tel > .smena-panel:not(.yopiq) .smena-holat i { flex: none; }
+  .ilova .dash-kpi.zalog-kpi .dash-kpi-karta .kpi-matn { display: grid !important; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 2px 12px; }
+  .ilova .dash-kpi.zalog-kpi .dash-kpi-karta .kpi-matn .kpi-nom { grid-column: 1; grid-row: 1; }
+  .ilova .dash-kpi.zalog-kpi .dash-kpi-karta .kpi-matn b { grid-column: 2; grid-row: 1 / span 2; font-size: 18px !important; white-space: nowrap; text-align: right; }
+  .ilova .dash-kpi.zalog-kpi .dash-kpi-karta .kpi-matn small { grid-column: 1; grid-row: 2; }
+  .ilova .dash-kpi.smena-kpi .dash-kpi-karta .kpi-matn b { font-size: 18px !important; white-space: nowrap; letter-spacing: -.01em; }
+}
+@media (max-width: 767px) {
+  /* Bandlik (telefon, maket): hafta tasmasi + tanlangan kunning ish tartibi; to'liq jadval — «Jadval» ortida */
+  .ilova .bandlik-tel { display: flex; flex-direction: column; gap: 12px; }
+  .bt-korinish { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: 14px; border: 1px solid rgba(255, 255, 255, .24); background: var(--sh-yalt), var(--yuza-1); margin-bottom: 12px; }
+  .ilova .bandlik-tel .bt-korinish { margin-bottom: 0; }
+  .ilova .bt-korinish button { min-height: 44px; border: 0; border-radius: 10px; background: none; box-shadow: none; color: var(--oq); font-size: 15.5px; font-weight: 600; }
+  .ilova .bt-korinish button.faol { background: linear-gradient(120deg, #E9C685, #C79A4F); color: #1B1510; }
+  .ilova .blok.bt-hafta { display: flex; flex-direction: column; gap: 10px; padding: 12px 10px 14px; border-radius: 16px; }
+  .bt-nav { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-bottom: 10px; border-bottom: 1px solid rgba(255, 255, 255, .14); }
+  .bt-nav b { font-size: 18px; font-weight: 600; color: var(--oq); }
+  .ilova .bt-nav button { width: 44px; height: 44px; min-height: 44px; padding: 0; border: 0; background: none; box-shadow: none; color: var(--oq); display: grid; place-items: center; }
+  .ilova .bt-nav button .nav-ikon { width: 22px; height: 22px; }
+  .bt-kunlar { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(44px, 1fr); gap: 2px; overflow-x: auto; scrollbar-width: none; }
+  .bt-kunlar::-webkit-scrollbar { display: none; }
+  .ilova .bt-kunlar button { display: flex; flex-direction: column; align-items: center; gap: 4px; min-height: 84px; padding: 8px 0; border: 1px solid transparent; border-radius: 12px; background: none; box-shadow: none; color: var(--oq); }
+  .bt-kunlar small { font-size: 15px; font-weight: 500; color: #E6E2DA; }
+  .bt-kunlar b { font-size: 20px; font-weight: 700; }
+  .bt-kunlar i { width: 9px; height: 9px; border-radius: 50%; background: rgba(255, 255, 255, .28); }
+  .bt-kunlar i.bor { background: #7FD9A0; }
+  .ilova .bt-kunlar button.bugun b { color: var(--tilla); }
+  .ilova .bt-kunlar button.faol { background: linear-gradient(160deg, #E9C685, #C79A4F); border-color: #EAC98E; }
+  .ilova .bt-kunlar button.faol :is(small, b) { color: #1B1510; }
+  .ilova .bt-bugun { align-self: center; font-size: 15px; }
+  .ilova .blok.bt-tartib { display: flex; flex-direction: column; gap: 12px; padding: 14px 12px; border-radius: 16px; }
+  .bt-tartib-bosh { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 0 4px; }
+  .ilova .bt-tartib-bosh h3 { margin: 0; font-size: 18px; font-weight: 600; color: var(--oq); }
+  .bt-jami { flex: none; padding: 5px 10px; border-radius: 9px; border: 1px solid rgba(255, 255, 255, .24); font-size: 14px; font-weight: 600; color: var(--oq); }
+  .bt-sonlar { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .bt-sonlar span { display: flex; align-items: center; justify-content: center; gap: 10px; min-height: 50px; border-radius: 12px; font-size: 16.5px; font-weight: 600; }
+  .bt-sonlar .nav-ikon { width: 22px; height: 22px; }
+  .bt-sonlar .bron { border: 1px solid rgba(127, 217, 160, .55); background: rgba(127, 217, 160, .16); color: #A9EBC2; }
+  .bt-sonlar .toza { border: 1px solid rgba(243, 191, 112, .6); background: rgba(243, 191, 112, .16); color: #F6DDB0; }
+  .ilova .bt-bosh { margin: 0; padding: 0 4px; font-size: 14.5px; color: #E6E2DA; }
+  .bt-royxat { display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 0; list-style: none; }
+  .ilova .bt-royxat .zt-karta { display: flex; align-items: center; gap: 14px; width: 100%; margin: 0; padding: 10px 12px 10px 10px; border-radius: 14px; text-align: left; }
+  .bt-royxat .zt-rasm { width: 84px; height: 84px; }
+  .bt-holat { display: inline-flex; align-items: center; gap: 7px; margin-top: 2px; padding: 4px 10px; border-radius: 8px; font-size: 14px; font-weight: 600; border: 1px solid rgba(127, 217, 160, .5); background: rgba(127, 217, 160, .14); color: #C9F2D8; }
+  .bt-holat i { width: 9px; height: 9px; border-radius: 50%; background: #7FD9A0; }
+  .bt-holat:is(.toza, .vaqt) { border-color: rgba(243, 191, 112, .6); background: rgba(243, 191, 112, .16); color: #F6DDB0; }
+  .bt-holat:is(.toza, .vaqt) i { background: #F3BF70; }
+}
+@media (min-width: 768px) { .bt-korinish { display: none; } }
+@media (max-width: 767px) {
+  /* Bandlik (telefon): «Yangi zakaz» tugmasi Zakazlar ro'yxatida bor — bu yerda hafta tasmasi birinchi ekranda tursin */
+  .ilova main:has(> .bandlik-sahifa) > .bolim-qator > .bolim-amal { display: none; }
+}
+@media (max-width: 767px) {
+  /* Mijozlar (telefon, maket telefon/11.webp): qidiruv, ikki son, mijoz qatorlari; «+ Yangi zakaz» bu yerda yo'q */
+  .ilova main:has(.mijoz-tel) > .bolim-qator > .bolim-amal { display: none; }
+  .ilova .mijoz-tel { gap: 12px; }
+  .ilova .mt-qidiruv { flex: none; width: 100%; }
+  .ilova .mt-qidiruv input { min-height: 52px; border-radius: 14px; font-size: 16px; padding-left: 46px; }
+  .ilova .mt-qidiruv .tugma-ikon { left: 14px; width: 22px; height: 22px; color: var(--oq); z-index: 1; }
+  .ilova .blok.mt-sonlar { display: grid; grid-template-columns: 1fr 1fr; padding: 14px 0; border-radius: 16px; }
+  .mt-sonlar > div { display: flex; flex-direction: column; gap: 6px; padding: 0 18px; }
+  .mt-sonlar > div + div { border-left: 1px solid rgba(255, 255, 255, .18); }
+  .mt-sonlar small { font-size: 15px; font-weight: 500; color: #E6E2DA; }
+  .mt-sonlar b { font-size: 28px; font-weight: 700; line-height: 1; color: var(--oq); }
+  .mt-chiplar { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; }
+  .mt-chiplar::-webkit-scrollbar { display: none; }
+  .ilova .mt-chiplar button { flex: none; display: inline-flex; align-items: center; gap: 8px; min-height: 42px; padding: 0 16px; border-radius: 21px; border: 1px solid rgba(255, 255, 255, .24);
+    background: var(--sh-yalt), var(--yuza-1); box-shadow: none; color: var(--oq); font-size: 15px; font-weight: 600; white-space: nowrap; }
+  .ilova .mt-chiplar button.faol { background: linear-gradient(120deg, #E9C685, #C79A4F); border-color: #EAC98E; color: #1B1510; }
+  .mt-royxat { display: flex; flex-direction: column; gap: 10px; margin: 0; padding: 0; list-style: none; }
+  .ilova button.mt-qator { display: flex; align-items: center; gap: 14px; width: 100%; min-height: 76px; margin: 0; padding: 10px 12px; border-radius: 16px; text-align: left;
+    border-color: rgba(255, 255, 255, .24); border-top-color: rgba(255, 236, 205, .38); color: var(--oq); }
+  .ilova button.mt-qator:hover:not(:disabled) { filter: none; }
+  .mt-harf { flex: none; display: grid; place-items: center; width: 52px; height: 52px; border-radius: 12px; border: 1px solid rgba(243, 191, 112, .45); background: rgba(243, 191, 112, .14);
+    color: #F6DDB0; font-size: 19px; font-weight: 700; }
+  .mt-harf.qora { border-color: rgba(240, 128, 137, .6); background: rgba(240, 128, 137, .18); color: #FFD9DC; }
+  .mt-matn { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+  .mt-matn b { font-size: 17.5px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .mt-matn small { font-size: 15px; color: #E6E2DA; }
+  .ilova .mt-matn small.mijoz-qoldiq { color: #FFB9BF; font-weight: 600; }
+  .mt-zakaz { flex: none; display: inline-flex; align-items: center; gap: 7px; padding: 6px 10px; border-radius: 9px; border: 1px solid rgba(255, 255, 255, .22); font-size: 14.5px; font-weight: 600; white-space: nowrap; }
+  .mt-zakaz .nav-ikon { width: 18px; height: 18px; color: var(--tilla); }
+}
+@media (max-width: 767px) {
+  .mt-matn small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* Mijoz profili (telefon, maket): «‹ Mijoz profili», bosh karta (bosh harflar, ism, telefon, belgilar), keng «Yangi zakaz»; ko'rsatkichlar — qatorlar */
+  .ilova .mijoz-karta > .mijoz-sarlavha { display: grid; grid-template-columns: 64px minmax(0, 1fr); align-items: center; gap: 12px 14px; padding: 12px 14px 14px; border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, .24); border-top-color: rgba(255, 236, 205, .38); background: var(--sh-yalt), var(--yuza-1); }
+  .ilova .mijoz-sarlavha > .karta-orqaga { grid-column: 1 / -1; justify-self: start; display: inline-flex; align-items: center; gap: 10px; width: auto; min-height: 40px; padding: 0 4px 0 0; border: 0;
+    background: none; box-shadow: none; color: var(--oq); font-size: 20px; font-weight: 700; }
+  .ilova .mijoz-sarlavha > .karta-orqaga::after { content: 'Mijoz profili'; }
+  .ilova .mijoz-sarlavha > .mijoz-avatar { width: 64px; height: 64px; border-radius: 14px; font-size: 23px; align-self: start; }
+  .ilova .mijoz-karta > .mijoz-sarlavha h2 { font: 700 21px/1.2 var(--sans); text-shadow: none; overflow-wrap: anywhere; }
+  .ilova .mijoz-sarlavha .mijoz-meta { display: flex; flex-direction: column; align-items: flex-start; gap: 5px; font-size: 15px; }
+  .ilova .mijoz-sarlavha .mijoz-meta a { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; color: var(--tilla); text-decoration: none; font-weight: 600; }
+  .ilova .mijoz-sarlavha > .r2m-yangi { grid-column: 1 / -1; width: 100%; min-height: 54px; border-radius: 14px; justify-content: center; font-size: 17px; font-weight: 700;
+    background: linear-gradient(120deg, #E9C685, #C79A4F); border: 1px solid #EAC98E; color: #1B1510; }
+  .ilova .mijoz-karta > .dash-kpi.mijoz-kpi { display: flex; flex-direction: column; gap: 0; border-radius: 16px; border: 1px solid rgba(255, 255, 255, .24); background: var(--sh-yalt), var(--yuza-1); overflow: hidden; }
+  .ilova .mijoz-karta > .mijoz-kpi .dash-kpi-karta { display: flex; align-items: center; gap: 12px; min-height: 66px; padding: 10px 16px; border: 0; border-radius: 0; background: none; box-shadow: none;
+    -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .ilova .mijoz-karta > .mijoz-kpi .dash-kpi-karta + .dash-kpi-karta { border-top: 1px solid rgba(255, 255, 255, .12); }
+  .ilova .mijoz-karta > .mijoz-kpi .kpi-plitka { position: static; flex: none; }
+  .ilova .mijoz-karta > .mijoz-kpi .dash-kpi-karta .kpi-matn { flex: 1; min-width: 0; display: grid !important; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 2px 12px; padding: 0; }
+  .ilova .mijoz-karta > .mijoz-kpi .kpi-matn .kpi-nom { grid-column: 1; grid-row: 1; padding: 0; font-size: 16px; font-weight: 600; color: var(--oq); }
+  .ilova .mijoz-karta > .mijoz-kpi .dash-kpi-karta .kpi-matn b { grid-column: 2; grid-row: 1 / span 2; font-size: 18px !important; white-space: nowrap; text-align: right; }
+  .ilova .mijoz-karta > .mijoz-kpi .kpi-matn small { grid-column: 1; grid-row: 2; font-size: 13.5px; }
+}
+@media (max-width: 767px) {
+  .ilova .mijoz-sarlavha > .karta-orqaga { width: auto !important; max-width: none; height: auto; white-space: nowrap; }
+  .ilova .mijoz-karta > .mijoz-kpi .dash-kpi-karta { flex-direction: row !important; }
+  .ilova button.mt-qator { gap: 10px; padding: 10px 8px 10px 12px; }
+  .mt-zakaz .nav-ikon { display: none; }
+  .mt-zakaz { padding: 6px 9px; font-size: 14px; }
+}
+@media (max-width: 767px) {
+  /* Ko'rsatkich kartalari (telefon): Aksessuarlar, Sanoq, Salonchilar, Yetkazib beruvchilar, Xarajatlar, sotuvchi bosh ekrani —
+     yirik kartalar o'rniga bitta kartada ixcham qatorlar (ro'yxat birinchi ekranda ko'rinsin) */
+  .ilova .dash-kpi.libos-kpi:not(.kpi-filtrlar) { display: flex; flex-direction: column; gap: 0; border-radius: 16px; border: 1px solid rgba(255, 255, 255, .24); border-top-color: rgba(255, 236, 205, .38);
+    background: var(--sh-yalt), var(--yuza-1); overflow: hidden; }
+  .ilova .dash-kpi.libos-kpi:not(.kpi-filtrlar) .dash-kpi-karta { display: flex; flex-direction: row !important; align-items: center; gap: 12px; min-height: 60px; padding: 8px 16px; border: 0; border-radius: 0;
+    background: none; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+  .ilova .dash-kpi.libos-kpi:not(.kpi-filtrlar) .dash-kpi-karta + .dash-kpi-karta { border-top: 1px solid rgba(255, 255, 255, .12); }
+  .ilova .dash-kpi.libos-kpi:not(.kpi-filtrlar) .kpi-plitka { position: static; flex: none; }
+  .ilova .dash-kpi.libos-kpi:not(.kpi-filtrlar) .dash-kpi-karta .kpi-matn { flex: 1; min-width: 0; display: grid !important; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 1px 12px; padding: 0; }
+  .ilova .dash-kpi.libos-kpi:not(.kpi-filtrlar) .kpi-matn .kpi-nom { grid-column: 1; grid-row: 1; padding: 0; font-size: 15.5px; font-weight: 600; color: var(--oq); }
+  .ilova .dash-kpi.libos-kpi:not(.kpi-filtrlar) .dash-kpi-karta .kpi-matn b { grid-column: 2; grid-row: 1 / span 2; font-size: 18px !important; white-space: nowrap; text-align: right; }
+  .ilova .dash-kpi.libos-kpi:not(.kpi-filtrlar) .kpi-matn small { grid-column: 1; grid-row: 2; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  /* Salonchilar: jadval o'rniga kartalar (bosh harflar, ism, salon; o'ngda mijozlar soni va ›) */
+  .ilova .salonchi-jadval, .ilova .salonchi-jadval tbody { display: block; width: 100%; }
+  .ilova .salonchi-jadval thead { display: none; }
+  .ilova .salonchi-jadval tbody { display: flex; flex-direction: column; gap: 10px; }
+  .ilova .salonchi-jadval tr { display: flex; align-items: center; gap: 10px; min-height: 76px; padding: 10px 12px; border-radius: 16px; border: 1px solid rgba(255, 255, 255, .24); border-top-color: rgba(255, 236, 205, .38);
+    background: var(--sh-yalt), var(--yuza-1); }
+  .ilova .salonchi-jadval tr.tanlangan { border-color: var(--tilla); }
+  .ilova .salonchi-jadval td { display: block; padding: 0; border: 0; background: none; }
+  .ilova .salonchi-jadval td:first-child { flex: 1; min-width: 0; }
+  .ilova .salonchi-jadval td.tor-yashir, .ilova .salonchi-jadval .salonchi-bar, .ilova .salonchi-jadval .salonchi-orin, .ilova .salonchi-jadval td.ong { display: none; }
+  .ilova .salonchi-jadval .salonchi-nom { display: flex; align-items: center; gap: 12px; width: 100%; padding: 0; border: 0; background: none; box-shadow: none; text-align: left; color: var(--oq); }
+  .ilova .salonchi-jadval .soz-avatar { flex: none; width: 52px; height: 52px; border-radius: 12px; font-size: 19px; }
+  .ilova .salonchi-jadval .soz-matn b { font-size: 17.5px; font-weight: 600; }
+  .ilova .salonchi-jadval .soz-matn small { font-size: 14.5px; color: #E6E2DA; white-space: normal; }
+  .ilova .salonchi-jadval .salonchi-son { display: inline-flex; align-items: center; padding: 6px 10px; border-radius: 9px; border: 1px solid rgba(255, 255, 255, .22); font-size: 14px; font-weight: 600; white-space: nowrap; }
+  .ilova .salonchi-jadval .salonchi-son::after { content: ' mijoz'; white-space: pre; }
+  .ilova .salonchi-jadval tr::after { content: '›'; flex: none; font-size: 26px; line-height: 1; color: var(--oq); padding: 0 4px 3px; }
+  .ilova .salonchi-royxat { padding: 12px; }
+  /* Yetkazib beruvchilar: har biri alohida karta — nom, izoh; ostida «Qarz balansi» qatori */
+  .ilova .yb-royxat { padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+  .ilova .yb-royxat .yetkazib-qator { padding: 0; border: 1px solid rgba(255, 255, 255, .24); border-top-color: rgba(255, 236, 205, .38); border-radius: 16px; background: var(--sh-yalt), var(--yuza-1); }
+  .ilova .yb-royxat .yetkazib-qator.tanlangan { border-color: var(--tilla); }
+  .ilova .yb-royxat .yb-tugma { display: grid; grid-template-columns: 52px minmax(0, 1fr); align-items: center; gap: 8px 12px; width: 100%; padding: 12px; border: 0; background: none; box-shadow: none; text-align: left; color: var(--oq); }
+  .ilova .yb-royxat .aks-plitka { width: 52px; height: 52px; border-radius: 12px; }
+  .ilova .yb-royxat .soz-matn b { font-size: 17.5px; font-weight: 600; }
+  .ilova .yb-royxat .soz-matn small { font-size: 14.5px; color: #E6E2DA; white-space: normal; }
+  .ilova .yb-royxat .yb-qarz { grid-column: 1 / -1; display: flex; flex-direction: row; align-items: center; justify-content: space-between; gap: 12px; padding-top: 10px; border-top: 1px solid rgba(255, 255, 255, .12); text-align: left; }
+  .ilova .yb-royxat .yb-qarz b { order: 2; font-size: 17px; white-space: nowrap; }
+  .ilova .yb-royxat .yb-qarz small { order: 1; font-size: 14.5px; color: #E6E2DA; }
+}
+@media (max-width: 767px) {
+  /* Sanoq (yopiq holat): matn to'liq kenglikda, ostida filial tanlovi va keng tugma */
+  .ilova .sanoq-holat { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: start; gap: 12px; padding: 16px; }
+  .ilova .sanoq-holat .sanoq-nuqta { margin-top: 6px; }
+  .ilova .sanoq-holat .sanoq-holat-matn b { font-size: 18px; }
+  .ilova .sanoq-holat .sanoq-holat-matn small { font-size: 14.5px; line-height: 1.45; }
+  .ilova .sanoq-holat > select, .ilova .sanoq-holat > button { grid-column: 1 / -1; width: 100%; min-height: 52px; }
+  .ilova .sanoq-holat > .bosh-tugma { min-height: 58px; }
+}
+@media (max-width: 767px) {
+  /* Liboslar (telefon): ko'rsatkich-filtrlar — yonga suriladigan ixcham tasma; filtrlar: qidiruv tepada, kategoriya va o'lcham chiplari bir qatorda */
+  .ilova .libos-sahifa > .dash-kpi.libos-kpi.kpi-filtrlar { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; margin: 0 -12px; padding: 0 12px; }
+  .ilova .libos-sahifa > .libos-kpi.kpi-filtrlar::-webkit-scrollbar { display: none; }
+  .ilova .libos-sahifa > .libos-kpi.kpi-filtrlar .dash-kpi-karta { flex: none; min-width: 148px; min-height: 0; padding: 10px 14px; border-radius: 14px; }
+  .ilova .libos-sahifa > .libos-kpi.kpi-filtrlar .kpi-plitka { display: none; }
+  .ilova .libos-sahifa > .libos-kpi.kpi-filtrlar .kpi-matn { padding: 0; gap: 4px; }
+  .ilova .libos-sahifa > .libos-kpi.kpi-filtrlar .kpi-matn .kpi-nom { padding: 0; font-size: 14.5px; white-space: nowrap; }
+  .ilova .libos-sahifa > .libos-kpi.kpi-filtrlar .kpi-matn b { font-size: 22px; }
+  .ilova .libos-sahifa > .libos-kpi.kpi-filtrlar .kpi-matn small { display: none; }
+  .ilova .libos-sahifa .jadval-panel > .jadval-asboblar { display: flex; flex-wrap: wrap; gap: 8px; padding: 12px; }
+  .ilova .libos-sahifa .jadval-asboblar .libos-qidiruv { order: -2; flex: 1 1 100%; }
+  .ilova .libos-sahifa .jadval-asboblar .libos-qidiruv input { min-height: 50px; border-radius: 14px; font-size: 16px; padding-left: 44px; }
+  .ilova .libos-sahifa .jadval-asboblar .libos-qidiruv .tugma-ikon { left: 14px; width: 20px; height: 20px; color: var(--tilla); z-index: 1; }
+  .ilova .libos-sahifa .jadval-asboblar > .tezkor-tablar { order: -1; flex: 1 1 100%; display: flex; flex-wrap: nowrap !important; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 0; border: 0; background: none; }
+  .ilova .libos-sahifa .jadval-asboblar > .tezkor-tablar::-webkit-scrollbar, .ilova .libos-sahifa .r2-olcham-chiplar::-webkit-scrollbar { display: none; }
+  .ilova .libos-sahifa .jadval-asboblar > .tezkor-tablar button { flex: none; min-height: 42px; padding: 0 16px; border-radius: 21px; border: 1px solid rgba(255, 255, 255, .24); background: var(--sh-yalt), var(--yuza-1);
+    color: var(--oq); font-size: 15px; font-weight: 600; white-space: nowrap; }
+  .ilova .libos-sahifa .jadval-asboblar > .tezkor-tablar button.faol { background: linear-gradient(120deg, #E9C685, #C79A4F); border-color: #EAC98E; color: #1B1510; }
+  .ilova .libos-sahifa .jadval-asboblar > select[aria-label="Holat"] { display: none; }
+  .ilova .libos-sahifa .jadval-asboblar > select, .ilova .libos-sahifa .jadval-asboblar > button.ikkinchi { flex: 1 1 0; min-width: 0; min-height: 44px; }
+  .ilova .libos-sahifa .r2-olcham-chiplar.tor-filtr { display: flex; flex-wrap: nowrap; align-items: center; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 0 12px 12px; }
+  .ilova .libos-sahifa .r2-olcham-chiplar.tor-filtr > * { flex: none; }
+  .ilova .libos-sahifa .r2-katalog-eslatma { font-size: 14px; }
+}
+@media (max-width: 767px) {
+  .ilova .oyna.oyna-yon > .oyna-bosh { background: #241C17; border-bottom: 1px solid rgba(255, 255, 255, .14); padding: 14px 16px; }
+  .ilova .oyna.oyna-yon > .oyna-bosh .oyna-bosh-matn p { font-size: 14px; color: #E6E2DA; }
+  .ilova .libos-sahifa > .dash-kpi.libos-kpi.kpi-filtrlar { display: flex !important; flex-direction: row !important; flex-wrap: nowrap; grid-template-columns: none; }
+  .ilova .libos-sahifa > .libos-kpi.kpi-filtrlar .dash-kpi-karta { width: auto; }
+}
+@media (max-width: 767px) {
+  .ilova .libos-sahifa > .libos-kpi.kpi-filtrlar .dash-kpi-karta { min-height: 0 !important; height: auto; }
+  .ilova .libos-sahifa > .libos-kpi.kpi-filtrlar .dash-kpi-karta .kpi-matn { display: flex !important; flex-direction: column; align-items: flex-start; }
+}
+@media (max-width: 767px) {
+  /* sotuvchi: filial — tanlov emas, oddiy belgi; u ham moslashuvchan bo'lsin (qo'ng'iroqcha ikkinchi qatorga tushib qolgan edi) */
+  .ilova .ustki > .filial-pill { flex: 1 1 0; min-width: 0; width: auto; max-width: 200px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+  /* Sotuvchi bosh ekrani (maket «Bugungi ishlar»): ko'rsatkichlar — 2×2 plitkalar; ishlar jadvali — kartalar */
+  .ilova .xodim-bosh .dash-kpi.libos-kpi:not(.kpi-filtrlar) { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; border: 0; background: none; border-radius: 0; overflow: visible; }
+  .ilova .xodim-bosh .dash-kpi.libos-kpi:not(.kpi-filtrlar) .dash-kpi-karta { flex-direction: column !important; align-items: flex-start; gap: 8px; min-height: 0; padding: 14px; border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, .24) !important; border-top-color: rgba(255, 236, 205, .38) !important; background: var(--sh-yalt), var(--yuza-1); }
+  .ilova .xodim-bosh .dash-kpi.libos-kpi:not(.kpi-filtrlar) .dash-kpi-karta.xavf { border-color: rgba(240, 128, 137, .6) !important; }
+  .ilova .xodim-bosh .dash-kpi.libos-kpi:not(.kpi-filtrlar) .dash-kpi-karta .kpi-matn { display: flex !important; flex-direction: column; align-items: flex-start; gap: 4px; width: 100%; }
+  .ilova .xodim-bosh .dash-kpi.libos-kpi:not(.kpi-filtrlar) .dash-kpi-karta .kpi-matn b { font-size: 30px !important; line-height: 1; text-align: left; }
+  .ilova .xodim-bosh .dash-kpi.libos-kpi .dash-kpi-karta.xavf .kpi-matn b { color: #FFB9BF; }
+  .ilova .xodim-ish-jadval, .ilova .xodim-ish-jadval tbody { display: block; width: 100%; }
+  .ilova .xodim-ish-jadval thead { display: none; }
+  .ilova .xodim-ish-jadval tbody { display: flex; flex-direction: column; gap: 10px; }
+  .ilova .xodim-ish-jadval tr { display: grid; grid-template-columns: 68px minmax(0, 1fr) auto; align-items: center; gap: 4px 12px; padding: 12px; border-radius: 14px; border: 1px solid rgba(255, 255, 255, .2);
+    background: rgba(255, 255, 255, .04); }
+  .ilova .xodim-ish-jadval tr.kech { border-color: rgba(240, 128, 137, .45); }
+  .ilova .xodim-ish-jadval td { display: block; padding: 0; border: 0; background: none; min-width: 0; text-align: left; }
+  .ilova .xodim-ish-jadval td:nth-child(1) { grid-column: 1; grid-row: 1 / span 2; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 56px; padding: 6px 4px; border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, .22); text-align: center; }
+  .ilova .xodim-ish-jadval .xodim-vaqt { font-size: 14.5px; white-space: nowrap; }
+  .ilova .xodim-ish-jadval .xodim-tur { font-size: 12px; white-space: nowrap; }
+  .ilova .xodim-ish-jadval .xodim-tur .tugma-ikon { display: none; }
+  .ilova .xodim-ish-jadval td:nth-child(2) { grid-column: 2; grid-row: 1; }
+  .ilova .xodim-ish-jadval td:nth-child(2) b { font-size: 17px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+  .ilova .xodim-ish-jadval td:nth-child(2) small { font-size: 14px; }
+  .ilova .xodim-ish-jadval td:nth-child(3) { grid-column: 2; grid-row: 2; display: block !important; }
+  .ilova .xodim-ish-jadval td:nth-child(3) img, .ilova .xodim-ish-jadval td:nth-child(3) .sanoq-plitka, .ilova .xodim-ish-jadval td:nth-child(3) small { display: none; }
+  .ilova .xodim-ish-jadval td:nth-child(3) b { font-size: 14px; font-weight: 500; color: #E6E2DA; }
+  .ilova .xodim-ish-jadval td:nth-child(4) { grid-column: 3; grid-row: 1; text-align: right; font-size: 14.5px; }
+  .ilova .xodim-ish-jadval td:nth-child(5) { grid-column: 3; grid-row: 2; text-align: right; }
+  .ilova .xodim-ish-jadval .xodim-amal { min-height: 40px; padding: 0 14px; border-radius: 10px; font-size: 14.5px; white-space: nowrap; }
+  .ilova .xodim-jadval { padding: 14px 12px; }
+}
+@media (max-width: 767px) {
+  .ilova .xodim-ish-jadval td:nth-child(2) { grid-column: 2 / 4; }
+  .ilova .xodim-ish-jadval td:nth-child(4) { grid-column: 2 / 4; grid-row: 3; text-align: left; }
+  .ilova .xodim-ish-jadval td:nth-child(4):has(> .soz-mute) { display: none; }
+  .ilova .xodim-ish-jadval td:nth-child(4) b::before { content: 'Qoldiq '; font-weight: 500; color: #E6E2DA; }
+}
+.mk-tablar, .yz-tel-bosh { display: none; }
+@media (max-width: 767px) {
+  /* Mijoz profili: tablar (maket) */
+  .mk-tablar { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 4px; border-radius: 14px; border: 1px solid rgba(255, 255, 255, .24); background: var(--sh-yalt), var(--yuza-1); }
+  .ilova .mk-tablar button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 46px; border: 0; border-radius: 10px; background: none; box-shadow: none; color: var(--oq); font-size: 16px; font-weight: 600; }
+  .ilova .mk-tablar button .nav-ikon { width: 20px; height: 20px; }
+  .ilova .mk-tablar button.faol { background: linear-gradient(120deg, #E9C685, #C79A4F); color: #1B1510; }
+  .ilova .mk-tab-zakazlar :is(.mijoz-varaq, details.amal) { display: none; }
+  .ilova .mk-tab-malumot :is(.mijoz-keyingi, .karta-tolovlar) { display: none; }
+  /* Yangi zakaz: uch qadamli tasma o'rnida sarlavha qatori */
+  .ilova .kassa-yangi .yz-qadamlar { display: none; }
+  .yz-tel-bosh { display: flex; align-items: center; gap: 10px; min-height: 44px; }
+  .ilova .yz-tel-bosh button { width: 44px; height: 44px; min-height: 44px; padding: 0; border-radius: 12px; border: 1px solid rgba(255, 255, 255, .24); background: var(--sh-yalt), var(--yuza-1); box-shadow: none; color: var(--oq);
+    display: grid; place-items: center; }
+  .yz-tel-bosh b { flex: 1; font-size: 21px; font-weight: 700; color: var(--oq); }
+  .yz-tel-bosh span { padding: 5px 10px; border-radius: 9px; border: 1px solid rgba(255, 255, 255, .24); font-size: 14px; font-weight: 600; color: #F6DDB0; }
+  /* Oylik foyda: ko'rsatkichlar 2 ustunda */
+  .ilova .dash-kpi.pnl-kpi { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .ilova .dash-kpi.pnl-kpi .dash-kpi-karta { padding: 12px; }
+  .ilova .dash-kpi.pnl-kpi .kpi-matn b { font-size: 17px !important; white-space: nowrap; letter-spacing: -.01em; }
+  .ilova .dash-kpi.pnl-kpi .kpi-matn small { font-size: 12.5px; }
+}
+@media (max-width: 767px) {
+  /* Bo'lim amali («+ … qo'shish», maket): tablar tepada qoladi, keng tilla tugma — sahifa oxirida */
+  .ilova > main { display: flex; flex-direction: column; }
+  .ilova > main > * { flex: none; min-width: 0; }
+  .ilova > main > .bolim-qator { display: contents; }
+  .ilova > main > .bolim-qator > .ichki-segment { margin-bottom: 14px; }
+  .ilova > main > .bolim-qator > .bolim-amal { order: 99; margin-top: 14px; }
+  .ilova > main > .bolim-qator > .bolim-amal:empty { display: none; }
+  /* Libos sahifasi (ro'yxatdagi kartani bosganda): rasm tepada va yirik, keyin ma'lumot */
+  .ilova .libos-tafsilot > .stack { display: flex; flex-direction: column; }
+  .ilova .libos-tafsilot > .stack > .stack:has(img) { order: -1; }
+  .ilova .libos-tafsilot > .stack > .stack:has(img) img { width: 100%; max-width: 220px; height: auto; aspect-ratio: 2 / 3; object-fit: cover; border-radius: 14px; }
+  .ilova .libos-tafsilot .libos-tafsilot-bosh h3 { font-size: 22px; font-weight: 700; }
+}

@@ -33,6 +33,11 @@ export const bolim = (page, nom) => page.getByRole('navigation', { name: "Bo'lim
 export async function bolimga(page, nom) {
   const nav = page.getByRole('navigation', { name: "Bo'limlar" })
   const asosiy = nav.getByRole('button', { name: 'Asosiy', exact: true })
-  if (await asosiy.isVisible()) await asosiy.click()
-  await nav.getByRole('button', { name: nom, exact: true }).click()
+  const tugma = nav.getByRole('button', { name: nom, exact: true })
+  // kenglik endigina o'zgargan bo'lsa (skrinshotdan keyin) chap panel bir lahzadan so'ng bo'lim ro'yxatiga aylanadi — qayta uriniladi
+  for (let i = 0; i < 3; i++) {
+    if (await asosiy.isVisible()) await asosiy.click()
+    try { await tugma.click({ timeout: 3000 }); return } catch { /* panel almashdi — yana */ }
+  }
+  await tugma.click()
 }

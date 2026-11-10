@@ -57,7 +57,7 @@ export function Qadam({ qiymat, onChange, nomi, min = 0, max = Infinity, qadam =
   )
 }
 
-// Belgilanadigan karta (zalog turlari): katak + nom + izoh
+// Belgilanadigan karta (garov turlari): katak + nom + izoh
 export function BelgiKarta({ checked, onChange, nomi, izoh }) {
   return (
     <label className={`soz-belgi${checked ? ' on' : ''}`}>

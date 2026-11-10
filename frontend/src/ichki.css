@@ -1294,7 +1294,7 @@ label > .info .info-matn, th .info .info-matn { left: auto; right: 0; }
   .karta-asosiy .varaq-sana b { font-size: 44px; }
 }
 
-/* To'lovlar va zaloglar: nomi va kim/qanday — chapda, summa — o'ngda */
+/* To'lovlar va garovlar: nomi va kim/qanday — chapda, summa — o'ngda */
 .tolov-qator { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: start; gap: 6px var(--o-4); padding: 10px 0; border-top: 1px solid var(--chegara); }
 .karta-tolovlar h3 + .tolov-qator, .karta-tolovlar .malumot + .tolov-qator { border-top: 0; }
 .tolov-nom { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
@@ -1772,7 +1772,7 @@ label > .info .info-matn, th .info .info-matn { left: auto; right: 0; }
 .ilova .tolov-tanlov .pos-tez button[aria-pressed='true'] { border-color: var(--tilla); color: var(--tilla); }
 .tolov-tanlov-xato { margin: 0; }
 
-/* A-16: qaytarishda mijozga qaytadigan pul zalog — formaning eng ko'zga ko'rinadigan qatori */
+/* A-16: qaytarishda mijozga qaytadigan pul garov — formaning eng ko'zga ko'rinadigan qatori */
 .zalog-qaytadi { margin: 0; padding: var(--o-2) var(--o-3); border-left: 3px solid var(--tilla); background: var(--tilla-xira);
   border-radius: 0 var(--r-1) var(--r-1) 0; font-size: 14px; color: var(--oq); }
 .zalog-qaytadi b { color: var(--tilla); font-weight: 600; }
@@ -2071,7 +2071,7 @@ label > .info .info-matn, th .info .info-matn { left: auto; right: 0; }
 /* ── Mijoz kartasi: «Yangi zakaz» sarlavha qatorida ── */
 .karta-bosh .r2m-yangi { flex: none; }
 
-/* ── Hisobot ostidagi qo'shimcha jadval (Zaloglar — turi bo'yicha) ── */
+/* ── Hisobot ostidagi qo'shimcha jadval (Garovlar — turi bo'yicha) ── */
 .r2h-qoshimcha { display: flex; flex-direction: column; gap: var(--o-2); border-top: 1px solid var(--chegara); padding-top: var(--o-3); }
 .r2h-qoshimcha h4 { margin: 0; }
 

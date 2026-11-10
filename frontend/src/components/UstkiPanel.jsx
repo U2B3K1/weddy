@@ -11,9 +11,10 @@ const bugunMatn = () => { const d = new Date(); return `${d.getDate()} ${OYLAR[d
 
 // Kontent ustidagi yuqori panel (barcha sahifalarda): chapda sahifa nomi, o'ngda zakaz qidiruvi,
 // bildirishnomalar (rahbarga: qaror kutayotganlar va ogohlantirishlar) va xodim menyusi.
-export default function UstkiPanel({ sarlavha, izoh, xulosa, xulosaRef, amal, xodim, rahbar, xabarlar, sozlash, qarorSoni, onQarorOzgardi, onQidir, onBolim, onChiqish, onRasm, onRasmOchir, onKassa, onFilialOzgardi }) {
+export default function UstkiPanel({ ikon, telefonNomi, sarlavha, izoh, xulosa, xulosaRef, amal, xodim, rahbar, xabarlar, sozlash, qarorSoni, onQarorOzgardi, onQidir, onBolim, onChiqish, onRasm, onRasmOchir, onKassa, onFilialOzgardi }) {
   const [q, setQ] = useState('')
   const [ochiq, setOchiq] = useState(null) // 'xabar' | null
+  const [qidirOchiq, setQidirOchiq] = useState(false)  // telefon: qidiruv maydoni lupa bosilganda ochiladi (maket)
   const joy = useRef(null)
   useEffect(() => {
     if (!ochiq) return undefined
@@ -27,7 +28,8 @@ export default function UstkiPanel({ sarlavha, izoh, xulosa, xulosaRef, amal, xo
 
   const rol = rahbar ? 'Rahbar' : xodim.rol === 'kassir' ? 'Kassir' : 'Sotuvchi'
   // Rahbar qarorlari (chegirma, xarajat, yangi libos) — menyuning o'zida hal qilinadi; dashboardda alohida blok yo'q
-  const qarorJami = rahbar && qarorSoni ? qarorSoni.chegirmalar + qarorSoni.xarajatlar + qarorSoni.liboslar : 0
+  const katalogKutmoqda = (qarorSoni?.liboslar || 0) + (qarorSoni?.aksessuarlar || 0)  // tasdiq kutayotgan libos va aksessuarlar
+  const qarorJami = rahbar && qarorSoni ? qarorSoni.chegirmalar + qarorSoni.xarajatlar + katalogKutmoqda : 0
   const [qarorlar, setQarorlar] = useState(null)
   const qarorYukla = useCallback(() => Promise.all([chegirmaSorovlari(), xarajatlar({ holat: 'kutilmoqda' })])
     .then(([sorovlar, xarajat]) => setQarorlar({ sorovlar, xarajat })).catch(() => {}), [])
@@ -37,22 +39,27 @@ export default function UstkiPanel({ sarlavha, izoh, xulosa, xulosaRef, amal, xo
     qarorYukla()
     onQarorOzgardi?.()
   }, [rahbar, ochiq, qarorYukla])  // eslint-disable-line react-hooks/exhaustive-deps
-  const qarorKorinadi = rahbar && ((qarorlar && qarorlar.sorovlar.length + qarorlar.xarajat.length > 0) || (qarorSoni?.liboslar || 0) > 0)
-  const qarorSon = qarorlar ? qarorlar.sorovlar.length + qarorlar.xarajat.length + (qarorSoni?.liboslar || 0) : qarorJami
+  const qarorKorinadi = rahbar && ((qarorlar && qarorlar.sorovlar.length + qarorlar.xarajat.length > 0) || katalogKutmoqda > 0)
+  const qarorSon = qarorlar ? qarorlar.sorovlar.length + qarorlar.xarajat.length + katalogKutmoqda : qarorJami
   const soni = xabarlar.reduce((s, x) => s + x.soni, 0) + (sozlash?.qolgan.length || 0) + qarorJami
   const bor = (x) => () => { setOchiq(null); onBolim(x.bolim, x) }
 
   return (
     <header className="ustki" ref={joy}>
       <div className="ustki-nom">
-        <h1>{sarlavha}</h1>
+        {/* Telefon (maket): sarlavha oldida bo'lim belgisi; rahbar bosh sahifasida salom o'rnida «Rahbar paneli» */}
+        <h1>{ikon && <NavIkona nom={ikon} className="ustki-nom-ikon" />}
+          {telefonNomi ? <><span className="nom-keng">{sarlavha}</span><span className="nom-tor">{telefonNomi[0]}</span></> : sarlavha}</h1>
+        {telefonNomi && <p className="nom-tor nom-tor-izoh">{telefonNomi[1]}</p>}
         {izoh && <p>{izoh}</p>}
         {/* Kanvas: sarlavha ostida bir qatorli xulosa — statik (App) yoki sahifaning o'zi qo'yadi (BoshXulosa, ref orqali) */}
         <div className="ustki-xulosa" ref={xulosaRef}>{xulosa && <span>{xulosa}</span>}</div>
         {amal}
       </div>
-      <form className="qidiruv-maydon ustki-qidiruv" role="search"
-        onSubmit={(e) => { e.preventDefault(); if (q.trim()) { onQidir(q.trim()); setQ('') } }}>
+      <button type="button" className="ustki-tugma ustki-qidir-tugma" aria-label="Zakaz qidirish" aria-expanded={qidirOchiq}
+        onClick={() => setQidirOchiq(!qidirOchiq)}><NavIkona nom="qidiruv" className="tugma-ikon" /></button>
+      <form className={`qidiruv-maydon ustki-qidiruv${qidirOchiq ? ' ochiq' : ''}`} role="search"
+        onSubmit={(e) => { e.preventDefault(); if (q.trim()) { onQidir(q.trim()); setQ(''); setQidirOchiq(false) } }}>
         <NavIkona nom="qidiruv" className="tugma-ikon" />
         <input type="search" placeholder="Zakaz: raqam, telefon yoki ism" aria-label="Zakaz qidirish" value={q} onChange={(e) => setQ(e.target.value)} />
       </form>

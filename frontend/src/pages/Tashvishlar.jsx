@@ -1,4 +1,4 @@
-// "Imkoniyatlar" bo'limi — Orano "Innovation" slayderi uslubida. Avvalgi «Uch tashvish» (Bron / Zalog / Foyda) va
+// "Imkoniyatlar" bo'limi — Orano "Innovation" slayderi uslubida. Avvalgi «Uch tashvish» (Bron / Garov / Foyda) va
 // «Imkoniyatlar» o'yin kartalari shu bitta slayderga birlashtirilgan: 8 slayd, har birida salonning bitta tashvishi
 // (shior) va tizimning shu bo'yicha to'rtta imkoniyati. Ma'lumot takrorlanmaydi — har imkoniyat faqat bir joyda.
 //
@@ -23,12 +23,12 @@ import './tashvishlar.css'
 const SLAYDLAR = [
   { nom: 'Bron', obraz: 'Atlas ko\'ylak va zarchopon', joy: 'Saroy zali', x: 38, y: 90, h: 62, shior: 'Bitta libos — ikki kelin emas',
     qatorlar: ["Band libos ikkinchi marta bron bo'lmaydi — buni tizim o'zi tekshiradi", 'Kalendar va bandlik bir qarashda', 'Tozalash uchun bufer kunlar'] },
-  { nom: 'Zakaz', obraz: 'Buxoro zardo\'zi libosi', joy: 'Saroy zinasi', x: 37, y: 88, h: 60, shior: 'Zalog kimda qolgani — yozilgan',
-    qatorlar: ['Avans, qoldiq va qarz', 'Pul, hujjat yoki tillo zalog — har biri yorliq bilan', 'Berish va qaytarish', 'Shartnoma va kvitansiya'] },
+  { nom: 'Zakaz', obraz: 'Buxoro zardo\'zi libosi', joy: 'Saroy zinasi', x: 37, y: 88, h: 60, shior: 'Garov kimda qolgani — yozilgan',
+    qatorlar: ['Avans, qoldiq va qarz', 'Pul, hujjat yoki tillo garov — har biri yorliq bilan', 'Berish va qaytarish', 'Shartnoma va kvitansiya'] },
   { nom: 'Katalog', obraz: 'Oq to\'y libosi va do\'ppi', joy: 'Primerka xonasi', x: 38.5, y: 82, h: 54, shior: 'Har libosning o\'z pasporti',
     qatorlar: ["Rasm, o'lcham va narx", 'Aksessuarlar donalab', "Ta'mir jurnali", 'Raqamli manekin'] },
   { nom: 'Kassa', obraz: 'Xorazm libosi va taxya', joy: 'Gumbazli zal', x: 33, y: 92, h: 60, shior: 'Kun oxirida kassa to\'g\'ri chiqadi',
-    qatorlar: ['Smena ochish va yopish', 'Naqd, karta, Click, Payme', "Zalog tekshiruvi: har biri «joyida» deb belgilanadi", 'Inkassatsiya'] },
+    qatorlar: ['Smena ochish va yopish', 'Naqd, karta, Click, Payme', "Garov tekshiruvi: har biri «joyida» deb belgilanadi", 'Inkassatsiya'] },
   { nom: 'Foyda', obraz: 'Atlas ko\'ylak va kashtali nimcha', joy: 'Peshtoq', x: 34, y: 92, h: 60, shior: 'Oy oxirida foyda qancha',
     qatorlar: ["Oylik foyda-zarar o'zi chiqadi: tushum va xarajat", '16 ta hisobot', 'Sotuvchi bonusi', 'Oyni yopish'] },
   { nom: 'Mijozlar', obraz: 'Surxon libosi, kelin salom', joy: 'Madrasa hovlisi', x: 36, y: 89, h: 58, shior: 'Har kelin — tanish mijoz',

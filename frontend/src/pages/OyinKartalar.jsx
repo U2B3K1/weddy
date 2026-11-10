@@ -1,5 +1,5 @@
 // "Kartalar" bo'limi — Lusion /about sahifasidagi "Area of Expertise" kartalari uslubida.
-// Kino bo'limidagi uch ma'lumot (Bron, Zalog, Foyda) uchta o'yin kartasiga joylangan:
+// Kino bo'limidagi uch ma'lumot (Bron, Garov, Foyda) uchta o'yin kartasiga joylangan:
 // boshida kartalar dasta bo'lib turadi (orqa tomoni — tilla naqsh va arkada kelin libosi),
 // aylantirganda yelpig'ichdek yoyiladi, orqadan tilla lenta chiziladi, keyin kartalar birin-ketin
 // ag'darilib, old tomonidagi ma'lumot ochiladi. Kursor karta ustida — karta unga qarab egiladi;
@@ -13,7 +13,7 @@ import './kartalar.css'
 const KARTALAR = [
   { nom: 'Bron', harf: 'B', rasm: '/kelinlar/1.jpg', shior: 'Bitta libos — ikki kelin emas',
     qatorlar: ['Daftarda sana chalkashadi.', "Libosada band libosni ikkinchi marta bron qilib bo'lmaydi.", "Buni tizimning o'zi tekshiradi."] },
-  { nom: 'Zalog', harf: 'Z', rasm: '/kelinlar/2.jpg', shior: 'Zalog kimda qolgani',
+  { nom: 'Garov', harf: 'Z', rasm: '/kelinlar/2.jpg', shior: 'Garov kimda qolgani',
     qatorlar: ['Pul, hujjat yoki tillo —', 'har biri yorliq bilan yoziladi', "va kun oxirida «joyida» deb belgilanadi."] },
   { nom: 'Foyda', harf: 'F', rasm: '/kelinlar/3.jpg', shior: 'Oy oxirida foyda qancha',
     qatorlar: ['Tushum va xarajat,', "bonuslar yig'iladi —", "foyda-zarar o'zi chiqadi."] },
@@ -105,7 +105,7 @@ export function OyinKartalar() {
     <div className="rk-kartalar" ref={bolim} id="tashvishlar" data-sahna>
       <div className="rk-kar-yopishqoq">
         <h2 className="rk-kar-sarlavha">Uch tashvish —<br /><em>bitta tizim</em></h2>
-        <p className="rk-kar-izoh">Bron, zalog va foyda — salonning uch og'riqli nuqtasi, Libosada bir joyda
+        <p className="rk-kar-izoh">Bron, garov va foyda — salonning uch og'riqli nuqtasi, Libosada bir joyda
           <br /><i /><i /><i />
         </p>
 

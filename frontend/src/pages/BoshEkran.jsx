@@ -57,7 +57,7 @@ export default function BoshEkran({ onZakaz, onKassa, onBolim, rahbar, yuqori, t
   ] : [
     d.olib_ketiladi.length > 0 && {
       k: 'olib', nom: 'Bugun olib ketadi', ikon: 'chiqdi', soni: d.olib_ketiladi.length,
-      izoh: 'Mijoz kelganda zakazni oching: qoldiqni oling, zalog yozing va libosni bering.',
+      izoh: 'Mijoz kelganda zakazni oching: qoldiqni oling, garov yozing va libosni bering.',
       ichi: <Qatorlar royxat={d.olib_ketiladi} onZakaz={onZakaz}
         ong={(z) => (z.qoldiq > 0 ? <><b>{som(z.qoldiq)}</b><span className="holat-pill vaqt">qoldiq</span></> : <span className="holat-pill bron">To'langan</span>)} />,
     },
@@ -138,6 +138,7 @@ export function Tasdiqlar({ sorovlar, xarajat, soni, onZakaz, onBolim, onOzgardi
   const xarajatRad = (x) => bajar(`x${x.id}`, () => xarajatQaror(x.id, 'rad'))
   const boshqa = [
     soni?.liboslar > 0 && [`${soni.liboslar} ta yangi libos katalogga chiqishini kutmoqda — ko'rish`, 'katalog:liboslar'],
+    soni?.aksessuarlar > 0 && [`${soni.aksessuarlar} ta yangi aksessuar tasdiqni kutmoqda — ko'rish`, 'katalog:aksessuarlar'],
   ].filter(Boolean)
   if (sorovlar.length === 0 && xarajat.length === 0 && boshqa.length === 0) return <p className="malumot jadval-bosh">Qaror kutayotgan narsa yo'q.</p>
   return (

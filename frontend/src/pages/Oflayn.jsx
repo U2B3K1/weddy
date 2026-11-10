@@ -39,7 +39,7 @@ export default function Oflayn() {
       {guruh('Ertaga olib ketiladi', b.filter((x) => x.olib_ketish === d.ertaga && x.holat !== 'berildi'), true)}
       {guruh('Ertaga qaytariladi', b.filter((x) => x.qaytarish === d.ertaga && x.holat === 'berildi'))}
       <section className="blok">
-        <h3>Saqlanayotgan zaloglar ({d.zaloglar.length})</h3>
+        <h3>Saqlanayotgan garovlar ({d.zaloglar.length})</h3>
         {d.zaloglar.length === 0 && <p className="malumot">Yo'q</p>}
         {d.zaloglar.map((g) => (
           <p key={g.yorliq} className="qator-matn">

@@ -58,7 +58,7 @@ const yaqinBron = (sana) => Boolean(sana) && kunlarSoni(bugunIso(), sana) <= 1
 // O'lchamlar: raqamlilari o'sish tartibida, keyin harfli (S, M, L…)
 const olchamTartib = (a, b) => (Number.isNaN(+a) - Number.isNaN(+b)) || (+a - +b) || a.localeCompare(b)
 // «i» matnlari: qo'shish va tahrirlash formalarida bir xil
-const ZALOG_INFO = "Libos berilganda mijozdan olinadigan garov. Berishda pul zalogi summasiga shu son o'zi qo'yiladi. Libos butun qaytsa, zalog to'liq qaytariladi; jarima bo'lsa, avval shundan ushlanadi."
+const ZALOG_INFO = "Libos berilganda mijozdan olinadigan garov. Berishda pul garovi summasiga shu son o'zi qo'yiladi. Libos butun qaytsa, garov to'liq qaytariladi; jarima bo'lsa, avval shundan ushlanadi."
 const TANNARX_INFO = "Libosni sotib olishga ketgan pul. Faqat rahbarga ko'rinadi. «Libos samaradorligi» hisobotidagi qoplash (tushum ÷ tannarx) va yetkazib beruvchiga qarz shundan hisoblanadi."
 const TOLANDI_INFO = "Yetkazib beruvchiga hozir berilgan pul. Bo'sh qoldirsangiz — tannarx to'liq to'langan deb yoziladi; kamroq yozsangiz, qolgani unga qarz bo'lib turadi. Bu pul kassadan chiqmaydi."
 const holatSinfi = (h) => ({ bosh: 'bron', tamirda: 'qarz', tozalashda: 'vaqtinchalik', tasdiq_kutilmoqda: 'vaqtinchalik' }[h] || 'qaytarildi')
@@ -411,7 +411,7 @@ function Tafsilot({ l, rahbar, onSaqla, onRasm, onYashirildi, onZakaz, fil = [],
         <>
           <div className="libos-narxlar">
             <label>Ijara narxi<SummaInput value={f.ijara_narxi} onChange={set('ijara_narxi')} /></label>
-            <label>Zalog<SummaInput value={f.zalog} onChange={set('zalog')} /><Info nom="Zalog">{ZALOG_INFO}</Info></label>
+            <label>Garov<SummaInput value={f.zalog} onChange={set('zalog')} /><Info nom="Garov">{ZALOG_INFO}</Info></label>
             <label>Tannarx<SummaInput value={f.tannarx} onChange={set('tannarx')} /><Info nom="Tannarx">{TANNARX_INFO}</Info></label>
           </div>
           <button onClick={() => onSaqla({
@@ -463,7 +463,7 @@ function Tafsilot({ l, rahbar, onSaqla, onRasm, onYashirildi, onZakaz, fil = [],
             onSaqla={(b) => onSaqla(b, "Libos ma'lumoti saqlandi.")} />
         </>
       ) : (
-        <p>Zalog: {som(l.zalog)}</p>
+        <p>Garov: {som(l.zalog)}</p>
       )}
     </div>
   )
@@ -636,7 +636,7 @@ function LibosForma({ kats, rahbar, ybs = [], onYuborish, onBekor, olchamlar = [
         <legend>Narx</legend>
         <div className="libos-narxlar">
           <label>Ijara narxi{rahbar ? ' *' : ''}<SummaInput value={f.ijara_narxi || ''} onChange={set('ijara_narxi')} /></label>
-          <label>Tavsiya etilgan zalog<SummaInput value={f.zalog || ''} onChange={set('zalog')} /><Info nom="Zalog">{ZALOG_INFO}</Info></label>
+          <label>Tavsiya etilgan garov<SummaInput value={f.zalog || ''} onChange={set('zalog')} /><Info nom="Garov">{ZALOG_INFO}</Info></label>
           {rahbar && (
             <label className="lf-tannarx">Tannarx *<SummaInput value={f.tannarx ?? ''} onChange={set('tannarx')} /><Info nom="Tannarx">{TANNARX_INFO}</Info>
               <small className="soz-mute">faqat rahbar ko'radi</small>

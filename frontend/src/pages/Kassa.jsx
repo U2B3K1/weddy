@@ -58,7 +58,7 @@ const posGuruhi = (x, bugun) => (!['vaqtinchalik', 'bron'].includes(x.holat) ? '
 const SMENA_KERAK = ['tolov', 'xarajat', 'inkassatsiya', 'zalog', 'hisobot']
 
 // 4.12: Kassa — POS ish joyi. Tepada smena paneli (holat, kim ishlayapti, kassadagi naqd, smena amallari),
-// ostida ichki bo'limlar (App'dagi segment): yangi zakaz, to'lov qabul qilish, xarajat, inkassatsiya, zaloglar,
+// ostida ichki bo'limlar (App'dagi segment): yangi zakaz, to'lov qabul qilish, xarajat, inkassatsiya, garovlar,
 // smena hisoboti, tarix. Summalar raqamli klaviaturadan kiritiladi — planshetda barmoq bilan qulay.
 // `onZakaz(id, amal)` (ixtiyoriy, App) — to'lovdan keyin zakaz kartasini ochish; amal 'berish' — berish formasiga
 export default function Kassa({ rahbar, bolim, onBolim, onHolatOzgardi, yangiZakaz, tolovZakaz, onZakaz }) {
@@ -111,6 +111,52 @@ export default function Kassa({ rahbar, bolim, onBolim, onHolatOzgardi, yangiZak
     </>
   )
 
+  // Telefon (maket 2026-11-10): Kassa bosh ekrani — kassadagi naqd, bugungi kirim, Kirim / Chiqim va bo'limlar ro'yxati
+  if (bolim === 'uy' && s.pul_oladi) {
+    const kirim = Object.values(s.usullar || {}).reduce((a, b) => a + b, 0)
+    const usullar = Object.entries(s.usullar || {}).filter(([, v]) => v > 0)
+    const qatorlar = [['hisobot', 'Smena hisoboti', 'hujjat'], ['yangi', 'Yangi zakaz', 'yangi'], ['inkassatsiya', 'Pul topshirish', 'seyf'],
+      ['zalog', 'Garovlar', 'qalqon'], ...(rahbar ? [['tarix', 'Smenalar tarixi', 'tarix']] : [])]
+    const ot = (id) => { onBolim(id); window.scrollTo(0, 0) }
+    return (
+      <div className="pos kassa-tel kassa-uy">
+        <span className={`ku-smena${s.ochiq ? ' ochiq' : ''}`}><i aria-hidden="true" />{s.ochiq ? 'Smena ochiq' : 'Smena yopiq'}</span>
+        {xabar.matn && <p className={xabar.turi === 'xato' ? 'xato' : 'malumot pos-xabar'}>{xabar.matn}</p>}
+        {kutayotgan}
+        <section className="blok tb-karta ku-naqd" aria-label="Kassadagi naqd">
+          <h3><NavIkona nom="kassa" />Kassadagi naqd</h3>
+          {s.ochiq ? <b>{som(s.hisobot.hisobdagi_qoldiq)}</b> : (
+            <>
+              <p className="malumot">Smena yopiq — to'lov qabul qilish uchun smenani oching.</p>
+              <button type="button" className="bosh-tugma" onClick={() => ochOyna('ochish')}>Smenani ochish</button>
+            </>
+          )}
+        </section>
+        {s.ochiq && (
+          <section className="blok tb-karta ku-kirim" aria-label="Bugungi kirim">
+            <h3><NavIkona nom="pastga" />Bugungi kirim</h3>
+            <b>{som(kirim)}</b>
+            <small>{usullar.length ? usullar.map(([u, v]) => `${USUL_NOMI[u] || u} ${som(v)}`).join(' · ') : "Bugun to'lov olinmagan"}</small>
+          </section>
+        )}
+        <div className="tb-juft">
+          <button type="button" className="blok tb-karta ku-amal" onClick={() => ot('tolov')}><NavIkona nom="qosh" /><span>Kirim</span></button>
+          <button type="button" className="blok tb-karta ku-amal" onClick={() => ot('xarajat')}><i className="ku-minus" aria-hidden="true" /><span>Chiqim</span></button>
+        </div>
+        {qatorlar.map(([id, nom, ikon]) => (
+          <button key={id} type="button" className="blok tb-karta tb-qator" onClick={() => ot(id)}>
+            <NavIkona nom={ikon} /><span>{nom}</span><NavIkona nom="ong" className="nav-ikon tb-ong" />
+          </button>
+        ))}
+        {oyna === 'ochish' && (
+          <Oyna sarlavha="Smenani ochish" onYop={yopOyna}>
+            <SmenaOchish seyfda={s.seyfda} xato={oynaXato} onYuborish={oynada((q, izoh) => smenaOchishIzoh(q, izoh), 'Smena ochildi.')} />
+          </Oyna>
+        )}
+      </div>
+    )
+  }
+
   // «Alohida kassir» rejimida sotuvchi pul olmaydi: faqat zakaz rasmiylashtiradi, mijozni kassaga yuboradi
   if (!s.pul_oladi) {
     return (
@@ -129,7 +175,9 @@ export default function Kassa({ rahbar, bolim, onBolim, onHolatOzgardi, yangiZak
   }
 
   return (
-    <div className="pos">
+    <div className={`pos kassa-tel${bolim === 'yangi' ? ' kassa-yangi' : ''}`}>
+      {/* telefon: tablar o'rnida — Kassa bosh ekraniga qaytish (maket) */}
+      <button type="button" className="havola kassa-orqaga" onClick={() => { onBolim('uy'); window.scrollTo(0, 0) }}><NavIkona nom="chap" className="tugma-ikon" />Kassa</button>
       {/* «Yangi zakaz»da smena — ikkinchi darajali: telefonda bir qator (holat va naqd). «Smena hisoboti»da amallar «Kun yakuni»da. */}
       <SmenaPaneli s={s} rahbar={rahbar} ixcham={bolim === 'yangi'} amalsiz={bolim === 'hisobot' && s.men_ishtirokchi}
         ochishTugmasi={!smenaYoq} onOch={() => ochOyna('ochish')} onQoshil={() => bajar(smenaQoshilish, "Smenaga qo'shildingiz.")}
@@ -271,8 +319,8 @@ function KunYakuni({ s, onBolim, onChiq, onYop }) {
   const qatorlar = [
     s.kutayotgan?.length > 0 && { nom: 'Sizga topshirilgan pulni qabul qiling', izoh: "Yuqoridagi «Sizga topshirilgan pul»da sanab tasdiqlang — shundan keyin yopiladi" },
     s.zalog_tekshirilmagan > 0
-      ? { nom: `${s.zalog_tekshirilmagan} ta zalog tekshirilmagan`, izoh: 'Seyfdagi hujjat va tillo zaloglarni joyida deb belgilang', tugma: ['Zaloglarni tekshirish', () => onBolim('zalog')] }
-      : { tayyor: true, nom: 'Zaloglar tekshirilgan' },
+      ? { nom: `${s.zalog_tekshirilmagan} ta garov tekshirilmagan`, izoh: 'Seyfdagi hujjat va tillo garovlarni joyida deb belgilang', tugma: ['Garovlarni tekshirish', () => onBolim('zalog')] }
+      : { tayyor: true, nom: 'Garovlar tekshirilgan' },
     qolganlar.length > 0
       ? { nom: `Smenada yana: ${qolganlar.join(', ')}`, izoh: "Smenani oxirgi qolgan xodim yopadi. Siz ketayotgan bo'lsangiz — pulni topshirib chiqing", tugma: ['Pulni topshirib chiqish', onChiq] }
       : { tayyor: true, nom: 'Smenada faqat siz qoldingiz' },
@@ -493,7 +541,7 @@ function SmenaYopish({ hisobda, tekshirilmagan, rahbarlar, terminalda, xato, onY
             <span>Farq</span><b>{farq === 0 ? "Farq yo'q" : som(farq)}</b>
           </p>
         )}
-        {tekshirilmagan > 0 && <p className="ogohlantirish">{tekshirilmagan} ta zalog tekshirilmagan — yopishdan oldin «Zaloglar» bo'limida belgilang.</p>}
+        {tekshirilmagan > 0 && <p className="ogohlantirish">{tekshirilmagan} ta garov tekshirilmagan — yopishdan oldin «Garovlar» bo'limida belgilang.</p>}
         <div className="sy-maydon">
           <span className="sy-yorliq" id="sy-joy">Pul qayerda qoladi?</span>
           <div className="sy-joylar" role="radiogroup" aria-labelledby="sy-joy">
@@ -768,8 +816,8 @@ function SmenaKorsatkichlari({ s }) {
 function Hisobot({ h, ochilgan }) {
   const qatorlar = [
     ['Kun boshidagi qoldiq', h.kun_boshidagi_qoldiq, ''],
-    ['+ Kirgan pul (avans, qoldiq, jarima)', h.tushum, '+'], ['+ Olingan pul zaloglar', h.olingan_zaloglar, '+'],
-    ['− Qaytarilgan zaloglar', h.qaytarilgan_zaloglar, '−'], ['− Xarajatlar', h.xarajatlar, '−'],
+    ['+ Kirgan pul (avans, qoldiq, jarima)', h.tushum, '+'], ['+ Olingan pul garovlar', h.olingan_zaloglar, '+'],
+    ['− Qaytarilgan garovlar', h.qaytarilgan_zaloglar, '−'], ['− Xarajatlar', h.xarajatlar, '−'],
     ['− Pulni qaytarish va topshirish', h.vozvrat_va_inkassatsiya, '−'],
   ]
   return (
@@ -991,9 +1039,9 @@ function InkassatsiyaPOS({ s, rahbarlar, hamkasblar, smenada, onYuborish }) {
   )
 }
 
-// FT-12.5: kun oxirida salonda saqlanayotgan hujjat va tillo zaloglar «joyida» deb belgilanadi.
-// Kanvas: tepada 3 ko'rsatkich (pul, hujjat, buyum), chapda jadval (belgilash katakchasi, zakaz, zalog, qaytarish sharti,
-// tekshiruv), o'ngda tanlangan zalog tafsiloti va «joyida emas» (izoh bilan).
+// FT-12.5: kun oxirida salonda saqlanayotgan hujjat va tillo garovlar «joyida» deb belgilanadi.
+// Kanvas: tepada 3 ko'rsatkich (pul, hujjat, buyum), chapda jadval (belgilash katakchasi, zakaz, garov, qaytarish sharti,
+// tekshiruv), o'ngda tanlangan garov tafsiloti va «joyida emas» (izoh bilan).
 const ZALOG_TEKSHIRUV = { true: ['joyida ✓', 'yashil'], false: ['joyida emas', 'qizil'], null: ['tekshirilmagan', 'ogoh'] }
 function ZalogTekshiruvi({ onOzgardi, onZakaz }) {
   const [royxat, setRoyxat] = useState(null)
@@ -1017,23 +1065,23 @@ function ZalogTekshiruvi({ onOzgardi, onZakaz }) {
   const tekshiruv = (x) => ZALOG_TEKSHIRUV[String(x.joyida ?? null)]
   return (
     <>
-      <section className="dash-kpi kpi-filtrlar zalog-kpi" aria-label="Zalog ko'rsatkichlari">
-        <KpiFiltr nom="Pul zaloglar" son={som(pul?.jami || 0)} ikon="hamyon" rang="tilla" izoh={`${pul?.soni || 0} ta · seyfda`} />
+      <section className="dash-kpi kpi-filtrlar zalog-kpi" aria-label="Garov ko'rsatkichlari">
+        <KpiFiltr nom="Pul garovlar" son={som(pul?.jami || 0)} ikon="hamyon" rang="tilla" izoh={`${pul?.soni || 0} ta · seyfda`} />
         <KpiFiltr nom="Hujjatlar" son={hujjat.length} ikon="hujjat" rang="kok" izoh="pasport, guvohnoma" />
         <KpiFiltr nom="Buyumlar" son={tillo.length} ikon="uzuk" rang="pushti" izoh="tillo buyumlar" />
       </section>
       <div className={`kassa-asosiy${z ? '' : ' bitta'}`}>
-        <section className="blok kassa-panel" aria-label="Saqlanayotgan zaloglar">
-          <div className="kassa-panel-bosh"><h3><NavIkona nom="qalqon" className="tugma-ikon" />Saqlanayotgan zaloglar</h3>
+        <section className="blok kassa-panel" aria-label="Saqlanayotgan garovlar">
+          <div className="kassa-panel-bosh"><h3><NavIkona nom="qalqon" className="tugma-ikon" />Saqlanayotgan garovlar</h3>
             {royxat?.length > 0 && <span className={`holat ${tekshirildi === royxat.length ? 'bron' : 'vaqtinchalik'}`}>joyida tekshirildi: {tekshirildi} / {royxat.length}</span>}</div>
           {xato && <p className="xato">{xato}</p>}
           {royxat === null && !xato && <p className="malumot">Yuklanmoqda…</p>}
-          {royxat && royxat.length === 0 && <p className="malumot">Salonda saqlanayotgan hujjat yoki tillo zalog yo'q.</p>}
+          {royxat && royxat.length === 0 && <p className="malumot">Salonda saqlanayotgan hujjat yoki tillo garov yo'q.</p>}
           {royxat?.length > 0 && (
             <Sahifali royxat={royxat} hajm={10}>{(qism) => (
               <div className="hisobot-ora">
                 <table className="kassa-jadval zalog-jadval">
-                  <thead><tr><th><span className="sr-only">Joyida</span></th><th>Zakaz · mijoz</th><th>Zalog</th><th>Qaytarish sharti</th><th>Tekshirildi</th></tr></thead>
+                  <thead><tr><th><span className="sr-only">Joyida</span></th><th>Zakaz · mijoz</th><th>Garov</th><th>Qaytarish sharti</th><th>Tekshirildi</th></tr></thead>
                   <tbody>
                     {qism.map((x) => (
                       <tr key={x.id} className={z?.id === x.id ? 'tanlandi' : undefined}>
@@ -1050,12 +1098,12 @@ function ZalogTekshiruvi({ onOzgardi, onZakaz }) {
               </div>
             )}</Sahifali>
           )}
-          <p className="izoh-q"><NavIkona nom="yordam" className="tugma-ikon" /><span>Smena yopilishidan oldin har bir zalogni seyfda ko'rib, «joyida» deb belgilang.
-            Zalog ijara tushumiga kirmaydi — u mijozning puli yoki buyumi.</span></p>
+          <p className="izoh-q"><NavIkona nom="yordam" className="tugma-ikon" /><span>Smena yopilishidan oldin har bir garovni seyfda ko'rib, «joyida» deb belgilang.
+            Garov ijara tushumiga kirmaydi — u mijozning puli yoki buyumi.</span></p>
         </section>
         {z && (
-          <section className="blok kassa-panel" aria-label="Zalog tafsiloti">
-            <div className="kassa-panel-bosh"><h3><NavIkona nom="qalqon" className="tugma-ikon" />#{z.zakaz_raqami} zalog</h3>
+          <section className="blok kassa-panel" aria-label="Garov tafsiloti">
+            <div className="kassa-panel-bosh"><h3><NavIkona nom="qalqon" className="tugma-ikon" />#{z.zakaz_raqami} garov</h3>
               <span className={`zalog-tek ${tekshiruv(z)[1]}`}>{tekshiruv(z)[0]}</span></div>
             <div className="kassa-satr"><span>Mijoz</span><span>{z.mijoz}</span></div>
             <div className="kassa-satr"><span>Turi</span><span>{z.turi_nomi || z.turi}</span></div>
@@ -1157,8 +1205,8 @@ function YopilganSmenalar() {
             </>}
             {!!t.terminal_farq && <div className="kassa-satr"><span>Terminal farqi</span><b className="kassa-chiqim">{som(t.terminal_farq)}</b></div>}
             {!!t.seyf_farq && <div className="kassa-satr"><span>Seyf farqi (ochishda)</span><b className="kassa-chiqim">{som(t.seyf_farq)}</b></div>}
-            {t.zalog_tekshirilmagan > 0 && <div className="kassa-satr"><span>Zalog tekshirilmagan</span><b className="kassa-ogoh">{t.zalog_tekshirilmagan} ta</b></div>}
-            {t.zalog_yoq > 0 && <div className="kassa-satr"><span>Zalog joyida emas</span><b className="kassa-chiqim">{t.zalog_yoq} ta</b></div>}
+            {t.zalog_tekshirilmagan > 0 && <div className="kassa-satr"><span>Garov tekshirilmagan</span><b className="kassa-ogoh">{t.zalog_tekshirilmagan} ta</b></div>}
+            {t.zalog_yoq > 0 && <div className="kassa-satr"><span>Garov joyida emas</span><b className="kassa-chiqim">{t.zalog_yoq} ta</b></div>}
             {(t.izoh || t.ochish_izohi) && (
               <p className="izoh-q kassa-izoh-blok"><NavIkona nom="yordam" className="tugma-ikon" /><span>{t.izoh}{t.izoh && t.ochish_izohi ? ' · ' : ''}{t.ochish_izohi && `ochishda: ${t.ochish_izohi}`}</span></p>
             )}

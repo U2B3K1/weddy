@@ -1,4 +1,4 @@
-// R2 «Boshqaruv» (D2): libos pasporti, birlashgan «Zaloglar» hisoboti, Sozlamada yagona saqlash usuli (rekvizitlar),
+// R2 «Boshqaruv» (D2): libos pasporti, birlashgan «Garovlar» hisoboti, Sozlamada yagona saqlash usuli (rekvizitlar),
 // mijoz kartasidan «Yangi zakaz». Ma'lumot yaratilmaydi (rekvizit manzili o'zgaradi va asliga qaytariladi).
 import { expect, test } from '@playwright/test'
 import { QURILMA_HOLATI, kirish, xatolarniKuzat } from './yordam.js'
@@ -69,16 +69,16 @@ test('libos pasporti: hozir kimda, kelgusi bronlar; samaradorlik faqat rahbarga'
   expect(xatolar).toEqual([])
 })
 
-test('hisobot: ikki zalog hisoboti bitta — «Zaloglar», ostida turi bo\'yicha', async ({ page }) => {
+test('hisobot: ikki garov hisoboti bitta — «Garovlar», ostida turi bo\'yicha', async ({ page }) => {
   const xatolar = xatolarniKuzat(page)
   await kirish(page, 'Rahbar', '1111')
   await bolim(page, 'Hisobotlar')
   await page.getByRole('tab', { name: 'Umumiy hisobot', exact: true }).click()
   const tur = page.getByLabel('Hisobot turi')
-  await expect(tur.locator('option', { hasText: 'Zalog statistikasi' })).toHaveCount(0)
-  await expect(tur.locator('option', { hasText: 'Zaloglar reestri' })).toHaveCount(0)
-  await tur.selectOption({ label: 'Zaloglar' })
-  const h = page.getByRole('region', { name: 'Zaloglar' })
+  await expect(tur.locator('option', { hasText: 'Garov statistikasi' })).toHaveCount(0)
+  await expect(tur.locator('option', { hasText: 'Garovlar reestri' })).toHaveCount(0)
+  await tur.selectOption({ label: 'Garovlar' })
+  const h = page.getByRole('region', { name: 'Garovlar' })
   await expect(h).toBeVisible()
   await expect(h.locator('.r2h-qoshimcha')).toContainText("Davrda olinganlar — turi bo'yicha")
   await expect(h.locator('.r2h-qoshimcha tbody tr')).toHaveCount(3)  // Pul, Hujjat, Tillo buyum

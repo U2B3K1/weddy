@@ -111,6 +111,8 @@ function YangiZakazForma({ onTayyor, onTolov, boshlangich }) {
   // Mijoz kartasidan kelgan ism faqat o'sha raqamga tegishli — raqam almashtirilsa (o'zgartirilmagan) ism ham tozalanadi
   const boshMijoz = useRef(boshlangich?.mijoz || null)
   const [qadam, setQadam] = useState(q0.qadam || 1) // 1 Sana → 2 Libos → 3 Mijoz
+  // Qadam almashganda sahifa boshidan ko'rinadi (telefonda oldingi qadamning pastida qolib ketmasin)
+  useEffect(() => { window.scrollTo(0, 0) }, [qadam])
   const [dan, setDan] = useState(q0.dan || '')
   const [gacha, setGacha] = useState(q0.gacha || '')
   // Kanvas: kalendar kunlarida «N bo'sh» — 90 kunlik bandlik bir marta olinadi
@@ -381,13 +383,19 @@ function YangiZakazForma({ onTayyor, onTolov, boshlangich }) {
   const oraliqBosh = bandlik && sanaTayyor
     ? bandlik.filter((l) => l.holat === 'bosh' && l.bronlar.every((b) => b.band_gacha < dan || b.dan > gacha)).length : null
   const qadamIzoh = [sanaTayyor ? `${sanaMatniQisqa(dan)} – ${sanaMatniQisqa(gacha)} · ${kunlar(dan, gacha)} kun` : 'olib ketish va qaytarish',
-    tanlangan.length ? `${tanlangan.length} ta libos tanlandi` : "bo'shlari ko'rsatiladi", 'telefon, zalog, saqlash']
+    tanlangan.length ? `${tanlangan.length} ta libos tanlandi` : "bo'shlari ko'rsatiladi", 'telefon, garov, saqlash']
   const davom = qadam === 2 ? () => { setXabar(''); setQadam(3) } : saqlash
   return (
     <div className="stack">
       <BoshXulosa>{qadam === 1 ? "Avval sana — keyin faqat shu kunlarga bo'sh liboslar ko'rsatiladi"
         : qadam === 2 ? "Faqat tanlangan kunlarga bo'sh liboslar" : "Oxirgi qadam: mijoz ma'lumoti va saqlash"}</BoshXulosa>
       {/* Qadamlar — kanvasdagidek tepada, keng shisha panelda; o'tilgan qadamga bosib qaytiladi */}
+      {/* telefon (maket): tasma o'rnida — «‹ Libos tanlash  2 / 3» */}
+      <div className="yz-tel-bosh">
+        {qadam > 1 && <button type="button" aria-label="Oldingi qadam" onClick={() => { setXabar(''); setQadam(qadam - 1) }}><NavIkona nom="chap" /></button>}
+        <b>{['Sanani tanlang', 'Libos tanlash', 'Mijoz va tasdiq'][qadam - 1]}</b>
+        <span>{qadam} / 3</span>
+      </div>
       <section className="blok yz-qadamlar" aria-label="Zakaz qadamlari">
         <ol className="zakaz-ip" aria-label="Qadamlar">
           {QADAMLAR.map((n, i) => {
@@ -650,7 +658,7 @@ function YangiZakazForma({ onTayyor, onTolov, boshlangich }) {
         </aside>
         ) : (
         // Kanvas (YangiZakaz/YangiZakazMijoz): 2-qadamda «Zakaz xulosasi», 3-qadamda «Zakaz qisqacha» — sanalar, tanlanganlar, jami
-        <aside className="zakaz-jami yz-xulosa" aria-label={qadam === 2 ? 'Zakaz xulosasi' : 'Zakaz qisqacha'}>
+        <aside className={`zakaz-jami yz-xulosa yz-q${qadam}`} aria-label={qadam === 2 ? 'Zakaz xulosasi' : 'Zakaz qisqacha'}>
           <div className="sanoq-panel-bosh">
             <h3 className="sanoq-panel-nom"><NavIkona nom="zakazlar" className="tugma-ikon" />{qadam === 2 ? 'Zakaz xulosasi' : 'Zakaz qisqacha'}</h3>
             {tanlangan.length > 0 && <span className="soz-holat tilla">{tanlangan.length} ta libos</span>}
@@ -691,7 +699,7 @@ function YangiZakazForma({ onTayyor, onTolov, boshlangich }) {
             <div><span>Ijara summasi</span><b>{som(asosiy)}</b></div>
             {ustama.foiz > 0 && <div><span>Ustama {ustama.foiz}% ({ustama.nomi || 'mavsumiy'})</span><b>{som(ustamaSumma)}</b></div>}
           </div>
-          <div className="yz-jami"><span>Jami ijara</span><b>{guruhla(jami)}</b></div>
+          <div className="yz-jami"><span>Jami ijara</span><small className="yz-jami-son">{tanlangan.length > 0 ? `${tanlangan.length} ta libos tanlandi` : 'Libos tanlanmagan'}</small><b>{guruhla(jami)}</b></div>
           {qadam === 3 && <p className="yz-izoh"><NavIkona nom="soat" className="tugma-ikon" />Saqlangach libos vaqtinchalik band bo'ladi. Avans olingach — bron.</p>}
           <div className="zakaz-tugmalar yz-tugmalar">
             <button className="pos-tugma" onClick={davom} disabled={saqlanmoqda || tanlangan.length === 0

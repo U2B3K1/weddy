@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { hujjat, sanaMatni, som, xatoMatni } from '../api'
 
-// Shartnoma, kvitansiya va zalog dalolatnomasi (FT-10.2, FT-7.4). «Chop etish» brauzerning chop etish oynasini
+// Shartnoma, kvitansiya va garov dalolatnomasi (FT-10.2, FT-7.4). «Chop etish» brauzerning chop etish oynasini
 // ochadi — u yerdan printerga yuborish yoki PDF sifatida saqlash mumkin.
 export default function Hujjat({ zakazId, tur, onYop }) {
   const [h, setH] = useState(null)
@@ -92,7 +92,7 @@ export default function Hujjat({ zakazId, tur, onYop }) {
                 {h.zaloglar.map((z) => (
                   <tr key={z.yorliq}>
                     <td>{z.yorliq}</td><td>{z.turi}</td><td>{z.tavsif}</td><td>{sanaMatni(z.olingan)}</td>
-                    {/* C-09: jarimaga ushlangan zalog «qaytarildi» deb ko'rsatilmaydi */}
+                    {/* C-09: jarimaga ushlangan garov «qaytarildi» deb ko'rsatilmaydi */}
                     <td>{z.ushlab_qolindi ? z.holat : z.qaytarilgan ? sanaMatni(z.qaytarilgan) : z.holat}</td>
                   </tr>
                 ))}
@@ -104,7 +104,7 @@ export default function Hujjat({ zakazId, tur, onYop }) {
             <p>
               Qaytarish: {sanaMatni(h.qaytarish_akti.sana)}. Holat tekshiruvi: {h.qaytarish_akti.tekshiruv.toLowerCase()}.
               {h.qaytarish_akti.kechikish_kunlari > 0 && ` Kechikish: ${h.qaytarish_akti.kechikish_kunlari} kun.`}
-              {h.qaytarish_akti.jarima > 0 && ` Jarima: ${som(h.qaytarish_akti.jarima)} (zalogdan ushlandi: ${som(h.qaytarish_akti.ushlab_qolingan)}, qarz: ${som(h.qaytarish_akti.qarz)}).`}
+              {h.qaytarish_akti.jarima > 0 && ` Jarima: ${som(h.qaytarish_akti.jarima)} (garovdan ushlandi: ${som(h.qaytarish_akti.ushlab_qolingan)}, qarz: ${som(h.qaytarish_akti.qarz)}).`}
               {h.qaytarish_akti.tortilgan_gr != null && ` Tillo buyum qayta tortildi: ${h.qaytarish_akti.tortilgan_gr} g — ${h.qaytarish_akti.ogirlik_mos ? 'mos keldi' : 'mos kelmadi'}.`}
             </p>
           )}

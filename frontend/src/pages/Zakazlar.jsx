@@ -174,7 +174,69 @@ export function ZakazJadvali({ royxat, onOch }) {
   )
 }
 
-export default function Zakazlar({ tanlangan, onTanla, onYangi, onKassa, boshQ, boshHolat, amal, yangiYopiq }) {
+// Telefon ro'yxati (maket): Barchasi (faol zakazlar) / Bugun (olib ketadi + qaytaradi) / Kechikkan; har zakaz — rasmli karta
+// (mijoz, #raqam · libos, «qachon?» belgisi); pastda «Yangi zakaz». Holat tablari va ko'rsatkich kartalari bu yerda yo'q.
+const T_TABLAR = [['faol', 'Barchasi', 'katalog'], ['bugun', 'Bugun', 'kalendar'], ['kechikkan', 'Kechikkan', 'soat']]
+function TelefonZakazlar({ boshTab, onOch, onYangi, yangiYopiq, onBandlik }) {
+  const [tab, setTab] = useState(boshTab)
+  const [soni, setSoni] = useState(SAHIFA)
+  const [r, setR] = useState(null)  // { royxat, jami }
+  const [xato, setXato] = useState('')
+  useEffect(() => {
+    let bekor = false
+    const sorov = tab === 'bugun'
+      ? Promise.all(['bugun_olib', 'bugun_qaytar'].map((h) => zakazlarSahifa({ holat: h, limit: 50, offset: 0 })))
+        .then(([a, b]) => { const royxat = [...a.natija, ...b.natija.filter((z) => !a.natija.some((x) => x.id === z.id))]; return { royxat, jami: royxat.length } })
+      : zakazlarSahifa({ holat: tab, limit: soni, offset: 0 }).then((d) => ({ royxat: d.natija, jami: d.jami }))
+    sorov.then((d) => { if (!bekor) { setR(d); setXato('') } }).catch((e) => { if (!bekor) setXato(xatoMatni(e)) })
+    return () => { bekor = true }
+  }, [tab, soni])
+  const bugun = bugunIso()
+  return (
+    <div className="zakaz-sahifa zt">
+      <BoshXulosa>Kelin liboslari ijara zakazlari</BoshXulosa>
+      <div className="tb-tablar" role="tablist" aria-label="Zakazlar">
+        {T_TABLAR.map(([id, nom, ikon]) => (
+          <button key={id} type="button" role="tab" aria-selected={tab === id} className={tab === id ? 'faol' : undefined}
+            onClick={() => { setTab(id); setSoni(SAHIFA); setR(null) }}><NavIkona nom={ikon} />{nom}</button>
+        ))}
+      </div>
+      {xato && <p className="xato">{xato}</p>}
+      {r && r.royxat.length === 0 && (
+        <p className="malumot zt-bosh">{tab === 'kechikkan' ? 'Kechikkan zakaz yo\'q — hammasi vaqtida.' : tab === 'bugun' ? 'Bugun olib ketish ham, qaytarish ham yo\'q.' : 'Faol zakaz yo\'q.'}</p>
+      )}
+      <ul className="zt-royxat">
+        {(r?.royxat || []).map((z) => {
+          const m = muddat(z, bugun)
+          return (
+            <li key={z.id}>
+              <button type="button" className="blok zt-karta" aria-label={`Zakaz #${z.raqam}, ${z.mijoz}`} onClick={() => onOch(z.id)}>
+                <span className="zt-rasm">{z.rasm ? <img src={z.rasm} alt="" loading="lazy" /> : <LibosSiluet />}</span>
+                <span className="zt-matn">
+                  <b>{z.mijoz}</b>
+                  <small>#{z.raqam} · {z.liboslar.join(', ') || 'libos'}</small>
+                  <span className={`zt-belgi ${m?.[1] || ''}`}><NavIkona nom="soat" />{m ? m[0] : ZAKAZ_HOLATLARI[z.holat]}</span>
+                </span>
+                <NavIkona nom="ong" className="nav-ikon zt-ong" />
+              </button>
+            </li>
+          )
+        })}
+      </ul>
+      {r && tab !== 'bugun' && r.jami > r.royxat.length && (
+        <button type="button" className="ikkinchi zt-yana" onClick={() => setSoni(soni + SAHIFA)}>Yana ko'rsatish ({r.jami - r.royxat.length} ta qoldi)</button>
+      )}
+      {onYangi && (
+        <button type="button" className="bosh-tugma zt-yangi" onClick={onYangi} disabled={Boolean(yangiYopiq)} title={yangiYopiq || undefined}>
+          <NavIkona nom="qosh" className="tugma-ikon" />Yangi zakaz
+        </button>
+      )}
+      {onBandlik && <button type="button" className="havola zt-bandlik" onClick={onBandlik}>Bandlik kalendari →</button>}
+    </div>
+  )
+}
+
+export default function Zakazlar({ tanlangan, onTanla, onYangi, onKassa, boshQ, boshHolat, amal, yangiYopiq, onBandlik }) {
   // boshQ — yuqori paneldagi qidiruv matni, boshHolat — qo'ng'iroqchadan kelgan filtr (masalan, «kechikkan»);
   // har yangi qidiruvda App komponentni key bilan qayta ochadi
   const [q, setQ] = useState(boshQ || '')
@@ -188,6 +250,7 @@ export default function Zakazlar({ tanlangan, onTanla, onYangi, onKassa, boshQ, 
   const [sahifa, setSahifa] = useState(1)  // raqamli sahifa (20 tadan); kartadan qaytganda shu sahifa qayta yuklanadi
   const skroll = useRef(null)
   const uchUstun = useMedia(UCH_USTUN)
+  const telefon = useMedia('(max-width: 767px)')
 
   useEffect(() => {
     const t = setTimeout(() => setQKech(q.trim()), 300)
@@ -211,6 +274,11 @@ export default function Zakazlar({ tanlangan, onTanla, onYangi, onKassa, boshQ, 
   }, [tanlangan])
 
   if (tanlangan) return <Karta key={tanlangan} id={tanlangan} amal={amal} onOrqaga={() => onTanla(null)} onKassa={onKassa} />
+  // Telefon (maket 2026-11-10): uch tab va rasmli kartalar. Qidiruv (yuqoridagi lupa) natijasi — odatdagi ro'yxatda
+  if (telefon && !boshQ) {
+    return <TelefonZakazlar boshTab={boshHolat === 'kechikkan' ? 'kechikkan' : 'faol'} onYangi={onYangi} yangiYopiq={yangiYopiq} onBandlik={onBandlik}
+      onOch={(id) => { skroll.current = window.scrollY; onTanla(id); window.scrollTo(0, 0) }} />
+  }
 
   const filtr = (k) => { setSahifa(1); setHolat(k) }
   const qidir = (v) => {
@@ -413,14 +481,14 @@ function Karta({ id, amal, onOrqaga, onKassa }) {
   const h = z.holat
   const q = qadamIndeksi(z)
   const izoh = qadamIzohi(z)
-  // Kassadan mijozga qaytariladigan pul zalog (A-16)
+  // Kassadan mijozga qaytariladigan pul garov (A-16)
   const pulZalog = z.zaloglar.filter((g) => g.turi === 'pul' && g.holat === 'saqlanmoqda').reduce((s, g) => s + g.summa, 0)
-  // Zalog to'lovlari alohida qator bo'lib takrorlanmaydi — zalog o'z qatorida holati bilan (A-30)
+  // Garov to'lovlari alohida qator bo'lib takrorlanmaydi — garov o'z qatorida holati bilan (A-30)
   const tolovlar = z.tolovlar.filter((t) => !['zalog', 'zalog_qaytarish'].includes(t.tur))
   const qaytarishXabari = (r) => {
     const qismlar = ['Qaytarish rasmiylashtirildi.']
     if (r?.mijozga_qaytariladi > 0) qismlar.push(`Mijozga ${som(r.mijozga_qaytariladi)} qaytaring.`)
-    if (r?.ushlab_qolingan > 0) qismlar.push(`Zalogdan jarimaga ushlab qolindi: ${som(r.ushlab_qolingan)}.`)
+    if (r?.ushlab_qolingan > 0) qismlar.push(`Garovdan jarimaga ushlab qolindi: ${som(r.ushlab_qolingan)}.`)
     if (r?.qarz > 0) qismlar.push(`Mijoz qarzi: ${som(r.qarz)}.`)
     return qismlar.join(' ')
   }
@@ -463,6 +531,34 @@ function Karta({ id, amal, onOrqaga, onKassa }) {
           <p className="bron-muddat-izoh">{h === 'chegirma_kutilmoqda'
             ? `Rahbar ${muddatVaqti(z.bron_muddati)} gacha qaror qilmasa, bron o'zi bekor bo'ladi`
             : `${muddatVaqti(z.bron_muddati)} gacha avans olinmasa, bron o'zi bekor bo'ladi`}</p>
+        )}
+      </div>
+      {/* Telefon (maket 2026-11-10): rasmli bosh karta va uch qator — To'lovlar, Garov, Hujjatlar (bosilsa o'sha bo'limga suradi);
+          keng ekranda yashirin (u yerda varaq va o'ng ustun bor) */}
+      <div className="zk-tel">
+        <section className="blok tb-karta zk-bosh" aria-label="Zakaz qisqacha">
+          <span className="zk-rasm">{z.libos_qatorlari[0]?.rasm ? <img src={z.libos_qatorlari[0].rasm} alt="" /> : <LibosSiluet />}</span>
+          <span className="zk-matn">
+            <b>{z.mijoz}</b>
+            {z.mijoz !== z.telefon && <a href={`tel:${z.telefon}`}><NavIkona nom="telefon" />{z.telefon}</a>}
+            <span><NavIkona nom="katalog" />{z.libos_qatorlari.map((p) => p.nomi).join(', ') || '—'}</span>
+            <span><NavIkona nom="kalendar" />Olib ketish: {sanaMatni(z.olib_ketish)}</span>
+            <span><NavIkona nom="kalendar" />Qaytarish: {sanaMatni(z.qaytarish)}</span>
+            {(() => { const m = muddat(z, bugunIso()); return <span className={`zt-belgi ${m?.[1] || ''}`}><NavIkona nom="soat" />{m ? m[0] : ZAKAZ_HOLATLARI[h]}</span> })()}
+          </span>
+        </section>
+        <button type="button" className="blok tb-karta tb-qator" onClick={() => document.querySelector('.karta-tolovlar')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
+          <NavIkona nom="hamyon" /><span>To'lovlar</span><b className="zk-qiymat">{som(z.tolangan)}{z.qoldiq > 0 ? ` / ${som(z.jami)}` : ''}</b><NavIkona nom="ong" className="nav-ikon tb-ong" />
+        </button>
+        {z.zaloglar.length > 0 && (
+          <button type="button" className="blok tb-karta tb-qator" onClick={() => document.querySelector('.karta-tolovlar')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>
+            <NavIkona nom="qalqon" /><span>Garov</span><b className="zk-qiymat">{pulZalog > 0 ? som(pulZalog) : z.zaloglar.map((g) => g.turi_nomi).join(', ')}</b><NavIkona nom="ong" className="nav-ikon tb-ong" />
+          </button>
+        )}
+        {!['chegirma_kutilmoqda', 'bekor'].includes(h) && (
+          <button type="button" className="blok tb-karta tb-qator" onClick={() => document.querySelector('.hujjat-havolalar')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}>
+            <NavIkona nom="hujjat" /><span>Hujjatlar</span><b className="zk-qiymat">{['Shartnoma', z.tolovlar.length > 0 && 'kvitansiya'].filter(Boolean).join(', ')}</b><NavIkona nom="ong" className="nav-ikon tb-ong" />
+          </button>
         )}
       </div>
       {h !== 'bekor' && (
@@ -547,7 +643,7 @@ function Karta({ id, amal, onOrqaga, onKassa }) {
             <button className="ikkinchi kichik" onClick={() => setChop('kvitansiya')}>Kvitansiya</button>
           )}
           {z.zaloglar.length > 0 && (
-            <button className="ikkinchi kichik" onClick={() => setChop('dalolatnoma')}>Zalog dalolatnomasi</button>
+            <button className="ikkinchi kichik" onClick={() => setChop('dalolatnoma')}>Garov dalolatnomasi</button>
           )}
         </div>
         {h === 'chegirma_kutilmoqda' && <p className="varaq-izoh">Chegirma tasdiqlanmaguncha shartnoma chop etilmaydi.</p>}
@@ -590,7 +686,7 @@ function Karta({ id, amal, onOrqaga, onKassa }) {
         kutilayotgan={z.tolovlar.filter((t) => t.tasdiq === 'kutilmoqda').reduce((s, t) => s + t.summa, 0)}
         onYuborish={(zaloglar, erta) => bajar(() => berish(z.id, zaloglar, erta), 'Libos berildi.')} />}
       {h === 'berildi' && kassirda && pulZalog > 0 && (
-        <p className="malumot">Pul zalogni kassir qaytaradi — libos qaytarilishini kassir rasmiylashtiradi (zakaz #{z.raqam}).</p>
+        <p className="malumot">Pul garovni kassir qaytaradi — libos qaytarilishini kassir rasmiylashtiradi (zakaz #{z.raqam}).</p>
       )}
       {h === 'berildi' && !(kassirda && pulZalog > 0) && <QaytarishForma pulsiz={kassirda} pulZalog={pulZalog} aksessuarlar={z.aksessuar_qatorlari} qaytarish={z.qaytarish} kechikishJarimasi={soz ? (soz.kechikish_jarimasi ? soz.kechikish_kunlik_summa : 0) : null} tillo={z.zaloglar.some((g) => g.turi === 'tillo')} onYuborish={(b) => bajar(() => qaytarish(z.id, b), qaytarishXabari)} />}
       {!kassirda && h === 'qaytarildi' && z.qarz > 0 && (
@@ -623,7 +719,7 @@ function Karta({ id, amal, onOrqaga, onKassa }) {
         ))}
         {z.zaloglar.map((g) => (
           <div key={g.id} className="tolov-qator">
-            <span className="tolov-nom"><b>Zalog {g.yorliq}</b><small>{g.turi_nomi}{g.tavsif ? `, ${g.tavsif}` : ''}</small></span>
+            <span className="tolov-nom"><b>Garov {g.yorliq}</b><small>{g.turi_nomi}{g.tavsif ? `, ${g.tavsif}` : ''}</small></span>
             <span className="tolov-summa zalog-holat">{g.turi === 'pul' && g.summa ? `${som(g.summa)}, ` : ''}{g.holat_nomi.toLowerCase()}</span>
           </div>
         ))}
@@ -955,26 +1051,26 @@ function BerishForma({ onYuborish, soz, libosZalogi, olibKetish, pulsiz, kutilay
   const [surov, setSurov] = useState(false)  // olib ketish sanasidan oldin berish tasdig'i
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value })
   const ertaMi = () => Boolean(olibKetish) && olibKetish > new Date().toLocaleDateString('sv-SE')  // YYYY-MM-DD, mahalliy sana
-  const pulSumma = f.summa ?? (libosZalogi ? String(libosZalogi) : '')  // standart — libos(lar)ning zalog summasi
+  const pulSumma = f.summa ?? (libosZalogi ? String(libosZalogi) : '')  // standart — libos(lar)ning garov summasi
   const zalog = turi === 'pul'
     ? { turi, summa: Number(pulSumma || 0) }
     : turi === 'hujjat'
       ? { turi, hujjat_turi: f.hujjat_turi, hujjat_raqami: f.hujjat_raqami }
       : { turi, tavsif: f.tavsif, ogirlik_gr: f.ogirlik_gr, summa: Number(f.summa || 0) }
   // backend (rental.libos_berish) talablari bilan bir xil
-  const yetmaydi = turi === 'pul' ? [!(Number(pulSumma) > 0) && 'zalog summasi']
+  const yetmaydi = turi === 'pul' ? [!(Number(pulSumma) > 0) && 'garov summasi']
     : turi === 'hujjat' ? [!f.hujjat_turi?.trim() && 'hujjat turi', !f.hujjat_raqami?.trim() && 'hujjat raqami']
       : [!f.tavsif?.trim() && 'tavsif', !(Number(f.ogirlik_gr) > 0) && "og'irligi"]
   const kerak = yetmaydi.filter(Boolean)
   return (
-    <Amal sarlavha="Libosni berish (zalog)" id="asosiy-amal">
+    <Amal sarlavha="Libosni berish (garov)" id="asosiy-amal">
       {kutilayotgan > 0 && <p className="ogohlantirish">{som(kutilayotgan)} o'tkazma rahbar tasdig'ini kutmoqda — pul kelmasa, qoldiq mijozdan qayta olinadi.</p>}
-      <label>Zalog turi
+      <label>Garov turi
         <select value={turi} onChange={(e) => { setTuri(e.target.value); setF({}) }}>
           {TURLAR.map(([t, nom]) => <option key={t} value={t}>{nom}</option>)}
         </select>
       </label>
-      {turi === 'pul' && <label>Zalog summasi *<SummaInput value={pulSumma} onChange={set('summa')} /></label>}
+      {turi === 'pul' && <label>Garov summasi *<SummaInput value={pulSumma} onChange={set('summa')} /></label>}
       {turi === 'hujjat' && (<>
         <label>Hujjat turi *<input placeholder="pasport" value={f.hujjat_turi || ''} onChange={set('hujjat_turi')} /></label>
         <label>Raqami *<input value={f.hujjat_raqami || ''} onChange={set('hujjat_raqami')} /></label>
@@ -984,7 +1080,7 @@ function BerishForma({ onYuborish, soz, libosZalogi, olibKetish, pulsiz, kutilay
         <label>Og'irligi, g *<input type="number" step="0.01" value={f.ogirlik_gr || ''} onChange={set('ogirlik_gr')} /></label>
         <label>Taxminiy qiymat<SummaInput onChange={set('summa')} /></label>
       </>)}
-      <button disabled={kerak.length > 0} onClick={() => (ertaMi() ? setSurov(true) : onYuborish([zalog], false))}>Zalogni qabul qilib berish</button>
+      <button disabled={kerak.length > 0} onClick={() => (ertaMi() ? setSurov(true) : onYuborish([zalog], false))}>Garovni qabul qilib berish</button>
       {kerak.length > 0 && <p className="malumot tugma-sabab">To'ldiring: {kerak.join(', ')}.</p>}
       {surov && (
         <Tasdiq sarlavha="Libos oldinroq beriladimi?" tugma="Ha, hozir berish" xavfli={false}
@@ -995,7 +1091,7 @@ function BerishForma({ onYuborish, soz, libosZalogi, olibKetish, pulsiz, kutilay
   )
 }
 
-// C-19, C-20, C-10: qaytarish — zalogdan ushlanadigan, mijozga qaytadigan va qo'shimcha to'lanadigan summa jonli;
+// C-19, C-20, C-10: qaytarish — garovdan ushlanadigan, mijozga qaytadigan va qo'shimcha to'lanadigan summa jonli;
 // qo'shimchani mijoz hozir to'lasa — belgi va usul; «aksessuar yo'q» — qaysi dona yo'qligi; yirtiq/dog' — libos ta'mirga
 function QaytarishForma({ onYuborish, tillo, qaytarish, kechikishJarimasi, pulsiz, pulZalog = 0, aksessuarlar = [] }) {
   const [f, setF] = useState({ tekshiruv: 'butun' })
@@ -1007,7 +1103,7 @@ function QaytarishForma({ onYuborish, tillo, qaytarish, kechikishJarimasi, pulsi
   const kechikkan = qaytarish && qaytarish < bugun ? Math.round((new Date(bugun) - new Date(qaytarish)) / 86400000) : 0
   const kechJarima = kechikkan > 0 && kechikishJarimasi > 0 ? kechikkan * kechikishJarimasi : 0
   const set = (k) => (e) => setF({ ...f, [k]: e.target.value })
-  // backend (rental.libos_qaytarish) hisobi: jarima avval pul zalogidan ushlanadi, ortig'i — qo'shimcha to'lov yoki qarz
+  // backend (rental.libos_qaytarish) hisobi: jarima avval pul garovidan ushlanadi, ortig'i — qo'shimcha to'lov yoki qarz
   const jarimaJami = Number(f.jarima || 0) + kechJarima
   const ushlanadi = Math.min(jarimaJami, pulZalog)
   const qoshimcha = jarimaJami - ushlanadi
@@ -1024,7 +1120,7 @@ function QaytarishForma({ onYuborish, tillo, qaytarish, kechikishJarimasi, pulsi
     <Amal sarlavha="Qaytarish" id="asosiy-amal">
       {/* A-16: kassadan pul chiqadigan joy — qancha qaytishi oldindan ko'rinadi */}
       {pulZalog > 0 && !pulsiz && jarimaJami === 0 && (
-        <p className="zalog-qaytadi">Pul zalog <b>{som(pulZalog)}</b> — mijozga qaytariladi.</p>
+        <p className="zalog-qaytadi">Pul garov <b>{som(pulZalog)}</b> — mijozga qaytariladi.</p>
       )}
       {kechikkan > 0 && kechikishJarimasi > 0 && (
         <p className="malumot">Kechikish: {kechikkan} kun · avtomatik jarima {som(kechJarima)} ({som(kechikishJarimasi)} × {kechikkan}).</p>
@@ -1056,10 +1152,10 @@ function QaytarishForma({ onYuborish, tillo, qaytarish, kechikishJarimasi, pulsi
           ))}
         </fieldset>
       )}
-      <label>Jarima<SummaInput onChange={set('jarima')} /><Info nom="Jarima">Libosga yetgan zarar uchun summa: dog', yirtiq, yo'qolgan aksessuar. Avval pul zalogidan ushlanadi; zalog yetmasa, qolgani mijoz qarzi bo'ladi. Kechikish jarimasi (yoqilgan bo'lsa) bunga o'zi qo'shiladi.</Info></label>
+      <label>Jarima<SummaInput onChange={set('jarima')} /><Info nom="Jarima">Libosga yetgan zarar uchun summa: dog', yirtiq, yo'qolgan aksessuar. Avval pul garovidan ushlanadi; zalog yetmasa, qolgani mijoz qarzi bo'ladi. Kechikish jarimasi (yoqilgan bo'lsa) bunga o'zi qo'shiladi.</Info></label>
       {jarimaJami > 0 && (
         <dl className="qaytarish-hisob" aria-live="polite">
-          {pulZalog > 0 && <div><dt>Zalogdan ushlanadi</dt><dd>{som(ushlanadi)}</dd></div>}
+          {pulZalog > 0 && <div><dt>Garovdan ushlanadi</dt><dd>{som(ushlanadi)}</dd></div>}
           {pulZalog > 0 && !pulsiz && <div><dt>Mijozga qaytariladi</dt><dd>{som(mijozga)}</dd></div>}
           {qoshimcha > 0 && <div className="qarz"><dt>Mijoz qo'shimcha to'laydi</dt><dd>{som(qoshimcha)}</dd></div>}
         </dl>
@@ -1074,7 +1170,7 @@ function QaytarishForma({ onYuborish, tillo, qaytarish, kechikishJarimasi, pulsi
             : <p className="malumot">Belgilanmasa, {som(qoshimcha)} mijoz qarzi bo'lib qoladi.</p>}
         </>
       )}
-      {tillo && <label>Tillo qayta tortildi, g<input type="number" step="0.01" onChange={set('tortilgan_gr')} /><Info nom="Tillo og'irligi">Zalogga olingan tillo buyumni qaytarishdan oldin qayta torting. Berilgandagi og'irlikdan farq qilsa, qaytarish to'xtatiladi — buyum almashtirilmaganiga ishonch hosil qilish uchun.</Info></label>}
+      {tillo && <label>Tillo qayta tortildi, g<input type="number" step="0.01" onChange={set('tortilgan_gr')} /><Info nom="Tillo og'irligi">Garovga olingan tillo buyumni qaytarishdan oldin qayta torting. Berilgandagi og'irlikdan farq qilsa, qaytarish to'xtatiladi — buyum almashtirilmaganiga ishonch hosil qilish uchun.</Info></label>}
       <button disabled={aksYoq && aksessuarlar.length > 0 && yoqolgan.length === 0} onClick={() => onYuborish(body)}>Qaytarishni rasmiylashtirish</button>
       {aksYoq && aksessuarlar.length > 0 && yoqolgan.length === 0 && <p className="malumot tugma-sabab">Qaysi aksessuar qaytmaganini belgilang.</p>}
     </Amal>

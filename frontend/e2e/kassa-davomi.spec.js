@@ -65,7 +65,7 @@ test("to'lovdan keyin «Libosni berish →» — zakaz kartasida berish formasi"
     await berish.click()
     await expect(page.getByRole('heading', { name: `Zakaz #${z.raqam}` })).toBeVisible()
     const forma = page.locator('#asosiy-amal')
-    await expect(forma.getByRole('button', { name: 'Zalogni qabul qilib berish' })).toBeInViewport()
+    await expect(forma.getByRole('button', { name: 'Garovni qabul qilib berish' })).toBeInViewport()
     await rasm(page, '2-karta-berish-formasi')
   } finally {  // bron bekor (libos bo'shaydi), smena hisobdagi summa bilan farqsiz yopiladi
     await apiSorov(page, 'POST', `/zakazlar/${z.id}/bekor/`, { sabab: 'E2E: kassa davomi' })

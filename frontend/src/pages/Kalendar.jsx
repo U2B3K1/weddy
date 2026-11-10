@@ -75,6 +75,13 @@ export default function Kalendar({ onZakaz, onYangi }) {
   const [q, setQ] = useState('')
   const [tanlangan, setTanlangan] = useState(null)
   const bugun = bugunIso()
+  // Telefon (maket): hafta tasmasi va tanlangan kunning ish tartibi; to'liq jadval — «Jadval» tugmasi ortida
+  const [telefon, setTelefon] = useState(() => window.matchMedia('(max-width: 767px)').matches)
+  useEffect(() => {
+    const m = window.matchMedia('(max-width: 767px)'); const h = (e) => setTelefon(e.matches)
+    m.addEventListener('change', h); return () => m.removeEventListener('change', h)
+  }, [])
+  const [jadval, setJadval] = useState(false)
   // Bo'sh katak — o'tmagan kun, bron va primerkasiz bitta kun (shu libos va kunga Yangi zakaz)
   const yangiMumkin = (s) => !s.h && !s.p && s.son === 1 && s.dan >= bugun
 
@@ -137,8 +144,41 @@ export default function Kalendar({ onZakaz, onYangi }) {
   }, [qatorlar, kunlar])
   const davrSoz = { kun: 'shu kuni', hafta: 'shu hafta', oy: 'shu oyda' }[korinish] || 'shu davrda'
 
+  const almashtirgich = telefon && (
+    <div className="bt-korinish" role="tablist" aria-label="Bandlik ko'rinishi">
+      <button type="button" role="tab" aria-selected={!jadval} className={jadval ? '' : 'faol'} onClick={() => setJadval(false)}>Kun tartibi</button>
+      <button type="button" role="tab" aria-selected={jadval} className={jadval ? 'faol' : ''} onClick={() => setJadval(true)}>Jadval</button>
+    </div>
+  )
+  if (telefon && !jadval) {
+    return (
+      <div className="bandlik-sahifa bandlik-tel">
+        {almashtirgich}
+        <section className="blok bt-hafta" aria-label="Davr">
+          <div className="bt-nav">
+            <button type="button" aria-label="Oldingi davr" onClick={() => siljit(kunQosh(bosh, -uzunlik))}><NavIkona nom="chap" /></button>
+            <b aria-live="polite">{davrNomi(dan, gacha)}</b>
+            <button type="button" aria-label="Keyingi davr" onClick={() => siljit(kunQosh(bosh, uzunlik))}><NavIkona nom="ong" /></button>
+          </div>
+          <div className="bt-kunlar">
+            {kunlar.map((k) => (
+              <button key={k} type="button" aria-pressed={k === varaqKuni} className={`${k === varaqKuni ? 'faol' : ''} ${k === bugun ? 'bugun' : ''}`}
+                aria-label={`${isoOch(k).d} ${oy(isoOch(k).m)}: ${bandSoni[k] || 0} ta bron`} onClick={() => setTanlangan(k)}>
+                <small>{hafta(k)[0]}</small><b>{isoOch(k).d}</b><i className={bandSoni[k] ? 'bor' : ''} aria-hidden="true" />
+              </button>
+            ))}
+          </div>
+          {bosh !== bugun && <button type="button" className="havola bt-bugun" onClick={() => siljit(bugun)}>Bugunga qaytish</button>}
+        </section>
+        {xato && <p className="xato">{xato}</p>}
+        {qatorlar ? <KunTartibi kun={varaqKuni} qatorlar={hammasi} onZakaz={onZakaz} bugun={bugun} /> : !xato && <p className="malumot">Yuklanmoqda…</p>}
+      </div>
+    )
+  }
+
   return (
     <div className="bandlik-sahifa">
+    {almashtirgich}
     {qatorlar && (
       <section className="dash-kpi bandlik-kpi" aria-label="Bandlik ko'rsatkichlari">
         <KpiFiltr nom={`Band (${davrSoz})`} son={`${xulosa.foiz}%`} ikon="kun" rang="tilla" izoh={`${hammasi.length} libosdan`} />
@@ -269,6 +309,60 @@ function Tasma({ s, onZakaz }) {
   const sarlavha = `${nom} · ${davrNomi(b.dan, b.gacha)}${turi === 'vaqtinchalik' ? ' · vaqtinchalik' : ''}`
   if (!b.zakaz_id) return <span className={`bron-tasma k-${turi} ${chet}`} title={sarlavha}>{nom}</span>
   return <button type="button" className={`bron-tasma k-${turi} ${chet}`} title={sarlavha} onClick={() => onZakaz(b.zakaz_id)}>{nom}</button>
+}
+
+// Telefon: tanlangan kunning ish tartibi — zakaz bo'yicha kartalar (rasm, raqam va libos, nima bo'ladi, holat)
+const TARTIB = { olib: 'Olib ketadi', qaytar: 'Qaytaradi', ijara: 'Ijarada', tozalash: 'Tozalashda' }
+function KunTartibi({ kun, qatorlar, onZakaz, bugun }) {
+  const ishlar = new Map()
+  let bosh = 0
+  for (const l of qatorlar) {
+    const h = kunHolati(l, kun)
+    if (!h) { if (l.holat === 'bosh') bosh++; continue }
+    const bolim = h.turi === 'bufer' ? 'tozalash' : h.b.dan === kun ? 'olib' : h.b.gacha === kun ? 'qaytar' : 'ijara'
+    const kalit = `${bolim}:${h.b.zakaz_id ?? `libos-${l.id}`}`
+    if (!ishlar.has(kalit)) ishlar.set(kalit, { b: h.b, turi: h.turi, bolim, liboslar: [] })
+    ishlar.get(kalit).liboslar.push(l)
+  }
+  const royxat = [...ishlar.values()].sort((a, b) => Object.keys(TARTIB).indexOf(a.bolim) - Object.keys(TARTIB).indexOf(b.bolim))
+  const bron = royxat.filter((i) => i.bolim !== 'tozalash').length, toza = royxat.length - bron
+  const { d, m } = isoOch(kun)
+  return (
+    <section className="blok bt-tartib" role="region" aria-label={`${d} ${oy(m)} kuni`}>
+      <div className="bt-tartib-bosh">
+        <h3>{d} {oy(m)} ({hafta(kun)[0].toLowerCase()}){kun === bugun ? ' — bugun' : ''}</h3>
+        <span className="bt-jami">Jami: {royxat.length} ta</span>
+      </div>
+      <div className="bt-sonlar">
+        <span className="bron"><NavIkona nom="kalendar" />{bron} bron</span>
+        <span className="toza"><NavIkona nom="soat" />{toza} tozalashda</span>
+      </div>
+      <p className="bt-bosh">{bosh} libos shu kuni bo'sh</p>
+      {royxat.length === 0 ? <p className="malumot">Bu kuni bron yo'q — hamma libos bo'sh.</p> : (
+        <ul className="bt-royxat">
+          {royxat.map(({ b, turi, bolim, liboslar }) => {
+            const l = liboslar[0]
+            const ichi = <>
+              <span className="zt-rasm">{l.rasm ? <img src={l.rasm} alt="" loading="lazy" /> : <LibosSiluet />}</span>
+              <span className="zt-matn">
+                <b>{b.zakaz_raqami ? `#${b.zakaz_raqami} · ` : ''}{l.nomi || l.artikul}{liboslar.length > 1 ? ` +${liboslar.length - 1}` : ''}</b>
+                <small>{TARTIB[bolim]}{b.mijoz ? ` · ${b.mijoz}` : ''}</small>
+                <span className={`bt-holat ${bolim === 'tozalash' ? 'toza' : turi === 'vaqtinchalik' ? 'vaqt' : 'bron'}`}>
+                  <i aria-hidden="true" />{bolim === 'tozalash' ? 'Tozalashda' : turi === 'vaqtinchalik' ? 'Vaqtinchalik' : 'Bron'}</span>
+              </span>
+              {b.zakaz_id && <NavIkona nom="ong" className="zt-ong" />}
+            </>
+            return (
+              <li key={`${bolim}:${b.zakaz_id ?? l.id}`}>
+                {b.zakaz_id ? <button type="button" className="blok zt-karta" onClick={() => onZakaz(b.zakaz_id)}>{ichi}</button>
+                  : <div className="blok zt-karta">{ichi}</div>}
+              </li>
+            )
+          })}
+        </ul>
+      )}
+    </section>
+  )
 }
 
 const BOLIMLAR = [['olib', 'Olib ketadi'], ['qaytar', 'Qaytaradi'], ['ijara', 'Ijarada'], ['tozalash', 'Tozalashda']]

@@ -5,7 +5,7 @@ import { bolim, bolimga, kirish, xatolarniKuzat } from './yordam.js'
 
 // Ichki bo'limlari sahifa tepasidagi tablarda bo'lgan bo'limlar (App.jsx: kassaRoyxat, HISOBOT_ROYXAT; Ndiz — shisha uslubi)
 const ICHKI = {
-  Kassa: ['Yangi zakaz', "To'lov qabul", 'Xarajat', 'Inkassatsiya', 'Zaloglar', 'Smena hisoboti', 'Smenalar tarixi'],
+  Kassa: ['Yangi zakaz', "To'lov qabul", 'Xarajat', 'Inkassatsiya', 'Garovlar', 'Smena hisoboti', 'Smenalar tarixi'],
   // «Grafik» bo'limi yo'q (B-14): 12 oylik sof foyda grafigi — «Oylik foyda» ostida (QA-07: nav nomi sahifa sarlavhasi bilan bir xil)
   Hisobotlar: ['Umumiy hisobot', 'Oylik foyda', 'Xarajatlar', 'Sotuvchi bonusi', 'Bank solishtirish'],
 }
@@ -64,8 +64,8 @@ test('rahbar: barcha bo\'limlar va ichki bo\'limlar ochiladi', async ({ page }) 
     const [kenglik, ekran] = await page.evaluate(() => [document.documentElement.scrollWidth, window.innerWidth])
     expect(kenglik, "Sozlama umumiy ko'rinishi telefonda gorizontal surilmasin").toBeLessThanOrEqual(ekran)
     await page.setViewportSize({ width: 1280, height: 860 })
-    await markaz.getByRole('button', { name: /^Bron va zalog/ }).click()
-    await expect(page.getByRole('heading', { name: 'Bron va zalog' })).toBeVisible()  // guruh sahifasi: har bo'lim — panel (kanvas)
+    await markaz.getByRole('button', { name: /^Bron va garov/ }).click()
+    await expect(page.getByRole('heading', { name: 'Bron va garov' })).toBeVisible()  // guruh sahifasi: har bo'lim — panel (kanvas)
     const sozMenyu = page.getByRole('navigation', { name: 'Sozlama menyusi' })
     await sozMenyu.getByRole('button', { name: 'Barcha sozlamalar', exact: true }).click()  // sahifadagi chap ro'yxatdan umumiy ko'rinishga qaytish
     await expect(markaz).toBeVisible()

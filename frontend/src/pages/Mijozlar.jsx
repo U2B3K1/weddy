@@ -72,6 +72,12 @@ function MijozlarRoyxati({ rahbar, onZakaz, onYangiZakaz }) {
       .catch((e) => setXato(xatoMatni(e))).finally(() => setBand(false))
   }
   const bugun = bugunIso()
+  // Telefon (maket telefon/11.webp): qidiruv, ikki son, keyin mijoz qatorlari (bosh harflar, ism, telefon, «N zakaz»)
+  const [telefon, setTelefon] = useState(() => window.matchMedia('(max-width: 767px)').matches)
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)'); const h = (e) => setTelefon(e.matches)
+    mq.addEventListener('change', h); return () => mq.removeEventListener('change', h)
+  }, [])
 
   if (tanlangan) return <Karta id={tanlangan} rahbar={rahbar} onOrqaga={() => setTanlangan(null)} onZakaz={onZakaz} onYangiZakaz={onYangiZakaz} />
   const qisqa = !rahbar && q.trim().length < 4
@@ -79,6 +85,56 @@ function MijozlarRoyxati({ rahbar, onZakaz, onYangiZakaz }) {
   const korinadiganMijoz = korinadigan.find((m) => m.id === korilgan) || korinadigan[0] || null
 
   const nomlar = { yangi: 'Yangi mijozlar', toy: "Yaqin to'ylar", qarzdor: 'Qarzdorlar' }
+  if (telefon) {
+    return (
+      <div className="stack mijoz-sahifa mijoz-tel">
+        <label className="qidiruv-maydon mt-qidiruv">
+          <NavIkona nom="qidiruv" className="tugma-ikon" />
+          <input type="search" className="jadval-qidiruv" aria-label="Mijoz qidirish" placeholder="Mijoz qidirish (ism, telefon)" value={q} onChange={(e) => setQ(e.target.value)} />
+        </label>
+        {rahbar && sonlar && (
+          <section className="blok mt-sonlar" aria-label="Mijozlar ko'rsatkichlari">
+            <div><small>Jami mijozlar</small><b>{sonlar.jami}</b></div>
+            <div><small>Yangi ({sonlar.davr} kunda)</small><b>{sonlar.yangi}</b></div>
+          </section>
+        )}
+        {rahbar && (
+          <div className="mt-chiplar" role="tablist" aria-label="Mijozlar">
+            {[['', 'Hammasi'], ['toy', "Yaqin to'ylar"], ['qarzdor', 'Qarzdorlar'], ['qora', "Qora ro'yxat"]].map(([k, nom]) => (
+              <button key={nom} type="button" role="tab" aria-selected={filtr === k} className={filtr === k ? 'faol' : ''} onClick={() => setFiltr(k)}>
+                {nom}{sonlar && k && k !== 'qora' ? <span className="tab-son">{k === 'toy' ? sonlar.toy : sonlar.qarzdor}</span> : null}
+              </button>
+            ))}
+          </div>
+        )}
+        {xato && <p className="xato">{xato}</p>}
+        {qisqa && <p className="malumot">Qidirish uchun telefon yoki ismning kamida 4 ta belgisini kiriting.</p>}
+        {!qisqa && !xato && korinadigan.length === 0 && (
+          <p className="malumot">{filtr === 'qora' ? "Qora ro'yxatda hech kim yo'q." : filtr ? `${nomlar[filtr]} yo'q.` : 'Mijoz topilmadi.'}</p>
+        )}
+        <ul className="mt-royxat">
+          {korinadigan.map((m) => (
+            <li key={m.id}>
+              <button type="button" className="blok mt-qator" onClick={() => setTanlangan(m.id)}>
+                <span className={`mt-harf${m.qora_royxat ? ' qora' : ''}`} aria-hidden="true">{bosHarflar(m.fio)}</span>
+                <span className="mt-matn">
+                  <b>{m.fio || 'Ismsiz'}</b>
+                  <small>{telefonMatni(m.telefon)}</small>
+                  {m.qoldiq > 0 ? <small className="mijoz-qoldiq">Qoldiq {som(m.qoldiq)}</small>
+                    : m.qora_royxat ? <small className="mijoz-qoldiq">Qora ro'yxat</small> : null}
+                </span>
+                <span className="mt-zakaz"><NavIkona nom="zakazlar" />{m.zakazlar_soni || 0} zakaz</span>
+                <NavIkona nom="ong" className="zt-ong" />
+              </button>
+            </li>
+          ))}
+        </ul>
+        {jami > korinadigan.length && (
+          <button type="button" className="ikkinchi" disabled={band} onClick={yana}>Yana {Math.min(SAHIFA, jami - korinadigan.length)} ta</button>
+        )}
+      </div>
+    )
+  }
   return (
     <div className="stack mijoz-sahifa">
       {/* kanvas: ro'yxatda bo'lim boshida «+ Yangi zakaz» (mijoz kartasida — o'z tugmasi bor) */}
@@ -257,6 +313,8 @@ function Karta({ id, rahbar, onOrqaga, onZakaz, onYangiZakaz }) {
   const [f, setF] = useState({})
   const [sabab, setSabab] = useState('')
   const [xabar, setXabar] = useState({ turi: '', matn: '' })
+  // Telefon (maket): profil ostida tablar — «Zakazlar» (keyingi ish va zakazlar) va «Ma'lumot» (profil, tahrir, qora ro'yxat)
+  const [tab, setTab] = useState('zakazlar')
 
   const yukla = useCallback(() => mijozKarta(id).then((d) => { setM(d); setF(d) }), [id])
   useEffect(() => { yukla().catch((e) => setXabar({ turi: 'xato', matn: xatoMatni(e) })) }, [yukla])
@@ -287,7 +345,7 @@ function Karta({ id, rahbar, onOrqaga, onZakaz, onYangiZakaz }) {
   const keyingi = [...faol].filter((z) => ['vaqtinchalik', 'chegirma_kutilmoqda', 'bron', 'berildi'].includes(z.holat))
     .sort((a, b) => String(a.olib_ketish).localeCompare(String(b.olib_ketish)))[0]
   return (
-    <div className="stack karta mijoz-karta">
+    <div className={`stack karta mijoz-karta mk-tab-${tab}`}>
       <div className="karta-bosh mijoz-sarlavha">
         <button className="ikkinchi karta-orqaga" aria-label="Mijozlar ro'yxatiga qaytish" onClick={onOrqaga}><NavIkona nom="chap" className="tugma-ikon" /></button>
         <span className="mijoz-avatar" aria-hidden="true">{harf}</span>
@@ -334,6 +392,11 @@ function Karta({ id, rahbar, onOrqaga, onZakaz, onYangiZakaz }) {
             <small>{qoldiqlilar.length ? `#${qoldiqlilar[0].raqam} · ${qoldiqlilar[0].liboslar[0] || 'libos'}` : "qarz yo'q"}</small></div>
         </div>
       </section>
+
+      <div className="mk-tablar" role="tablist" aria-label="Profil bo'limlari">
+        <button type="button" role="tab" aria-selected={tab === 'zakazlar'} className={tab === 'zakazlar' ? 'faol' : ''} onClick={() => setTab('zakazlar')}><NavIkona nom="zakazlar" />Zakazlar</button>
+        <button type="button" role="tab" aria-selected={tab === 'malumot'} className={tab === 'malumot' ? 'faol' : ''} onClick={() => setTab('malumot')}><NavIkona nom="profil" />Ma'lumot</button>
+      </div>
 
       <div className="karta-ong">
         {xabar.matn && <p className={xabar.turi === 'xato' ? 'xato' : 'malumot'}>{xabar.matn}</p>}

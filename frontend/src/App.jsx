@@ -7,6 +7,7 @@ import Tasdiq from './components/Tasdiq'
 import NavIkona from './components/NavIkona'
 import Shapka from './components/Shapka'
 import UstkiPanel from './components/UstkiPanel'
+import FilialTanlov from './components/FilialTanlov'
 import XodimMenyu from './components/XodimMenyu'
 import Dashbord from './pages/Dashbord'
 import Hisobotlar from './pages/Hisobotlar'
@@ -267,7 +268,7 @@ export default function App() {
   // «Alohida kassir» rejimida sotuvchi pul bilan ishlamaydi — faqat zakaz oladi
   const pulOladi = !(xodim.rol === 'sotuvchi' && xodim.kassa_rejimi === 'kassir')
   const kassaRoyxat = [['yangi', 'Yangi zakaz', 'yangi'], ...(pulOladi ? [['tolov', "To'lov qabul", 'kassa'], ['xarajat', 'Xarajat', 'hamyon'],
-    ['inkassatsiya', 'Inkassatsiya', 'seyf'], ['zalog', 'Zaloglar', 'qalqon'], ['hisobot', 'Smena hisoboti', 'hujjat']] : []),
+    ['inkassatsiya', 'Inkassatsiya', 'seyf'], ['zalog', 'Garovlar', 'qalqon'], ['hisobot', 'Smena hisoboti', 'hujjat']] : []),
     ...(rahbar ? [['tarix', 'Smenalar tarixi', 'tarix']] : [])]
   const ichki = {
     zakazlar: { joriy: zakazlarBolim, tanla: (b) => { setZakazlarBolim(b); setZakazId(null) }, royxat: [['royxat', "Ro'yxat"], ['bandlik', 'Bandlik kalendari']] },
@@ -290,7 +291,10 @@ export default function App() {
   // «‹ Asosiy» bosilganda chap panelda asosiy menyu; tepadagi tablar baribir chiqmaydi (eski ko'rinish aralashmasin) —
   // asosiy menyudagi shu bo'lim (masalan, Liboslar) qayta bosilsa, ro'yxat qaytadi (Sozlama bilan bir xil)
   const navTekis = yonda && !menyu && !asosiyMenyu ? yonda : null
-  const tabBar = [['bosh', 'Dashboard'], ['zakazlar', 'Zakazlar'], pulOladi ? ['kassa', 'Kassa'] : ['mijozlar', 'Mijozlar']]
+  // Telefon «Profil» sahifasi (maket): pastki panelda yo'q bo'limlar shu yerdan ochiladi — ular ochiq turganda ham «Profil» belgilanadi
+  const profilBolimlari = bolimlar.filter(([k]) => k !== 'bosh' && k !== 'zakazlar' && !(k === 'kassa' && pulOladi) && !(k === 'mijozlar' && !pulOladi))
+  const profilda = sahifa === 'profil' || profilBolimlari.some(([k]) => k === sahifa)
+  const tabBar = [['bosh', 'Bosh'], ['zakazlar', 'Zakazlar'], pulOladi ? ['kassa', 'Kassa'] : ['mijozlar', 'Mijozlar']]
   // Qo'ng'iroqcha ro'yxati: har biri bosilganda aynan kerakli bo'limni ochadi
   const t = xabarD?.tasdiq_kutmoqda, og = xabarD?.ogohlantirishlar
   // Rahbarga — dashbord ma'lumotidan; sotuvchi/kassirga — /bildirishnomalar/ (R2)
@@ -309,7 +313,7 @@ export default function App() {
     xabarD.bugun.kechikkan > 0 && og.kechikish_jarimasi_yoqilgan === false && { matn: "Kechikkan qaytarishlar bor, lekin kechikish jarimasi o'chirilgan", soni: 1, bolim: 'sozlamalar:kechikish', tur: 'vaqt' },
     og.kassa_farqi !== 0 && { matn: `Kassa farqi (${og.kassa_farqi_sana}): ${som(og.kassa_farqi)}`, soni: 1, bolim: 'kassa:tarix', tur: 'qarz' },
     og.tannarxsiz_liboslar > 0 && { matn: `${og.tannarxsiz_liboslar} ta libosning tannarxi kiritilmagan — foyda haqiqatdagidan yuqori ko'rinadi`, soni: 1, bolim: 'katalog', tur: 'vaqt' },
-    og.saqlanayotgan_zaloglar > 0 && { matn: `${og.saqlanayotgan_zaloglar} ta hujjat/tillo zalog saqlanmoqda`, soni: 1, bolim: 'kassa:zalog', tur: 'yopildi' },
+    og.saqlanayotgan_zaloglar > 0 && { matn: `${og.saqlanayotgan_zaloglar} ta hujjat/tillo garov saqlanmoqda`, soni: 1, bolim: 'kassa:zalog', tur: 'yopildi' },
     og.tugayotgan_promokodlar > 0 && { matn: `${og.tugayotgan_promokodlar} ta promokod muddati 7 kun ichida tugaydi`, soni: 1, bolim: 'sozlamalar:promokod', tur: 'yopildi' },
     og.telegramsiz_xodimlar > 0 && { matn: `${og.telegramsiz_xodimlar} xodim Telegramni ulamagan — xabarlar ularga bormaydi`, soni: 1, bolim: 'sozlamalar:xodimlar', tur: 'yopildi' },
   ].filter(Boolean)
@@ -319,6 +323,13 @@ export default function App() {
   // Rahbar bosh sahifasi — maketdagidek ikki qatorli salom (birinchisi och tilla)
   // Bo'lim boshi kanvasdagidek (foydalanuvchi: «har bo'limda har xil, kanvas bilan ishlanmagan»): sarlavha — ochiq tabning nomi,
   // ostida bir qatorli xulosa. `null` xulosa — sahifaning o'zi hisoblab qo'yadi (BoshXulosa: zakaz va libos sonlari).
+  // Telefon (maket): Kassa ichki ekranlarining o'z sarlavhasi va izohi
+  const KASSA_TELEFON = {
+    tolov: ["To'lov qabul qilish", "Ijara to'lovini qabul qilish"], xarajat: ['Xarajat', 'Salon xarajatini kiritish'],
+    inkassatsiya: ['Pul topshirish', 'Kassadan pul topshirish'], zalog: ['Garovlar', 'Zakazlar uchun olingan garovlar'],
+    hisobot: ['Smena hisoboti', "Joriy smena bo'yicha qisqa hisobot"], tarix: ['Smenalar tarixi', 'Smenalar yakuni va farqlar'],
+    yangi: ['Yangi zakaz', 'Yangi ijara zakazini yaratish'],  // pastki panelda «Zakazlar» belgilanadi (maket)
+  }
   const BOSH = {
     'zakazlar:royxat': ['Zakazlar', null],
     'zakazlar:bandlik': ['Bandlik kalendari', 'Qaysi libos qachon band — bir qarashda'],
@@ -334,9 +345,10 @@ export default function App() {
     'hisobotlar:bonus': ['Sotuvchi bonusi', "Sotuvchilarga zakazlardan hisoblangan foizli mukofot"],
     'hisobotlar:bank': ['Bank solishtirish', "Bankka tushgan pul tizimdagi to'lovlar bilan solishtiriladi"],
     // Kassa tablari (kanvas KassaBolimShisha): sarlavha «Kassa», ostida tab nima uchunligi
+    'kassa:uy': ['Kassa', 'Salon kassa va smena boshqaruvi'],
     'kassa:xarajat': ['Kassa', 'Xarajat — kassadan chiqqan pul, modda va izoh bilan'],
     'kassa:inkassatsiya': ['Kassa', 'Pul topshirish — kassadagi naqdni rahbarga yoki keyingi kassirga'],
-    'kassa:zalog': ['Kassa', 'Saqlanayotgan zaloglar — smena yopilishidan oldin seyf bilan solishtiring'],
+    'kassa:zalog': ['Kassa', 'Saqlanayotgan garovlar — smena yopilishidan oldin seyf bilan solishtiring'],
     'kassa:hisobot': ['Kassa', 'Smena hisoboti — naqd pul qayerdan keldi va qayerga ketdi'],
     'kassa:tarix': ['Kassa', 'Smenalar tarixi — har smenaning yakuni, farqlar va tuzatishlar'],
     sozlamalar: ['Sozlama', 'Salon qoidalari bir marta sozlanadi — kassa, zakaz va hisobotlar shunga amal qiladi'],
@@ -384,7 +396,9 @@ export default function App() {
       {/* C-14: aloqa uzilsa joriy sahifa olib tashlanmaydi (forma holati yo'qolmasin) — saqlangan ma'lumot ustida chiqadi */}
       <BoshJoyi.Provider value={boshJoyi}>
       <main>
-        <UstkiPanel sarlavha={panelNomi} izoh={panelIzoh} xulosa={panelXulosa} xulosaRef={setXulosaJoy} xodim={xodim} rahbar={rahbar} xabarlar={xabarlar} sozlash={sozlash}
+        <UstkiPanel ikon={(sahifa === 'kassa' && kassaRoyxat.find(([id]) => id === kassaBolim)?.[2]) || { bosh: 'hisobotlar', zakazlar: 'kalendar' }[sahifa] || sahifa}
+          telefonNomi={sahifa === 'bosh' && rahbar ? ['Rahbar paneli', "Salon faoliyati bo'yicha asosiy ko'rsatkichlar"] : sahifa === 'kassa' ? KASSA_TELEFON[kassaBolim] || null : null}
+          sarlavha={panelNomi} izoh={panelIzoh} xulosa={panelXulosa} xulosaRef={setXulosaJoy} xodim={xodim} rahbar={rahbar} xabarlar={xabarlar} sozlash={sozlash}
           qarorSoni={rahbar ? t : null} onQarorOzgardi={() => dashbord('oy', '').then(setXabarD).catch(() => {})}
           onBolim={xabargaOt} onChiqish={chiqish} onRasm={rasmYukla} onRasmOchir={rasmOchir} onKassa={() => setSahifa('kassa:hisobot')}
           onQidir={(q) => { setQidiruv({ q, n: Date.now() }); setZakazlarBolim('royxat'); setSahifa('zakazlar') }}
@@ -416,9 +430,25 @@ export default function App() {
         {sahifa === 'zakazlar' && (zakazlarBolim === 'bandlik' && !zakazId
           ? <Kalendar onZakaz={zakaz} onYangi={faqatKorish ? undefined : yangiZakazga} />
           : <Zakazlar key={`${qidiruv?.n}-${zakazFiltr?.n}`} tanlangan={zakazId} onTanla={setZakazId} onYangi={() => setSahifa('yangi')}
-            yangiYopiq={faqatKorish ? YOPIQ_SABAB : null}
+            yangiYopiq={faqatKorish ? YOPIQ_SABAB : null} onBandlik={() => setZakazlarBolim('bandlik')}
             amal={zakazAmal?.id === zakazId ? zakazAmal.amal : null}
             onKassa={() => setSahifa('kassa')} boshQ={zakazFiltr ? undefined : qidiruv?.q} boshHolat={zakazFiltr?.holat} />)}
+        {sahifa === 'profil' && (
+          <div className="profil-sahifa">
+            <section className="blok tb-karta profil-karta" aria-label="Profil">
+              <span className="profil-rasm">{xodim.rasm ? <img src={xodim.rasm} alt="" /> : <b aria-hidden="true">{(xodim.ism || '?').trim().charAt(0).toUpperCase()}</b>}</span>
+              <span className="profil-matn"><b>{xodim.ism}</b><small>{rolNomi}</small><FilialTanlov rahbar={false} /></span>
+            </section>
+            {profilBolimlari.map(([k, nom]) => (
+              <button key={k} type="button" className="blok tb-karta tb-qator" onClick={() => setSahifa(k)}>
+                <NavIkona nom={k} /><span>{nom}</span><NavIkona nom="ong" className="nav-ikon tb-ong" />
+              </button>
+            ))}
+            <div className="profil-chiqish">
+              <XodimMenyu xodim={xodim} rol={rolNomi} onChiqish={chiqish} onRasm={rasmYukla} onRasmOchir={rasmOchir} yon onKassa={() => setSahifa('kassa:hisobot')} />
+            </div>
+          </div>
+        )}
         {sahifa === 'mijozlar' && <Mijozlar rahbar={rahbar} onZakaz={zakaz} bolim={mijozlarBolim} onYangiZakaz={faqatKorish ? undefined : (mijoz) => yangiZakazga({ mijoz })} />}
         {sahifa === 'katalog' && <Katalog rahbar={rahbar} bolim={katalogBolim} onZakaz={zakaz} yangiOch={libosQosh} onYangiYopildi={setLibosQosh} />}
         {sahifa === 'kassa' && (
@@ -431,21 +461,17 @@ export default function App() {
         </Fragment>
       </main>
       {/* Telefon: pastki panel — eng ko'p ishlatiladigan bo'limlar, qolgani «Ko'proq» menyusida */}
+      {/* Telefon pastki paneli (maket): Bosh, Zakazlar, Kassa, Profil. «Yangi zakaz» — Zakazlar sahifasidagi katta tugma va
+          Kassa bo'limi; qolgan bo'limlar (Liboslar, Mijozlar, Hisobotlar, Sozlama) — «Profil» ochadigan menyuda */}
       <nav className="tab-bar" aria-label="Asosiy bo'limlar">
-        {tabBar.slice(0, 2).map(([k, nom]) => (
-          <button key={k} type="button" className={sahifa === k ? 'faol' : ''} onClick={() => setSahifa(k)}><NavIkona nom={k} /><span>{nom}</span></button>
-        ))}
-        <button type="button" className={`tab-qoshish${sahifa === 'kassa' && kassaBolim === 'yangi' ? ' faol' : ''}`} aria-label="Yangi zakaz"
-          disabled={faqatKorish} title={faqatKorish ? YOPIQ_SABAB : undefined}
-          onClick={() => setSahifa('yangi')}><NavIkona nom="yangi" /></button>
-        {/* «Kassa» — kassa ishlari (to'lov qabul); «Yangi zakaz» uchun «+» bor — ikkalasi bir ekranni ochmaydi */}
-        {tabBar.slice(2).map(([k, nom]) => k === 'kassa' ? (
+        {tabBar.map(([k, nom]) => k === 'kassa' ? (
           <button key={k} type="button" className={sahifa === 'kassa' && kassaBolim !== 'yangi' ? 'faol' : ''}
-            onClick={() => setSahifa(kassaBolim === 'yangi' ? 'kassa:tolov' : 'kassa')}><NavIkona nom={k} /><span>{nom}</span></button>
+            onClick={() => setSahifa('kassa:uy')}><NavIkona nom={k} /><span>{nom}</span></button>
         ) : (
-          <button key={k} type="button" className={sahifa === k ? 'faol' : ''} onClick={() => setSahifa(k)}><NavIkona nom={k} /><span>{nom}</span></button>
+          <button key={k} type="button" className={sahifa === k || (k === 'zakazlar' && sahifa === 'kassa' && kassaBolim === 'yangi') ? 'faol' : ''} onClick={() => setSahifa(k)}>
+            <NavIkona nom={k === 'bosh' ? 'uy' : k === 'zakazlar' ? 'kalendar' : k} /><span>{nom}</span></button>
         ))}
-        <button type="button" className={menyu ? 'faol' : ''} aria-expanded={menyu} onClick={() => setMenyu(!menyu)}><NavIkona nom="koproq" /><span>Ko'proq</span></button>
+        <button type="button" className={profilda ? 'faol' : ''} onClick={() => setSahifa('profil')}><NavIkona nom="profil" /><span>Profil</span></button>
       </nav>
       {uxlayapti && (
         <DavomOynasi muddat={uxlayapti} onDavom={() => faollikRef.current?.()} onChiqish={() => { setUxlayapti(null); chiqish() }} />
@@ -488,7 +514,7 @@ export default function App() {
             {bolimlar.map(([k, nom]) => (
               <button key={k} type="button" aria-label={nom}
                 className={[sahifa === k && 'faol', tabBar.some(([x]) => x === k) && 'tabda'].filter(Boolean).join(' ') || undefined}
-                aria-current={sahifa === k ? 'page' : undefined} onClick={() => setSahifa(k === 'kassa' && pulOladi ? 'kassa:tolov' : k)}>
+                aria-current={sahifa === k ? 'page' : undefined} onClick={() => setSahifa(k === 'kassa' && pulOladi && sahifa !== 'kassa' ? 'kassa:tolov' : k)}>{/* Kassa ichidan («‹ Asosiy» dan keyin) bosilsa ochiq bo'lim o'zgarmaydi */}
                 <NavIkona nom={k} /><span className="nav-nom">{nom}</span>
               </button>
             ))}

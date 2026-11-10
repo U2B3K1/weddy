@@ -132,7 +132,7 @@ export default function Sozlamalar({ menId, bolim, onBolim }) {
 
   const panellar = {
     bandlik: () => (
-      <SPanel id="bandlik" ikon="kalendar" nomi="Bron va zalog" izoh="Libos qancha vaqt band turadi va qanday garov olinadi">
+      <SPanel id="bandlik" ikon="kalendar" nomi="Bron va garov" izoh="Libos qancha vaqt band turadi va qanday garov olinadi">
         <div className="soz-uch">
           <div className="soz-qiymat-k">
             <b>Tozalash buferi</b>
@@ -150,8 +150,8 @@ export default function Sozlamalar({ menId, bolim, onBolim }) {
             <small>Sotuvchi tanlagan libos boshqa sotuvchidan shuncha daqiqa yashiriladi — ikki kishi bir libosni sotmaydi.</small>
           </div>
         </div>
-        <div className="soz-kichik-bosh"><b>Zalog turlari</b><small>Libos berishda qaysi garovlarni qabul qilasiz. Zakazda faqat belgilanganlari chiqadi.</small></div>
-        <div className="soz-uch" role="group" aria-label="Zalog turlari">
+        <div className="soz-kichik-bosh"><b>Garov turlari</b><small>Libos berishda qaysi garovlarni qabul qilasiz. Zakazda faqat belgilanganlari chiqadi.</small></div>
+        <div className="soz-uch" role="group" aria-label="Garov turlari">
           {ZALOG.map(([k, nomi, izoh]) => <BelgiKarta key={k} checked={s[k]} onChange={(v) => set(k, v)} nomi={nomi} izoh={izoh} />)}
         </div>
       </SPanel>
@@ -235,7 +235,7 @@ export default function Sozlamalar({ menId, bolim, onBolim }) {
             <button type="button" className="havola" onClick={() => setBandOchiq(i)}>Tahrirlash</button>
           </SQator>
         )))}
-        <p className="soz-izoh">Ijara muddati, to'lov, zalog, jarima va avans qaytarish bandlari sozlamalardan avtomatik yoziladi — bu yerdagilar ulardan keyin chiqadi.</p>
+        <p className="soz-izoh">Ijara muddati, to'lov, garov, jarima va avans qaytarish bandlari sozlamalardan avtomatik yoziladi — bu yerdagilar ulardan keyin chiqadi.</p>
       </SPanel>
     ),
     promokod: () => (

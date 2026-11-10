@@ -10,7 +10,8 @@ export default function Shapka({ ochiq, onMenyu, children }) {
         <i /><i /><i />
       </button>
       <span className="ilova-logo">
-        <svg viewBox="-60 -40 640 640" aria-hidden="true"><path d={BELGI_D} fill="currentColor" /></svg>LIBOSA
+        <svg viewBox="-60 -40 640 640" aria-hidden="true"><path d={BELGI_D} fill="currentColor" /></svg>
+        <span className="ilova-logo-matn"><b><span className="logo-keng">LIBOSA</span><span className="logo-tor">Libosa</span></b><small>Kelin liboslari ijarasi</small></span>
       </span>
       <div className="shapka-ong">{children}</div>
     </header>

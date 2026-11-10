@@ -1,7 +1,7 @@
 import { useState } from 'react'
 
 // Uzun ro'yxatlarni sahifalash (mijoz tomonida, ro'yxat allaqachon yuklangan): sahifa cho'zilib ketmasin
-// (Smenalar tarixi, Qurilmalar, Jurnal, Xarajatlar, Zaloglar, Zakazlar…).
+// (Smenalar tarixi, Qurilmalar, Jurnal, Xarajatlar, Garovlar, Zakazlar…).
 // <Sahifali royxat={...} hajm={10} kalit={filtr}>{(qism) => qism.map(...)}</Sahifali>
 // `kalit` o'zgarsa (qidiruv, filtr) — 1-sahifaga qaytadi. Bitta sahifaga sig'sa — tugmalar ko'rinmaydi.
 export default function Sahifali({ royxat, hajm = 10, kalit = '', nomi = 'ta', children }) {

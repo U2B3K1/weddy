@@ -394,7 +394,7 @@ function Qoplash({ f }) {
   )
 }
 
-// Hisobot ostidagi ikkinchi kichik jadval (masalan, Zaloglar — davrda olinganlar turi bo'yicha)
+// Hisobot ostidagi ikkinchi kichik jadval (masalan, Garovlar — davrda olinganlar turi bo'yicha)
 function Qoshimcha({ q }) {
   return (
     <div className="r2h-qoshimcha">
@@ -600,7 +600,7 @@ function Pnl({ r, oyNom, filial }) {
             {chiqdi.length ? chiqdi.map((x, i) => band(x, i, chiU[i], true)) : <p className="malumot fy-bosh-izoh">Bu oyda pul chiqmagan.</p>}
           </div>
           <div className={`fy-natija${F < 0 ? ' zarar' : ''}`}><span>{F < 0 ? 'Zarar' : 'Sof foyda'}</span><b>{som(F)}</b></div>
-          <p className="malumot">Zalog hisobga kirmaydi — u mijozning puli, qaytariladi. Foizlar — o'z guruhi ichida. Nomni bosing — yozuvlari ochiladi.</p>
+          <p className="malumot">Garov hisobga kirmaydi — u mijozning puli, qaytariladi. Foizlar — o'z guruhi ichida. Nomni bosing — yozuvlari ochiladi.</p>
           {taf && (
             <div className="tafsilot">
               <b>{taf.sarlavha} — {taf.qatorlar.length} ta yozuv</b>
@@ -807,7 +807,7 @@ function PnlQoshimcha({ r }) {
           <b className={qizil ? 'fy-qizil' : undefined}>{v}</b>
         </div>
       ))}
-      <p className="malumot">Avans olingan kuni, qoldiq to'langan kuni tushumga kiradi. Zalog kirmaydi.
+      <p className="malumot">Avans olingan kuni, qoldiq to'langan kuni tushumga kiradi. Garov kirmaydi.
         {t?.qisman && ' Oy hali tugamagan — taqqoslash o\'tgan oylarning shu kungacha bo\'lgan qismi bilan.'}</p>
     </section>
   )

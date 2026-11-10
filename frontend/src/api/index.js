@@ -52,7 +52,7 @@ api.interceptors.response.use(
   },
 )
 
-// Oflayn kesh: bugungi/ertangi bronlar, telefonlar va saqlanayotgan zaloglar. Qurilma salondan chiqarilsa o'chadi.
+// Oflayn kesh: bugungi/ertangi bronlar, telefonlar va saqlanayotgan garovlar. Qurilma salondan chiqarilsa o'chadi.
 export const oflaynKesh = {
   saqla: (d) => { try { localStorage.setItem(OFLAYN, JSON.stringify(d)) } catch { /* joy yo'q bo'lsa keshsiz ishlaydi */ } },
   oqi: () => { try { return JSON.parse(localStorage.getItem(OFLAYN)) } catch { return null } },

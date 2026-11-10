@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import Halqa from '../components/Halqa'
 import LibosSiluet from '../components/LibosSiluet'
+import NavIkona from '../components/NavIkona'
 import TushumChizigi from '../components/TushumChizigi'
 import { dashbord, dashbordPanel, filiallar, som, xatoMatni, zakazlarSahifa } from '../api'
 import { OYLAR, isoOch } from '../components/kalendar/sana'
@@ -222,6 +223,13 @@ export default function Dashbord({ orta = null, onBolim, onZakaz }) {
   const [fil, setFil] = useState([])
   const [filial, setFilial] = useState('')
   const [xato, setXato] = useState('')
+  const [tab, setTab] = useState('tushum')
+  const [telefon, setTelefon] = useState(() => window.matchMedia('(max-width: 767px)').matches)
+  useEffect(() => {
+    const m = window.matchMedia('(max-width: 767px)'); const h = (e) => setTelefon(e.matches)
+    m.addEventListener('change', h)
+    return () => m.removeEventListener('change', h)
+  }, [])
 
   useEffect(() => { filiallar(true).then((r) => setFil(r.filiallar)).catch(() => {}) }, [])
   const yukla = useCallback(async () => {
@@ -244,6 +252,104 @@ export default function Dashbord({ orta = null, onBolim, onZakaz }) {
     { nom: 'Tozalashda', son: lib.tozalashda, rang: 'var(--h-vaqt)' },
     { nom: "Ta'mirda", son: lib.tamirda, rang: 'var(--h-qarz)' },
   ] : []
+
+  // Telefon (maket 2026-11-10): Tushum / Zakazlar / Liboslar tablari — bir ekranda bitta mavzu
+  if (telefon) {
+    if (!p || !d) return xato ? <p className="xato">{xato}</p> : <div className="dash-kpi dashbord-skelet skelet-kpi" aria-busy="true" />
+    const tablar = [['tushum', 'Tushum', 'hisobotlar'], ['zakazlar', 'Zakazlar', 'kalendar'], ['liboslar', 'Liboslar', 'katalog']]
+    return (
+      <div className="tb">
+        <div className="tb-tablar" role="tablist" aria-label="Rahbar paneli bo'limlari">
+          {tablar.map(([id, nom, ikon]) => (
+            <button key={id} type="button" role="tab" aria-selected={tab === id} className={tab === id ? 'faol' : undefined} onClick={() => setTab(id)}>
+              <NavIkona nom={ikon} />{nom}
+            </button>
+          ))}
+        </div>
+        {tab === 'tushum' && (
+          <>
+            <section className="blok tb-karta tb-tushum" aria-label="Tushum dinamikasi">
+              <div className="tb-karta-bosh">
+                <h3>Tushum</h3>
+                <select className="tb-davr" value={kun} aria-label="Davr" title={davrNomi} onChange={(e) => setKun(Number(e.target.value))}>
+                  {DAVRLAR.map((k) => <option key={k} value={k}>{k} kun</option>)}
+                </select>
+              </div>
+              <div className="tb-tushum-jami"><b>{som(p.tushum.jami)}</b><Trend foiz={p.tushum.ozgarish_foiz} oldingi={p.tushum.oldingi_jami} /></div>
+              <TushumChizigi kunlar={p.tushum.kunlar} rang={GRAFIK_RANG} past={160} />
+              <p className="tb-legenda"><span><i className="joriy" aria-hidden="true" />Joriy davr ({p.kun} kun)</span><span><i className="otgan" aria-hidden="true" />O'tgan davr ({p.kun} kun)</span></p>
+            </section>
+            <div className="tb-juft">
+              <section className="blok tb-karta tb-son" aria-label="Yangi zakazlar">
+                <h3><NavIkona nom="kalendar" />Yangi zakazlar</h3>
+                <div><b>{p.zakazlar.soni}</b><Trend foiz={p.zakazlar.ozgarish_foiz} oldingi={p.zakazlar.oldingi} /></div>
+              </section>
+              <section className="blok tb-karta tb-son" aria-label="Yangi mijozlar">
+                <h3><NavIkona nom="mijozlar" />Yangi mijozlar</h3>
+                <div><b>{p.mijozlar.yangi}</b><Trend foiz={p.mijozlar.ozgarish_foiz} oldingi={p.mijozlar.oldingi_yangi} /></div>
+              </section>
+            </div>
+            <button type="button" className="blok tb-karta tb-qator" onClick={() => onBolim?.('zakazlar:kechikkan')}>
+              <NavIkona nom="soat" /><span>Kechikkan qaytarishlar</span>
+              <b className={d.bugun.kechikkan > 0 ? 'qizil' : undefined}>{d.bugun.kechikkan}</b><NavIkona nom="ong" className="nav-ikon tb-ong" />
+            </button>
+            <section className="blok tb-karta tb-holat" aria-label="Liboslar holati">
+              <h3><NavIkona nom="katalog" />Liboslar holati</h3>
+              <div className="tb-holat-chiziq" role="img" aria-label={holatQismlari.map((q) => `${q.nom}: ${q.son}`).join(', ')}>
+                {holatQismlari.filter((q) => q.son > 0).map((q) => <i key={q.nom} style={{ flexGrow: q.son, background: q.rang }} />)}
+              </div>
+              <ul className="tb-holat-legenda">
+                {holatQismlari.filter((q) => q.son > 0).map((q) => <li key={q.nom}><i style={{ background: q.rang }} aria-hidden="true" />{q.son} {q.nom.toLowerCase()}</li>)}
+              </ul>
+            </section>
+            {/* egasining savollari — maketdagi birinchi ekrandan pastda (aylantirganda) */}
+            <EgasiSavollari d={d} />
+          </>
+        )}
+        {tab === 'zakazlar' && (
+          <>
+            <DiqqatTalab n={d.nazorat} onZakaz={onZakaz} onBolim={onBolim} />
+            <ZakazVaMijoz p={p} d={d} />
+            <KassaBugun b={d.bugun} onBolim={onBolim} />
+            <XodimlarKassasi royxat={d.xodimlar_kassasi || []} davr={davrQisqa(d.davr.dan, d.davr.gacha)} />
+            {orta}
+          </>
+        )}
+        {tab === 'liboslar' && (
+          <>
+            <section className="blok dash-karta dash-holat" aria-label="Liboslar holati">
+              <KartaBosh nom="Liboslar holati" ikon="yorliq" />
+              <div className="dash-holat-ichi">
+                <Halqa qismlar={holatQismlari} jami={lib.jami} izoh="faol libos" olcham={124} qalinlik={15} />
+                <ul className="dash-legenda">
+                  {holatQismlari.map((q) => (
+                    <li key={q.nom}><i style={{ background: q.rang }} aria-hidden="true" /><span>{q.nom}</span><b>{q.son}</b>
+                      <small>{lib.jami ? Math.round((q.son * 100) / lib.jami) : 0}%</small></li>
+                  ))}
+                </ul>
+              </div>
+              <Sanoq s={d.nazorat?.sanoq} />
+            </section>
+            <section className="blok dash-karta dash-mashhur" aria-label="Eng ko'p ijaraga berilgan liboslar">
+              <KartaBosh nom="Eng ko'p ijaraga berilgan" ikon="libos">
+                <button type="button" className="havola" onClick={() => onBolim?.('katalog')}>Barchasi →</button>
+              </KartaBosh>
+              {p.top_liboslar.length === 0 ? <p className="malumot">Hali ijaraga berilgan libos yo'q.</p> : (
+                <ol className="dash-mashhur-tor">
+                  {p.top_liboslar.slice(0, 3).map((l, i) => (
+                    <li key={l.id}>
+                      <div className="dash-mashhur-rasm">{l.rasm ? <img src={l.rasm} alt="" loading="lazy" /> : <LibosSiluet />}<span className="dash-orin">№{i + 1}</span></div>
+                      <b>{l.nomi}</b><small>{l.ijara_soni} marta ijarada</small><span className="dash-mashhur-narx">{som(l.ijara_narxi)}</span>
+                    </li>
+                  ))}
+                </ol>
+              )}
+            </section>
+          </>
+        )}
+      </div>
+    )
+  }
 
   return (
     <>

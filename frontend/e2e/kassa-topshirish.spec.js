@@ -146,7 +146,7 @@ test('pul topshirish: rahbar → sotuvchi → rahbar; kassir rejimi', async ({ p
       await expect(page.getByText('Sozlamalar saqlandi.')).toBeVisible()
       await kassaga(sotuvchi)  // yangilanganda /auth/me/ dan yangi rejim keladi
       // yagona bo'lim — tablar chiqmaydi; bo'lim nomi sarlavha ostida (shisha uslubi, Ndiz)
-      await expect(sotuvchi.locator('.ustki-nom p')).toHaveText('Yangi zakaz')
+      await expect(sotuvchi.locator('.ustki-nom p:not(.nom-tor)')).toHaveText('Yangi zakaz')
       await expect(sotuvchi.getByRole('tab', { name: "To'lov qabul", exact: true })).toHaveCount(0)  // faqat zakaz oladi
       await rasm(sotuvchi, '6-kassir-rejimida-sotuvchi')
     } finally {  // keyingi testlar uchun rejim qaytariladi

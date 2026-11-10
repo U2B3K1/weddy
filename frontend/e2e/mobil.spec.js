@@ -1,4 +1,4 @@
-// Telefon (390px): «+» va «Kassa» har xil ekran; «Ko'proq» menyusi yuqori panel ustida; shapkadagi belgi — menyu
+// Telefon (390px, maket 2026-11-10): pastki panel — Bosh, Zakazlar, Kassa, Profil; «Profil» menyusi yuqori panel ustida; xodim belgisi — menyu
 // (profil rasmi va «Chiqish»).
 import { expect, test } from '@playwright/test'
 import { kirish, xatolarniKuzat } from './yordam.js'
@@ -9,26 +9,44 @@ test('telefon: pastki panel, chap menyu va xodim menyusi', async ({ page }) => {
   await kirish(page, 'Rahbar', '1111')
   const tab = page.getByRole('navigation', { name: "Asosiy bo'limlar" })
 
-  await test.step("«+» — yangi zakaz, «Kassa» — to'lov qabul", async () => {
-    await tab.getByRole('button', { name: 'Yangi zakaz' }).click()
-    await expect(page.getByRole('tab', { name: 'Yangi zakaz', selected: true })).toBeVisible()
+  await test.step("pastki panel (maket): Bosh, Zakazlar, Kassa, Profil; «Kassa» — to'lov qabul", async () => {
+    await expect(tab.getByRole('button')).toHaveText(['Bosh', 'Zakazlar', 'Kassa', 'Profil'])
+    // Kassa — bosh ekran: kassadagi naqd, Kirim / Chiqim; «Kirim» — to'lov qabul, «‹ Kassa» — orqaga
     await tab.getByRole('button', { name: 'Kassa' }).click()
-    await expect(page.getByRole('tab', { name: "To'lov qabul", selected: true })).toBeVisible()
     await expect(tab.getByRole('button', { name: 'Kassa' })).toHaveClass(/faol/)
+    await expect(page.getByRole('region', { name: 'Kassadagi naqd' })).toBeVisible()
+    await page.getByRole('button', { name: 'Kirim', exact: true }).click()
+    await expect(page.locator('.kassa-orqaga')).toBeVisible()
+    await page.locator('.kassa-orqaga').click()
+    await expect(page.getByRole('region', { name: 'Kassadagi naqd' })).toBeVisible()
+    // Zakazlar — uch tab, rasmli kartalar; «Yangi zakaz» — ro'yxat ostidagi katta tugma (pastki panelda «+» yo'q)
+    await tab.getByRole('button', { name: 'Zakazlar' }).click()
+    await expect(page.getByRole('tab', { name: 'Barchasi', selected: true })).toBeVisible()
+    await page.getByRole('tab', { name: 'Kechikkan' }).click()
+    await page.getByRole('tab', { name: 'Barchasi' }).click()
+    await page.getByRole('button', { name: 'Yangi zakaz' }).click()
+    await expect(page.getByRole('heading', { name: 'Yangi zakaz', level: 1 })).toBeVisible()
+    await expect(tab.getByRole('button', { name: 'Zakazlar' })).toHaveClass(/faol/)  // yangi zakaz — Zakazlar oqimi (maket)
   })
 
-  await test.step("«Ko'proq» menyusi yuqori panel ustida", async () => {
-    await tab.getByRole('button', { name: "Ko'proq" }).click()
-    await expect(page.locator('nav.pastki.ochiq')).toBeInViewport()
-    await page.waitForTimeout(400)  // chiqish animatsiyasi
-    // yuqori panel (sahifa nomi) turgan nuqtada eng ustida — chap menyu
-    const ustida = await page.evaluate(() => {
-      const b = document.querySelector('.ustki').getBoundingClientRect()
-      return !!document.elementFromPoint(b.left + 40, b.top + b.height / 2)?.closest('nav.pastki')
-    })
-    expect(ustida, 'chap menyu yuqori panel ostida qolmasin').toBe(true)
-    await page.screenshot({ path: 'test-results/mobil/koproq.png' })
-    await page.locator('.menyu-parda').click({ position: { x: 370, y: 400 } })
+  await test.step("shapka qatori: filial, lupa (qidiruv ochiladi), qo'ng'iroqcha", async () => {
+    await expect(page.getByRole('search')).toBeHidden()
+    await page.getByRole('button', { name: 'Zakaz qidirish' }).click()
+    await expect(page.getByRole('search').getByLabel('Zakaz qidirish')).toBeVisible()
+    await page.getByRole('button', { name: 'Zakaz qidirish' }).click()
+    await expect(page.getByRole('search')).toBeHidden()
+  })
+
+  await test.step("«Profil» — alohida sahifa: xodim kartasi va qolgan bo'limlar (maket)", async () => {
+    await tab.getByRole('button', { name: 'Profil' }).click()
+    const profil = page.getByRole('region', { name: 'Profil' })
+    await expect(profil).toContainText('Rahbar')
+    for (const nom of ['Liboslar', 'Mijozlar', 'Hisobotlar', 'Sozlama']) await expect(page.locator('.profil-sahifa').getByRole('button', { name: nom, exact: true })).toBeVisible()
+    await expect(page.locator('.profil-sahifa').getByRole('button', { name: 'Chiqish' })).toBeVisible()
+    await page.screenshot({ path: 'test-results/mobil/profil.png' })
+    await page.locator('.profil-sahifa').getByRole('button', { name: 'Liboslar', exact: true }).click()
+    await expect(page.getByRole('heading', { name: 'Liboslar', level: 1 })).toBeVisible()
+    await expect(tab.getByRole('button', { name: 'Profil' })).toHaveClass(/faol/)  // Profil ichidagi bo'lim — «Profil» belgilangan
   })
 
   await test.step('shapkadagi belgi — profil rasmi va «Chiqish» menyusi', async () => {

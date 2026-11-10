@@ -323,18 +323,18 @@ test("katalog: kategoriyalar, libos ta'miri, aksessuar donasi ta'miri", async ({
   expect(xatolar).toEqual([])
 })
 
-test("kassa: zalog tekshiruvi, inkassatsiya; rahbar: smena tuzatish, dashboard filial bo'yicha", async ({ page, browser }) => {
+test("kassa: garov tekshiruvi, inkassatsiya; rahbar: smena tuzatish, dashboard filial bo'yicha", async ({ page, browser }) => {
   const xatolar = xatolarniKuzat(page)
   await kirish(page, 'Sotuvchi', '2222')
 
-  // Tayyorlov (API): smenada bo'lish, bugun olib ketiladigan zakaz — to'liq to'lab, hujjat zalogi bilan berish
+  // Tayyorlov (API): smenada bo'lish, bugun olib ketiladigan zakaz — to'liq to'lab, hujjat garovi bilan berish
   const smena = await apiSorov(page, 'GET', '/kassa/smena/')
   if (!smena.ochiq) await apiSorov(page, 'POST', '/kassa/smena/ochish/', { boshlangich_qoldiq: 0 })
   else await apiSorov(page, 'POST', '/kassa/smena/qoshilish/')
   const bosh = await apiSorov(page, 'GET', `/bronlar/bosh/?dan=${iso(0)}&gacha=${iso(1)}`)
   const libos = bosh.find((l) => !l.band && !l.qulflangan && l.ijara_narxi > 0)  // naqd tushsin — inkassatsiyaga pul kerak
   expect(libos, JSON.stringify(bosh)).toBeTruthy()
-  const z = await apiSorov(page, 'POST', '/zakazlar/', { telefon: '+998907770022', fio: 'Zalog Sinov', dan: iso(0), gacha: iso(1), liboslar: [libos.id] })
+  const z = await apiSorov(page, 'POST', '/zakazlar/', { telefon: '+998907770022', fio: 'Garov Sinov', dan: iso(0), gacha: iso(1), liboslar: [libos.id] })
   expect(z.id, JSON.stringify(z)).toBeTruthy()
   const t = await apiSorov(page, 'POST', '/kassa/tolovlar/', { zakaz: z.id, tur: 'avans', summa: z.jami })
   expect(t.detail, JSON.stringify(t)).toBeUndefined()
@@ -347,15 +347,15 @@ test("kassa: zalog tekshiruvi, inkassatsiya; rahbar: smena tuzatish, dashboard f
     const ustun = page.getByRole('complementary', { name: 'Bugun' })
     await expect(ustun).toHaveCount(0)
     await page.setViewportSize({ width: 1600, height: 900 })
-    await expect(ustun.getByRole('region', { name: /^Olib ketadi: \d+$/ })).toContainText('Zalog Sinov')
+    await expect(ustun.getByRole('region', { name: /^Olib ketadi: \d+$/ })).toContainText('Garov Sinov')
     await page.screenshot({ path: 'test-results/zakazlar/1-bugun-ustuni-1600.png', animations: 'disabled' })
     await page.setViewportSize({ width: 1280, height: 860 })
     await chip.click()
     await expect(chip).toHaveAttribute('aria-pressed', 'true')
-    const qator = page.locator('.zakaz-jadval tbody tr', { hasText: 'Zalog Sinov' })
+    const qator = page.locator('.zakaz-jadval tbody tr', { hasText: 'Garov Sinov' })
     await expect(qator).toBeVisible()
     await expect(page.locator('.zakaz-jadval tbody tr', { hasText: 'Storno Mijoz' })).toHaveCount(0)
-    await expect(qator.getByRole('link', { name: "Zalog Sinov — qo'ng'iroq qilish" })).toHaveAttribute('href', 'tel:+998907770022')
+    await expect(qator.getByRole('link', { name: "Garov Sinov — qo'ng'iroq qilish" })).toHaveAttribute('href', 'tel:+998907770022')
     await page.screenshot({ path: 'test-results/zakazlar/2-bugun-tasmasi-keng.png', animations: 'disabled' })
     await page.setViewportSize({ width: 390, height: 844 })
     await page.screenshot({ path: 'test-results/zakazlar/2-bugun-tasmasi-telefon.png', animations: 'disabled' })
@@ -367,8 +367,8 @@ test("kassa: zalog tekshiruvi, inkassatsiya; rahbar: smena tuzatish, dashboard f
   expect(b.holat, JSON.stringify(b)).toBe('berildi')
 
   await bolim(page, 'Kassa')
-  await test.step('zalog tekshiruvi: «Joyida»', async () => {
-    await page.getByRole('tab', { name: 'Zaloglar', exact: true }).click()
+  await test.step('garov tekshiruvi: «Joyida»', async () => {
+    await page.getByRole('tab', { name: 'Garovlar', exact: true }).click()
     // kanvas: jadval qatoridagi katakcha «joyida» deb belgilaydi
     const qator = page.locator('.zalog-jadval tbody tr', { hasText: `#${z.raqam}` })
     await qator.getByRole('checkbox').click()

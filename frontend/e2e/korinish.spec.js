@@ -176,11 +176,11 @@ test('kassir rejimi: sotuvchining zakaz kartasida pul formalari yo\'q', async ({
     await s.locator('input.jadval-qidiruv').fill('Naqdsiz Sinov')
     await s.locator('.zakaz-jadval tbody tr', { hasText: 'Naqdsiz Sinov' }).first().click()
     await expect(s.getByRole('heading', { name: /^Zakaz #\d+$/ })).toBeVisible()
-    // berishda faqat hujjat/tillo zalog — pul zalogni kassir oladi
+    // berishda faqat hujjat/tillo garov — pul garovni kassir oladi
     const berish = s.locator('#asosiy-amal')
-    await expect(berish).toContainText('Libosni berish (zalog)')
+    await expect(berish).toContainText('Libosni berish (garov)')
     await expect(berish.locator('option', { hasText: /^Pul$/ })).toHaveCount(0)
-    await expect(s.getByLabel('Zalog summasi')).toHaveCount(0)
+    await expect(s.getByLabel('Garov summasi')).toHaveCount(0)
     await s.getByText('Boshqa amallar').click()
     await expect(s.getByText("To'lov qilingan zakazni kassir bekor qiladi")).toBeVisible()
     await ikkiKenglik(s, '7-kassir-rejimi-zakaz-karta')

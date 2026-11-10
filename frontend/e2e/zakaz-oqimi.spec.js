@@ -1,5 +1,5 @@
-// Asosiy ish kuni: smena → yangi zakaz → to'liq to'lov → libos berish (pul zalog) → qaytarish → smenani yopish.
-// Kassadagi naqd oxirida aniq: 1 000 000 (ijara) + 500 000 (zalog) − 500 000 (zalog qaytdi) = 1 000 000.
+// Asosiy ish kuni: smena → yangi zakaz → to'liq to'lov → libos berish (pul garov) → qaytarish → smenani yopish.
+// Kassadagi naqd oxirida aniq: 1 000 000 (ijara) + 500 000 (garov) − 500 000 (garov qaytdi) = 1 000 000.
 import { expect, test } from '@playwright/test'
 import { bolimga, kirish, xatolarniKuzat } from './yordam.js'
 
@@ -66,13 +66,13 @@ test('sotuvchi: zakazdan smena yopilishigacha', async ({ page }) => {
     await expect(chek.getByText("To'lov qabul qilindi")).toBeVisible()
   })
 
-  await test.step('libosni berish: pul zalog, muddatidan oldin — tasdiq bilan', async () => {
+  await test.step('libosni berish: pul garov, muddatidan oldin — tasdiq bilan', async () => {
     await page.getByRole('searchbox', { name: 'Zakaz qidirish' }).first().fill(raqam)
     await page.getByRole('searchbox', { name: 'Zakaz qidirish' }).first().press('Enter')
     await page.locator('.zakaz-katak', { hasText: `#${raqam}` }).click()
     await expect(page.getByRole('heading', { name: `Zakaz #${raqam}` })).toBeVisible()
-    await page.getByLabel('Zalog summasi').fill('500000')
-    await page.getByRole('button', { name: 'Zalogni qabul qilib berish' }).click()
+    await page.getByLabel('Garov summasi').fill('500000')
+    await page.getByRole('button', { name: 'Garovni qabul qilib berish' }).click()
     await page.getByRole('alertdialog', { name: 'Libos oldinroq beriladimi?' }).getByRole('button', { name: 'Ha, hozir berish' }).click()
     await expect(page.getByText('Libos berildi.')).toBeVisible()
   })

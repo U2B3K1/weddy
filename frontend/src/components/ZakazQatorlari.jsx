@@ -25,7 +25,7 @@ const BELGI = {
   terminal: (<><rect x="2" y="5" width="20" height="14" rx="2" /><path d="M2 10h20M6 15h4" /></>),
   son: (<path d="M4 9h16M4 15h16M10 3 8 21M16 3l-2 18" />),
   foiz: (<><path d="M19 5 5 19" /><circle cx="6.5" cy="6.5" r="2.5" /><circle cx="17.5" cy="17.5" r="2.5" /></>),
-  // Kassa (kanvas): hujjat zalog, tillo buyum, bank ko'chirmasi
+  // Kassa (kanvas): hujjat garov, tillo buyum, bank ko'chirmasi
   hujjat: (<><rect x="3" y="5" width="18" height="14" rx="2" /><circle cx="8.5" cy="11" r="2" /><path d="M5.5 16c.6-1.5 1.7-2.2 3-2.2s2.4.7 3 2.2M14 10h4M14 14h3" /></>),
   uzuk: (<><path d="M9 3h6l2 3-5 4-5-4Z" /><circle cx="12" cy="15.5" r="5.5" /></>),
   bank: (<><path d="M3 10 12 4l9 6" /><path d="M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 21h18" /></>),

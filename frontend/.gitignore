@@ -28,3 +28,6 @@ dist-ssr
 /playwright-report
 /e2e/.salon.json
 /e2e/.qurilma.json
+
+# Dizayn ko'rigi skrinshotlari (DIZAYN_SKRIN=1 npx playwright test zz-dizayn-skrin)
+/dizayn-skrin

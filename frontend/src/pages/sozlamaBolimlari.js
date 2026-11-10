@@ -1,11 +1,11 @@
 // Sozlama bo'limlari: chap paneldagi Sozlama menyusi (App) va telefondagi ochiladigan menyu (Sozlamalar) uchun yagona ro'yxat.
 // Guruhlar mazmun bo'yicha (B-36): zakaz qoidalari, narx, liboslar, salon va xodimlar (kassa, filial, rekvizit), ko'rinish
 // va xabarlar, xavfsizlik. Avval «Ko'rinish va xabarlar» ichida libos ruxsatlari va artikul, «Narx» ichida bonus turardi.
-// «Bron va zalog» — avvalgi «Bron va bandlik» va «Zalog turlari» (1–3 maydonli ikki bo'lim) birlashgan.
+// «Bron va garov» — avvalgi «Bron va bandlik» va «Garov turlari» (1–3 maydonli ikki bo'lim) birlashgan.
 // `izoh` — «Barcha sozlamalar» umumiy ko'rinishidagi qisqa tavsif.
 // `sozlar` — sahifa tepasidagi qidiruv uchun kalit so'zlar (bo'lim nomida yo'q, lekin ichida bor narsalar).
 export const SOZLAMA_BOLIMLAR = [
-  { id: 'bandlik', izoh: "Bron muddati, tozalash kunlari, zalog turlari", ikon: 'kalendar', nomi: 'Bron va zalog', guruh: 'Zakaz qoidalari', sozlar: 'bufer tozalash avanssiz bron soat qulf daqiqa zalog pul hujjat tillo garov' },
+  { id: 'bandlik', izoh: "Bron muddati, tozalash kunlari, garov turlari", ikon: 'kalendar', nomi: 'Bron va garov', guruh: 'Zakaz qoidalari', sozlar: 'bufer tozalash avanssiz bron soat qulf daqiqa garov zalog pul hujjat tillo' },
   { id: 'kechikish', izoh: "Libosni kechiktirgan mijozga kunlik jarima", ikon: 'soat', nomi: 'Kechikish jarimasi', guruh: 'Zakaz qoidalari', sozlar: 'jarima kunlik qaytmagan eslatma vaqt' },
   { id: 'qaytarish', izoh: "Bekor qilinganda avansning qancha qismi qaytadi", ikon: 'qaytar', nomi: 'Avans qaytarish', guruh: 'Zakaz qoidalari', sozlar: 'bekor qilish foiz qoida' },
   { id: 'shartnoma', izoh: "Shartnomaga qo'shiladigan bandlar", ikon: 'hujjat', nomi: 'Shartnoma bandlari', guruh: 'Zakaz qoidalari', sozlar: 'band shart hujjat' },
