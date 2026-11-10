@@ -86,7 +86,7 @@ class OtkazmaTests(Base):
 
 class UsullarTests(Base):
     def test_smena_usullari_panel_uchun(self):
-        """Kassa paneli: smenadagi tushum usullar bo'yicha; «kelmadi» o'tkazma va zalog kirmaydi."""
+        """Kassa paneli: smenadagi tushum usullar bo'yicha; «kelmadi» o'tkazma va garov kirmaydi."""
         self.tolov(500_000, U.NAQD)
         self.tolov(300_000, U.KARTA, tur=T.QOLDIQ)
         t = self.tolov(200_000, U.OTKAZMA, tur=T.QOLDIQ)

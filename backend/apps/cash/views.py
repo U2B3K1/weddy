@@ -283,7 +283,7 @@ class TolovView(APIView):
 
 
 class ZaloglarView(APIView):
-    """Kunlik zalog tekshiruvi (FT-12.5): GET — saqlanayotgan hujjat/tillo zaloglar; POST — «joyida» / «yo'q»."""
+    """Kunlik garov tekshiruvi (FT-12.5): GET — saqlanayotgan hujjat/tillo garovlar; POST — «joyida» / «yo'q»."""
     faqat_korishda_ruxsat = True  # C-12: obuna tugaganda ham boshlangan ish yakunlanadi
     permission_classes = [IsStaff]
 
@@ -312,7 +312,7 @@ class ZaloglarView(APIView):
         smena = self._smena(request)
         zalog = Zalog.objects.filter(salon=request.salon, id=d['zalog']).select_related('zakaz').first()
         if not smena or not zalog:
-            return Response({'detail': 'Ochiq smena yoki zalog topilmadi.'}, status=404)
+            return Response({'detail': 'Ochiq smena yoki garov topilmadi.'}, status=404)
         try:
             tekshiruv.zalogni_belgilash(salon=request.salon, xodim=request.user, smena=smena, zalog=zalog,
                                         joyida=d['joyida'], izoh=d['izoh'])

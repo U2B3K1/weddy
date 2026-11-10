@@ -204,7 +204,7 @@ class QarzdorlarTests(Base):
         # 1) qoldiq kutilmoqda: avans olingan, libos berilmagan
         z1 = self.zakaz(kun(10), libos=self.a)
         tolov_qabul(salon=self.salon, xodim=self.malika, tur=Tolov.Tur.AVANS, summa=500_000, zakaz=z1)
-        # 2) qarzdor: qaytarishda jarima zalogdan oshgan
+        # 2) qarzdor: qaytarishda jarima garovdan oshgan
         z2 = self.zakaz(kun(0), libos=self.b, telefon='+998902')
         tolov_qabul(salon=self.salon, xodim=self.malika, tur=Tolov.Tur.AVANS, summa=1_000_000, zakaz=z2)
         libos_berish(salon=self.salon, xodim=self.malika, zakaz=z2, zaloglar=[{'turi': 'pul', 'summa': 100_000}])

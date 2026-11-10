@@ -54,7 +54,7 @@ class BerishTests(RentalBase):
 
     def test_zalogsiz_berilmaydi(self):
         self.tolash()
-        with self.assertRaisesMessage(BerishXatosi, 'Zalog olinmagan'):
+        with self.assertRaisesMessage(BerishXatosi, 'Garov olinmagan'):
             self.ber([])
 
     def test_hujjat_raqamsiz_va_tillo_ogirliksiz_rad(self):
@@ -90,7 +90,7 @@ class QaytarishTests(RentalBase):
         akt = z.qaytarish_akti
         self.assertEqual((akt.ushlab_qolingan, akt.qarz), (300_000, 0))
         h = kassa_hisobot(self.smena)
-        # kassada qolgan: 3 000 000 tushum + 300 000 jarima (zalog 1 000 000 kirdi va to'liq chiqdi)
+        # kassada qolgan: 3 000 000 tushum + 300 000 jarima (garov 1 000 000 kirdi va to'liq chiqdi)
         self.assertEqual((h['tushum'], h['hisobdagi_qoldiq']), (3_300_000, 3_300_000))
 
     def test_jarima_zalogdan_oshsa_qarz_va_s08_tillo(self):

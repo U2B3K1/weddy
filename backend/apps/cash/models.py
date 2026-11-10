@@ -15,7 +15,7 @@ class Smena(SalonModel):
     farq = models.BigIntegerField(null=True, blank=True)
     izoh = models.CharField(max_length=300, blank=True)
     yopilgan = models.DateTimeField(null=True, blank=True)
-    # Kunlik zalog tekshiruvi natijasi (FT-12.5), smena yopilganda yoziladi
+    # Kunlik garov tekshiruvi natijasi (FT-12.5), smena yopilganda yoziladi
     zalog_tekshirilmagan = models.PositiveSmallIntegerField(default=0)
     zalog_yoq = models.PositiveSmallIntegerField(default=0)
     # Yopilganda seyfda qolgan naqd (rahbarga topshirilsa 0): ertaga ochuvchining boshlang'ich qoldig'i shunga solishtiriladi
@@ -56,8 +56,8 @@ class Tolov(SalonModel):
         AVANS = 'avans', 'Avans'
         QOLDIQ = 'qoldiq', "Qoldiq to'lov"
         JARIMA = 'jarima', 'Jarima'
-        ZALOG = 'zalog', 'Zalog'
-        ZALOG_QAYTARISH = 'zalog_qaytarish', 'Zalogni qaytarish'
+        ZALOG = 'zalog', 'Garov'
+        ZALOG_QAYTARISH = 'zalog_qaytarish', 'Garovni qaytarish'
         VOZVRAT = 'vozvrat', 'Pulni qaytarish'
         XARAJAT = 'xarajat', 'Xarajat'
         INKASSATSIYA = 'inkassatsiya', 'Inkassatsiya'
@@ -135,7 +135,7 @@ class KassaTopshirish(SalonModel):
 
 
 class ZalogTekshiruvi(SalonModel):
-    """Kun oxirida salonda saqlanayotgan hujjat/tillo zalog «joyida» deb belgilanadi (FT-12.5)."""
+    """Kun oxirida salonda saqlanayotgan hujjat/tillo garov «joyida» deb belgilanadi (FT-12.5)."""
     smena = models.ForeignKey(Smena, on_delete=models.CASCADE, related_name='zalog_tekshiruvlari')
     zalog = models.ForeignKey('orders.Zalog', on_delete=models.CASCADE, related_name='tekshiruvlar')
     joyida = models.BooleanField()

@@ -86,7 +86,7 @@ class ShartnomaTests(HujjatBase):
 
     def test_zalog_bandi_yoqilgan_turlarga_mos(self):
         s = sozlama(self.salon); s.zalog_tillo = False; s.save()
-        m = self.band(hujjatlar.shartnoma(self.zakaz), 'Zalog')['matn']
+        m = self.band(hujjatlar.shartnoma(self.zakaz), 'Garov')['matn']
         self.assertIn('pul, hujjat', m)
         self.assertNotIn('tillo', m)
 
@@ -94,7 +94,7 @@ class ShartnomaTests(HujjatBase):
         self.tolov(Tolov.Tur.AVANS, 3_000_000)
         libos_berish(salon=self.salon, xodim=self.malika, zakaz=self.zakaz,
                      zaloglar=[{'turi': 'tillo', 'tavsif': 'uzuk', 'ogirlik_gr': '5.2', 'summa': 8_000_000}])
-        m = self.band(hujjatlar.shartnoma(self.zakaz), 'Zalog')['matn']
+        m = self.band(hujjatlar.shartnoma(self.zakaz), 'Garov')['matn']
         self.assertIn('tillo buyum qoldiradi', m)
         self.assertNotIn('hujjat qoldiradi', m)
 
@@ -120,7 +120,7 @@ class KvitansiyaVaDalolatnomaTests(HujjatBase):
 
     def test_dalolatnoma_qabul_va_qaytarish_s08(self):
         with self.assertRaises(hujjatlar.HujjatXatosi):
-            hujjatlar.dalolatnoma(self.zakaz)  # zalog yo'q
+            hujjatlar.dalolatnoma(self.zakaz)  # garov yo'q
         self.tolov(Tolov.Tur.AVANS, 3_000_000)
         libos_berish(salon=self.salon, xodim=self.malika, zakaz=self.zakaz, zaloglar=[
             {'turi': 'tillo', 'tavsif': 'uzuk', 'ogirlik_gr': '5.2', 'summa': 8_000_000},
@@ -148,7 +148,7 @@ class HujjatAPITests(HujjatBase):
         r = c.get(url)  # standart: shartnoma
         self.assertEqual((r.status_code, r.json()['tur']), (200, 'shartnoma'))
         self.assertEqual(c.get(url + '?tur=kvitansiya').status_code, 409)   # to'lov yo'q
-        self.assertEqual(c.get(url + '?tur=dalolatnoma').status_code, 409)  # zalog yo'q
+        self.assertEqual(c.get(url + '?tur=dalolatnoma').status_code, 409)  # garov yo'q
         self.assertEqual(c.get(url + '?tur=boshqa').status_code, 400)
 
     def test_boshqa_salon_zakazi_404(self):

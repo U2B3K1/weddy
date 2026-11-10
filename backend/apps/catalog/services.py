@@ -148,7 +148,7 @@ QOLDA_HOLATLAR = (Libos.Holat.BOSH, Libos.Holat.SOTILDI,
 
 @transaction.atomic
 def libosni_ozgartirish(*, salon, rahbar, libos, **maydonlar):
-    """Rahbar narx, tannarx, zalog yoki holatni o'zgartiradi; narx o'zgarishi jurnalga (FT-3.7)."""
+    """Rahbar narx, tannarx, garov yoki holatni o'zgartiradi; narx o'zgarishi jurnalga (FT-3.7)."""
     if not _rahbar(rahbar):
         raise KatalogXatosi("Narx va tannarxni faqat rahbar o'zgartiradi.")
     libos = Libos.objects.select_for_update().get(id=libos.id, salon=salon)
@@ -224,6 +224,10 @@ def aksessuar_qoshish(*, salon, xodim, nomi, kod, kategoriya, ijara_narxi=0, tan
     donalar_qoshish(salon=salon, aksessuar=a, soni=soni, xodim=xodim)
     jurnalga_yoz(salon, xodim, 'aksessuar_qoshildi', f'aksessuar {kod}', '',
                  f'{a.nomi}, {soni} dona, narx {ijara_narxi}, holat {a.holat}')
+    if not rahbar:  # libos kabi: tasdiq kutayotgan aksessuar haqida rahbar biladi (aks holda jimgina kutib qolardi)
+        from apps.notify.services import rahbarlarga
+        rahbarlarga(salon, 'yangi_libos',
+                    f"{xodim.ism} yangi aksessuar qo'shdi: {a.kod} {a.nomi} ({soni} dona).\nNarx va tannarxni kiritib tasdiqlang.")
     return a
 
 

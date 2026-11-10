@@ -76,7 +76,7 @@ def bildirishnomalar(salon, xodim, hozir=None):
     zakazlar = Zakaz.objects.filter(salon=salon)
     rahbar = xodim.rol == xodim.Rol.RAHBAR
     for tur, son, matn in (
-        ('olib', 0 if rahbar else BUGUN_FILTRLARI['bugun_olib'](zakazlar).count(), "ta mijoz bugun libos olib ketadi — qoldiq va zalogni oling"),
+        ('olib', 0 if rahbar else BUGUN_FILTRLARI['bugun_olib'](zakazlar).count(), "ta mijoz bugun libos olib ketadi — qoldiq va garovni oling"),
         ('qaytar', 0 if rahbar else BUGUN_FILTRLARI['bugun_qaytar'](zakazlar).count(), "ta libos bugun qaytariladi"),
         ('kechikkan', _kechikkan(zakazlar).count(), "ta kechikkan qaytarish — mijozga qo'ng'iroq qiling"),
     ):

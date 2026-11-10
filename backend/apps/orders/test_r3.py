@@ -280,7 +280,7 @@ class BekorQilishTests(Base):
 
 
 class HujjatlarTests(Base):
-    """C-09: kvitansiya va dalolatnoma; C-29: shartnomaning zalog bandida summa."""
+    """C-09: kvitansiya va dalolatnoma; C-29: shartnomaning garov bandida summa."""
 
     def test_bekor_zakaz_kvitansiyasi(self):
         z = self.zakaz(dan=kun(10))
@@ -300,7 +300,7 @@ class HujjatlarTests(Base):
         self.tolov(z, Tolov.Tur.AVANS, 3_000_000)
         libos_berish(salon=self.salon, xodim=self.xodim, zakaz=z, zaloglar=[PUL])
         sh = shartnoma(z)
-        self.assertIn("(1 000 000 so'm)", next(b['matn'] for b in sh['bandlar'] if b['sarlavha'] == 'Zalog'))
+        self.assertIn("(1 000 000 so'm)", next(b['matn'] for b in sh['bandlar'] if b['sarlavha'] == 'Garov'))
         libos_qaytarish(salon=self.salon, xodim=self.xodim, zakaz=z, jarima=1_000_000)
         q = dalolatnoma(z)['zaloglar'][0]
         self.assertEqual((q['holat'], q['ushlab_qolindi'], q['qaytarilgan']), ('Jarimaga ushlab qolindi', 1_000_000, None))
@@ -308,7 +308,7 @@ class HujjatlarTests(Base):
     def test_shartnoma_zalog_olinmagan_libos_zalogi(self):
         Libos.objects.filter(id=self.libos.id).update(zalog=700_000)
         z = self.zakaz()
-        self.assertIn("pul — 700 000 so'm", next(b['matn'] for b in shartnoma(z)['bandlar'] if b['sarlavha'] == 'Zalog'))
+        self.assertIn("pul — 700 000 so'm", next(b['matn'] for b in shartnoma(z)['bandlar'] if b['sarlavha'] == 'Garov'))
 
 
 class FaqatKorishTests(Base):

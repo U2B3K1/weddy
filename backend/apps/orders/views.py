@@ -137,7 +137,7 @@ class BerishSerializer(serializers.Serializer):
 
 
 class BerishView(APIView):
-    """Libosni berish: qoldiq to'liq to'langan, zalog olingan bo'lishi shart (ekran 9)."""
+    """Libosni berish: qoldiq to'liq to'langan, garov olingan bo'lishi shart (ekran 9)."""
     faqat_korishda_ruxsat = True  # C-12: obuna tugaganda ham boshlangan zakaz yakunlanadi
     permission_classes = [SalonYozishRuxsati]
 
@@ -177,7 +177,7 @@ class QaytarishView(APIView):
         if err:
             return err
         akt = zakaz.qaytarish_akti
-        # A-16: kassir mijozga qo'lda beradigan pul — pul zalog minus undan ushlab qolingan jarima
+        # A-16: kassir mijozga qo'lda beradigan pul — pul garov minus undan ushlab qolingan jarima
         pul_zalog = sum(g.summa for g in zakaz.zaloglar.filter(turi='pul', qaytarilgan__isnull=False))
         return Response({**zakaz_json(zakaz), 'jarima': akt.jarima, 'ushlab_qolingan': akt.ushlab_qolingan,
                          'qarz': akt.qarz, 'kechikish_kunlari': akt.kechikish_kunlari,

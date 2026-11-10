@@ -93,7 +93,7 @@ class QaytarishTuzatishlariTests(Base):
         self.tola(z, 1_000_000)
         libos_berish(salon=self.salon, xodim=self.xodim, zakaz=z, zaloglar=[{'turi': 'pul', 'summa': 500_000}])
         z = libos_qaytarish(salon=self.salon, xodim=self.xodim, zakaz=z, jarima=100_000, jarima_tolandi=100_000)
-        self.assertEqual(Tolov.objects.filter(zakaz=z, tur=Tolov.Tur.JARIMA).count(), 1)  # faqat zalogdan ushlangan
+        self.assertEqual(Tolov.objects.filter(zakaz=z, tur=Tolov.Tur.JARIMA).count(), 1)  # faqat garovdan ushlangan
 
 
 class KatalogTuzatishlariTests(Base):

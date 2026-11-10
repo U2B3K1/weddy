@@ -1,4 +1,4 @@
-"""Chop etiladigan hujjatlar: shartnoma (FT-10.2, FT-10.3, FT-16.1), kvitansiya va zalog dalolatnomasi (FT-7.4).
+"""Chop etiladigan hujjatlar: shartnoma (FT-10.2, FT-10.3, FT-16.1), kvitansiya va garov dalolatnomasi (FT-7.4).
 
 Server hujjat ma'lumotini va avtomatik bandlarni beradi; brauzer uni chop etadi yoki PDF ga saqlaydi.
 """
@@ -43,11 +43,11 @@ def _pozitsiyalar(zakaz):
 
 
 ZALOG_MATNI = {
-    'pul': "Mijoz zalog sifatida pul qoldiradi. Zalog ijara haqi emas va libos shartnomada ko'rsatilgan holatda "
-           "qaytarilganda to'liq qaytariladi; jarima yoki zarar bo'lsa, summasi zalogdan ushlab qolinadi.",
-    'hujjat': "Mijoz zalog sifatida hujjat qoldiradi. Hujjat salonda seyfda saqlanadi va libos qaytarilganda "
+    'pul': "Mijoz garov sifatida pul qoldiradi. Garov ijara haqi emas va libos shartnomada ko'rsatilgan holatda "
+           "qaytarilganda to'liq qaytariladi; jarima yoki zarar bo'lsa, summasi garovdan ushlab qolinadi.",
+    'hujjat': "Mijoz garov sifatida hujjat qoldiradi. Hujjat salonda seyfda saqlanadi va libos qaytarilganda "
               "qaytariladi; jarima yoki zarar bo'lsa, u to'lanmaguncha hujjat qaytarilmaydi.",
-    'tillo': "Mijoz zalog sifatida tillo buyum qoldiradi. Buyum tavsifi va og'irligi dalolatnomada yoziladi, "
+    'tillo': "Mijoz garov sifatida tillo buyum qoldiradi. Buyum tavsifi va og'irligi dalolatnomada yoziladi, "
              "qaytarishda qayta tortiladi; jarima yoki zarar bo'lsa, u to'lanmaguncha buyum qaytarilmaydi.",
 }
 
@@ -74,10 +74,10 @@ def shartnoma(zakaz):
                  "to'lanmaguncha libos berilmaydi."},
     ]
 
-    # Zalog bandi tanlangan zalog turiga mos keladi; hali olinmagan bo'lsa yoqilgan turlar sanaladi
+    # Garov bandi tanlangan garov turiga mos keladi; hali olinmagan bo'lsa yoqilgan turlar sanaladi
     olingan = list(dict.fromkeys(zakaz.zaloglar.values_list('turi', flat=True)))
     turlar = olingan or soz.zalog_turlari()
-    # C-29: pul zalog summasi — olingan bo'lsa haqiqiysi, hali olinmagan bo'lsa liboslar zalogi (oldindan ma'lum)
+    # C-29: pul garov summasi — olingan bo'lsa haqiqiysi, hali olinmagan bo'lsa liboslar garovi (oldindan ma'lum)
     pul_zalog = (sum(z.summa for z in zakaz.zaloglar.filter(turi=Zalog.Turi.PUL)) if 'pul' in olingan
                  else sum(p.zalog for p in zakaz.pozitsiyalar.all()))
     if olingan:
@@ -86,19 +86,19 @@ def shartnoma(zakaz):
             zalog_matni = zalog_matni.replace('pul qoldiradi.', f'pul qoldiradi ({_som(pul_zalog)}).', 1)
     else:
         nomlar = ', '.join(Zalog.Turi(t).label.lower() for t in turlar)
-        # jarima oqibati faqat yoqilgan zalog turlari bo'yicha yoziladi (FT-16.1)
+        # jarima oqibati faqat yoqilgan garov turlari bo'yicha yoziladi (FT-16.1)
         oqibat = []
         if 'pul' in turlar:
-            oqibat.append('summasi pul zalogidan ushlab qolinadi')
+            oqibat.append('summasi pul garovidan ushlab qolinadi')
         buyumlar = ' yoki '.join(Zalog.Turi(t).label.lower() for t in turlar if t != 'pul')
         if buyumlar:
             oqibat.append(f"{buyumlar} jarima to'lanmaguncha qaytarilmaydi")
         if 'pul' in turlar and pul_zalog:
             nomlar = nomlar.replace('pul', f'pul — {_som(pul_zalog)}', 1)
-        zalog_matni = (f"Libos berilayotganda mijoz zalog qoldiradi ({nomlar}). Zalog ijara haqi emas va libos "
+        zalog_matni = (f"Libos berilayotganda mijoz garov qoldiradi ({nomlar}). Garov ijara haqi emas va libos "
                        "shartnomadagi holatda qaytarilganda to'liq qaytariladi; jarima yoki zarar bo'lsa, "
                        + ', '.join(oqibat) + '.')
-    bandlar.append({'sarlavha': 'Zalog', 'matn': zalog_matni})
+    bandlar.append({'sarlavha': 'Garov', 'matn': zalog_matni})
 
     bandlar.append({
         'sarlavha': 'Qaytarish va zarar uchun javobgarlik',
@@ -131,7 +131,7 @@ def shartnoma(zakaz):
 
     bandlar.append({
         'sarlavha': "Shaxsiy ma'lumotlar",
-        'matn': "Mijoz ushbu shartnomani bajarish maqsadida o'zining shaxsiy ma'lumotlari (F.I.O., telefon, zalog "
+        'matn': "Mijoz ushbu shartnomani bajarish maqsadida o'zining shaxsiy ma'lumotlari (F.I.O., telefon, garov "
                 "ma'lumotlari) salon tomonidan qayta ishlanishiga va O'zbekiston hududida saqlanishiga rozilik beradi."})
 
     return {
@@ -193,13 +193,13 @@ def kvitansiya(zakaz):
 
 
 def dalolatnoma(zakaz):
-    """Zalog qabul qilish va qaytarish dalolatnomasi; sotuvchi va mijoz imzolaydi (FT-7.4, FT-7.5)."""
+    """Garov qabul qilish va qaytarish dalolatnomasi; sotuvchi va mijoz imzolaydi (FT-7.4, FT-7.5)."""
     zaloglar = list(zakaz.zaloglar.all())
     if not zaloglar:
-        raise HujjatXatosi('Zakazda zalog yo\'q.')
+        raise HujjatXatosi('Zakazda garov yo\'q.')
     akt = getattr(zakaz, 'qaytarish_akti', None)
     qatorlar = []
-    ushlash = akt.ushlab_qolingan if akt else 0  # jarima pul zaloglaridan tartib bilan ushlangan (rental.libos_qaytarish)
+    ushlash = akt.ushlab_qolingan if akt else 0  # jarima pul garovlaridan tartib bilan ushlangan (rental.libos_qaytarish)
     for z in zaloglar:
         ushlandi = 0
         holat = z.get_holat_display()
@@ -217,7 +217,7 @@ def dalolatnoma(zakaz):
         qatorlar.append({'yorliq': z.yorliq, 'turi': z.get_turi_display(), 'tavsif': tavsif,
                          'holat': holat, 'ushlab_qolindi': ushlandi,
                          'olingan': timezone.localtime(z.olingan).date(),
-                         # to'liq ushlangan pul zalog mijozga qaytarilmagan — «qaytarilgan» sanasi yo'q
+                         # to'liq ushlangan pul garov mijozga qaytarilmagan — «qaytarilgan» sanasi yo'q
                          'qaytarilgan': (timezone.localtime(z.qaytarilgan).date()
                                          if z.qaytarilgan and not (ushlandi and ushlandi == z.summa) else None)})
     qaytarish = None
@@ -228,7 +228,7 @@ def dalolatnoma(zakaz):
                      'ogirlik_mos': akt.ogirlik_mos}
     return {
         **_asos(zakaz), 'tur': 'dalolatnoma',
-        'sarlavha': f"Zalog qabul qilish{' va qaytarish' if akt else ''} dalolatnomasi (zakaz № {zakaz.raqam})",
+        'sarlavha': f"Garov qabul qilish{' va qaytarish' if akt else ''} dalolatnomasi (zakaz № {zakaz.raqam})",
         'zaloglar': qatorlar, 'qaytarish_akti': qaytarish,  # 'qaytarish' — asosiy qismdagi sana
         'imzolar': ['Sotuvchi', 'Mijoz'],
     }

@@ -92,7 +92,7 @@ class SozlamaSerializer(serializers.Serializer):
 
 
 class SozlamalarView(APIView):
-    """GET — har bir xodim (forma qaysi zalog turlarini ko'rsatishni bilishi uchun); PATCH — faqat rahbar."""
+    """GET — har bir xodim (forma qaysi garov turlarini ko'rsatishni bilishi uchun); PATCH — faqat rahbar."""
 
     def get_permissions(self):
         return [IsStaff()] if self.request.method == 'GET' else [IsRahbar(), SalonYozishRuxsati()]
@@ -112,7 +112,7 @@ class SozlamalarView(APIView):
         s = sozlama(request.salon)
         yangi = {**sozlama_json(s), **ser.validated_data}
         if not (yangi['zalog_pul'] or yangi['zalog_hujjat'] or yangi['zalog_tillo']):
-            return Response({'detail': 'Kamida bitta zalog turi yoqilgan bo\'lishi kerak.'}, status=400)
+            return Response({'detail': 'Kamida bitta garov turi yoqilgan bo\'lishi kerak.'}, status=400)
         if yangi['kechikish_jarimasi'] and yangi['kechikish_kunlik_summa'] <= 0:
             return Response({'detail': 'Kechikish jarimasi yoqilsa, kunlik summa kiritilishi kerak.'}, status=400)
         if yangi['kassa_rejimi'] != s.kassa_rejimi:

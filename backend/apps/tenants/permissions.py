@@ -26,7 +26,7 @@ class SalonYozishRuxsati(IsStaff):
     """«Faqat ko'rish» holatidagi salonda yozish mumkin emas (FT-22.8).
 
     Foydalanuvchi qarori (2026-11-07, C-12 → b): obuna tugaganda yangi zakaz, katalog, sozlamalar va xarajat to'xtaydi,
-    lekin **boshlangan zakazni yakunlash** ishlaydi — to'lov, berish, qaytarish, zalogni qaytarish, smena va pul topshirish.
+    lekin **boshlangan zakazni yakunlash** ishlaydi — to'lov, berish, qaytarish, garovni qaytarish, smena va pul topshirish.
     Bunday view'da `faqat_korishda_ruxsat = True` belgisi qo'yiladi. Bloklangan salonda hech qanday yozuv yo'q.
     Rad etilganda DRF ning inglizcha «You do not have permission…» o'rniga o'zbekcha sabab qaytadi.
     """

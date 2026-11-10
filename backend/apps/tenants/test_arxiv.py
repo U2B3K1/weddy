@@ -31,7 +31,7 @@ class ArxivBase(TestCase):
         self.boshqa = self.toldir('boshqa')
 
     def toldir(self, login):
-        """To'liq hayot siklidan o'tgan zakaz: to'lov, zalog, qaytarish — PROTECT bog'lanishlar bilan."""
+        """To'liq hayot siklidan o'tgan zakaz: to'lov, garov, qaytarish — PROTECT bog'lanishlar bilan."""
         salon, xodim, kat = salon_yarat(login)
         Xodim.objects.create(salon=salon, ism='Rahbar', rol=Xodim.Rol.RAHBAR)
         sozlama(salon)

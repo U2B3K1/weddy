@@ -2,7 +2,7 @@
 
 Foyda **kassa usulida** (foydalanuvchi qarori 2026-10-31): daromad — pul kirgan kun. Avans ham, qoldiq ham o'sha kunning
 tushumi; zakaz bekor qilinsa, mijozga qaytarilgan pul qaytarilgan kuni ayiriladi (ushlab qolingan qismi tushumda qoladi).
-Zalog daromad emas. Soliq hisoblanmaydi. Shu sabab o'tgan davr raqamlari keyin o'zgarmaydi — storno kerak emas.
+Garov daromad emas. Soliq hisoblanmaydi. Shu sabab o'tgan davr raqamlari keyin o'zgarmaydi — storno kerak emas.
 
 `tushum_zakazlari`/`storno_zakazlari`/`farq_zakazlari` — zakaz to'liq to'langan kun bo'yicha; endi faqat zakazlar
 tahlili (statistika hisobotlari: kategoriya, sotuvchi, salonchi...) uchun ishlatiladi.

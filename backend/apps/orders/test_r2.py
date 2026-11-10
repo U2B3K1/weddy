@@ -178,5 +178,5 @@ class BildirishnomaTests(TestCase):
         libos_berish(salon=self.salon, xodim=self.malika, zakaz=z,
                      zaloglar=[{'turi': 'hujjat', 'hujjat_turi': 'pasport', 'hujjat_raqami': 'AA1234567'}])
         t = [x for x in self.api(self.malika).get(f'/api/zakazlar/{z.id}/tarix/').json() if x['harakat'] == 'berildi'][0]
-        self.assertEqual(t['matn'], 'zalog: hujjat pasport AA1234567')
+        self.assertEqual(t['matn'], 'garov: hujjat pasport AA1234567')
         self.assertNotIn("so'm", t['matn'])

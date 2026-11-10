@@ -142,7 +142,7 @@ def tolangan_summa(zakaz):
 
 @transaction.atomic
 def tolov_qabul(*, salon, xodim, tur, summa, usul=Tolov.Usul.NAQD, zakaz=None, izoh=''):
-    """To'lov, zalog yoki chiqim yozadi. Ochiq smena va smenadagi xodim shart (FT-12.7, FT-12.8).
+    """To'lov, garov yoki chiqim yozadi. Ochiq smena va smenadagi xodim shart (FT-12.7, FT-12.8).
 
     Avans zakazni mustahkam bronga o'tkazadi; avans + qoldiq jamiga yetsa, zakaz to'liq to'langan
     kuni belgilanadi — daromad shu kuni tan olinadi (6.1).
@@ -522,7 +522,7 @@ def smena_yopish(*, salon, xodim, fakt_qoldiq, izoh='', filial=None, rahbar=None
     smena.seyfda = 0 if rahbar is not None else fakt_qoldiq
     smena.izoh, smena.yopilgan = izoh, timezone.now()
     from .tekshiruv import yopishda_zalog_hisobi
-    zalog_xabari = yopishda_zalog_hisobi(smena)  # FT-12.5: tekshirilmagan zalog bo'lsa rahbar biladi
+    zalog_xabari = yopishda_zalog_hisobi(smena)  # FT-12.5: tekshirilmagan garov bo'lsa rahbar biladi
     smena.save()
     if zalog_xabari:
         from apps.notify.services import rahbarlarga

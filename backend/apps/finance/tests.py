@@ -72,7 +72,7 @@ class PnlTests(FinanceBase):
                                  bekor_vaqti=vaqt(2026, 10, 12), ushlab_qolingan_avans=800_000)
         tolov(Tolov.Tur.AVANS, 3_000_000, (2026, 10, 3), b)
         tolov(Tolov.Tur.VOZVRAT, 2_200_000, (2026, 10, 12), b)
-        # zalog daromad emas
+        # garov daromad emas
         tolov(Tolov.Tur.ZALOG, 5_000_000, (2026, 10, 14))
 
         r = reports.foyda_zarar(s, 2026, 10)

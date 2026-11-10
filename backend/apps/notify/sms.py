@@ -144,7 +144,7 @@ def kvitansiya_yoz(tolov):
         salon=salon.nomi, raqam=z.raqam, summa=_pul(tolov.summa), usul=tolov.get_usul_display().lower(),
         tolangan=_pul(tolangan_summa(z)), jami=_pul(z.jami), tel=salon.telefon or salon.rahbar_telefon)
     if tolov.tur == 'zalog':
-        matn = matn.replace("so'm qabul qilindi", "so'm zalog qabul qilindi")
+        matn = matn.replace("so'm qabul qilindi", "so'm garov qabul qilindi")
     try:
         with transaction.atomic():
             x = SmsXabar.objects.create(salon=salon, zakaz=z, telefon=z.mijoz.telefon, tur='tolov_kvitansiya',

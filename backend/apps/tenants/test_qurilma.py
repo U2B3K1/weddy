@@ -228,3 +228,7 @@ class KirishRoyxatiFilialTests(Base):
         self.assertEqual(self.pin(token, dilnoza, '2222').status_code, 200)
         yunus.faol = False; yunus.save()  # filiali nofaol qilingan xodim kirish ekranida yo'qolib qolmaydi
         self.assertTrue(royxat()['Dilnoza'])
+        yunus.faol = True; yunus.save()
+        self.assertFalse(royxat()['Dilnoza'])
+        chil.faol = False; chil.save()  # qurilmaning o'z filiali nofaol — filialsiz qurilma kabi, hamma birinchi qatorda
+        self.assertTrue(all(royxat().values()))

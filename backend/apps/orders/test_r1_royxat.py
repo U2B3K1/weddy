@@ -264,15 +264,17 @@ class TarixMatniTests(SimpleTestCase):
                          "so'ralgan 10% (Malika) → tasdiqlandi: −250 000 so'm, jami 2 250 000 so'm")
         self.assertEqual(tarix_matni('chegirma_qarori', 'jami 1500000', 'tayyor chegirma «Talaba»: −75000, jami 1425000')[1],
                          "tayyor chegirma «Talaba»: −75 000 so'm, jami 1 425 000 so'm")
-        self.assertEqual(tarix_matni('berildi', '', 'zalog: pul 1000000')[1], "zalog: pul 1 000 000 so'm")
+        self.assertEqual(tarix_matni('berildi', '', 'garov: pul 1000000')[1], "garov: pul 1 000 000 so'm")
+        # eski yozuvlar («zalog» — 2026-11-10 gacha) ham «garov» bo'lib ko'rinadi
+        self.assertEqual(tarix_matni('berildi', '', 'zalog: pul 1000000')[1], "garov: pul 1 000 000 so'm")
         # QA-14: hujjat raqami, telefon, artikul — pul emas
-        self.assertEqual(tarix_matni('berildi', '', 'zalog: hujjat pasport AA1234567')[1], 'zalog: hujjat pasport AA1234567')
-        self.assertEqual(tarix_matni('berildi', '', 'zalog: hujjat id-karta 1234567; pul 1000000; tillo uzuk 5.00 g')[1],
-                         "zalog: hujjat id-karta 1234567; pul 1 000 000 so'm; tillo uzuk 5.00 g")
+        self.assertEqual(tarix_matni('berildi', '', 'garov: hujjat pasport AA1234567')[1], 'garov: hujjat pasport AA1234567')
+        self.assertEqual(tarix_matni('berildi', '', 'garov: hujjat id-karta 1234567; pul 1000000; tillo uzuk 5.00 g')[1],
+                         "garov: hujjat id-karta 1234567; pul 1 000 000 so'm; tillo uzuk 5.00 g")
         self.assertEqual(tarix_matni('noma_lum', '', 'tel +998901234567, artikul L2025, jami 2500000')[1],
                          "tel +998901234567, artikul L2025, jami 2 500 000 so'm")
-        self.assertEqual(tarix_matni('qaytarildi', '', 'butun; jarima 300000, zalogdan ushlandi 300000, qarz 0')[1],
-                         "butun; jarima 300 000 so'm, zalogdan ushlandi 300 000 so'm, qarz 0")
+        self.assertEqual(tarix_matni('qaytarildi', '', 'butun; jarima 300000, garovdan ushlandi 300000, qarz 0')[1],
+                         "butun; jarima 300 000 so'm, garovdan ushlandi 300 000 so'm, qarz 0")
         self.assertEqual(tarix_matni('qarz_tolandi', 'qarz 300000', "to'landi 100000, qoldi 200000")[1],
                          "to'landi 100 000 so'm, qoldi 200 000 so'm (qarz 300 000 so'm edi)")
         self.assertEqual(tarix_matni('promokod', 'BAHOR', 'olib tashlandi, jami 2500000')[1], "BAHOR olib tashlandi, jami 2 500 000 so'm")

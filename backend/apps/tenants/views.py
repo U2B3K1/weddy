@@ -179,11 +179,14 @@ class XodimlarRoyxatiView(OchiqView):
         salon, qurilma = _device(request)
         xodimlar = Xodim.objects.filter(salon=salon, faol=True).select_related('filial').order_by('ism')
 
+        # qurilma filiali nofaol qilingan bo'lsa — filialsiz qurilma kabi (joriy_filial bilan bir xil ta'rif)
+        qf = qurilma.filial_id if qurilma.filial_id and qurilma.filial.faol else None
+
         def asosiy(x):
             """Kirish ekranida birinchi ko'rinadimi: qurilma filialsiz, xodim filialsiz (yoki filiali nofaol qilingan),
             shu filial xodimi yoki rahbar. Qolganlari «Boshqa filial xodimi» ortida — yordamga kelgan sotuvchi ham kiradi."""
-            return (qurilma.filial_id is None or x.filial_id is None or not x.filial.faol
-                    or x.filial_id == qurilma.filial_id or x.rol == Xodim.Rol.RAHBAR)
+            return (qf is None or x.filial_id is None or not x.filial.faol
+                    or x.filial_id == qf or x.rol == Xodim.Rol.RAHBAR)
         return Response([{'id': x.id, 'ism': x.ism, 'rol': x.rol, 'rasm': rasm_url(x, request), 'asosiy': asosiy(x)}
                          for x in xodimlar])
 

@@ -39,12 +39,12 @@ def _summalar(s):
 
 
 def _zalog_matni(s):
-    """Berish tarixi «zalog: pul 1000000; hujjat pasport 1234567; tillo uzuk 5.00 g» — summa faqat pul zalogida;
+    """Berish tarixi «garov: pul 1000000; hujjat pasport 1234567; tillo uzuk 5.00 g» — summa faqat pul garovida;
     hujjat raqami (faqat raqamlardan iborat bo'lsa ham) va tillo og'irligi xom qoladi (QA-14)."""
-    boshi, _, qismlar = s.partition('zalog: ')
+    boshi, _, qismlar = s.partition('garov: ')
     if not _:
         return _summalar(s)
-    return boshi + 'zalog: ' + '; '.join(_summalar(q) if q.startswith('pul ') else q for q in qismlar.split('; '))
+    return boshi + 'garov: ' + '; '.join(_summalar(q) if q.startswith('pul ') else q for q in qismlar.split('; '))
 
 
 def _holat(kod):
@@ -64,6 +64,8 @@ def tarix_matni(harakat, eski, yangi):
     """(nomi, matn) — «Sana ko'chirildi», «24.11.2026 – 25.11.2026 → 26.11.2026 – 27.11.2026»."""
     nomi = NOMLAR.get(harakat, harakat.replace('_', ' ').capitalize())
     eski, yangi = str(eski or ''), str(yangi or '')
+    # 2026-11-10 gacha yozilgan tarixda «zalog» so'zi ishlatilgan — ekranda hamma joyda «garov»
+    eski, yangi = eski.replace('zalog', 'garov'), yangi.replace('zalog', 'garov')
     if harakat == 'bekor_qilindi':
         m = re.search(r'qaytarildi (\d+) \((\d+)%\), ushlab qolindi (\d+)', yangi)
         if m:

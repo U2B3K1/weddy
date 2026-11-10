@@ -31,7 +31,7 @@ class Base(TestCase):
 
 
 class ZalogTekshiruviTests(Base):
-    """FT-12.5: kun oxirida hujjat va tillo zaloglar «joyida» deb belgilanadi."""
+    """FT-12.5: kun oxirida hujjat va tillo garovlar «joyida» deb belgilanadi."""
 
     def setUp(self):
         super().setUp()
@@ -49,7 +49,7 @@ class ZalogTekshiruviTests(Base):
         d = self.m.get('/api/kassa/zaloglar/').data
         self.assertEqual([(z['turi'], z['joyida']) for z in d['zaloglar']], [('hujjat', None), ('tillo', None)])
         self.assertEqual(self.m.get('/api/kassa/smena/').data['zalog_tekshirilmagan'], 2)
-        # kanvas: qaytarish sharti (libos mijozda — qaytarilganda) va seyfdagi pul zaloglar jami
+        # kanvas: qaytarish sharti (libos mijozda — qaytarilganda) va seyfdagi pul garovlar jami
         self.assertEqual(d['zaloglar'][0]['shart'], 'Libos A qaytarilganda')
         self.assertEqual(d['pul'], {'soni': 1, 'jami': 300_000})
 
@@ -57,7 +57,7 @@ class ZalogTekshiruviTests(Base):
         """Kanvas «Pul harakatlari»: smenadagi to'lovlar, kirgani musbat, chiqqani manfiy; yangisi yuqorida."""
         d = self.m.get('/api/kassa/smena/').data
         h = d['harakatlar']
-        self.assertEqual(len(h), 4)  # 3 avans + 1 pul zalog (hujjat va tillo to'lov emas)
+        self.assertEqual(len(h), 4)  # 3 avans + 1 pul garov (hujjat va tillo to'lov emas)
         self.assertTrue(all(x['summa'] > 0 for x in h))
         self.assertIn('#', h[-1]['tavsif'])
         self.assertTrue(d['ochilgan'])
@@ -79,7 +79,7 @@ class ZalogTekshiruviTests(Base):
     def test_tekshirilmay_yopilsa_rahbar_biladi(self):
         s = smena_yopish(salon=self.salon, xodim=self.malika, fakt_qoldiq=3_300_000)
         self.assertEqual(s.zalog_tekshirilmagan, 2)
-        self.assertIn('2 ta hujjat/tillo zalog tekshirilmadi', Xabar.objects.get(tur='zalog_tekshirilmadi').matn)
+        self.assertIn('2 ta hujjat/tillo garov tekshirilmadi', Xabar.objects.get(tur='zalog_tekshirilmadi').matn)
 
     def test_smenada_bolmagan_xodim_va_pul_zalog(self):
         from apps.orders.models import Zalog

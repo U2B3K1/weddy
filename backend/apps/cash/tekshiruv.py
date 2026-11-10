@@ -1,4 +1,4 @@
-"""Kunlik zalog tekshiruvi (FT-12.5) va yopilgan smenani tuzatish (FT-12.11)."""
+"""Kunlik garov tekshiruvi (FT-12.5) va yopilgan smenani tuzatish (FT-12.11)."""
 from django.db import transaction
 from django.utils import timezone
 
@@ -12,7 +12,7 @@ SAQLANADI = (Zalog.Holat.SAQLANMOQDA, Zalog.Holat.USHLAB_QOLINDI)
 
 
 def _zaloglar(smena):
-    """Salonda saqlanayotgan hujjat va tillo zaloglar. Filial kassasida — shu filial zakazlarining zaloglari."""
+    """Salonda saqlanayotgan hujjat va tillo garovlar. Filial kassasida — shu filial zakazlarining garovlari."""
     qs = (Zalog.objects.filter(salon=smena.salon, holat__in=SAQLANADI).exclude(turi=Zalog.Turi.PUL)
           .select_related('zakaz__mijoz', 'zakaz__qaytarish_akti').prefetch_related('zakaz__pozitsiyalar__libos')
           .order_by('yorliq', 'id'))
@@ -20,7 +20,7 @@ def _zaloglar(smena):
 
 
 def zalog_royxati(smena):
-    """[{zalog, ..., joyida: True/False/None}] — None: hali tekshirilmagan."""
+    """[{garov, ..., joyida: True/False/None}] — None: hali tekshirilmagan."""
     belgilar = dict(ZalogTekshiruvi.objects.filter(smena=smena).values_list('zalog_id', 'joyida'))
     natija = []
     for z in _zaloglar(smena):
@@ -32,7 +32,7 @@ def zalog_royxati(smena):
 
 
 def qaytarish_sharti(zakaz):
-    """Kanvas «Qaytarish sharti»: libos qaytgach yoki qarz to'langach zalog mijozga qaytariladi."""
+    """Kanvas «Qaytarish sharti»: libos qaytgach yoki qarz to'langach garov mijozga qaytariladi."""
     from apps.orders.models import Zakaz
     akt = getattr(zakaz, 'qaytarish_akti', None) if zakaz.holat == Zakaz.Holat.QAYTARILDI else None
     if akt is not None and akt.qarz:
@@ -42,7 +42,7 @@ def qaytarish_sharti(zakaz):
 
 
 def pul_zaloglar(smena):
-    """Kanvas «Pul zaloglar» ko'rsatkichi: salonda (seyfda) saqlanayotgan pul zaloglar soni va jami."""
+    """Kanvas «Pul garovlar» ko'rsatkichi: salonda (seyfda) saqlanayotgan pul garovlar soni va jami."""
     from django.db.models import Count, Sum
     qs = Zalog.objects.filter(salon=smena.salon, holat__in=SAQLANADI, turi=Zalog.Turi.PUL)
     if smena.filial_id:
@@ -58,19 +58,19 @@ def tekshirilmaganlar_soni(smena):
 
 @transaction.atomic
 def zalogni_belgilash(*, salon, xodim, smena, zalog, joyida, izoh=''):
-    """Sotuvchi zalogni «joyida» yoki «yo'q» deb belgilaydi. «Yo'q» bo'lsa rahbarga darhol xabar ketadi."""
+    """Sotuvchi garovni «joyida» yoki «yo'q» deb belgilaydi. «Yo'q» bo'lsa rahbarga darhol xabar ketadi."""
     if smena.yopilgan or not _faol_ishtirokchi(smena, xodim):
-        raise KassaXatosi("Zaloglarni ochiq smenadagi sotuvchi tekshiradi.")
+        raise KassaXatosi("Garovlarni ochiq smenadagi sotuvchi tekshiradi.")
     if zalog.salon_id != salon.id or zalog.holat not in SAQLANADI or zalog.turi == Zalog.Turi.PUL:
-        raise KassaXatosi('Bu zalog salonda saqlanmayapti.')
+        raise KassaXatosi('Bu garov salonda saqlanmayapti.')
     if not joyida and not izoh.strip():
-        raise KassaXatosi("Zalog joyida bo'lmasa izoh majburiy.")
+        raise KassaXatosi("Garov joyida bo'lmasa izoh majburiy.")
     t, _ = ZalogTekshiruvi.objects.update_or_create(
         smena=smena, zalog=zalog, defaults={'salon': salon, 'joyida': joyida, 'izoh': izoh.strip(), 'xodim': xodim})
     if not joyida:
         from apps.notify.services import rahbarlarga
         rahbarlarga(salon, 'zalog_yoq',
-                    f"Zalog joyida emas: {zalog.yorliq} ({zalog.get_turi_display()}), zakaz #{zalog.zakaz.raqam}.\n"
+                    f"Garov joyida emas: {zalog.yorliq} ({zalog.get_turi_display()}), zakaz #{zalog.zakaz.raqam}.\n"
                     f"Belgiladi: {xodim.ism}. Izoh: {izoh.strip()}", kalit=f'zalog_yoq:{smena.id}:{zalog.id}')
     return t
 
@@ -110,11 +110,11 @@ def smena_json(s):
 
 
 def yopishda_zalog_hisobi(smena):
-    """Smena yopilayotganda zalog tekshiruvi natijasini smenaga yozadi; kamchilik bo'lsa rahbarga xabar matnini qaytaradi."""
+    """Smena yopilayotganda garov tekshiruvi natijasini smenaga yozadi; kamchilik bo'lsa rahbarga xabar matnini qaytaradi."""
     smena.zalog_tekshirilmagan = tekshirilmaganlar_soni(smena)
     smena.zalog_yoq = ZalogTekshiruvi.objects.filter(smena=smena, joyida=False).count()
     if smena.zalog_tekshirilmagan:
-        return f"Smena {smena.sana:%d.%m.%Y} yopildi, lekin {smena.zalog_tekshirilmagan} ta hujjat/tillo zalog tekshirilmadi."
+        return f"Smena {smena.sana:%d.%m.%Y} yopildi, lekin {smena.zalog_tekshirilmagan} ta hujjat/tillo garov tekshirilmadi."
     return ''
 
 

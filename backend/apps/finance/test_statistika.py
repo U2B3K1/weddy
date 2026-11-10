@@ -46,7 +46,7 @@ class StatistikaTests(TestCase):
         libos_berish(salon=cls.salon, xodim=cls.malika, zakaz=z1, zaloglar=[{'turi': 'pul', 'summa': 500_000}])
         Zakaz.objects.filter(id=z1.id).update(qaytarish=kun(-2))
         libos_qaytarish(salon=cls.salon, xodim=cls.malika, zakaz=z1, jarima=100_000)
-        # 2) B: chegirma 10% (rahbar tasdiqladi), to'liq to'landi, berildi (hujjat zalogi), hali qaytmagan
+        # 2) B: chegirma 10% (rahbar tasdiqladi), to'liq to'landi, berildi (hujjat garovi), hali qaytmagan
         z2 = zakaz_yaratish(salon=cls.salon, xodim=cls.malika, telefon='+998902', fio='Nodira', olib_ketish=kun(0),
                             qaytarish=kun(3), libos_idlari=[cls.b.id], manba='instagram')
         s = chegirma_sorash(salon=cls.salon, xodim=cls.malika, zakaz=z2, sabab='doimiy_mijoz', foiz=10)
@@ -105,7 +105,7 @@ class StatistikaTests(TestCase):
         """R2: reestr va statistika bitta hisobotda — salondagilar tepada, davrda qaytarilganlari ostida, turi bo'yicha qo'shimcha."""
         r = self.h('zalog')
         self.assertEqual([(q[1], q[2], q[6]) for q in r['qatorlar']], [('Hujjat', '#2', 'Saqlanmoqda'), ('Pul', '#1', 'Qaytarildi')])
-        self.assertEqual((r['jami'][0], r['jami'][4]), ('Salonda 1 ta', 0))  # qaytarilgan pul zalogi salondagi pulga kirmaydi
+        self.assertEqual((r['jami'][0], r['jami'][4]), ('Salonda 1 ta', 0))  # qaytarilgan pul garovi salondagi pulga kirmaydi
         st = r['qoshimcha']
         self.assertEqual(self.qator(st, 'Pul')[1:], [1, 1, 0, 0])
         self.assertEqual(self.qator(st, 'Hujjat')[1:], [1, 0, 0, 1])
@@ -115,7 +115,7 @@ class StatistikaTests(TestCase):
         b = self.h('bekor')
         self.assertEqual(b['qatorlar'][0][3:], ["fikri o'zgardi", 500_000, 500_000])
         k = self.h('kechikish')
-        self.assertEqual(k['qatorlar'][0][4:], [2, 100_000, 100_000, 0])  # 2 kun kechikdi, jarima zalogdan ushlandi
+        self.assertEqual(k['qatorlar'][0][4:], [2, 100_000, 100_000, 0])  # 2 kun kechikdi, jarima garovdan ushlandi
 
     def test_xarajat_va_pul_oqimi(self):
         x = self.h('xarajat')
@@ -176,7 +176,7 @@ class StatistikaTests(TestCase):
     def test_api_hammasi_ishlaydi_va_faqat_rahbarga(self):
         c = APIClient(); c.credentials(HTTP_AUTHORIZATION='Bearer ' + make_staff_token(self.rahbar))
         royxat = c.get('/api/hisobotlar/royxat/').json()
-        self.assertEqual(len(royxat), 16)  # P&L + 15 («Xarajatlar» — alohida bo'lim; ikki zalog hisoboti bitta)
+        self.assertEqual(len(royxat), 16)  # P&L + 15 («Xarajatlar» — alohida bo'lim; ikki garov hisoboti bitta)
         self.assertNotIn('xarajat', [h['kalit'] for h in royxat])
         self.assertEqual({h['kalit'] for h in royxat if h.get('davrsiz')}, {'kelgusi', 'bosh-liboslar'})
         self.assertEqual(c.get('/api/hisobotlar/h/xarajat/').status_code, 200)  # API saqlanadi (Xarajatlar jamlanmasi)

@@ -145,7 +145,7 @@ class Zalog(SalonModel):
     zakaz = models.ForeignKey(Zakaz, on_delete=models.PROTECT, related_name='zaloglar')
     turi = models.CharField(max_length=8, choices=Turi.choices)
     holat = models.CharField(max_length=16, choices=Holat.choices, default=Holat.SAQLANMOQDA)
-    summa = models.PositiveIntegerField(default=0)  # pul zalogi yoki taxminiy qiymat
+    summa = models.PositiveIntegerField(default=0)  # pul garovi yoki taxminiy qiymat
     tavsif = models.CharField(max_length=300, blank=True)
     hujjat_turi = models.CharField(max_length=50, blank=True)
     hujjat_raqami = models.CharField(max_length=50, blank=True)
@@ -166,7 +166,7 @@ class QaytarishAkti(SalonModel):
     sana = models.DateField()
     tekshiruv = models.CharField(max_length=16, choices=Tekshiruv.choices, default=Tekshiruv.BUTUN)
     jarima = models.PositiveIntegerField(default=0)
-    ushlab_qolingan = models.PositiveIntegerField(default=0)  # pul zalogidan jarimaga
+    ushlab_qolingan = models.PositiveIntegerField(default=0)  # pul garovidan jarimaga
     qarz = models.PositiveIntegerField(default=0)  # to'lanmagan jarima (FT-12.13)
     kechikish_kunlari = models.PositiveSmallIntegerField(default=0)
     tortilgan_gr = models.DecimalField(max_digits=7, decimal_places=2, null=True, blank=True)

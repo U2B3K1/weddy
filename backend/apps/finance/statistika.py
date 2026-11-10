@@ -184,7 +184,7 @@ SALONDA = (Zalog.Holat.SAQLANMOQDA, Zalog.Holat.USHLAB_QOLINDI)
 
 
 def zaloglar(salon, dan, gacha, **_):
-    """Zaloglar (avvalgi «Zaloglar reestri» va «Zalog statistikasi» birlashgan): tepada hozir salonda turganlari (qachon
+    """Garovlar (avvalgi «Garovlar reestri» va «Garov statistikasi» birlashgan): tepada hozir salonda turganlari (qachon
     olinganidan qat'i nazar), keyin davrda olinib qaytarilganlari; `qoshimcha` — davrda olinganlar turi bo'yicha."""
     royxat = list(Zalog.objects.filter(salon=salon).filter(Q(holat__in=SALONDA) | Q(olingan__date__range=(dan, gacha)))
                   .select_related('zakaz__mijoz'))
@@ -195,9 +195,9 @@ def zaloglar(salon, dan, gacha, **_):
     salonda = [g for g in royxat if g.holat in SALONDA]
     pul = sum(g.summa or 0 for g in salonda if g.turi == Zalog.Turi.PUL)
     st = zalog_statistikasi(salon, dan, gacha)
-    return {'zakazlar': [g.zakaz_id for g in royxat], 'sarlavha': 'Zaloglar',
-            'izoh': "Tepada — hozir salonda turgan zaloglar (qachon olinganidan qat'i nazar), keyin davrda olinib qaytarilganlari. "
-                    "Jami qatordagi pul — faqat salonda turgan pul zaloglari.",
+    return {'zakazlar': [g.zakaz_id for g in royxat], 'sarlavha': 'Garovlar',
+            'izoh': "Tepada — hozir salonda turgan garovlar (qachon olinganidan qat'i nazar), keyin davrda olinib qaytarilganlari. "
+                    "Jami qatordagi pul — faqat salonda turgan pul garovlari.",
             'ustunlar': _u(('Yorliq', 'matn'), ('Turi', 'matn'), ('Zakaz', 'matn'), ('Mijoz', 'matn'), ('Pul summasi', 'pul'),
                            ('Olingan', 'sana'), ('Holat', 'matn')),
             'qatorlar': qatorlar, 'jami': [f'Salonda {len(salonda)} ta', '', '', '', pul, None, ''],
@@ -211,7 +211,7 @@ def zalog_statistikasi(salon, dan, gacha, **_):
         t = q.filter(turi=k)
         qatorlar.append([nom, t.count(), t.filter(holat=Zalog.Holat.QAYTARILDI).count(),
                          t.filter(holat=Zalog.Holat.USHLAB_QOLINDI).count(), t.filter(holat=Zalog.Holat.SAQLANMOQDA).count()])
-    return {'sarlavha': 'Zalog statistikasi', 'izoh': 'Davrda olingan zaloglar turi bo\'yicha.',
+    return {'sarlavha': 'Garov statistikasi', 'izoh': 'Davrda olingan garovlar turi bo\'yicha.',
             'ustunlar': _u(('Turi', 'matn'), ('Olingan', 'son'), ('Qaytarilgan', 'son'), ('Ushlab qolingan', 'son'),
                            ('Saqlanmoqda', 'son')),
             'qatorlar': qatorlar, 'jami': None}
@@ -263,7 +263,7 @@ def kechikish_va_jarimalar(salon, dan, gacha, sotuvchi=None, **_):
                  a.kechikish_kunlari, a.jarima, a.ushlab_qolingan, a.qarz] for a in aktlar]
     return {'zakazlar': [a.zakaz_id for a in aktlar], 'sarlavha': 'Kechikish va jarimalar', 'izoh': '',
             'ustunlar': _u(('Zakaz', 'matn'), ('Mijoz', 'matn'), ('Qaytarilgan', 'sana'), ('Holat', 'matn'), ('Kechikish, kun', 'son'),
-                           ('Jarima', 'pul'), ('Zalogdan ushlandi', 'pul'), ('Qarz', 'pul')),
+                           ('Jarima', 'pul'), ('Garovdan ushlandi', 'pul'), ('Qarz', 'pul')),
             'qatorlar': qatorlar,
             'jami': ['Jami', '', None, '', sum(q[4] for q in qatorlar), sum(q[5] for q in qatorlar), sum(q[6] for q in qatorlar),
                      sum(q[7] for q in qatorlar)]}
@@ -284,7 +284,7 @@ def xarajatlar(salon, dan, gacha, **_):
 
 
 def pul_oqimi(salon, dan, gacha, **_):
-    """Haqiqatda kirgan va chiqqan pul, to'lov usullari bo'yicha (6.1). Zalog daromad emas, lekin pul harakati."""
+    """Haqiqatda kirgan va chiqqan pul, to'lov usullari bo'yicha (6.1). Garov daromad emas, lekin pul harakati."""
     q = Tolov.objects.filter(Tolov.HAQIQIY, salon=salon, vaqt__date__range=(dan, gacha))
     qatorlar = []
     for usul, nom in Tolov.Usul.choices:
@@ -298,7 +298,7 @@ def pul_oqimi(salon, dan, gacha, **_):
                              tushum + zalog_in - zalog_out - xarajat - vozvrat - inkass])
     j = [sum(q[i] for q in qatorlar) for i in range(1, 8)]
     return {'sarlavha': 'Pul oqimi', 'izoh': 'Kassa orqali o\'tgan pul. Kassadan tashqari (rahbar kiritgan) xarajatlar bu yerda yo\'q.',
-            'ustunlar': _u(("To'lov usuli", 'matn'), ('Kirgan pul', 'pul'), ('Zalog olindi', 'pul'), ('Zalog qaytarildi', 'pul'),
+            'ustunlar': _u(("To'lov usuli", 'matn'), ('Kirgan pul', 'pul'), ('Garov olindi', 'pul'), ('Garov qaytarildi', 'pul'),
                            ('Xarajat', 'pul'), ('Pul qaytarildi', 'pul'), ('Inkassatsiya', 'pul'), ('Qolgan pul', 'pul')),
             'qatorlar': qatorlar, 'jami': ['Jami', *j]}
 
@@ -517,7 +517,7 @@ HISOBOTLAR = {
 # Ro'yxat uchun sarlavhalar — hisobotni hisoblamasdan (har bir funksiya javobidagi 'sarlavha' bilan bir xil)
 SARLAVHALAR = {
     'libos': "Qaysi libos o'zini oqladi", 'kategoriya': 'Kategoriyalar', 'sotuvchi': 'Sotuvchilar', 'salonchi': 'Salonchilar',
-    'manba': 'Mijoz manbalari', 'zalog': 'Zaloglar',
+    'manba': 'Mijoz manbalari', 'zalog': 'Garovlar',
     'bosh-liboslar': "Qoplamagan va bo'sh liboslar", 'bekor': 'Bekor qilingan zakazlar', 'kechikish': 'Kechikish va jarimalar',
     'xarajat': 'Xarajatlar', 'pul-oqimi': 'Pul oqimi', 'kassa': 'Kunlik kassa', 'nazorat': 'Xodimlar nazorati',
     'bandlik': 'Bandlik',

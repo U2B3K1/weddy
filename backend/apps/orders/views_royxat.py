@@ -11,7 +11,7 @@ from rest_framework.views import APIView
 
 from apps.cash.models import Tolov
 from apps.cash.services import kassa_hisobot, ochiq_smena, tolangan_summa
-from apps.catalog.models import Libos
+from apps.catalog.models import Aksessuar, Libos
 from apps.finance import reports
 from apps.finance.models import Xarajat
 from apps.tenants.models import IshonchliQurilma, Xodim
@@ -273,7 +273,7 @@ def _libos_rasmi(request, libos):
 
 
 class ZakazTafsilotView(APIView):
-    """Zakaz kartasi (ekran 8): pozitsiyalar, to'lovlar, zalog, qarz, tarix."""
+    """Zakaz kartasi (ekran 8): pozitsiyalar, to'lovlar, garov, qarz, tarix."""
     permission_classes = [IsStaff]
 
     def get(self, request, pk):
@@ -306,7 +306,7 @@ class ZakazTafsilotView(APIView):
             'libos_qatorlari': [{'id': p.libos_id, 'artikul': p.libos.artikul, 'nomi': p.libos.nomi, 'narx': p.narx,
                                  'olcham': p.libos.olcham, 'rasm': _libos_rasmi(request, p.libos)}
                                 for p in z.pozitsiyalar.all()],
-            'libos_zalogi': sum(p.libos.zalog for p in z.pozitsiyalar.all()),  # berishda pul zalogi shundan to'ladi
+            'libos_zalogi': sum(p.libos.zalog for p in z.pozitsiyalar.all()),  # berishda pul garovi shundan to'ladi
             'qarz': akt.qarz if akt else 0,
             'bekor_sabab': z.bekor_sabab,
             'xizmatlar': z.xizmatlar,
@@ -484,6 +484,7 @@ class RahbarDashbordView(APIView):
                 'chegirmalar': ChegirmaSorovi.objects.filter(
                     salon=salon, holat=ChegirmaSorovi.Holat.KUTILMOQDA).count(),
                 'liboslar': Libos.objects.filter(salon=salon, holat=Libos.Holat.TASDIQ_KUTILMOQDA).count(),
+                'aksessuarlar': Aksessuar.objects.filter(salon=salon, holat=Aksessuar.Holat.TASDIQ_KUTILMOQDA).count(),
                 'xarajatlar': Xarajat.objects.filter(salon=salon, holat=Xarajat.Holat.KUTILMOQDA).count(),
                 'otkazmalar': Tolov.objects.filter(salon=salon, tasdiq=Tolov.Tasdiq.KUTILMOQDA).count(),
             },
@@ -531,7 +532,7 @@ class HujjatView(APIView):
 class OflaynToplamView(APIView):
     """GET /api/oflayn-toplam/ — internet uzilganda ko'rsatish uchun qurilmada keshlanadigan ma'lumot (7-bo'lim).
 
-    Faqat bugungi va ertangi bronlar, ularning mijoz telefonlari va salonda saqlanayotgan zaloglar. Narx, tannarx,
+    Faqat bugungi va ertangi bronlar, ularning mijoz telefonlari va salonda saqlanayotgan garovlar. Narx, tannarx,
     to'lovlar va boshqa mijozlar kirmaydi — keshda imkon qadar kam shaxsiy ma'lumot qoladi.
     """
     permission_classes = [IsStaff]

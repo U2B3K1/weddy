@@ -69,6 +69,8 @@ class AksessuarQoshishTests(AksBase):
         self.assertEqual((d['holat'], d['kod'], d['donalar_soni']), ('tasdiq_kutilmoqda', 'TJ', 2))
         self.assertNotIn('tannarx', d)
         self.assertIsNone(Aksessuar.objects.get(id=d['id']).tannarx)
+        # rahbarning «qaroringiz kerak» sonida ko'rinadi (aks holda jimgina kutib qolardi)
+        self.assertEqual(self.api(self.rahbar).get('/api/dashbord/').json()['tasdiq_kutmoqda']['aksessuarlar'], 1)
         # tasdiqlanmaguncha zakazda ko'rinmaydi
         self.assertEqual([a.kod for a, _ in bosh_aksessuarlar(self.salon, DAN, GACHA)], ['FT'])
         r = self.api(self.rahbar).post(f"/api/aksessuarlar/{d['id']}/tasdiq/",
@@ -284,7 +286,7 @@ class ZakazAksessuarAPITests(AksBase):
         type(self.libos).objects.filter(id=self.libos.id).update(zalog=500_000)
         d = c.get(f'/api/zakazlar/{zid}/').json()
         self.assertEqual(sorted(d['aksessuarlar']), ['Fata klassik (FT-01)', 'Fata klassik (FT-02)'])
-        self.assertEqual(d['libos_zalogi'], 500_000)  # berishda pul zalogi shundan to'ladi
+        self.assertEqual(d['libos_zalogi'], 500_000)  # berishda pul garovi shundan to'ladi
         r = c.get('/api/bronlar/bosh-aksessuarlar/?dan=2026-11-10&gacha=2026-11-12').json()
         self.assertEqual(r[0]['bosh_soni'], 1)
         r = c.post('/api/zakazlar/', {'telefon': '+998902', 'dan': '2026-11-10', 'gacha': '2026-11-12',

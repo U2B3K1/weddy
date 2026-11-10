@@ -25,7 +25,7 @@ class ErtaBerishXatosi(BerishXatosi):
 
 @transaction.atomic
 def libos_berish(*, salon, xodim, zakaz, zaloglar, usul=Tolov.Usul.NAQD, erta=True):
-    """Qoldiq to'liq to'langan va zalog olingan bo'lsagina libos beriladi (FT-7.x, 5-bo'lim).
+    """Qoldiq to'liq to'langan va garov olingan bo'lsagina libos beriladi (FT-7.x, 5-bo'lim).
 
     `zaloglar`: [{'turi': 'pul', 'summa': ...}, {'turi': 'hujjat', 'hujjat_turi', 'hujjat_raqami'},
                  {'turi': 'tillo', 'tavsif', 'ogirlik_gr', 'summa'}]
@@ -36,7 +36,7 @@ def libos_berish(*, salon, xodim, zakaz, zaloglar, usul=Tolov.Usul.NAQD, erta=Tr
     if tolangan_summa(zakaz) < zakaz.jami:
         raise BerishXatosi("Qoldiq to'lanmaguncha libos berilmaydi.")
     if not zaloglar:
-        raise BerishXatosi('Zalog olinmagan.')
+        raise BerishXatosi('Garov olinmagan.')
     if zakaz.olib_ketish > timezone.localdate() and not erta:
         raise ErtaBerishXatosi(f"Olib ketish sanasi {zakaz.olib_ketish:%d.%m.%Y} — hali kelmagan. "
                                "Libosni oldinroq berishni tasdiqlaysizmi?")
@@ -58,12 +58,12 @@ def libos_berish(*, salon, xodim, zakaz, zaloglar, usul=Tolov.Usul.NAQD, erta=Tr
     for z in zaloglar:
         turi = z['turi']
         if turi not in Zalog.Turi.values:
-            raise BerishXatosi("Zalog turi noto'g'ri.")
+            raise BerishXatosi("Garov turi noto'g'ri.")
         if turi not in ruxsat:
-            raise BerishXatosi(f"«{Zalog.Turi(turi).label}» zalogi salon sozlamalarida o'chirilgan.")
+            raise BerishXatosi(f"«{Zalog.Turi(turi).label}» garovi salon sozlamalarida o'chirilgan.")
         if turi == Zalog.Turi.PUL:
             if z.get('summa', 0) <= 0:
-                raise BerishXatosi('Zalog summasi kerak.')
+                raise BerishXatosi('Garov summasi kerak.')
         elif turi == Zalog.Turi.HUJJAT:
             if not z.get('hujjat_turi') or not z.get('hujjat_raqami'):
                 raise BerishXatosi('Hujjat turi va raqami kerak (FT-7.6).')
@@ -86,7 +86,7 @@ def libos_berish(*, salon, xodim, zakaz, zaloglar, usul=Tolov.Usul.NAQD, erta=Tr
     zakaz.save(update_fields=['holat', 'olib_ketish'])
     _log(zakaz, xodim, 'berildi',
          f'olib ketish {eski_olib_ketish:%d.%m.%Y} edi — erta berildi' if eski_olib_ketish != zakaz.olib_ketish else '',
-         'zalog: ' + '; '.join(_zalog_matni(z) for z in zaloglar))
+         'garov: ' + '; '.join(_zalog_matni(z) for z in zaloglar))
     return zakaz
 
 
@@ -134,7 +134,7 @@ def libos_qaytarish(*, salon, xodim, zakaz, tekshiruv=QaytarishAkti.Tekshiruv.BU
                     usul=Tolov.Usul.NAQD, yoqolgan_donalar=()):
     """Qaytarishni rasmiylashtiradi (FT-7.3, FT-9.2–9.4).
 
-    Jarima avval pul zalogidan ushlab qolinadi; qolgani qarz bo'ladi. Hujjat va tillo zalog jarima to'lanmaguncha
+    Jarima avval pul garovidan ushlab qolinadi; qolgani qarz bo'ladi. Hujjat va tillo garov jarima to'lanmaguncha
     qaytarilmaydi. Qarz ham, to'lanmagan qoldiq (masalan, «kelmadi» o'tkazma) ham bo'lmasa zakaz yopiladi (C-03).
     «Yirtiq» / «Dog'» — libos ta'mirga o'tadi (keyingi mijozga ketib qolmasin), «Aksessuar yo'q» —
     `yoqolgan_donalar` dagi donalar «yo'qolgan» bo'ladi (C-10). `usul` — hozir to'langan jarima qanday olingani (C-20).
@@ -167,7 +167,7 @@ def libos_qaytarish(*, salon, xodim, zakaz, tekshiruv=QaytarishAkti.Tekshiruv.BU
         raise BerishXatosi("Yo'qolgan deb belgilangan aksessuar bu zakazda yo'q.")
 
     t = min(jarima_tolandi or 0, qarz)  # mijoz qolgan jarimani hozir to'ladi
-    if t > 0:  # jarima pul zalogidan to'liq ushlangan bo'lsa to'lanadigan narsa yo'q (0 so'mlik to'lov rad etiladi)
+    if t > 0:  # jarima pul garovidan to'liq ushlangan bo'lsa to'lanadigan narsa yo'q (0 so'mlik to'lov rad etiladi)
         tolov_qabul(salon=salon, xodim=xodim, tur=Tolov.Tur.JARIMA, summa=t, usul=usul, zakaz=zakaz)
         qarz -= t
 
@@ -182,9 +182,9 @@ def libos_qaytarish(*, salon, xodim, zakaz, tekshiruv=QaytarishAkti.Tekshiruv.BU
         ogirlik_mos = abs(Decimal(str(tortilgan_gr)) - kutilgan) <= OGIRLIK_TOLERANSIYA
         if not ogirlik_mos:
             raise BerishXatosi("Og'irlik mos kelmadi — dalolatnomadagidan farq qiladi. Buyumni qayta torting; farq qolsa, "
-                               "zalogni qaytarmang va rahbarga xabar bering.")
+                               "garovni qaytarmang va rahbarga xabar bering.")
 
-    # Pul: butun zalog chiqim, ushlab qolingan qismi jarima sifatida tushum (FT-7.3, 4.12 qatorlari)
+    # Pul: butun garov chiqim, ushlab qolingan qismi jarima sifatida tushum (FT-7.3, 4.12 qatorlari)
     if pul_jami:
         tolov_qabul(salon=salon, xodim=xodim, tur=Tolov.Tur.ZALOG_QAYTARISH, summa=pul_jami, zakaz=zakaz)
     if ushlab:
@@ -233,7 +233,7 @@ def libos_qaytarish(*, salon, xodim, zakaz, tekshiruv=QaytarishAkti.Tekshiruv.BU
 
     qismlar = [QaytarishAkti.Tekshiruv(tekshiruv).label.lower()]
     if jarima:
-        qismlar.append(f'jarima {jarima}, zalogdan ushlandi {ushlab}, qarz {qarz}')
+        qismlar.append(f'jarima {jarima}, garovdan ushlandi {ushlab}, qarz {qarz}')
     if kechikish:
         qismlar.append(f'kechikish {kechikish} kun')
     if yoqolgan:
@@ -256,7 +256,7 @@ def tozalash_tugadi(*, salon, libos):
 
 @transaction.atomic
 def qarzni_tolash(*, salon, xodim, zakaz, summa, usul=Tolov.Usul.NAQD):
-    """Qaytarishdan keyingi jarima qarzi to'lanadi; to'liq to'lansa ushlab qolingan zalog qaytadi.
+    """Qaytarishdan keyingi jarima qarzi to'lanadi; to'liq to'lansa ushlab qolingan garov qaytadi.
     Zakaz yopiladi — agar ijara qoldig'i ham to'langan bo'lsa (C-03). `usul` — naqd, terminal yoki o'tkazma (C-20)."""
     zakaz = Zakaz.objects.select_for_update().get(id=zakaz.id, salon=salon)
     akt = getattr(zakaz, 'qaytarish_akti', None)  # qaytarilmagan zakazda akt yo'q — 500 emas, 409

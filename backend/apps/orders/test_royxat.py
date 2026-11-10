@@ -96,7 +96,7 @@ class RoyxatTests(TestCase):
 
 
 class OflaynToplamTests(RoyxatTests):
-    """S28: oflayn rejim uchun kesh — bugungi/ertangi bronlar, telefonlar, saqlanayotgan zaloglar."""
+    """S28: oflayn rejim uchun kesh — bugungi/ertangi bronlar, telefonlar, saqlanayotgan garovlar."""
 
     def test_bugungi_bron_va_telefon(self):
         d = self.api(self.malika).get('/api/oflayn-toplam/').json()
