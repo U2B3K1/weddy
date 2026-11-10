@@ -20,8 +20,9 @@ class KatalogBase(TestCase):
         return c
 
     def yangi(self, c, artikul='N1', **kw):
+        # rahbar libosi narx va tannarxsiz qo'shilmaydi (2026-11-10); sotuvchinikida tannarx e'tiborga olinmaydi
         body = {'artikul': artikul, 'nomi': 'Yangi libos', 'kategoriya': self.kat.id,
-                'ijara_narxi': 2_000_000, **kw}
+                'ijara_narxi': 2_000_000, 'tannarx': 5_000_000, **kw}
         return c.post('/api/liboslar/', body, format='json')
 
 
@@ -58,8 +59,8 @@ class LibosQoshishTests(KatalogBase):
         self.assertEqual(r.status_code, 409)
         self.assertIn('allaqachon', r.json()['detail'])
         _, xodim_b, kat_b = salon_yarat('b')
-        r = self.api(xodim_b).post('/api/liboslar/', {'artikul': 'A1', 'nomi': 'x', 'kategoriya': kat_b.id},
-                                   format='json')
+        r = self.api(xodim_b).post('/api/liboslar/', {'artikul': 'A1', 'nomi': 'x', 'kategoriya': kat_b.id,
+                                                      'ijara_narxi': 1, 'tannarx': 1}, format='json')
         self.assertEqual(r.status_code, 201)
 
     def test_boshqa_salon_kategoriyasi_rad(self):
@@ -70,8 +71,8 @@ class LibosQoshishTests(KatalogBase):
 
     def test_aksessuar_kategoriyasiga_libos_qoshib_bolmaydi(self):
         akses = Kategoriya.objects.create(salon=self.salon, nomi='Fata', turi='aksessuar')
-        r = self.api(self.rahbar).post('/api/liboslar/', {'artikul': 'F', 'nomi': 'x', 'kategoriya': akses.id},
-                                       format='json')
+        r = self.api(self.rahbar).post('/api/liboslar/', {'artikul': 'F', 'nomi': 'x', 'kategoriya': akses.id,
+                                                          'ijara_narxi': 1, 'tannarx': 1}, format='json')
         self.assertEqual(r.status_code, 409)
 
     def test_faqat_korish_salonda_yozib_bolmaydi(self):
@@ -108,7 +109,8 @@ class AvtoArtikulTests(KatalogBase):
         self.assertEqual(self.yangi(c, 'L-050').json()['artikul'], 'L-050')
         self.yangi(c, 'K-900')
         _, xodim_b, kat_b = salon_yarat('b')
-        self.api(xodim_b).post('/api/liboslar/', {'artikul': 'L-999', 'nomi': 'x', 'kategoriya': kat_b.id}, format='json')
+        self.api(xodim_b).post('/api/liboslar/', {'artikul': 'L-999', 'nomi': 'x', 'kategoriya': kat_b.id,
+                                                   'ijara_narxi': 1, 'tannarx': 1}, format='json')
         self.assertEqual(self.keyingi(), 'L-051')
         self.assertEqual(self.yangi(self.api(self.malika), '').json()['artikul'], 'L-051')  # sotuvchi ham
 

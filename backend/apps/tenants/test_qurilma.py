@@ -200,3 +200,31 @@ class BoshlashTests(Base):
         self.assertEqual(self.api(self.malika).get('/api/boshlash/').status_code, 403)
         c.post('/api/boshlash/')
         self.assertFalse(c.get('/api/boshlash/').json()['korsatilsin'])
+
+
+class KirishRoyxatiFilialTests(Base):
+    """Kirish ekrani: qurilma filialidagi xodimlar, filialsizlar va rahbar — «asosiy»; boshqa filial xodimi — tugma ortida."""
+
+    def test_qurilma_filiali_boyicha_asosiy(self):
+        from .models import Filial
+        chil = Filial.objects.create(salon=self.salon, nomi='Chilonzor')
+        yunus = Filial.objects.create(salon=self.salon, nomi='Yunusobod')
+        dilnoza = Xodim.objects.create(salon=self.salon, ism='Dilnoza', filial=yunus)
+        dilnoza.set_pin('2222'); dilnoza.save()
+        Xodim.objects.create(salon=self.salon, ism='Sevara', filial=chil)
+        Xodim.objects.filter(id=self.rahbar.id).update(filial=yunus)  # rahbar boshqa filialda bo'lsa ham ko'rinadi
+        token = self.salon_login().json()['qurilma_token']
+
+        def royxat():
+            r = APIClient().get('/api/auth/xodimlar/', HTTP_X_DEVICE_TOKEN=token)
+            self.assertEqual(r.status_code, 200)
+            return {x['ism']: x['asosiy'] for x in r.json()}
+
+        self.assertTrue(all(royxat().values()))  # qurilma filialsiz — hamma birinchi qatorda
+        IshonchliQurilma.objects.filter(salon=self.salon).update(filial=chil)
+        r = royxat()
+        self.assertEqual((r['Sevara'], r[self.malika.ism], r['Rahbar'], r['Dilnoza']), (True, True, True, False))
+        # boshqa filial xodimi ham shu qurilmada kira oladi (yordamga kelgan sotuvchi) — ro'yxat faqat tartib, cheklov emas
+        self.assertEqual(self.pin(token, dilnoza, '2222').status_code, 200)
+        yunus.faol = False; yunus.save()  # filiali nofaol qilingan xodim kirish ekranida yo'qolib qolmaydi
+        self.assertTrue(royxat()['Dilnoza'])

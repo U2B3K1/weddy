@@ -147,15 +147,24 @@ class SozlamaTaasiriTests(AdminBase):
         z = zakazni_bekor_qilish(salon=self.salon, xodim=self.malika, zakaz=z, sabab='x')
         self.assertEqual((z.qaytarilgan_avans, z.ushlab_qolingan_avans), (800_000, 200_000))
 
-    def test_s23_libos_tasdigi_ochirilgan(self):
+    def test_tannarxsiz_libos_katalogga_chiqmaydi(self):
+        """2026-11-10 (foydalanuvchi): tannarxsiz libos katalogga chiqmaydi. Sotuvchi qo'shgani doim rahbar tasdig'iga
+        tushadi — `libos_tasdigi` o'chirilgan bo'lsa ham (eski S23 xatti-harakati bekor); rahbar narx va tannarxsiz qo'sha olmaydi."""
         self.soz(libos_tasdigi=False)
         r = self.api(self.malika).post('/api/liboslar/', {'artikul': 'N1', 'nomi': 'Yangi', 'kategoriya': self.kat.id,
                                                           'ijara_narxi': 1_500_000}, format='json')
-        self.assertEqual((r.status_code, r.json()['holat']), (201, 'bosh'))  # darhol katalogda
-        self.assertIsNone(Libos.objects.get(artikul='N1').tannarx)          # tannarx hali yo'q -> FT-18.6 ogohlantirishi
-        from apps.finance import reports
-        b = timezone.localdate()
-        self.assertEqual(reports.foyda_zarar(self.salon, b.year, b.month)['tannarxsiz_liboslar'], 2)
+        self.assertEqual((r.status_code, r.json()['holat']), (201, 'tasdiq_kutilmoqda'))
+        c = self.api(self.rahbar)
+        r = c.post('/api/liboslar/', {'artikul': 'R1', 'nomi': 'R', 'kategoriya': self.kat.id}, format='json')
+        self.assertEqual((r.status_code, sorted(r.json())), (400, ['ijara_narxi', 'tannarx']))
+        self.assertFalse(Libos.objects.filter(artikul='R1').exists())
+        r = c.post('/api/liboslar/', {'artikul': 'R1', 'nomi': 'R', 'kategoriya': self.kat.id, 'ijara_narxi': 1_000_000,
+                                      'tannarx': 3_000_000}, format='json')
+        self.assertEqual((r.status_code, r.json()['holat']), (201, 'bosh'))
+        # tannarx 0 — ongli kiritilgan qiymat (sovg'a, o'zimiz tikkan) — qabul qilinadi
+        r = c.post('/api/liboslar/', {'artikul': 'R2', 'nomi': 'R', 'kategoriya': self.kat.id, 'ijara_narxi': 1, 'tannarx': 0},
+                   format='json')
+        self.assertEqual(r.status_code, 201)
 
 
 class XodimBoshqaruvTests(AdminBase):
@@ -209,6 +218,29 @@ class XodimBoshqaruvTests(AdminBase):
         r = self.api(self.rahbar).patch(f'/api/xodimlar-boshqaruv/{xodim_b.id}/', {'faol': False}, format='json')
         self.assertEqual(r.status_code, 404)
         self.assertNotIn(xodim_b.id, [x['id'] for x in self.api(self.rahbar).get('/api/xodimlar-boshqaruv/').json()])
+
+    def test_xodim_filiali_rahbar_belgilaydi(self):
+        """Xodimga filial biriktiriladi (kirish ekrani ro'yxati uchun): faqat shu salonning faol filiali; jurnalga yoziladi."""
+        from .models import Filial
+        chil = Filial.objects.create(salon=self.salon, nomi='Chilonzor')
+        nofaol = Filial.objects.create(salon=self.salon, nomi='Eski', faol=False)
+        begona = Filial.objects.create(salon=salon_yarat('b')[0], nomi='Begona')
+        c = self.api(self.rahbar)
+        r = c.post('/api/xodimlar-boshqaruv/', {'ism': 'Dilnoza', 'pin': '4321', 'filial': chil.id}, format='json')
+        self.assertEqual((r.status_code, r.json()['filial']), (201, chil.id))
+        self.assertEqual(c.post('/api/xodimlar-boshqaruv/', {'ism': 'Sevara', 'pin': '4321', 'filial': begona.id},
+                                format='json').status_code, 400)
+        url, ism = f'/api/xodimlar-boshqaruv/{self.malika.id}/', self.malika.ism
+        for yomon in (nofaol.id, begona.id, 999999):
+            self.assertEqual(c.patch(url, {'filial': yomon, 'ism': 'Yangi ism'}, format='json').status_code, 400)
+        self.malika.refresh_from_db()
+        self.assertEqual((self.malika.filial_id, self.malika.ism), (None, ism))  # xatoda hech narsa o'zgarmaydi
+        self.assertFalse(Jurnal.objects.filter(harakat='xodim_ism_ozgardi').exists())  # jurnalga ham yozilmaydi
+        self.assertEqual(c.patch(url, {'filial': chil.id}, format='json').json()['filial'], chil.id)
+        j = Jurnal.objects.get(harakat='xodim_filial_ozgardi')
+        self.assertEqual((j.eski, j.yangi), ('barcha filiallar', 'Chilonzor'))
+        self.assertIsNone(c.patch(url, {'filial': None}, format='json').json()['filial'])  # yana barcha filiallarda
+        self.assertEqual(self.api(self.malika).patch(url, {'filial': chil.id}, format='json').status_code, 403)
 
     def test_telegram_ulash_kodi(self):
         # Rahbar istalgan xodim uchun ulash kodi oladi (kod jurnalga ham, javobga ham tushmaydi)

@@ -35,8 +35,10 @@ def libos_qoshish(*, salon, xodim, artikul, nomi, kategoriya, olcham='', rang=''
                   zalog=0, tannarx=None):
     """Libos qo'shish (FT-3.5, FT-3.6).
 
-    Sotuvchi tannarxni kiritmaydi va ko'rmaydi; uning libosi «Tasdiq kutilmoqda» holatida bo'ladi va
-    zakazda ko'rinmaydi. Rahbar qo'shgani darhol katalogga chiqadi.
+    Sotuvchi tannarxni kiritmaydi va ko'rmaydi; uning libosi doim «Tasdiq kutilmoqda» holatida bo'ladi va
+    zakazda ko'rinmaydi — rahbar narx va tannarxni kiritib tasdiqlaydi (2026-11-10: tannarxsiz libos katalogga
+    chiqmaydi, `libos_tasdigi` sozlamasi endi ta'sir qilmaydi). Rahbar qo'shgani darhol katalogga chiqadi
+    (tannarx va ijara narxi API da majburiy).
     """
     if kategoriya.salon_id != salon.id or kategoriya.turi != kategoriya.Turi.LIBOS:
         raise KatalogXatosi('Kategoriya topilmadi.')
@@ -58,19 +60,15 @@ def libos_qoshish(*, salon, xodim, artikul, nomi, kategoriya, olcham='', rang=''
                 salon=salon, artikul=artikul, nomi=nomi.strip(), kategoriya=kategoriya,
                 olcham=olcham, rang=rang, ijara_narxi=ijara_narxi, zalog=zalog, tannarx=tannarx,
                 qoshgan=xodim,
-                # tasdiq o'chirilgan bo'lsa sotuvchi libosi darhol katalogga chiqadi (FT-3.6, S23)
-                holat=(Libos.Holat.BOSH if rahbar or not soz.libos_tasdigi
-                       else Libos.Holat.TASDIQ_KUTILMOQDA))
+                holat=Libos.Holat.BOSH if rahbar else Libos.Holat.TASDIQ_KUTILMOQDA)
     except IntegrityError:
         raise KatalogXatosi(f'«{artikul}» artikuli salonda allaqachon bor.')
     jurnalga_yoz(salon, xodim, 'libos_qoshildi', f'libos {libos.artikul}', '',
                  f'{libos.nomi}, narx {ijara_narxi}, holat {libos.holat}')
-    if not rahbar:  # FT-3.6: sotuvchi qo'shgan libos haqida rahbarga xabar (tasdiq yoqilmagan bo'lsa ham)
+    if not rahbar:  # FT-3.6: sotuvchi qo'shgan libos haqida rahbarga xabar
         from apps.notify.services import rahbarlarga
         rahbarlarga(salon, 'yangi_libos',
-                    f"{xodim.ism} yangi libos qo'shdi: {libos.artikul} {libos.nomi}.\n"
-                    + ("Narx va tannarxni kiritib tasdiqlang." if libos.holat == Libos.Holat.TASDIQ_KUTILMOQDA
-                       else "Libos katalogda; tannarxni kiriting."))
+                    f"{xodim.ism} yangi libos qo'shdi: {libos.artikul} {libos.nomi}.\nNarx va tannarxni kiritib tasdiqlang.")
     return libos
 
 
@@ -220,8 +218,7 @@ def aksessuar_qoshish(*, salon, xodim, nomi, kod, kategoriya, ijara_narxi=0, tan
             a = Aksessuar.objects.create(
                 salon=salon, nomi=nomi.strip(), kod=kod, kategoriya=kategoriya, ijara_narxi=ijara_narxi,
                 tannarx=tannarx, qoshgan=xodim,
-                holat=(Aksessuar.Holat.FAOL if rahbar or not sozlama(salon).libos_tasdigi
-                       else Aksessuar.Holat.TASDIQ_KUTILMOQDA))
+                holat=Aksessuar.Holat.FAOL if rahbar else Aksessuar.Holat.TASDIQ_KUTILMOQDA)  # tannarxsiz katalogga chiqmaydi
     except IntegrityError:
         raise KatalogXatosi(f'«{kod}» kodi salonda allaqachon bor.')
     donalar_qoshish(salon=salon, aksessuar=a, soni=soni, xodim=xodim)

@@ -14,7 +14,7 @@ from apps.cash.services import kassa_hisobot, ochiq_smena, tolangan_summa
 from apps.catalog.models import Libos
 from apps.finance import reports
 from apps.finance.models import Xarajat
-from apps.tenants.models import Xodim
+from apps.tenants.models import IshonchliQurilma, Xodim
 from apps.tenants.permissions import IsRahbar, IsStaff, salon_yoza_oladimi, yozish_taqiqi
 
 from . import hujjatlar
@@ -503,6 +503,9 @@ class RahbarDashbordView(APIView):
                 'saqlanayotgan_zaloglar': Zalog.objects.filter(
                     salon=salon, holat__in=[Zalog.Holat.SAQLANMOQDA, Zalog.Holat.USHLAB_QOLINDI]
                 ).exclude(turi=Zalog.Turi.PUL).count(),
+                # qo'ng'iroqchada (avval faqat Sozlama sahifasidagi «E'tibor» qatorida edi — foydalanuvchi so'rovi)
+                'telegramsiz_xodimlar': Xodim.objects.filter(salon=salon, faol=True, telegram_id__isnull=True).count(),
+                'kutayotgan_qurilmalar': IshonchliQurilma.objects.filter(salon=salon, faol=True, tasdiqlangan=False).count(),
             },
         })
 

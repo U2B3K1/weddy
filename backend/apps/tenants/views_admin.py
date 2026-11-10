@@ -12,7 +12,7 @@ from django.utils import timezone
 from apps.notify import telegram
 from apps.notify.services import ulash_kodi_yarat
 
-from .models import IshonchliQurilma, Xodim, YordamRuxsati, jurnalga_yoz, sozlama
+from .models import Filial, IshonchliQurilma, Xodim, YordamRuxsati, jurnalga_yoz, sozlama
 from .permissions import IsRahbar, IsStaff, SalonYozishRuxsati, yozish_taqiqi
 
 SOZLAMA_MAYDONLARI = ('bufer_kun', 'vaqtinchalik_bron_soat', 'zalog_pul', 'zalog_hujjat', 'zalog_tillo',
@@ -135,7 +135,15 @@ PIN = serializers.RegexField(r'^\d{4,6}$', error_messages={'invalid': 'PIN 4–6
 
 def xodim_json(x):
     return {'id': x.id, 'ism': x.ism, 'telefon': x.telefon, 'rol': x.rol, 'faol': x.faol,
-            'bloklangan': x.bloklangan, 'telegram_ulangan': bool(x.telegram_id)}
+            'bloklangan': x.bloklangan, 'telegram_ulangan': bool(x.telegram_id), 'filial': x.filial_id}
+
+
+def _xodim_filiali(salon, fid):
+    """Xodimga biriktiriladigan filial: shu salonning faol filiali yoki None (barcha filiallarda). Xatoda — Response."""
+    if fid is None:
+        return None, None
+    f = Filial.objects.filter(salon=salon, id=fid, faol=True).first()
+    return f, (None if f else Response({'detail': "Filial topilmadi yoki nofaol."}, status=400))
 
 
 def _xodim_limiti_tolgan(salon, chiqarib=None):
@@ -170,16 +178,20 @@ class XodimlarBoshqaruvView(APIView):
             telefon = serializers.CharField(max_length=20, required=False, allow_blank=True, default='')
             rol = serializers.ChoiceField(choices=Xodim.Rol.choices, default=Xodim.Rol.SOTUVCHI)
             pin = PIN
+            filial = serializers.IntegerField(required=False, allow_null=True, default=None)
 
         ser = S(data=request.data)
         ser.is_valid(raise_exception=True)
         d = ser.validated_data
+        filial, xato = _xodim_filiali(request.salon, d['filial'])
+        if xato:
+            return xato
         if _xodim_limiti_tolgan(request.salon):
             return Response({'detail': f"Tarif bo'yicha xodimlar limiti ({request.salon.tarif.xodim_limit}) to'lgan."},
                             status=409)
         if Xodim.objects.filter(salon=request.salon, ism__iexact=d['ism'].strip(), faol=True).exists():
             return Response({'detail': 'Bu ismli faol xodim bor — kirish ekranida adashtiriladi.'}, status=409)
-        x = Xodim(salon=request.salon, ism=d['ism'].strip(), telefon=d['telefon'], rol=d['rol'])
+        x = Xodim(salon=request.salon, ism=d['ism'].strip(), telefon=d['telefon'], rol=d['rol'], filial=filial)
         x.set_pin(d['pin'])
         x.save()
         jurnalga_yoz(request.salon, request.user, 'xodim_qoshildi', f'xodim {x.ism}', '', x.rol)
@@ -205,11 +217,18 @@ class XodimBoshqaruvView(APIView):
             pin = serializers.RegexField(r'^\d{4,6}$', required=False,
                                          error_messages={'invalid': 'PIN 4–6 ta raqam bo\'lishi kerak.'})
             blokdan_chiqar = serializers.BooleanField(required=False)
+            filial = serializers.IntegerField(required=False, allow_null=True)
 
         ser = S(data=request.data)
         ser.is_valid(raise_exception=True)
         d = ser.validated_data
         x = self._xodim(request, pk)
+        # filial avval tekshiriladi: xato bo'lsa boshqa o'zgarishlar jurnalga yozilib, saqlanmay qolmasin
+        filial_ozgaradi = 'filial' in d and d['filial'] != x.filial_id
+        if filial_ozgaradi:
+            filial, xato = _xodim_filiali(request.salon, d['filial'])
+            if xato:
+                return xato
         if 'ism' in d:
             d['ism'] = d['ism'].strip()
             if d['ism'].lower() != x.ism.lower() and Xodim.objects.filter(
@@ -228,6 +247,10 @@ class XodimBoshqaruvView(APIView):
             x.set_pin(d['pin'])
             x.xato_urinish, x.bloklangan_gacha = 0, None
             jurnalga_yoz(request.salon, request.user, 'xodim_pin_tiklandi', f'xodim {x.ism}')
+        if filial_ozgaradi:  # rahbar xodimni boshqa filialga o'tkazadi (kirish ekrani ro'yxati)
+            jurnalga_yoz(request.salon, request.user, 'xodim_filial_ozgardi', f'xodim {x.ism}',
+                         x.filial.nomi if x.filial else 'barcha filiallar', filial.nomi if filial else 'barcha filiallar')
+            x.filial = filial
         if d.get('blokdan_chiqar'):
             x.xato_urinish, x.bloklangan_gacha = 0, None
         x.save()

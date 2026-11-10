@@ -157,6 +157,18 @@ class DashbordDavrTests(RoyxatTests):
         soz.save()
         self.assertTrue(self.d()['ogohlantirishlar']['kechikish_jarimasi_yoqilgan'])
 
+    def test_telegram_va_qurilma_ogohlantirishi(self):
+        """Qo'ng'iroqcha: Telegram ulamagan faol xodimlar va ruxsat kutayotgan qurilmalar soni."""
+        from apps.tenants.models import IshonchliQurilma
+        og = self.d()['ogohlantirishlar']
+        tgsiz = Xodim.objects.filter(salon=self.salon, faol=True, telegram_id__isnull=True).count()
+        self.assertEqual((og['telegramsiz_xodimlar'], og['kutayotgan_qurilmalar']), (tgsiz, 0))
+        Xodim.objects.filter(id=self.malika.id).update(telegram_id=777)
+        IshonchliQurilma.objects.create(salon=self.salon, nomi='Yangi telefon', tasdiqlangan=False)
+        IshonchliQurilma.objects.create(salon=self.salon, nomi='Eski', tasdiqlangan=False, faol=False)  # o'chirilgani sanalmaydi
+        og = self.d()['ogohlantirishlar']
+        self.assertEqual((og['telegramsiz_xodimlar'], og['kutayotgan_qurilmalar']), (tgsiz - 1, 1))
+
     def test_bugun_va_hafta(self):
         from apps.finance.services import xarajat_kiritish
         self.toliq_tola()

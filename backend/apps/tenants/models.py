@@ -180,6 +180,9 @@ class Xodim(SalonModel):
     bloklangan_gacha = models.DateTimeField(null=True, blank=True)
     telegram_id = models.BigIntegerField(null=True, blank=True)  # botga ulangan akkaunt (4.14)
     rasm = models.FileField(upload_to=avatar_yoli, blank=True)  # profil rasmi: 256×256 WebP (kirish ekrani va shapka)
+    # Xodim ishlaydigan filial (rahbar belgilaydi). Kirish ekranida avval qurilma filiali xodimlari chiqadi; bo'sh — barcha
+    # filiallarda. Zakaz, kassa va xarajat baribir QURILMA filialiga yoziladi — savdo qayerda bo'lsa, o'sha yerda hisoblanadi.
+    filial = models.ForeignKey('Filial', null=True, blank=True, on_delete=models.SET_NULL, related_name='xodimlar')
 
     is_authenticated = True  # DRF uchun
 
@@ -286,7 +289,7 @@ class SalonSozlamalari(models.Model):
     # C-21: avans nima — bo'sh: avans sifatida olingan to'lov to'liq avans; son (1–100): zakaz jamining shu foizigacha
     # bo'lgan qism avans, ortig'i «oldindan to'lov» — bekor qilishda to'liq qaytariladi (qaytarish_asosi='avans' bo'lsa)
     avans_foizi = models.PositiveSmallIntegerField(null=True, blank=True)  # 1–100 (API tekshiradi)
-    libos_tasdigi = models.BooleanField(default=True)                       # FT-3.6
+    libos_tasdigi = models.BooleanField(default=True)                       # FT-3.6; 2026-11-10 dan ta'sir qilmaydi — sotuvchi qo'shgani doim tasdiqqa (tannarxsiz libos katalogga chiqmaydi)
     # Promokodlar (4.18); 3-bosqich sozlamalari
     promokod_tasdiqsiz = models.BooleanField(default=True)        # o'chirilsa promokod ham rahbar tasdig'iga boradi (FT-21.7)
     promokod_chegirma_birga = models.BooleanField(default=False)  # promokod ustiga qo'shimcha chegirma (FT-11.6)

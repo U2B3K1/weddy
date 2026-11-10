@@ -28,7 +28,7 @@ class YetkazibBeruvchiTests(TestCase):
         self.yb = self.c.post('/api/yetkazib-beruvchilar/', {'nomi': 'Istanbul Bridal', 'telefon': '+90 555'}).data
 
     def libos(self, artikul, tannarx, **kw):
-        return self.c.post('/api/liboslar/', {'artikul': artikul, 'nomi': artikul, 'kategoriya': self.kat.id,
+        return self.c.post('/api/liboslar/', {'artikul': artikul, 'nomi': artikul, 'kategoriya': self.kat.id, 'ijara_narxi': 1_000_000,
                                               'tannarx': tannarx, 'yetkazib_beruvchi': self.yb['id'], **kw}, format='json')
 
     def holat(self):
@@ -54,14 +54,15 @@ class YetkazibBeruvchiTests(TestCase):
         Salon.objects.filter(id=self.salon.id).update(yaratilgan=timezone.now() - timedelta(days=90))
         self.salon.refresh_from_db()
         self.libos('Y1', 10_000_000, tolandi=4_000_000)
-        self.c.post('/api/liboslar/', {'artikul': 'O1', 'nomi': 'O1', 'kategoriya': self.kat.id, 'tannarx': 2_000_000})
+        self.c.post('/api/liboslar/', {'artikul': 'O1', 'nomi': 'O1', 'kategoriya': self.kat.id, 'ijara_narxi': 1_000_000, 'tannarx': 2_000_000})
         b = timezone.localdate()
         r = reports.foyda_zarar(self.salon, b.year, b.month)
         # 4 mln yetkazib beruvchiga to'langan + 2 mln yetkazib beruvchisiz libos; 6 mln hali qarz
         self.assertEqual((r['libos_xaridi'], r['libos_xaridi_soni'], r['yetkazib_qarz']), (6_000_000, 2, 6_000_000))
 
     def test_keyin_biriktirish_va_tolovni_ochirish(self):
-        l = self.c.post('/api/liboslar/', {'artikul': 'K1', 'nomi': 'K1', 'kategoriya': self.kat.id, 'tannarx': 3_000_000}).data
+        l = self.c.post('/api/liboslar/', {'artikul': 'K1', 'nomi': 'K1', 'kategoriya': self.kat.id, 'ijara_narxi': 1_000_000,
+                                           'tannarx': 3_000_000}).data
         self.assertEqual(self.c.patch(f"/api/liboslar/{l['id']}/", {'yetkazib_beruvchi': self.yb['id']}, format='json').status_code, 200)
         self.assertEqual(self.holat()['qarz'], 3_000_000)  # keyin biriktirilgan — to'lov yozilmaydi
         t = self.c.post(f"/api/yetkazib-beruvchilar/{self.yb['id']}/tolovlar/", {'summa': 1_000_000}).data
@@ -80,7 +81,7 @@ class YetkazibBeruvchiTests(TestCase):
         boshqa, _, kat2 = salon_yarat('boshqa')
         b_rahbar = Xodim.objects.create(salon=boshqa, ism='Begona', rol=Xodim.Rol.RAHBAR)
         self.assertEqual(api(b_rahbar).get(f"/api/yetkazib-beruvchilar/{self.yb['id']}/").status_code, 404)
-        r = api(b_rahbar).post('/api/liboslar/', {'artikul': 'B1', 'nomi': 'B1', 'kategoriya': kat2.id, 'tannarx': 1,
+        r = api(b_rahbar).post('/api/liboslar/', {'artikul': 'B1', 'nomi': 'B1', 'kategoriya': kat2.id, 'ijara_narxi': 1, 'tannarx': 1,
                                                   'yetkazib_beruvchi': self.yb['id']}, format='json')
         self.assertEqual(r.status_code, 400)  # boshqa salon yetkazib beruvchisi topilmaydi
         self.assertFalse(YetkazibBeruvchi.objects.filter(salon=boshqa).exists())

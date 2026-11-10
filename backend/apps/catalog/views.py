@@ -159,6 +159,14 @@ class LiboslarView(APIView):
         kat = Kategoriya.objects.filter(salon=request.salon, id=d.pop('kategoriya')).first()
         if not kat:
             return Response({'kategoriya': ['Topilmadi.']}, status=400)
+        if _rahbar(request):  # tannarxsiz yoki narxsiz libos katalogga chiqmaydi (foyda va qoplash noto'g'ri hisoblanardi)
+            yoq = {}
+            if not d.get('ijara_narxi'):
+                yoq['ijara_narxi'] = ['Ijara narxini kiriting.']
+            if d.get('tannarx') is None:
+                yoq['tannarx'] = ["Tannarxni kiriting — libos qanchaga olingan. Busiz foyda noto'g'ri hisoblanadi."]
+            if yoq:
+                return Response(yoq, status=400)
         yb_id, tolandi = d.pop('yetkazib_beruvchi', None), d.pop('tolandi', None)
         yb = None
         if yb_id and _rahbar(request):  # sotuvchi tannarx kabi yetkazib beruvchini ham kiritmaydi

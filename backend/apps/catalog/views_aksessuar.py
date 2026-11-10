@@ -133,6 +133,8 @@ class AksessuarlarView(APIView):
         kat = Kategoriya.objects.filter(salon=request.salon, id=d.pop('kategoriya')).first()
         if not kat:
             return Response({'kategoriya': ['Topilmadi.']}, status=400)
+        if _rahbar(request) and d.get('tannarx') is None:  # tannarxsiz aksessuar katalogga chiqmaydi (libos kabi)
+            return Response({'tannarx': ["Tannarxni kiriting — bir dona qanchaga olingan."]}, status=400)
         tolandi = d.pop('tolandi', None)
         yb, err = _xarid_maydonlari(request, d.pop('yetkazib_beruvchi', None), tolandi, (d.get('tannarx') or 0) * d['soni'])
         if err:
