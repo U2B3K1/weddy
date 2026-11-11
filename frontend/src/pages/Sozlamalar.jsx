@@ -314,7 +314,7 @@ export default function Sozlamalar({ menId, bolim, onBolim }) {
           <RadioKarta name="kassa_rejimi" checked={s.kassa_rejimi === 'kassir'} onChange={() => set('kassa_rejimi', 'kassir')} nomi="Alohida kassir"
             izoh="Sotuvchi faqat zakaz oladi; pulni kassir qabul qiladi. Kassada sotuvchining zakazi «To'lov kutayotganlar» da chiqadi. Kamida bitta xodimga «Kassir» roli kerak." />
         </div>
-        {almashQator('otkazma_tasdigi', "O'tkazmani rahbar tasdiqlaydi", "Telegramda «Hisobingizga tushdimi?» — Keldi / Kelmadi. «Kelmadi» bo'lsa, to'lov hisobdan chiqadi va qoldiq qayta chiqadi.")}
+        {almashQator('otkazma_tasdigi', "O'tkazmani rahbar tasdiqlaydi", "Telegramda «Hisobingizga tushdimi?» — Keldi / Kelmadi. «Kelmadi» bo'lsa, to'lov hisobdan chiqadi va qoldiq qayta chiqadi. Tasdiqlanmaguncha libos berilmaydi — rahbar aloqada bo'lmasa mijoz kutib qoladi.")}
         {almashQator('terminal_sverkasi', 'Smena yopishda terminal hisobotini solishtirish', "Terminal chiqargan kunlik summa kiritiladi; farq bo'lsa rahbarga xabar.")}
       </SPanel>
     ),

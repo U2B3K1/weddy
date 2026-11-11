@@ -207,7 +207,8 @@ def pin_tekshir(xodim, pin):
                 xodim.xato_urinish = 0
                 from apps.notify.services import rahbarlarga  # FT-1.7: rahbarga xabar boradi
                 rahbarlarga(xodim.salon, 'pin_bloklandi',
-                            f"{xodim.ism} PIN kodi 5 marta xato kiritildi va 15 daqiqaga bloklandi.")
+                            f"{xodim.ism} PIN kodi 5 marta xato kiritildi va 15 daqiqaga bloklandi.",
+                            [[{'text': '🔓 Blokdan chiqarish', 'callback_data': f'pb:{xodim.id}'}]])
             xodim.save(update_fields=['xato_urinish', 'bloklangan_gacha'])
         elif xodim.xato_urinish:
             xodim.xato_urinish = 0
@@ -256,6 +257,12 @@ class PinLoginView(OchiqView):
                          'xodim': {'id': xodim.id, 'ism': xodim.ism, 'rol': xodim.rol}})
 
 
+def _obuna_qolgan_kun(salon):
+    muddat = salon.obuna_muddati()
+    qolgan = (muddat - timezone.localdate()).days if muddat else None
+    return qolgan if qolgan is not None and 0 <= qolgan <= 3 else None
+
+
 class MeView(APIView):
     def get(self, request):
         holat, qolgan = request.salon.obuna_holati()
@@ -264,7 +271,9 @@ class MeView(APIView):
                          'kassa_rejimi': sozlama(request.salon).kassa_rejimi,
                          'salon_holati': holat,
                          # muddat o'tgan: shuncha kundan keyin «faqat ko'rish» (FT-22.8)
-                         'obuna_ogohlantirish_kun': qolgan if holat != Salon.Holat.FAQAT_KORISH else None})
+                         'obuna_ogohlantirish_kun': qolgan if holat != Salon.Holat.FAQAT_KORISH else None,
+                         # muddat yaqin (3 kun va kam): rahbarga oldindan banner; muddat o'tgach yuqoridagi maydon ishlaydi
+                         'obuna_qolgan_kun': _obuna_qolgan_kun(request.salon)})
 
 
 

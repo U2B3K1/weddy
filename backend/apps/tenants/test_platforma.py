@@ -316,7 +316,8 @@ class ArizaTelegramTests(PlatformaBase):
         a = self.ariza(tur='aloqa', xabar='Narxi qancha?')
         with mock.patch.object(telegram, 'xabar_yubor') as yubor:
             platforma_arizasi(a)
-        chat, matn = yubor.call_args.args
+        chat, matn, tugmalar = yubor.call_args.args
+        self.assertEqual(tugmalar[0][0]['callback_data'], f'ar:{a.id}')
         self.assertEqual(chat, chat_id)
         for parcha in ("Bog'lanish", 'Nodira', '+998901234567', 'Oq orzu', 'Narxi qancha?'):
             self.assertIn(parcha, matn)

@@ -387,6 +387,11 @@ export default function App() {
       {faqatKorish && (
         <p className="ogohlantirish obuna-banner" role="status">Obuna muddati tugagan: yangi zakaz, katalog va sozlamalar yopiq. Boshlangan zakazlarni yakunlash mumkin — to'lov, berish, qaytarish va smena ishlaydi.</p>
       )}
+      {xodim.obuna_qolgan_kun != null && rahbar && (
+        <p className="ogohlantirish obuna-banner">
+          {xodim.obuna_qolgan_kun === 0 ? 'Obuna muddati bugun tugaydi.' : `Obuna muddati ${xodim.obuna_qolgan_kun} kundan keyin tugaydi.`} Salon uzilishsiz ishlashi uchun obunani uzaytiring.
+        </p>
+      )}
       {xodim.obuna_ogohlantirish_kun != null && rahbar && (
         <p className="ogohlantirish obuna-banner">
           Obuna to'lovi muddati o'tgan. {xodim.obuna_ogohlantirish_kun} kundan keyin salon «faqat ko'rish» rejimiga o'tadi.

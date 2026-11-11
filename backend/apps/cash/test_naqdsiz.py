@@ -11,7 +11,7 @@ from apps.notify.models import Xabar
 from apps.notify.services import tugma_ishla
 from apps.orders.services import zakaz_yaratish
 from apps.tenants.auth import make_staff_token
-from apps.tenants.models import Xodim
+from apps.tenants.models import Xodim, SalonSozlamalari
 
 from .models import Smena, Tolov
 from .services import KassaXatosi, smena_ochish, smena_yopish, tolangan_summa, tolov_qabul
@@ -28,6 +28,7 @@ def api(xodim):
 class Base(TestCase):
     def setUp(self):
         self.salon, self.malika, self.kat = salon_yarat()
+        SalonSozlamalari.objects.update_or_create(salon=self.salon, defaults={'otkazma_tasdigi': True})  # standart o'chiq (2026-11-11); bu testlar ixtiyoriy nazoratni sinaydi
         self.rahbar = Xodim.objects.create(salon=self.salon, ism='Rahbar', rol=Xodim.Rol.RAHBAR, telegram_id=111)
         self.smena = smena_ochish(salon=self.salon, xodim=self.malika, boshlangich_qoldiq=0)
         a = libos_yarat(self.salon, self.kat, 'A', ijara_narxi=2_000_000)
@@ -235,3 +236,24 @@ class TolovTuzatishTests(Base):
         boshqa_salon, _, _ = salon_yarat('begona')
         b_rahbar = Xodim.objects.create(salon=boshqa_salon, ism='Begona', rol=Xodim.Rol.RAHBAR)
         self.assertEqual(self.tuzat(t, b_rahbar, usul='karta').status_code, 404)  # boshqa salon to'lovi ko'rinmaydi
+
+
+class StandartHolatTests(TestCase):
+    """Foydalanuvchi qarori 2026-11-11: yangi salonda o'tkazma rahbar tasdig'isiz qabul qilinadi (POS kabi)."""
+
+    def test_yangi_salonda_otkazma_tasdiqsiz_va_libos_beriladi(self):
+        from apps.orders.rental import libos_berish
+        salon, malika, kat = salon_yarat()
+        rahbar = Xodim.objects.create(salon=salon, ism='Rahbar', rol=Xodim.Rol.RAHBAR, telegram_id=111)
+        libos = libos_yarat(salon, kat, 'S1', ijara_narxi=1_000_000)
+        smena_ochish(salon=salon, xodim=malika, boshlangich_qoldiq=0)
+        bugun = timezone.localdate()
+        z = zakaz_yaratish(salon=salon, xodim=malika, telefon='+998901112244', olib_ketish=bugun, qaytarish=bugun,
+                           libos_idlari=[libos.id])
+        t = tolov_qabul(salon=salon, xodim=malika, tur=Tolov.Tur.AVANS, summa=1_000_000, zakaz=z, usul=Tolov.Usul.OTKAZMA)
+        self.assertEqual(t.tasdiq, Tolov.Tasdiq.KERAK_EMAS)
+        self.assertFalse(Xabar.objects.filter(salon=salon, tur='otkazma_tasdiq').exists())  # rahbar bezovta qilinmaydi
+        z = libos_berish(salon=salon, xodim=malika, zakaz=z,
+                           zaloglar=[{'turi': 'hujjat', 'hujjat_turi': 'pasport', 'hujjat_raqami': 'AA1'}])
+        self.assertEqual(z.holat, 'berildi')
+        self.assertTrue(rahbar.id)

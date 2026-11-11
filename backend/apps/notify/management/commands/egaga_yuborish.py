@@ -23,6 +23,11 @@ class Command(BaseCommand):
                 egaga_xabar(f"{izoh}\n\nNusxa olindi, lekin fayl {FAYL_MAKS_BAYT // 1024 // 1024} MB dan katta — "
                             "Telegram orqali yuborib bo'lmadi. U serverda turibdi; boshqa joyga nusxalashni "
                             "(rclone) sozlang.")
+            if natija in ('yuborildi', 'katta'):  # nusxa olingan — bot «Holat» da ko'rsatadi
+                from django.utils import timezone
+
+                from apps.tenants.models import PlatformaSozlama, platforma_sozlama
+                PlatformaSozlama.objects.filter(id=platforma_sozlama().id).update(oxirgi_zaxira=timezone.now())
             self.stdout.write(f'egaga fayl: {natija}')
         elif matn:
             self.stdout.write(f"egaga xabar: {'yuborildi' if egaga_xabar(matn) else 'yuborilmadi'}")

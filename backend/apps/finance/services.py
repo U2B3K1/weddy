@@ -44,13 +44,22 @@ def xarajat_kiritish(*, salon, xodim, modda, summa, sana=None, usul='naqd', izoh
         holat=Xarajat.Holat.TASDIQLANDI if rahbar else Xarajat.Holat.KUTILMOQDA,
         tasdiqlagan=xodim if rahbar else None)
     if not rahbar:  # rahbar qarori kerak: ilovadagi qo'ng'iroqchadan tashqari Telegramda ham (xabar xatosi amalni buzmaydi)
-        from apps.notify.services import rahbarlarga, som
-        from .moddalar import modda_nomlari
-        rahbarlarga(salon, 'xarajat_tasdiq',
-                    f"🧾 {xodim.ism} xarajat kiritdi: {modda_nomlari(salon).get(modda, modda)} — {som(summa)}"
-                    f"{' (kassadan)' if kassadan else ''}{f' · «{izoh}»' if izoh else ''}.\n"
-                    f"Ilovada tasdiqlang yoki rad eting: qo'ng'iroqcha → «Qaroringiz kerak».")
+        from apps.notify.services import rahbarlarga
+        rahbarlarga(salon, 'xarajat_tasdiq', xarajat_xabar_matni(x), xarajat_tugmalari(x))
     return x
+
+
+def xarajat_xabar_matni(x):
+    from apps.notify.services import som
+    from .moddalar import modda_nomlari
+    return (f"🧾 {x.kiritgan.ism if x.kiritgan_id else 'Xodim'} xarajat kiritdi: "
+            f"{modda_nomlari(x.salon).get(x.modda, x.modda)} — {som(x.summa)}"
+            f"{' (kassadan)' if x.tolov_id else ''}{f' · «{x.izoh}»' if x.izoh else ''}.")
+
+
+def xarajat_tugmalari(x):
+    return [[{'text': 'Tasdiqlash', 'callback_data': f'xr:{x.id}:t'},
+             {'text': 'Rad etish', 'callback_data': f'xr:{x.id}:r'}]]
 
 
 @transaction.atomic

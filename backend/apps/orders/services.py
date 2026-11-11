@@ -95,4 +95,6 @@ def zakaz_yaratish(*, salon, xodim, telefon, olib_ketish, qaytarish, libos_idlar
         for dona in aksessuar_bron_qilish(salon=salon, aksessuar=a, soni=n, olib_ketish=olib_ketish,
                                           qaytarish=qaytarish, zakaz=zakaz):
             ZakazAksessuar.objects.create(salon=salon, zakaz=zakaz, dona=dona, narx=a.ijara_narxi)
+    from apps.notify.services import yangi_zakaz_xabari
+    transaction.on_commit(lambda: yangi_zakaz_xabari(zakaz))  # Telegramga: zakaz ma'lumoti chatda arxiv bo'lib qoladi
     return zakaz

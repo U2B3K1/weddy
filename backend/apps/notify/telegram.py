@@ -84,10 +84,16 @@ def api(metod, _token=None, **params):
     return javob.get('result')
 
 
-def xabar_yubor(chat_id, matn, tugmalar=None, token=None):
+def xabar_yubor(chat_id, matn, tugmalar=None, token=None, klaviatura=None, jim=False):
+    """`tugmalar` — xabar ostidagi inline tugmalar; `klaviatura` — pastki doimiy menyu (reply keyboard);
+    `jim` — ovozsiz (telefon jiringlamaydi): arxiv uchun yoziladigan xabarlar."""
     params = {'chat_id': chat_id, 'text': matn}
     if tugmalar:
         params['reply_markup'] = {'inline_keyboard': tugmalar}
+    elif klaviatura:
+        params['reply_markup'] = klaviatura
+    if jim:
+        params['disable_notification'] = True
     if token:
         params['_token'] = token
     return api('sendMessage', **params)

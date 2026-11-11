@@ -30,7 +30,7 @@ class Base(TestCase):
         self.rahbar.set_pin('1111'); self.rahbar.save()
         self.libos = libos_yarat(self.salon, self.kat, 'A', ijara_narxi=2_000_000)
         self.yuborilgan = []
-        p = mock.patch.object(telegram, 'xabar_yubor', side_effect=lambda chat, matn, tugmalar=None:
+        p = mock.patch.object(telegram, 'xabar_yubor', side_effect=lambda chat, matn, tugmalar=None, **kw:
                               self.yuborilgan.append((chat, matn, tugmalar)))
         p.start(); self.addCleanup(p.stop)
 

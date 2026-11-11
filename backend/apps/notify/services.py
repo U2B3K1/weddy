@@ -26,6 +26,7 @@ log = logging.getLogger(__name__)
 ULASH_MUDDATI = timedelta(minutes=15)
 KIRISH_KODI_MUDDATI = timedelta(minutes=5)
 KIRISH_KODI_URINISH = 5
+JIM_TURLAR = {'yangi_zakaz'}  # ovozsiz yuboriladi: arxiv uchun, hech kimni bezovta qilmasin
 YUBORISH_PAUZASI = 0.05  # ketma-ket yuborishlar orasidagi pauza: bitta botning limiti butun platformaga umumiy
 
 
@@ -41,7 +42,8 @@ def _yubor(xabar_id):
     if not xabar:
         return None
     try:
-        telegram.xabar_yubor(xabar.xodim.telegram_id, xabar.matn, xabar.tugmalar)
+        telegram.xabar_yubor(xabar.xodim.telegram_id, xabar.matn, xabar.tugmalar,
+                             **({'jim': True} if xabar.tur in JIM_TURLAR else {}))
         xabar.holat, xabar.yuborilgan = Xabar.Holat.YUBORILDI, timezone.now()
     except telegram.TelegramLimitXatosi:
         # Vaqtinchalik: XATO deb belgilansa xabar butunlay yo'qolar edi (XATO qayta yuborilmaydi).
@@ -182,15 +184,15 @@ def platforma_arizasi(a):
             qatorlar.append(f"🏢 {a.salon_nomi}")
         if a.xabar:
             qatorlar.append(f"💬 {a.xabar}")
-        telegram.xabar_yubor(s.telegram_chat_id, '\n'.join(qatorlar))
+        telegram.xabar_yubor(s.telegram_chat_id, '\n'.join(qatorlar),
+                             [[{'text': "✅ Bog'landim", 'callback_data': f'ar:{a.id}'}]])
     except Exception:  # noqa: BLE001 — xabarnoma so'rovni hech qachon buzmasin
         log.exception("Platforma egasiga ariza xabarini yuborib bo'lmadi")
 
 
 # ---------- chegirma so'rovi tugmalari ----------
 
-def chegirma_sorovi_xabari(sorov):
-    """Rahbarga «Tasdiqlash / Rad etish» tugmalari bilan so'rov (FT-11.2)."""
+def chegirma_matni_va_tugmalari(sorov):
     z = sorov.zakaz
     miqdor = f'{float(sorov.foiz):g}%' if sorov.foiz is not None else som(sorov.summa)
     matn = (f"Chegirma so'rovi\nZakaz #{z.raqam}, jami {som(z.jami)}\n"
@@ -198,7 +200,30 @@ def chegirma_sorovi_xabari(sorov):
             f"Sabab: {sorov.get_sabab_display()}{'. ' + sorov.izoh if sorov.izoh else ''}")
     tugmalar = [[{'text': 'Tasdiqlash', 'callback_data': f'ch:{sorov.id}:t'},
                  {'text': 'Rad etish', 'callback_data': f'ch:{sorov.id}:r'}]]
-    return rahbarlarga(z.salon, 'chegirma_sorovi', matn, tugmalar)
+    return matn, tugmalar
+
+
+def chegirma_sorovi_xabari(sorov):
+    """Rahbarga «Tasdiqlash / Rad etish» tugmalari bilan so'rov (FT-11.2)."""
+    matn, tugmalar = chegirma_matni_va_tugmalari(sorov)
+    return rahbarlarga(sorov.zakaz.salon, 'chegirma_sorovi', matn, tugmalar)
+
+
+def yangi_zakaz_xabari(zakaz):
+    """Yangi zakaz — uni olgan xodimga va rahbarlarga, ovozsiz (foydalanuvchi qarori, 2026-11-11).
+
+    Maqsad — arxiv: ilova ochilmay qolsa ham (internet, server) zakaz ma'lumoti Telegram chatida qoladi.
+    """
+    try:
+        from .bot_menyu import zakaz_matni
+        matn = zakaz_matni(zakaz, 'Yangi zakaz\n')
+        kimga = {x.id: x for x in Xodim.objects.filter(salon_id=zakaz.salon_id, rol=Xodim.Rol.RAHBAR, faol=True)}
+        if zakaz.sotuvchi_id and zakaz.sotuvchi.faol:
+            kimga[zakaz.sotuvchi_id] = zakaz.sotuvchi
+        return [xabar_yoz(x, 'yangi_zakaz', matn, kalit=f'yangi_zakaz:{zakaz.id}', darhol=False) for x in kimga.values()]
+    except Exception:  # noqa: BLE001 — xabar zakazni hech qachon buzmasin
+        log.exception('Yangi zakaz xabarini yozib bo\'lmadi')
+        return []
 
 
 def tugma_ishla(chat_id, data):
@@ -219,6 +244,14 @@ def tugma_ishla(chat_id, data):
         return kassa_tugma_ishla(chat_id, int(qismlar[1]), qismlar[2])
     if len(qismlar) == 3 and qismlar[0] == 'ot' and qismlar[1].isdigit() and qismlar[2] in ('k', 'y'):
         return otkazma_tugma_ishla(chat_id, int(qismlar[1]), qismlar[2] == 'k')
+    if len(qismlar) == 3 and qismlar[0] == 'xr' and qismlar[1].isdigit() and qismlar[2] in ('t', 'r'):
+        return xarajat_tugma_ishla(chat_id, int(qismlar[1]), qismlar[2] == 't')
+    if len(qismlar) == 2 and qismlar[0] == 'pb' and qismlar[1].isdigit():
+        return pin_blok_tugma_ishla(chat_id, int(qismlar[1]))
+    if len(qismlar) == 3 and qismlar[0] == 'bg' and qismlar[1].isdigit():
+        return boglandim_tugma_ishla(chat_id, int(qismlar[1]), qismlar[2])
+    if len(qismlar) == 2 and qismlar[0] == 'ar' and qismlar[1].isdigit():
+        return ariza_tugma_ishla(chat_id, int(qismlar[1]))
     if len(qismlar) != 3 or qismlar[0] != 'ch' or not qismlar[1].isdigit() or qismlar[2] not in ('t', 'r'):
         return "Noma'lum buyruq."
     sorov = ChegirmaSorovi.objects.filter(id=int(qismlar[1])).first()
@@ -234,6 +267,69 @@ def tugma_ishla(chat_id, data):
     if s.holat == ChegirmaSorovi.Holat.TASDIQLANDI:
         return f"Tasdiqlandi: chegirma {som(s.tasdiqlangan_summa)}. Zakaz #{s.zakaz.raqam}, yangi jami {som(s.zakaz.jami)}."
     return f"Rad etildi. Zakaz #{s.zakaz.raqam} chegirmasiz narxda davom etadi."
+
+
+# ---------- xarajat, PIN blok, «Bog'landim», ariza tugmalari ----------
+
+def xarajat_tugma_ishla(chat_id, xid, tasdiqlash):
+    """«Tasdiqlash / Rad etish»: sotuvchi kiritgan xarajat bo'yicha rahbar qarori."""
+    from apps.finance.models import Xarajat
+    from apps.finance.services import XarajatXatosi, xarajat_qarori
+
+    x = Xarajat.objects.filter(id=xid).first()
+    if not x:
+        return 'Xarajat topilmadi.'
+    rahbar = _salon_rahbari(x.salon_id, chat_id)
+    if not rahbar:
+        return 'Bu amal faqat shu salon rahbariga ruxsat etilgan.'
+    if not salon_yoza_oladimi(rahbar.salon):
+        return "Salon «faqat ko'rish» holatida."
+    try:
+        x = xarajat_qarori(salon=rahbar.salon, rahbar=rahbar, xarajat=x, tasdiqlash=tasdiqlash)
+    except XarajatXatosi as e:
+        return str(e)
+    return f'Tasdiqlandi: {som(x.summa)}.' if tasdiqlash else f'Rad etildi: {som(x.summa)}.'
+
+
+def pin_blok_tugma_ishla(chat_id, xodim_id):
+    """«Blokdan chiqarish»: PIN xato kiritilib bloklangan xodimni rahbar kutmasdan ochadi."""
+    x = Xodim.objects.filter(id=xodim_id).first()
+    if not x:
+        return 'Xodim topilmadi.'
+    rahbar = _salon_rahbari(x.salon_id, chat_id)
+    if not rahbar:
+        return 'Bu amal faqat shu salon rahbariga ruxsat etilgan.'
+    if not x.bloklangan:
+        return f'{x.ism} bloklanmagan (muddat o\'tgan yoki allaqachon ochilgan).'
+    Xodim.objects.filter(id=x.id).update(bloklangan_gacha=None, xato_urinish=0)
+    jurnalga_yoz(rahbar.salon, rahbar, 'pin_blok_ochildi', f'xodim {x.ism} (Telegram)')
+    return f'{x.ism} blokdan chiqarildi.'
+
+
+def boglandim_tugma_ishla(chat_id, zakaz_id, tur):
+    """Eslatma ostidagi «Bog'landim» (FT-14.2): ilovadagi tugma bilan bir xil yozuv — eslatma hammada yopiladi."""
+    from apps.orders.models import Zakaz, ZakazTarixi
+
+    z = Zakaz.objects.select_related('salon').filter(id=zakaz_id).first()
+    x = z and Xodim.objects.filter(salon_id=z.salon_id, telegram_id=chat_id, faol=True).first()
+    if not x:
+        return 'Zakaz topilmadi.'
+    if not salon_yoza_oladimi(z.salon):
+        return "Salon «faqat ko'rish» holatida."
+    if ZakazTarixi.objects.filter(zakaz=z, harakat='boglandi', eski=tur[:30], vaqt__date=timezone.localdate()).exists():
+        return 'Allaqachon belgilangan.'
+    ZakazTarixi.objects.create(salon=z.salon, zakaz=z, xodim=x, harakat='boglandi', eski=tur[:30],
+                               yangi="Mijoz bilan bog'lanildi (Telegram)")
+    return f"Belgilandi: {x.ism} bog'landi."
+
+
+def ariza_tugma_ishla(chat_id, ariza_id):
+    """Platforma egasi so'rov egasi bilan bog'langanini belgilaydi (panelda «ko'rilgan» bo'ladi)."""
+    if platforma_sozlama().telegram_chat_id != chat_id:
+        return 'Bu amal faqat platforma egasiga ruxsat etilgan.'
+    if not Ariza.objects.filter(id=ariza_id).update(korilgan=True):
+        return "So'rov topilmadi."
+    return "Bog'lanildi deb belgilandi."
 
 
 # ---------- kassa: topshirilgan naqdni qabul qilish ----------

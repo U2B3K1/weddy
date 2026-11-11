@@ -2,35 +2,55 @@ import time
 
 from django.core.management.base import BaseCommand, CommandError
 
-from apps.notify import telegram
+from apps.notify import bot_menyu, telegram
 from apps.notify.services import (kutayotganlarni_yubor, qurilma_start_ishla, start_ishla, start_ishla_platforma,
                                   tugma_ishla)
 
 
 def yangilanishni_ishla(u, token=None):
-    """Bitta Telegram yangilanishi: `/start <kod>` yoki inline tugma. Javob matnini qaytaradi (test uchun)."""
+    """Bitta Telegram yangilanishi: `/start <kod>`, menyu tugmasi, erkin matn (zakaz qidiruvi) yoki inline tugma.
+
+    Oxirgi javob matnini qaytaradi (test uchun).
+    """
+    tk = {'token': token} if token else {}
     if 'message' in u:
         m = u['message']
         matn = (m.get('text') or '').strip()
         chat_id = m['chat']['id']
         if m['chat'].get('type') != 'private':
             return None  # guruhlarda ishlamaydi: xabarlarda mijoz ma'lumoti bor
-        tugmalar = None
-        kod = matn[6:].strip()
-        if matn.startswith('/start') and kod.startswith('q_'):  # yangi qurilmani tasdiqlash havolasi
+        kod = matn[6:].strip() if matn.startswith('/start') else ''
+        if kod.startswith('q_'):  # yangi qurilmani tasdiqlash havolasi
             javob, tugmalar = qurilma_start_ishla(chat_id, kod[2:])
-        elif matn.startswith('/start'):
+            telegram.xabar_yubor(chat_id, javob, tugmalar, **tk)
+            return javob
+        if kod:  # ulash kodi: platforma egasi yoki xodim; ulangach pastki menyu chiqadi
             javob = start_ishla_platforma(chat_id, kod)
             if javob is None:
                 javob = start_ishla(chat_id, kod)
-        else:
-            javob = "Libosa boti. Ulash uchun ilovada «Telegramni ulash» tugmasini bosing."
-        telegram.xabar_yubor(chat_id, javob, tugmalar, **({'token': token} if token else {}))
+            telegram.xabar_yubor(chat_id, javob, klaviatura=bot_menyu.klaviatura(chat_id), **tk)
+            return javob
+        if matn in ('/start', '/menu', '/menyu'):
+            kl = bot_menyu.klaviatura(chat_id)
+            javob = ("Pastdagi menyudan tanlang. Zakazni topish uchun raqamini yoki mijoz telefonini yozing." if kl
+                     else "Libosa boti. Ulash uchun ilovada «Telegramni ulash» tugmasini bosing.")
+            telegram.xabar_yubor(chat_id, javob, klaviatura=kl, **tk)
+            return javob
+        javob = None
+        for javob, tugmalar in bot_menyu.matn_ishla(chat_id, matn):
+            telegram.xabar_yubor(chat_id, javob, tugmalar, **tk)
         return javob
     if 'callback_query' in u:
         c = u['callback_query']
-        javob = tugma_ishla(c['from']['id'], c.get('data'))
         kw = {'_token': token} if token else {}
+        data = c.get('data') or ''
+        if data.startswith('m:'):  # menyu: salon tanlandi — javob yangi xabar bo'lib keladi
+            telegram.api('answerCallbackQuery', callback_query_id=c['id'], **kw)
+            javob = None
+            for javob, tugmalar in bot_menyu.tugma_ishla(c['from']['id'], data):
+                telegram.xabar_yubor(c['from']['id'], javob, tugmalar, **tk)
+            return javob
+        javob = tugma_ishla(c['from']['id'], data)
         telegram.api('answerCallbackQuery', callback_query_id=c['id'], text=javob[:190], **kw)
         if c.get('message'):  # tugmalarni olib tashlab, natijani yozib qo'yadi (ikki marta bosilmasligi uchun)
             telegram.api('editMessageText', chat_id=c['message']['chat']['id'], message_id=c['message']['message_id'],

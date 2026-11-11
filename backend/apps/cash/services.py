@@ -231,9 +231,12 @@ def _otkazma_xabari(tolov):
     z = f' · zakaz #{tolov.zakaz.raqam} ({tolov.zakaz.mijoz.fio or tolov.zakaz.mijoz.telefon})' if tolov.zakaz_id else ''
     matn = (f"💳 {tolov.get_usul_display()}: {som(tolov.summa)}{z}\n{tolov.get_tur_display()}, qabul qildi: {tolov.xodim.ism}.\n"
             f"Hisobingizga tushdimi? Bank SMS ini tekshirib tasdiqlang.")
-    tugmalar = [[{'text': '✅ Keldi', 'callback_data': f'ot:{tolov.id}:k'},
-                 {'text': '❌ Kelmadi', 'callback_data': f'ot:{tolov.id}:y'}]]
-    rahbarlarga(tolov.salon, 'otkazma_tasdiq', matn, tugmalar)
+    rahbarlarga(tolov.salon, 'otkazma_tasdiq', matn, otkazma_tugmalari(tolov))
+
+
+def otkazma_tugmalari(tolov):
+    return [[{'text': '✅ Keldi', 'callback_data': f'ot:{tolov.id}:k'},
+             {'text': '❌ Kelmadi', 'callback_data': f'ot:{tolov.id}:y'}]]
 
 
 @transaction.atomic

@@ -21,8 +21,9 @@ def eslatmalarni_yoz(bugun=None):
             if e['boglangan']:
                 continue
             matn = f"Zakaz #{e['raqam']} · {e['mijoz'] or 'mijoz'} ({e['telefon']})\n{e['matn']}"
+            tugmalar = [[{'text': "✅ Bog'landim", 'callback_data': f"bg:{e['zakaz_id']}:{e['tur']}"}]]
             for x in xodimlar:
-                if xabar_yoz(x, 'eslatma', matn, kalit=f"{e['tur']}:{e['zakaz_id']}:{bugun}"):
+                if xabar_yoz(x, 'eslatma', matn, tugmalar, kalit=f"{e['tur']}:{e['zakaz_id']}:{bugun}"):
                     soni += 1
     return soni
 
@@ -33,5 +34,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **opts):
         from apps.cash.nazorat import nazorat_eslatmalari
+        from apps.notify.bot_menyu import obuna_ogohlantirishi
+        obuna_ogohlantirishi()  # platforma egasiga: muddati yaqin salonlar (kuniga bir marta)
         self.stdout.write(f'Yozilgan eslatmalar: {eslatmalarni_yoz()}; nazorat: {nazorat_eslatmalari()}; '
                           f'yuborilgan: {kutayotganlarni_yubor()}')

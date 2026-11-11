@@ -53,7 +53,7 @@ class EgagaBase(TestCase):
         s.save()
         self.yuborilgan = []
         p = mock.patch.object(telegram, 'xabar_yubor',
-                              side_effect=lambda chat, matn, tugmalar=None, token=None: self.yuborilgan.append((chat, matn)))
+                              side_effect=lambda chat, matn, tugmalar=None, **kw: self.yuborilgan.append((chat, matn)))
         p.start()
         self.addCleanup(p.stop)
         # yuborish alohida oqimda — testda shu zahoti bajariladi

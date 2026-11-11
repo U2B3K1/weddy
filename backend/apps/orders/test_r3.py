@@ -12,7 +12,7 @@ from apps.cash.models import Tolov
 from apps.cash.services import otkazma_tasdiqlash, smena_ochish, tolangan_summa, tolov_qabul
 from apps.catalog.models import Aksessuar, AksessuarDona, Kategoriya, Libos, TamirYozuvi
 from apps.tenants.auth import make_staff_token
-from apps.tenants.models import Salon, Xodim, sozlama
+from apps.tenants.models import Salon, Xodim, sozlama, SalonSozlamalari
 
 from .changes import libosni_almashtirish, zakazni_bekor_qilish
 from .discounts import chegirma_qarori, chegirma_sorash
@@ -32,6 +32,7 @@ def kun(n):
 class Base(TestCase):
     def setUp(self):
         self.salon, self.xodim, self.kat = salon_yarat()
+        SalonSozlamalari.objects.update_or_create(salon=self.salon, defaults={'otkazma_tasdigi': True})  # standart o'chiq (2026-11-11); bu testlar ixtiyoriy nazoratni sinaydi
         self.rahbar = Xodim.objects.create(salon=self.salon, ism='Rahbar', rol=Xodim.Rol.RAHBAR)
         smena_ochish(salon=self.salon, xodim=self.xodim, boshlangich_qoldiq=5_000_000)
         self.libos = libos_yarat(self.salon, self.kat, 'A', ijara_narxi=3_000_000)

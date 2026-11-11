@@ -138,6 +138,11 @@ class MantiqTests(Base):
 
 class OtkazmaMantiqTests(Base):
     """2026-11-10 mantiq ko'rigi: tasdiqlanmagan va «kelmadi» o'tkazmalar atrofidagi uch xato."""
+    def setUp(self):
+        super().setUp()
+        from apps.tenants.models import SalonSozlamalari
+        SalonSozlamalari.objects.update_or_create(salon=self.salon, defaults={'otkazma_tasdigi': True})  # standart o'chiq (2026-11-11)
+
 
     def otkazma(self, z, summa, tur=Tolov.Tur.AVANS):
         from apps.cash.services import tolov_qabul

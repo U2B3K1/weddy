@@ -69,6 +69,8 @@ class PlatformaSozlama(models.Model):
     # Egasini botga ulash uchun bir martalik kod (`/start <kod>`); muddati o'tgach yaroqsiz.
     telegram_ulash_kod = models.CharField(max_length=16, blank=True)
     telegram_ulash_tugaydi = models.DateTimeField(null=True, blank=True)
+    oxirgi_zaxira = models.DateTimeField(null=True, blank=True)   # zaxira.sh egaga oxirgi marta nusxa yuborgan vaqt
+    obuna_xabar_sana = models.DateField(null=True, blank=True)    # «obuna muddati yaqin» xabari kuniga bir marta
 
 
 def platforma_sozlama():
@@ -321,7 +323,8 @@ class SalonSozlamalari(models.Model):
     sms_kvitansiya = models.BooleanField(default=False)
     # Naqdsiz pul nazorati (kerak bo'lmasa o'chiriladi): o'tkazmani rahbar «keldi» deb tasdiqlaydi; terminal to'lovi
     # bo'lgan smena terminal sverkasi summasisiz yopilmaydi
-    otkazma_tasdigi = models.BooleanField(default=True)
+    # 2026-11-11: standart o'chiq — kassa POS kabi rahbarni kutmasdan ishlaydi; nazorat xohlagan salon o'zi yoqadi
+    otkazma_tasdigi = models.BooleanField(default=False)
     # Qaytarish kuni «Qaytarildi» deb qabul qilinmagan libos haqida shu vaqtdan keyin eslatma (salon yopilishidan oldin)
     qaytarish_tekshiruv_vaqti = models.TimeField(default=datetime.time(18, 0))
     terminal_sverkasi = models.BooleanField(default=True)

@@ -87,6 +87,7 @@ test('pul topshirish: rahbar → sotuvchi → rahbar; kassir rejimi', async ({ p
     const libos = (await apiSorov(sotuvchi, 'GET', '/liboslar/')).find((l) => l.artikul === 'E2E-1')
     const z = await apiSorov(sotuvchi, 'POST', '/zakazlar/', { telefon: `+99891${String(Date.now()).slice(-7)}`, fio: 'Naqdsiz Sinov',
       dan: iso(50), gacha: iso(52), liboslar: [libos.id] })
+    await apiSorov(page, 'PATCH', '/sozlamalar/', { otkazma_tasdigi: true })  // standart o'chiq (2026-11-11) — ixtiyoriy nazorat sinaladi
     await apiSorov(sotuvchi, 'POST', '/kassa/tolovlar/', { zakaz: z.id, tur: 'avans', summa: 700_000, usul: 'otkazma' })
     await apiSorov(sotuvchi, 'POST', '/kassa/tolovlar/', { zakaz: z.id, tur: 'qoldiq', summa: 300_000, usul: 'karta' })
     await kassaga(page)
@@ -102,6 +103,7 @@ test('pul topshirish: rahbar → sotuvchi → rahbar; kassir rejimi', async ({ p
     await expect(kelmadi).toHaveCount(0)
     await otk.getByRole('button', { name: 'Keldi' }).click()
     await expect(page.getByText('Tasdiqlandi: pul keldi.')).toBeVisible()
+    await apiSorov(page, 'PATCH', '/sozlamalar/', { otkazma_tasdigi: false })
     await kassaga(sotuvchi)
   })
 

@@ -295,6 +295,8 @@ kerak); rasmlar (media) Telegramga yuborilmaydi. O'chirish: shu faylga `ZAXIRA_T
 (manzil, xato turi, kod qatori; so'rov mazmuni yuborilmaydi). Bir xil xato 30 daqiqada bir marta, jami 10 daqiqada
 10 tadan ko'p emas. O'chirish: `.env` ga `XATO_XABARI=False`.
 
+Bot «🩺 Holat» tugmasi oxirgi zaxira nusxa qachon yuborilganini ko'rsatadi (36 soatdan eski bo'lsa ogohlantiradi).
+
 **Nusxani server tashqarisiga ham yuboring** — server butunlay ishdan chiqsa, shu yerdagi nusxa ham yo'qoladi.
 Eng oddiy yo'li: `rclone` (Google Drive, Yandex Disk, S3) sozlab, `zaxira.sh` oxiridagi izohdagi qatorni yoqish.
 Oyda bir marta tiklashni sinov bazasida tekshirib ko'ring — tekshirilmagan nusxa nusxa emas.

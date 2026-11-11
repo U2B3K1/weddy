@@ -7,7 +7,7 @@ from apps.bookings.tests import libos_yarat, salon_yarat
 from apps.catalog.models import Sanoq
 from apps.notify.models import Xabar
 from apps.orders.services import zakaz_yaratish
-from apps.tenants.models import Xodim
+from apps.tenants.models import Xodim, SalonSozlamalari
 
 from .models import KassaTopshirish, Tolov
 from .nazorat import nazorat_eslatmalari, tezkor_eslatmalar
@@ -19,6 +19,7 @@ T = Tolov.Tur
 class NazoratTests(TestCase):
     def setUp(self):
         self.salon, self.malika, self.kat = salon_yarat()
+        SalonSozlamalari.objects.update_or_create(salon=self.salon, defaults={'otkazma_tasdigi': True})  # standart o'chiq (2026-11-11); bu testlar ixtiyoriy nazoratni sinaydi
         self.dilnoza = Xodim.objects.create(salon=self.salon, ism='Dilnoza', telegram_id=222)
         self.rahbar = Xodim.objects.create(salon=self.salon, ism='Rahbar', rol=Xodim.Rol.RAHBAR, telegram_id=111)
         self.smena = smena_ochish(salon=self.salon, xodim=self.malika, boshlangich_qoldiq=0)

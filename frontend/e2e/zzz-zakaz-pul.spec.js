@@ -164,6 +164,8 @@ test("o'tkazma tasdiqlanmaguncha libos berilmaydi; kelmadi — sotuvchiga bildir
   await page.setViewportSize({ width: 1280, height: 860 })
   const { ctx, rahbar } = await rahbarOch(browser)
   const libos = await libosYarat(rahbar, 'R3-PUL', 1_000_000)  // bugun bo'sh bo'lishi aniq — o'z libosi
+  // 2026-11-11: o'tkazma tasdig'i standart o'chiq — bu test ixtiyoriy nazoratni sinaydi, shu uchun yoqib oladi
+  await apiSorov(rahbar, 'PATCH', '/sozlamalar/', { otkazma_tasdigi: true })
 
   await kirish(page, 'Sotuvchi', '2222')
   await smenada(page)
@@ -204,6 +206,7 @@ test("o'tkazma tasdiqlanmaguncha libos berilmaydi; kelmadi — sotuvchiga bildir
     const b = await apiSorov(page, 'POST', `/zakazlar/${z.id}/berish/`, { zaloglar: [{ turi: 'hujjat', hujjat_turi: 'pasport', hujjat_raqami: 'AA7770099' }] })
     expect(b.holat, JSON.stringify(b)).toBe('berildi')
   })
+  await apiSorov(rahbar, 'PATCH', '/sozlamalar/', { otkazma_tasdigi: false })
   await ctx.close()
   expect(xatolar).toEqual([])
 })
