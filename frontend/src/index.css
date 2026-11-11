@@ -2,7 +2,7 @@
   --rang: #8b5e83;                     /* faqat manekin muharriri (oq modal) ishlatadi */
   --xato: #b3261e;
   /* fon */
-  --tun: #0B1220; --tun-chuqur: #070C16;
+  --tun: #0B1220; --tun-chuqur: #070C16; --matn-yorug: #D4D7DE;
   /* panellar (shisha): .78 dan shaffof QILMANG */
   --shisha: rgba(22, 35, 58, .78); --shisha-ichki: rgba(251, 246, 238, .06);
   --shisha-chet: rgba(228, 193, 150, .28); --shisha-chet-faol: #E4C196;

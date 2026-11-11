@@ -377,6 +377,9 @@ export default function App() {
 
   return (
     <div className="ilova" data-nav={navRejim || undefined}>
+      {/* Klaviatura va ekran o'quvchi: menyuni har safar bosib o'tmasdan mazmunga o'tish (WCAG 2.4.1) */}
+      <a className="mazmunga-otish" href="#asosiy-mazmun" onClick={(e) => { e.preventDefault(); document.getElementById('asosiy-mazmun')?.focus() }}>Asosiy mazmunga o'tish</a>
+      <SahifaNomi nom={sahifa === 'bosh' ? (rahbar ? 'Dashboard' : 'Bosh sahifa') : (typeof panelNomi === 'string' ? panelNomi : Object.fromEntries(bolimlar)[sahifa])} />
       <PlatformaFon nurli />
       <Shapka ochiq={menyu} onMenyu={() => setMenyu(!menyu)}>
         {/* Telefon shapkasi; keng ekranda xodim chap panel pastida */}
@@ -400,7 +403,7 @@ export default function App() {
       {!onlayn && <p className="ogohlantirish obuna-banner" role="status">Internet yo'q: faqat ko'rish rejimi. Kiritilganlar sahifada qoladi — aloqa tiklangach davom eting.</p>}
       {/* C-14: aloqa uzilsa joriy sahifa olib tashlanmaydi (forma holati yo'qolmasin) — saqlangan ma'lumot ustida chiqadi */}
       <BoshJoyi.Provider value={boshJoyi}>
-      <main>
+      <main id="asosiy-mazmun" tabIndex={-1}>
         <UstkiPanel ikon={(sahifa === 'kassa' && kassaRoyxat.find(([id]) => id === kassaBolim)?.[2]) || { bosh: 'hisobotlar', zakazlar: 'kalendar' }[sahifa] || sahifa}
           telefonNomi={sahifa === 'bosh' && rahbar ? ['Rahbar paneli', "Salon faoliyati bo'yicha asosiy ko'rsatkichlar"] : sahifa === 'kassa' ? KASSA_TELEFON[kassaBolim] || null : null}
           sarlavha={panelNomi} izoh={panelIzoh} xulosa={panelXulosa} xulosaRef={setXulosaJoy} xodim={xodim} rahbar={rahbar} xabarlar={xabarlar} sozlash={sozlash}
@@ -538,6 +541,16 @@ export default function App() {
 
 // C-23: harakatsizlikdan oldin — «Chiqish» (darhol) yoki «Ha, davom etaman» (fokus shunda), jonli sanoq bilan.
 // C-13: qoralama endi xodimga bog'langan (boshqa xodimga ochilmaydi); nima saqlanishi aniq aytiladi.
+// Brauzer tabi nomi ochiq bo'limga mos (WCAG 2.4.2): bir nechta tab ochilganda va ekran o'quvchida farqlanadi
+function SahifaNomi({ nom }) {
+  useEffect(() => {
+    const asl = document.title
+    if (nom) document.title = `${nom} — Libosa`
+    return () => { document.title = asl }
+  }, [nom])
+  return null
+}
+
 function DavomOynasi({ muddat, onDavom, onChiqish }) {
   const [hozir, setHozir] = useState(() => Date.now())
   useEffect(() => {

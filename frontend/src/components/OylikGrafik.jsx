@@ -47,11 +47,19 @@ export default function OylikGrafik({ sarlavha, qator, kalit, rang = RANG, yashi
     return `M${x},${nol} V${tepa - r} Q${x},${tepa} ${x + r},${tepa} H${x + eni - r} Q${x + eni},${tepa} ${x + eni},${tepa - r} V${nol} Z`
   }
 
+  // Klaviatura: ← → bilan oyma-oy (sichqonchasiz ham qiymat ko'rinadi — kunlik tushum grafigidagi kabi)
+  const tugma = (e) => {
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return
+    e.preventDefault()
+    setHover((h) => Math.max(0, Math.min(oxirgi, (h === null ? (e.key === 'ArrowRight' ? -1 : oxirgi + 1) : h) + (e.key === 'ArrowRight' ? 1 : -1))))
+  }
+
   return (
     <figure className="grafik">
-      <figcaption>{!yashirinSarlavha && sarlavha}{hover !== null && <span>{yashirinSarlavha ? '' : ' · '}{qator[hover].oy}: <b>{som(qator[hover][kalit])}</b></span>}</figcaption>
+      <figcaption>{!yashirinSarlavha && sarlavha}{hover !== null && <span role="status">{yashirinSarlavha ? '' : ' · '}{qator[hover].oy}: <b>{som(qator[hover][kalit])}</b></span>}</figcaption>
       {hammasiNol ? <p className="malumot">Bu davrda ma'lumot yo'q.</p> : (
-        <svg viewBox={`0 0 ${W} ${H}`} role="img" aria-label={`${sarlavha}, oxirgi 12 oy`} onMouseLeave={() => setHover(null)}>
+        <svg viewBox={`0 0 ${W} ${H}`} role="img" tabIndex={0} onMouseLeave={() => setHover(null)} onBlur={() => setHover(null)} onKeyDown={tugma}
+          aria-label={`${sarlavha}, oxirgi 12 oy. Oylarni ko'rish uchun ← va → tugmalari.`}>
           <line x1={CHAP} x2={W - CHAP} y1={nol} y2={nol} className="grafik-oq" />
           {qator.map((q, i) => {
             const x = CHAP + i * qadam + (qadam - eni) / 2

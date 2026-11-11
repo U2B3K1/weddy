@@ -1,0 +1,142 @@
+LIBOSA — DIZAYN KO'RIGI HISOBOTI
+Sana: 2026-11-11 · Tarmoq: Ndiz · Bajardi: claude (Fable 5.2)
+
+Vazifa: dizaynga oid xavfsiz skillardan birma-bir foydalanib, hozirgi dizayndagi kamchiliklarni topish va tuzatish.
+Tanlangan «Shisha» uslubi saqlandi — faqat nuqsonlar tuzatildi.
+
+
+1. SKILLAR XAVFSIZLIGI
+----------------------
+Anthropic'ning o'z skillari (design:* guruhi, dataviz) — faqat yo'riqnoma matni, tekshiruv talab qilmaydi.
+O'zingiz o'rnatgan ikki skill ishlatishdan oldin tekshirildi (skriptlari ishga tushirilmasdan, o'qib):
+
+  frontend-design   Bitta matn fayli, skript yo'q. Skaner bahosi: 13/100, «xavfsiz».
+  ui-ux-pro-max     Skaner bahosi: 100/100, «o'rnatmang». Topilmalar o'qib chiqildi:
+                    - maslahat matnlaridagi so'zlar («keychain», «dangerouslySetInnerHTML», «clear context») —
+                      bular kod emas, UX tavsiyalari jadvalidagi matn;
+                    - skriptlardagi oddiy «return rules» qatorlari;
+                    - tekshirib bo'lmaydigan tayyor .pyc fayllar.
+                    Skriptlar faqat standart kutubxonadan foydalanadi: internetga chiqmaydi, buyruq ishga tushirmaydi.
+                    Ehtiyot chorasi: faqat qidiruv skripti ishlatildi (lokal CSV dan o'qiydi, diskka yozmaydi),
+                    .pyc fayllari chetlab o'tildi. So'rovlarda loyiha ma'lumoti yuborilmadi.
+
+Ishlatilmagan skillar va sababi:
+  hallmark                         siz o'chirtirdingiz
+  artifact-design, artifact-diagramming   Claude nashr qiladigan sahifalar uchun, ilova dizayniga tegishli emas
+
+
+2. QAYSI SKILL NIMA TOPDI VA NIMA TUZATILDI
+-------------------------------------------
+
+2.1. design-critique (ekranlarni ko'rib baholash)
+  [tuzatildi] Dashboard noutbuk ekranida (1280–1440 kenglik) tor edi: «45.8 mln so'm» summasi «45.8 mln …» bo'lib
+              kesilardi, «30 kun» tanlovi karta chetiga chiqib ketardi, «Diqqat talab» da ismlar va «smena ochiq»
+              belgisi kesilardi, xodimlar ismi «Mali…» ko'rinardi.
+              Endi shu kengliklarda «Diqqat talab» to'liq enli qatorga tushadi, sarlavhalar sig'masa ikkinchi qatorga
+              o'tadi. 1536 va undan keng ekranlar o'zgarmadi.
+  [tuzatildi] Dashboard «Bugun kassada» summasi boshqa raqamlardan farqli (serif) shriftda edi.
+  [tuzatildi] Telefon: har bo'lim nomi ostidagi izoh bir qatorda kesilardi («25 ta libos · 20 tasi ijaraga tayyor, 4 t…»).
+              Endi ikki qatorgacha ko'rinadi.
+  [tuzatildi] Telefon › Dashboard: «155 750 000 so'm» yonidagi foiz belgisi kartadan chiqib turardi.
+  [tuzatildi] Telefon › Mijozlar: uzun ism «Shahnoza Rahim…» bo'lib kesilardi.
+  [tuzatildi] Telefon › Hisobotlar: to'rtta filtr har xil enda ustma-ust turardi — endi ikki ustunli teng to'r.
+  [tuzatildi] Telefon › Kassa: «Smena ochiq» belgisi izoh matni ustiga chiqib qolgan edi.
+  [tuzatildi] Mijozlar (kompyuter): o'ng paneldagi «12 000 000» ikki qatorga bo'linib qolardi.
+
+2.2. accessibility-review (qulaylik, WCAG 2.1 AA)
+  [toza]      Rang kontrasti: 7 bo'limda o'lchandi, eng past nisbat 7.1:1 (talab 4.5:1).
+  [toza]      Tugma va maydonlarda klaviatura fokusi ko'rinadi; oynalar Esc bilan yopiladi, fokus ichida qoladi
+              (oynalar — kod bo'yicha tekshirildi);
+              nomsiz tugma va yorliqsiz maydon topilmadi.
+  [tuzatildi] Brauzer tabi nomi hamma bo'limda bir xil edi («Libosa — nafislik tartibdan boshlanadi»).
+              Endi ochiq bo'limga mos: «Kassa — Libosa», «Mijozlar — Libosa».
+  [tuzatildi] Klaviatura bilan ishlaganda har safar butun menyuni bosib o'tish kerak edi. «Asosiy mazmunga o'tish»
+              havolasi qo'shildi (faqat Tab bosilganda ko'rinadi).
+  [tuzatildi] Telefon: «Barchasi →», «Smena hisoboti →» kabi matnli havolalarning bosish maydoni 21 px edi.
+              Ko'rinishi o'zgarmadi, bosish maydoni 44 px ga yetkazildi.
+  [tuzatildi] Kalendar ostidagi son 9.5–10.5 px edi — 10.5–11 px ga ko'tarildi.
+
+2.3. design-system (dizayn tizimi)
+  [holat]     109 ta token bor, ta'riflanmagan token yo'q.
+  [tuzatildi] #D4D7DE rangi 35 joyda qo'lda yozilgan edi — bitta tokenga (--matn-yorug) o'tkazildi. Ko'rinish o'zgarmadi.
+  [qoldirildi] Shrift o'lchamlari 38 xil (12.5, 13.5, 14.5 kabi yarim pikselli qiymatlar bilan), radiuslar ko'p joyda
+              qo'lda yozilgan, 92 ta !important. Bularni tartibga solish butun ilova ko'rinishini siljitadi —
+              alohida, ehtiyotkor ish; hozir tegilmadi.
+
+2.4. ux-copy (interfeys matnlari)
+  [toza]      Tasdiq tugmalari aniq («Ha, o'chirish», «Ha, bekor qilish»), bo'sh holatlar tushunarli, inglizcha matn
+              yo'q, «garov» atamasi izchil.
+  [tuzatildi] Server tushunarsiz javob berganda «Xatolik yuz berdi.» chiqardi — nima qilishni aytmasdi. Endi:
+              «Serverda xatolik yuz berdi. Sahifani yangilab, natijani tekshiring va qayta urinib ko'ring.»
+
+2.5. ui-ux-pro-max (UX qoidalari bazasi)
+  [toza]      Tekshirildi: yuklanish holati, jadvallar telefonda, animatsiyani kamaytirish sozlamasi, raqam va
+              telefon maydonlarida to'g'ri klaviatura, shisha uslubi talablari. Yangi kamchilik chiqmadi.
+
+2.6. frontend-design
+  [tuzatildi] Kassa › To'lov qabul: guruh nomlari («BUGUN», «KECHIKKAN») mayda bosh harflar va siyrak yozuvda edi —
+              o'qilishi qiyin. Oddiy kichik sarlavhaga o'tkazildi.
+  [qoldirildi] Havolalardagi «→» belgisi va kirish ekranidagi bir so'zli kursiv («Kim kirmoqda?») — bular siz
+              tanlagan maketdan, shuning uchun tegilmadi.
+
+2.7. dataviz (grafiklar)
+  [toza]      Liboslar halqasi ranglari rang ajrata olmaydiganlar uchun tekshirildi — farqlanadi; legendada son va
+              foiz bor, ya'ni faqat rangga tayanilmagan.
+  [tuzatildi] Oylik ustunli grafikda qiymatni faqat sichqoncha bilan ko'rish mumkin edi. Endi klaviaturada ← → bilan
+              oyma-oy ko'riladi (kunlik tushum grafigidagi kabi).
+  [qoldirildi] Halqa ranglari skill tavsiya etgan yorqinlik oralig'idan ochroq. Bu ilovaning holat ranglari
+              (bo'sh / mijozda / tozalashda / ta'mirda) — hamma joyda bir xil ishlatiladi, almashtirilmadi.
+
+2.8. design-handoff (breakpoint va chekka holatlar)
+  [toza]      Planshet kengliklari (768 va 1024) barcha bo'limda tekshirildi — ekrandan chiqish yo'q.
+  [tuzatildi] Kassa (1024): uzun mijoz ismi «Kamola Abdullay…» bo'lib kesilardi.
+
+2.9. research-synthesis (yozib olingan fikrlaringiz bo'yicha)
+  Manba — sizning shu loyihada aytgan talablaringiz (bitta ishtirokchi, so'rovnoma emas).
+  [toza]      «Har ekranda bitta tilla tugma» — 7 bo'limda sanaldi, hech birida bittadan ko'p emas.
+  [toza]      Buxgalteriya atamalari (soliq, storno, yalpi foyda) asosiy ekranlarda yo'q.
+  [tuzatildi] «Har bo'limda har xil» degan e'tirozingizga mos qoldiq: Mijozlar jadvalida summalar va bosh harflar eski
+              serif shriftda qolgan edi — boshqa bo'limlardagi kabi Manrope ga o'tkazildi.
+
+2.10. user-research
+  Bu skill kamchilik topmaydi — haqiqiy foydalanuvchida sinash rejasini beradi. Men tekshira olmagan narsalar uchun
+  qisqa reja 4-bo'limda.
+
+
+3. TEKSHIRUV
+------------
+  Lint:    0 xato (14 ta eski ogohlantirish, o'zgarmagan)
+  Build:   muvaffaqiyatli
+  E2E:     37 tasi o'tdi, 2 tasi avvalgidek o'tkazib yuborilgan (barcha tuzatishlardan keyin)
+  Ekranda: har bir tuzatish brauzerda qayta ko'rildi — 375, 768, 1024, 1280, 1366, 1440, 1536 kengliklarda.
+
+Tekshirilmagan:
+  - Ichki oynalar va kam ishlatiladigan ekranlar (Yangi zakaz qadamlari, Zakaz kartasi, Sozlamaning 20 bo'limi,
+    Platforma paneli) bu safar birma-bir ko'rilmadi — faqat asosiy 7 bo'lim va ularning birinchi ko'rinishi.
+  - Haqiqiy telefon va planshetda sinalmadi (brauzerda kenglik taqlid qilindi).
+  - Ekran o'quvchi dastur (NVDA, VoiceOver) bilan sinalmadi.
+  - Sotuvchi va kassir roli ekranlari alohida ko'rilmadi (rahbar sifatida kirildi).
+
+
+4. BIRINCHI SALONDA SINASH REJASI (user-research)
+-------------------------------------------------
+Maqsad: yuqoridagi tuzatishlar va men ko'ra olmagan narsalarni haqiqiy xodimda tasdiqlash.
+Kim: 1 rahbar, 2 sotuvchi, 1 kassir (bor bo'lsa). Har biriga 20 daqiqa, o'z ish joyida, o'z qurilmasida.
+Topshiriqlar (yordam bermasdan kuzatiladi):
+  1. Bugun kimga qo'ng'iroq qilish kerakligini toping.
+  2. Yangi zakaz oching: sana → libos → mijoz → avans.
+  3. Libosni bering va garov oling.
+  4. Kecha qancha pul tushganini toping (rahbar).
+  5. Telefonda: mijozni ismi bo'yicha toping va qoldig'ini ayting.
+Yozib olinadi: qayerda to'xtab qoldi, nimani bosmoqchi bo'lib topa olmadi, qaysi so'zni tushunmadi.
+Natija: har topshiriq bo'yicha «o'zi bajardi / qiynaldi / bajara olmadi» — shu ro'yxat keyingi tuzatishlar uchun asos.
+
+
+5. O'ZGARGAN FAYLLAR
+--------------------
+  frontend/src/yangi-dizayn.css        asosiy tuzatishlar (fayl oxirida, izohlar bilan)
+  frontend/src/index.css               yangi token
+  frontend/src/App.jsx                 tab nomi, «mazmunga o'tish» havolasi
+  frontend/src/api/index.js            standart xato matni
+  frontend/src/components/OylikGrafik.jsx   klaviatura bilan ko'rish
+Backend o'zgarmadi. Commit qilinmagan.

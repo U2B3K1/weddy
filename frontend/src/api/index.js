@@ -371,7 +371,8 @@ export const libosRad = (id, sabab = '') => post(`/liboslar/${id}/rad/`, { sabab
 
 // C-18: server matnidagi ichki kodlar («(FT-7.6)») foydalanuvchiga ko'rsatilmaydi
 const kodsiz = (m) => String(m).replace(/\s*\(FT-[\d.]+\)/g, '')
-export const xatoMatni = (e, standart = 'Xatolik yuz berdi.') => {
+// Standart matn (server tushunarsiz javob berganda): nima bo'lgani + nima qilish kerak — «Xatolik yuz berdi.» hech narsa demasdi
+export const xatoMatni = (e, standart = "Serverda xatolik yuz berdi. Sahifani yangilab, natijani tekshiring va qayta urinib ko'ring.") => {
   // C-14: javob kelmadi — amal bajarildimi-yo'qmi noma'lum; foydalanuvchi buni bilishi kerak
   if (e?.isAxiosError && !e.response) return "Server bilan aloqa uzildi — amal bajarilmagan bo'lishi mumkin. Aloqani tekshirib, natijani ko'rib qayta urining."
   const d = e.response?.data
