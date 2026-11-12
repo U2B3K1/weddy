@@ -303,7 +303,30 @@ Oyda bir marta tiklashni sinov bazasida tekshirib ko'ring — tekshirilmagan nus
 
 ---
 
-## 16. Muhim eslatmalar
+## 16. Tashqi monitoring (serverdan mustaqil)
+
+Server butunlay o'chsa, bot ham jim bo'ladi — shuning uchun uzilishni **boshqa joyda** ishlaydigan bepul uptime
+xizmati kuzatishi kerak (UptimeRobot, Better Stack, HetrixTools va h.k. — istalgani). Hisobni platforma egasi o'zi ochadi.
+
+Xizmatda bitta HTTP(S) tekshiruv yarating:
+
+- Manzil: `https://libosa.uz/api/sogliq/`
+- Oraliq: 5 daqiqa
+- Kutilgan javob: HTTP 200 (matnida `"holat": "ok"`)
+- Ogohlantirish: Telegram (xizmatning o'z boti) va zaxira sifatida email
+
+`/api/sogliq/` qachon 503 qaytaradi:
+
+- baza ishlamasa (`"baza": false`);
+- fon vazifasi to'xtab qolsa (`"fon": false`): bot jarayoni 5 daqiqa, bronlarni tozalash 30 daqiqa, kunlik hisobot
+  45 daqiqa, eslatmalar 2,5 soat ishlamasa. Hali bir marta ham ishlamagan vazifa hisobga olinmaydi.
+
+Bundan tashqari bot va soatlik cron bir-birini kuzatadi: biri to'xtasa, ikkinchisi platforma egasining Telegramiga
+yozadi (`apps/notify/yurak.py`); botdagi «🩺 Holat» hammasini bitta kartada ko'rsatadi.
+
+Deploy paytida bot bir necha soniya to'xtaydi — 5 daqiqadan qisqa bo'lsa ogohlantirish chiqmaydi.
+
+## 17. Muhim eslatmalar
 
 1. **`.env` hech qachon gitga kirmaydi.** `.env.example` bilan ishlang.
 2. `DEBUG=False` productionda shart. Bu `settings.py` dagi HTTPS xavfsizlik blokini ham

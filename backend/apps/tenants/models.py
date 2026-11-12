@@ -186,6 +186,10 @@ class Xodim(SalonModel):
     xato_urinish = models.PositiveSmallIntegerField(default=0)
     bloklangan_gacha = models.DateTimeField(null=True, blank=True)
     telegram_id = models.BigIntegerField(null=True, blank=True)  # botga ulangan akkaunt (4.14)
+    # Xodim botda o'zi o'chirib qo'ygan xabar guruhlari (apps/notify/services.py XABAR_GURUHLARI kalitlari)
+    bot_ochirilgan = models.JSONField(default=list, blank=True)
+    # Botdagi «Sozlamalar»: jamlanma soati, eslatma soati, tinch vaqt, maxfiylik (apps/notify/services.py bot_soz)
+    bot_sozlama = models.JSONField(default=dict, blank=True)
     rasm = models.FileField(upload_to=avatar_yoli, blank=True)  # profil rasmi: 256×256 WebP (kirish ekrani va shapka)
     # Xodim ishlaydigan filial (rahbar belgilaydi). Kirish ekranida avval qurilma filiali xodimlari chiqadi; bo'sh — barcha
     # filiallarda. Zakaz, kassa va xarajat baribir QURILMA filialiga yoziladi — savdo qayerda bo'lsa, o'sha yerda hisoblanadi.

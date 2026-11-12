@@ -13,6 +13,7 @@ from datetime import timedelta
 from django.conf import settings
 from django.contrib.auth.hashers import check_password, make_password
 from django.db import IntegrityError, transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from apps.tenants.models import Ariza, IshonchliQurilma, Salon, Xodim, jurnalga_yoz, platforma_sozlama
@@ -27,6 +28,78 @@ ULASH_MUDDATI = timedelta(minutes=15)
 KIRISH_KODI_MUDDATI = timedelta(minutes=5)
 KIRISH_KODI_URINISH = 5
 JIM_TURLAR = {'yangi_zakaz'}  # ovozsiz yuboriladi: arxiv uchun, hech kimni bezovta qilmasin
+
+# Xodim botda o'zi yoqib-o'chira oladigan xabar guruhlari: kalit → (nom, xabar turlari, shu guruhni oladigan rollar).
+# Ro'yxatda yo'q turlar — qaror yoki pul bilan bog'liq (chegirma, xarajat, o'tkazma, qurilma, kassa topshirish,
+# qaytmagan libos, obuna) — o'chirilmaydi: ular javobsiz qolsa ish to'xtaydi.
+_R, _S, _K = Xodim.Rol.RAHBAR, Xodim.Rol.SOTUVCHI, Xodim.Rol.KASSIR
+XABAR_GURUHLARI = {
+    'zakaz': ("Yangi zakaz va zakaz o'zgarishi", {'yangi_zakaz', 'zakaz_ozgardi'}, (_R, _S, _K)),
+    'eslatma': ("Kunlik eslatmalar (kimga qo'ng'iroq qilish)", {'eslatma', 'primerka_yaqin'}, (_R, _S, _K)),
+    'kunlik': ('Kunlik hisobot', {'kunlik_hisobot'}, (_R,)),
+    'haftalik': ('Haftalik xulosa (dushanba)', {'haftalik_xulosa'}, (_R,)),
+    'kassa': ('Kassa farqlari va tuzatishlar', {'kassa_farqi', 'seyf_farqi', 'terminal_farqi', 'kassa_topshirish_farqi',
+                                               'tolov_tuzatildi'}, (_R,)),
+    'libos': ('Yangi libos va sanoq', {'yangi_libos', 'libos_sanogi'}, (_R,)),
+}
+_TUR_GURUHI = {tur: kalit for kalit, (_, turlar, _) in XABAR_GURUHLARI.items() for tur in turlar}
+
+
+def xabar_ochirilganmi(xodim, tur):
+    return _TUR_GURUHI.get(tur) in (xodim.bot_ochirilgan or [])
+
+
+# Muhim xabarlar toifalari: xodim tinch vaqtda ham kelsinmi yoki ertalabgacha kutsinmi — o'zi tanlaydi.
+# Hech bir ro'yxatda yo'q turlar (yangi qurilma, PIN bloklanishi va h.k.) — xavfsizlik: doim darhol ketadi.
+MUHIM_TOIFALAR = {
+    'qaror': ("Qaror so'rovlari va javoblari", {
+        'chegirma_sorovi', 'xarajat_tasdiq', 'xarajat_rad', 'otkazma_tasdiq', 'otkazma_keldi', 'otkazma_kelmadi',
+        'kassa_topshirish', 'kassa_topshirish_kutilmoqda', 'kassa_topshirish_qabul'}, (_R, _S, _K)),
+    'nazorat': ('Qaytmagan libos, zalog va kassa ogohlantirishlari', {
+        'libos_qaytmadi', 'manfiy_hisob', 'zalog_tekshirilmadi', 'zalog_yoq'}, (_R, _S, _K)),
+    'obuna': ("Obuna muddati va to'lovi", {'obuna_muddati', 'obuna_tolovi'}, (_R,)),
+}
+_TUR_TOIFASI = {tur: kalit for kalit, (_, turlar, _) in MUHIM_TOIFALAR.items() for tur in turlar}
+# Jamlanmaga yig'iladigan guruhlar. Hisobot va eslatmalar yig'ilmaydi: ularning o'z vaqti bor.
+JAMLANADIGAN = {'zakaz', 'kassa', 'libos'}
+JAMLANMA_SOATLARI = (9, 13, 18, 20)
+TINCH_VAQTLAR = ((22, 8), (21, 9), (23, 7))
+ESLATMA_SOATLARI = (8, 9, 10, 12)
+ESLATMA_SOATI = 9  # tanlanmagan bo'lsa
+JAMLANMA_MAKS = 3500  # bitta Telegram xabari 4096 belgidan oshmasin
+
+
+def bot_soz(xodim):
+    """Xodimning botdagi sozlamalari — buzuq yoki eskirgan qiymatlar standartga qaytarilgan holda."""
+    s = xodim.bot_sozlama if isinstance(xodim.bot_sozlama, dict) else {}
+    tinch = tuple(s.get('tinch') or ())
+    return {'jamlanma': s.get('jamlanma') if s.get('jamlanma') in JAMLANMA_SOATLARI else None,
+            'eslatma': s.get('eslatma') if s.get('eslatma') in ESLATMA_SOATLARI else ESLATMA_SOATI,
+            'primerka': bool(s.get('primerka')),
+            'tinch': tinch if tinch in TINCH_VAQTLAR else None,
+            'tinch_kutadi': [k for k in (s.get('tinch_kutadi') or []) if k in MUHIM_TOIFALAR],
+            'maxfiy': bool(s.get('maxfiy'))}
+
+
+def _keyingi_soat(hozir, soat):
+    t = hozir.replace(hour=soat, minute=0, second=0, microsecond=0)
+    return t if t > hozir else t + timedelta(days=1)
+
+
+def yuborish_vaqti(xodim, tur, hozir=None):
+    """Xabar qachon ketadi: `None` — darhol; aks holda shu vaqtgacha navbatda kutadi (jamlanma yoki tinch vaqt)."""
+    s = bot_soz(xodim)
+    hozir = hozir or timezone.localtime()
+    guruh = _TUR_GURUHI.get(tur)
+    if guruh in JAMLANADIGAN and s['jamlanma'] is not None:
+        return _keyingi_soat(hozir, s['jamlanma'])
+    if s['tinch']:
+        bosh, oxir = s['tinch']
+        if (hozir.hour >= bosh or hozir.hour < oxir) and (guruh or _TUR_TOIFASI.get(tur) in s['tinch_kutadi']):
+            return _keyingi_soat(hozir, oxir)
+    return None
+
+
 YUBORISH_PAUZASI = 0.05  # ketma-ket yuborishlar orasidagi pauza: bitta botning limiti butun platformaga umumiy
 
 
@@ -38,11 +111,15 @@ def som(n):
 
 def _yubor(xabar_id):
     """Bitta xabarni yuboradi. Telegram limit bersa (429) xabar navbatda qoladi va `False` qaytadi."""
-    xabar = Xabar.objects.select_related('xodim').filter(id=xabar_id, holat=Xabar.Holat.KUTILMOQDA).first()
-    if not xabar:
+    xabar = Xabar.objects.select_related('xodim__salon').filter(id=xabar_id, holat=Xabar.Holat.KUTILMOQDA).first()
+    if not xabar or (xabar.keyin and xabar.keyin > timezone.now()):
         return None
+    matn, tugmalar = xabar.matn, xabar.tugmalar
+    if bot_soz(xabar.xodim)['maxfiy']:  # chatda mazmun ko'rinmaydi — xodim tugmani bosgandagina ochiladi
+        matn = f"🔔 {xabar.xodim.salon.nomi}: yangi xabar"
+        tugmalar = [[{'text': "👁 Ko'rsatish", 'callback_data': f'k:{xabar.id}'}]]
     try:
-        telegram.xabar_yubor(xabar.xodim.telegram_id, xabar.matn, xabar.tugmalar,
+        telegram.xabar_yubor(xabar.xodim.telegram_id, matn, tugmalar,
                              **({'jim': True} if xabar.tur in JIM_TURLAR else {}))
         xabar.holat, xabar.yuborilgan = Xabar.Holat.YUBORILDI, timezone.now()
     except telegram.TelegramLimitXatosi:
@@ -63,17 +140,21 @@ def xabar_yoz(xodim, tur, matn, tugmalar=None, kalit='', darhol=True):
     `kalit` berilsa, shu xodimga shu kalitli xabar bir marta yoziladi (takroriy eslatmalarga qarshi).
     `darhol=False` — faqat navbatga: bot jarayoni keyingi aylanishda yuboradi (so'rov Telegramni kutmaydi).
     """
+    if xabar_ochirilganmi(xodim, tur):
+        return None  # xodim bu guruhni botda o'zi o'chirgan — yozilmaydi ham (qayta yoqsa keyingisi keladi)
+    keyin = None
     if not xodim.telegram_id:
         holat = Xabar.Holat.ULANMAGAN
     else:
         holat = Xabar.Holat.KUTILMOQDA
+        keyin = yuborish_vaqti(xodim, tur)
     try:
         with transaction.atomic():
             xabar = Xabar.objects.create(salon_id=xodim.salon_id, xodim=xodim, tur=tur, matn=matn, tugmalar=tugmalar,
-                                         kalit=kalit, holat=holat)
+                                         kalit=kalit, holat=holat, keyin=keyin)
     except IntegrityError:
         return None  # shu kalit bilan allaqachon yozilgan
-    if darhol and holat == Xabar.Holat.KUTILMOQDA and telegram.sozlangan(xodim.salon_id):
+    if darhol and not keyin and holat == Xabar.Holat.KUTILMOQDA and telegram.sozlangan(xodim.salon_id):
         transaction.on_commit(lambda: _yubor(xabar.id))
     return xabar
 
@@ -96,8 +177,12 @@ def kutayotganlarni_yubor():
     """
     if not telegram.barcha_tokenlar():
         return 0
-    qatorlar = list(Xabar.objects.filter(holat=Xabar.Holat.KUTILMOQDA,
-                                         yaratilgan__gt=timezone.now() - timedelta(days=1)).values_list('id', flat=True))
+    hozir = timezone.now()
+    kecha = hozir - timedelta(days=1)
+    navbat = (Xabar.objects.filter(holat=Xabar.Holat.KUTILMOQDA).filter(Q(yaratilgan__gt=kecha) | Q(keyin__gt=kecha))
+              .exclude(keyin__gt=hozir))
+    _jamla(navbat, hozir)
+    qatorlar = list(navbat.values_list('id', flat=True))
     soni = 0
     for i in qatorlar:
         if _yubor(i) is False:  # limit — to'xtaymiz (davom etsak, navbat yana 429 bo'lardi)
@@ -105,6 +190,41 @@ def kutayotganlarni_yubor():
         soni += 1
         time.sleep(YUBORISH_PAUZASI)
     return soni
+
+
+def _jamla(navbat, hozir):
+    """Kutib turgan (tinch vaqt yoki jamlanma) tugmasiz xabarlar har xodimga bitta xabar bo'lib ketadi.
+
+    Tugmali xabarlar (qaror so'rovi, «Bog'landim») birlashtirilmaydi — tugmasi yo'qolmasin.
+    """
+    guruhlar = {}
+    for x in navbat.filter(keyin__isnull=False).exclude(tur='jamlanma').order_by('id'):
+        if not x.tugmalar:
+            guruhlar.setdefault(x.xodim_id, []).append(x)
+    for xodim_id, xabarlar in guruhlar.items():
+        if len(xabarlar) < 2:
+            continue
+        bolaklar, joriy = [], ''
+        for x in xabarlar:
+            if joriy and len(joriy) + len(x.matn) > JAMLANMA_MAKS:
+                bolaklar.append(joriy)
+                joriy = ''
+            joriy += ('\n\n' if joriy else '') + x.matn[:JAMLANMA_MAKS]
+        bolaklar.append(joriy)
+        with transaction.atomic():
+            for i, bolak in enumerate(bolaklar):
+                Xabar.objects.create(salon_id=xabarlar[0].salon_id, xodim_id=xodim_id, tur='jamlanma', keyin=hozir,
+                                     matn=(f"🗞 Jamlanma · {len(xabarlar)} ta xabar\n\n" if not i else '') + bolak)
+            Xabar.objects.filter(id__in=[x.id for x in xabarlar]).update(
+                holat=Xabar.Holat.YUBORILDI, yuborilgan=hozir, xato_matni='jamlanmada')
+
+
+def korsat_tugma_ishla(chat_id, xabar_id):
+    """`k:<xabar_id>` — maxfiy rejimda yashirib yuborilgan xabarni ochadi: (qisqa javob, matn, tugmalar)."""
+    x = Xabar.objects.select_related('xodim').filter(id=xabar_id, xodim__telegram_id=chat_id, xodim__faol=True).first()
+    if not x:
+        return "Xabar topilmadi.", None, None
+    return '', x.matn, x.tugmalar
 
 
 # ---------- xodimni botga ulash ----------

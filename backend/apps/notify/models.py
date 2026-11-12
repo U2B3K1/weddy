@@ -28,6 +28,8 @@ class Xabar(SalonModel):
     xato_matni = models.CharField(max_length=300, blank=True)
     yaratilgan = models.DateTimeField(auto_now_add=True)
     yuborilgan = models.DateTimeField(null=True, blank=True)
+    # Shu vaqtgacha navbatda kutadi: xodim botda tinch vaqt yoki jamlanma tanlagan (bo'sh — darhol)
+    keyin = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         ordering = ['-id']
@@ -35,6 +37,13 @@ class Xabar(SalonModel):
             models.UniqueConstraint(fields=['xodim', 'kalit'], condition=~models.Q(kalit=''),
                                     name='xabar_takrorlanmaydi'),
         ]
+
+
+class Yurak(models.Model):
+    """Fon vazifasi yoki bot jarayoni oxirgi marta qachon ishlagani (apps/notify/yurak.py). Salonga bog'liq emas."""
+    nom = models.CharField(max_length=20, unique=True)
+    vaqt = models.DateTimeField()
+    ogohlantirildi = models.DateTimeField(null=True, blank=True)  # egaga «to'xtagan» deb yozilgan vaqt
 
 
 class KirishKodi(models.Model):

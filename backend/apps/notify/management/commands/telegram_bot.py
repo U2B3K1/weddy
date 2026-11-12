@@ -4,8 +4,8 @@ from django.core.management.base import BaseCommand, CommandError
 
 from apps.notify import bot_menyu, telegram, vidjet
 from apps.tenants.models import platforma_sozlama
-from apps.notify.services import (kutayotganlarni_yubor, qurilma_start_ishla, start_ishla, start_ishla_platforma,
-                                  tugma_ishla)
+from apps.notify.services import (korsat_tugma_ishla, kutayotganlarni_yubor, qurilma_start_ishla, start_ishla,
+                                  start_ishla_platforma, tugma_ishla)
 
 
 def _javob_yubor(chat_id, javob, tugmalar, tk):
@@ -81,6 +81,16 @@ def yangilanishni_ishla(u, token=None):
             for javob, tugmalar in ishlovchi(c['from']['id'], data):
                 _javob_yubor(c['from']['id'], javob, tugmalar, tk)
             return javob
+        if data.startswith(('s:', 'k:')):  # sozlamalar va yashirin xabarni ochish: o'sha xabarning o'zi yangilanadi
+            if data.startswith('s:'):
+                javob, matn, tugmalar = bot_menyu.sozlama_tugma(c['from']['id'], data)
+            else:
+                javob, matn, tugmalar = korsat_tugma_ishla(c['from']['id'], data[2:] if data[2:].isdigit() else 0)
+            telegram.api('answerCallbackQuery', callback_query_id=c['id'], text=javob[:190], **kw)
+            if matn and c.get('message'):
+                telegram.api('editMessageText', chat_id=c['message']['chat']['id'], message_id=c['message']['message_id'],
+                             text=matn, **({'reply_markup': {'inline_keyboard': tugmalar}} if tugmalar else {}), **kw)
+            return javob or matn
         javob = tugma_ishla(c['from']['id'], data)
         telegram.api('answerCallbackQuery', callback_query_id=c['id'], text=javob[:190], **kw)
         if c.get('message'):  # tugmalarni olib tashlab, natijani yozib qo'yadi (ikki marta bosilmasligi uchun)
@@ -119,7 +129,12 @@ class Command(BaseCommand):
                     tekshirilgan = time.monotonic()
                     try:
                         from apps.cash.nazorat import tezkor_eslatmalar
+                        from apps.notify.management.commands.eslatmalarni_yuborish import primerka_eslatmalari
+                        from apps.notify import yurak
+                        yurak.ur('bot')
+                        yurak.nazorat('bot')  # cron to'xtab qolgan bo'lsa — egaga
                         tezkor_eslatmalar()
+                        primerka_eslatmalari()
                     except Exception as e:  # noqa: BLE001 — eslatma xatosi botni to'xtatmasin
                         self.stderr.write(f'Nazorat eslatmalarida xato: {type(e).__name__}')
                 try:
