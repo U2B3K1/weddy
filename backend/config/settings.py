@@ -188,6 +188,9 @@ LOGGING = {
     'loggers': {
         'django.request': {'handlers': ['konsol', 'egaga'], 'level': 'ERROR', 'propagate': False},
         'django.server': {'handlers': ['konsol'], 'level': 'INFO', 'propagate': False},
+        # Begona Host bilan kelgan so'rov (internet skanerlari, IP bo'yicha murojaat) — 400 javob, server xatosi emas:
+        # jurnalga yoziladi, egaga yuborilmaydi (aks holda haqiqiy xatolar shovqin ichida yo'qoladi)
+        'django.security.DisallowedHost': {'handlers': ['konsol'], 'level': 'ERROR', 'propagate': False},
     },
 }
 

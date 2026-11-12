@@ -112,6 +112,13 @@ class XatoXabarchiTests(EgagaBase):
         self.assertEqual(len(self.yuborilgan), 1)
         self.assertIn('RuntimeError: kutilmagan', self.yuborilgan[0][1])
 
+    def test_begona_host_egaga_yuborilmaydi(self):
+        """Internet skanerlari begona Host bilan keladi: 400 qaytadi, lekin bu server xatosi emas."""
+        from rest_framework.test import APIClient
+        j = APIClient(raise_request_exception=False).get('/api/sogliq/', HTTP_HOST='203.0.113.7:8000')
+        self.assertEqual(j.status_code, 400)
+        self.assertEqual(self.yuborilgan, [])
+
 
 class ZaxiraYuborishTests(EgagaBase):
     def _buyruq(self, mazmun, **kw):
