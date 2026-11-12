@@ -208,6 +208,7 @@ function SalonlarBolimi({ salonlar, tariflar, bajar }) {
                       <td>
                         <span className={`holat ${HOLAT_SINF[s.holat] || ''}`}>{HOLAT[s.holat]}</span>
                         {s.faqat_korishgacha_kun != null && <small className="qizil"> {s.faqat_korishgacha_kun} kun</small>}
+                        {s.tolov_kutmoqda && <small className="qizil"> · to'lov tasdig'ini kutmoqda</small>}
                       </td>
                       <td className="tor-yashir">{s.tarif || '—'}</td>
                       <td className="tor-yashir">{s.obuna_tugaydi || s.sinov_tugaydi || '—'}</td>
@@ -253,6 +254,7 @@ function SalonTafsilot({ s, tariflar, bajar }) {
           ))}
         </div>
         <ObunaSana key={`${s.id}-${s.sinov_tugaydi}-${s.obuna_tugaydi}`} s={s} bajar={bajar} />
+        <ObunaTolovlari s={s} bajar={bajar} />
         <select value={s.tarif_id || ''} aria-label="Tarif"
           onChange={(e) => bajar(() => papi.patch(`/salonlar/${s.id}/`, { tarif: e.target.value ? Number(e.target.value) : null }), "Tarif o'zgartirildi.")}>
           <option value="">Tarifsiz (limit yo'q)</option>
@@ -355,6 +357,75 @@ function ObunaSana({ s, bajar }) {
       <label>Sinov tugaydi (sana)<input type="date" value={sinov} onChange={(e) => setSinov(e.target.value)} /></label>
       <label>Obuna tugaydi (sana)<input type="date" value={obuna} onChange={(e) => setObuna(e.target.value)} /></label>
       <button className="ikkinchi kichik" disabled={!ozgargan} onClick={yubor}>Sanalarni saqlash</button>
+    </div>
+  )
+}
+
+const TOLOV_HOLAT = { kutilmoqda: 'Kutilmoqda', qabul: 'Qabul qilingan', rad: 'Rad etilgan', bekor: 'Bekor qilingan' }
+const TOLOV_SINF = { kutilmoqda: 'vaqtinchalik', qabul: 'berildi', rad: 'qarz', bekor: 'qarz' }
+
+// Obuna to'lovlari tarixi: har to'lov bitta qator (o'chirilmaydi). Kutayotgan so'rov — rahbar botda «to'ladim» degan
+// yoki chek yuborgan; qaror shu yerda ham, botdagi tugma bilan ham qabul qilinadi. Bekor qilish — faqat oxirgi to'lov.
+function ObunaTolovlari({ s, bajar }) {
+  const [qatorlar, setQatorlar] = useState(null)
+  const [tuzat, setTuzat] = useState(null)    // { id, summa } — summasi tuzatilayotgan to'lov
+  const [bekor, setBekor] = useState(null)    // «Ha, bekor qilish» so'ralayotgan to'lov id
+  const yukla = useCallback(() => papi.get(`/salonlar/${s.id}/tolovlar/`).then((r) => setQatorlar(r.data)).catch(() => setQatorlar([])), [s.id])
+  useEffect(() => { yukla() }, [yukla, s.obuna_tugaydi, s.tolov_kutmoqda])
+  const amal = async (id, tana, ok) => {
+    await bajar(() => papi.post(`/obuna-tolovlari/${id}/`, tana), ok)
+    setTuzat(null); setBekor(null)
+    yukla()
+  }
+  if (!qatorlar) return null
+  const oxirgiQabul = qatorlar.find((q) => q.holat === 'qabul')
+  return (
+    <div className="stack">
+      <h4>To'lovlar tarixi</h4>
+      {qatorlar.length === 0 ? <p className="malumot">Hali to'lov yozilmagan.</p> : (
+        <div className="obuna-tolovlar">
+          {qatorlar.map((q) => (
+            <div key={q.id} className={`ot-qator${q.holat === 'bekor' || q.holat === 'rad' ? ' ot-yopiq' : ''}`}>
+              <div className="ot-bosh">
+                <b>{sanaMatni((q.qaror_vaqt || q.yaratilgan).slice(0, 10))}</b>
+                <span className={`holat ${TOLOV_SINF[q.holat]}`}>{TOLOV_HOLAT[q.holat]}</span>
+                <small>{q.manba === 'bot' ? 'bot' : 'panel'}{q.chek ? ' · chek bor' : ''}{q.xodim ? ` · ${q.xodim}` : ''}{q.izoh ? ` · ${q.izoh}` : ''}</small>
+              </div>
+              {q.oylar > 0 && (
+                <div className="ot-malumot">
+                  <span>{q.oylar} oy{q.yangi_obuna ? ` → ${sanaMatni(q.yangi_obuna)} gacha` : ''}</span>
+                  {tuzat?.id === q.id ? (
+                    <span className="qator">
+                      <SummaInput value={tuzat.summa} aria-label="To'lov summasi" onChange={(e) => setTuzat({ id: q.id, summa: e.target.value })} />
+                      <button className="ikkinchi kichik" disabled={tuzat.summa === ''}
+                        onClick={() => amal(q.id, { amal: 'summa', summa: Number(tuzat.summa) }, 'Summa saqlandi.')}>Saqlash</button>
+                    </span>
+                  ) : q.holat === 'qabul' ? (
+                    <button className="havola ot-summa" title="Summani tuzatish" onClick={() => setTuzat({ id: q.id, summa: String(q.summa || '') })}>
+                      {q.summa ? som(q.summa) : 'summa kiritilmagan'}
+                    </button>
+                  ) : <span className="ot-summa">{q.summa ? som(q.summa) : ''}</span>}
+                </div>
+              )}
+              {q.holat === 'kutilmoqda' && (
+                <div className="qator">
+                  {[1, 3].map((oy) => (
+                    <button key={oy} className="ikkinchi kichik"
+                      onClick={() => amal(q.id, { amal: 'qabul', oylar: oy }, `To'lov qabul qilindi: ${oy} oy.`)}>Qabul: {oy} oy</button>
+                  ))}
+                  <button className="xavfli kichik" onClick={() => amal(q.id, { amal: 'rad' }, "To'lov rad etildi, rahbarga xabar berildi.")}>Rad etish</button>
+                </div>
+              )}
+              {q.id === oxirgiQabul?.id && (bekor === q.id ? (
+                <div className="qator">
+                  <button className="xavfli kichik" onClick={() => amal(q.id, { amal: 'bekor' }, "To'lov bekor qilindi, muddat avvalgi sanaga qaytdi.")}>Ha, bekor qilish</button>
+                  <button className="ikkinchi kichik" onClick={() => setBekor(null)}>Yo'q</button>
+                </div>
+              ) : <div className="qator"><button className="ikkinchi kichik" onClick={() => setBekor(q.id)}>To'lovni bekor qilish</button></div>)}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

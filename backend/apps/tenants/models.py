@@ -71,6 +71,11 @@ class PlatformaSozlama(models.Model):
     telegram_ulash_tugaydi = models.DateTimeField(null=True, blank=True)
     oxirgi_zaxira = models.DateTimeField(null=True, blank=True)   # zaxira.sh egaga oxirgi marta nusxa yuborgan vaqt
     obuna_xabar_sana = models.DateField(null=True, blank=True)    # «obuna muddati yaqin» xabari kuniga bir marta
+    # Obuna to'lovi qanday qilinadi (karta, telefon, izoh) — ega botda kiritadi, rahbarlar botdagi «To'lov»
+    # bo'limida ko'radi. Erkin matn: to'lov usuli salonlarga qarab o'zgarmaydi, tuzilma shart emas.
+    tolov_malumoti = models.TextField(blank=True)
+    # Botda vidjetlar (rahbarning «Bugun» ekrani) — sinov: ega `/vidjet` bilan namunani ko'rib, keyin yoqadi
+    bot_vidjet = models.BooleanField(default=False)
 
 
 def platforma_sozlama():
@@ -389,3 +394,40 @@ class KirishUrinishi(models.Model):
     class Meta:
         indexes = [models.Index(fields=['ip', 'vaqt']), models.Index(fields=['ip', 'tur', 'login', 'vaqt']),
                    models.Index(fields=['tur', 'login', 'vaqt'])]
+
+
+class ObunaTolovi(models.Model):
+    """Salonning platformaga obuna to'lovi: so'rov → egasining qarori (apps/tenants/obuna.py).
+
+    Qator o'chirilmaydi. Chek fayli serverda saqlanmaydi — faqat Telegramdagi `file_id` (bot qayta yubora oladi).
+    """
+    class Holat(models.TextChoices):
+        KUTILMOQDA = 'kutilmoqda', 'Kutilmoqda'
+        QABUL = 'qabul', 'Qabul qilingan'
+        RAD = 'rad', 'Rad etilgan'
+        BEKOR = 'bekor', 'Bekor qilingan'
+
+    class Manba(models.TextChoices):
+        PANEL = 'panel', 'Panel'
+        BOT = 'bot', 'Bot'
+
+    salon = models.ForeignKey(Salon, on_delete=models.CASCADE, related_name='obuna_tolovlari')
+    yaratilgan = models.DateTimeField(auto_now_add=True)
+    holat = models.CharField(max_length=12, choices=Holat.choices, default=Holat.KUTILMOQDA)
+    manba = models.CharField(max_length=8, choices=Manba.choices, default=Manba.PANEL)
+    xodim = models.ForeignKey('Xodim', null=True, blank=True, on_delete=models.SET_NULL, related_name='+')  # bildirgan rahbar
+    chek_fayl = models.CharField(max_length=200, blank=True)
+    chek_tur = models.CharField(max_length=10, blank=True)  # photo | document
+    izoh = models.CharField(max_length=300, blank=True)
+    oylar = models.PositiveSmallIntegerField(default=0)
+    summa = models.PositiveBigIntegerField(default=0)
+    # Qabul qilingandagi `Salon.obuna_tugaydi`: oldingi (bekor qilinsa shunga qaytadi) va yangi qiymat
+    eski_obuna = models.DateField(null=True, blank=True)
+    yangi_obuna = models.DateField(null=True, blank=True)
+    qaror_vaqt = models.DateTimeField(null=True, blank=True)
+    qaror_kim = models.CharField(max_length=64, blank=True)
+    bekor_vaqt = models.DateTimeField(null=True, blank=True)
+    bekor_kim = models.CharField(max_length=64, blank=True)
+
+    class Meta:
+        indexes = [models.Index(fields=['salon', 'holat'])]

@@ -16,9 +16,9 @@ from rest_framework.permissions import BasePermission
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from . import arxiv, cheklov
+from . import arxiv, cheklov, obuna
 from .auth import PlatformTokenAuthentication, make_platform_token
-from .models import (Ariza, IshonchliQurilma, PlatformaAdmini, Salon, Tarif, Xodim, YordamRuxsati, jurnalga_yoz,
+from .models import (Ariza, IshonchliQurilma, ObunaTolovi, PlatformaAdmini, Salon, Tarif, Xodim, YordamRuxsati, jurnalga_yoz,
                      platforma_sozlama, sozlama)
 
 SINOV_KUN = 14  # FT-22.8
@@ -71,6 +71,7 @@ def salon_json(s):
         'oxirgi_kirish': s.oxirgi_kirish, 'yaratilgan': s.yaratilgan,
         'yordam_ruxsati': bool(YordamRuxsati.amaldagi(s)),
         'chiqish_sanasi': s.chiqish_sanasi, 'chiqish_izohi': s.chiqish_izohi, 'ochiriladi': arxiv.ochiriladigan_sana(s),
+        'tolov_kutmoqda': ObunaTolovi.objects.filter(salon=s, holat=ObunaTolovi.Holat.KUTILMOQDA).exists(),
     }
 
 
@@ -222,20 +223,61 @@ class PlatformaArxivView(PlatformaView):
 class PlatformaTolovView(PlatformaView):
     """Obuna to'lovini qo'lda belgilash (FT-22.9: 1-bosqichda avtomatik qabul yo'q)."""
 
-    @transaction.atomic
     def post(self, request, pk):
-        oylar = serializers.IntegerField(min_value=1, max_value=24).run_validation(request.data.get('oylar'))
-        s = Salon.objects.select_for_update().filter(id=pk).first()
-        if not s:
+        oylar = serializers.IntegerField(min_value=1, max_value=obuna.MAKS_OY).run_validation(request.data.get('oylar'))
+        summa = request.data.get('summa')
+        if summa is not None:
+            summa = serializers.IntegerField(min_value=0, max_value=obuna.MAKS_SUMMA).run_validation(summa)
+        if not Salon.objects.filter(id=pk).exists():
             raise NotFound('Salon topilmadi.')
-        # Muddat hali tugamagan bo'lsa undan, tugagan bo'lsa bugundan boshlab uzaytiriladi
-        asos = max(s.obuna_muddati() or timezone.localdate(), timezone.localdate())
-        yil, oy = asos.year + (asos.month - 1 + oylar) // 12, (asos.month - 1 + oylar) % 12 + 1
-        import calendar
-        s.obuna_tugaydi = asos.replace(year=yil, month=oy, day=min(asos.day, calendar.monthrange(yil, oy)[1]))
-        s.save(update_fields=['obuna_tugaydi'])
-        s.obunani_yangila()
-        return Response(salon_json(Salon.objects.select_related('tarif').get(id=s.id)))
+        try:
+            obuna.tolov_qabul(pk, oylar, kim=request.user.login, summa=summa)  # tarixga yoziladi, muddat uzayadi
+        except obuna.ObunaXatosi as e:
+            return Response({'detail': str(e)}, status=409)
+        return Response(salon_json(Salon.objects.select_related('tarif').get(id=pk)))
+
+
+class PlatformaSalonTolovlarView(PlatformaView):
+    """Salonning obuna to'lovlari tarixi (kutayotgan so'rovlar ham), yangisi yuqorida."""
+
+    def get(self, request, pk):
+        if not Salon.objects.filter(id=pk).exists():
+            raise NotFound('Salon topilmadi.')
+        qs = ObunaTolovi.objects.filter(salon_id=pk).select_related('xodim').order_by('-id')[:50]
+        return Response([obuna.tolov_json(t) for t in qs])
+
+
+class PlatformaObunaTolovView(PlatformaView):
+    """Bitta to'lov ustida amal: `qabul` (oylar), `rad`, `bekor`, `summa` (summa)."""
+
+    def post(self, request, pk):
+        class S(serializers.Serializer):
+            amal = serializers.ChoiceField(choices=['qabul', 'rad', 'bekor', 'summa'])
+            oylar = serializers.IntegerField(min_value=1, max_value=obuna.MAKS_OY, required=False)
+            summa = serializers.IntegerField(min_value=0, max_value=obuna.MAKS_SUMMA, required=False)
+        s = S(data=request.data)
+        s.is_valid(raise_exception=True)
+        d = s.validated_data
+        t = ObunaTolovi.objects.filter(id=pk).first()
+        if not t:
+            raise NotFound("To'lov topilmadi.")
+        kim = request.user.login
+        try:
+            if d['amal'] == 'qabul':
+                if 'oylar' not in d:
+                    return Response({'detail': 'Oy sonini kiriting.'}, status=400)
+                t = obuna.tolov_qabul(t.salon_id, d['oylar'], kim, tolov_id=t.id, summa=d.get('summa'))
+            elif d['amal'] == 'rad':
+                t = obuna.tolov_rad(t.id, kim)
+            elif d['amal'] == 'bekor':
+                t = obuna.tolov_bekor(t.id, kim)
+            else:
+                if 'summa' not in d:
+                    return Response({'detail': 'Summani kiriting.'}, status=400)
+                t = obuna.summa_ozgartir(t.id, d['summa'])
+        except obuna.ObunaXatosi as e:
+            return Response({'detail': str(e)}, status=409)
+        return Response(obuna.tolov_json(ObunaTolovi.objects.select_related('xodim').get(id=t.id)))
 
 
 class PlatformaTariflarView(PlatformaView):

@@ -28,10 +28,19 @@ AMALLAR = {
     'ertaga': ('📅 Ertaga', (R, S)),
     'ishlar': ('🗂 Bugungi ishlar', (S, K)),
     'bonus': ('🎁 Bonusim', (S,)),
+    'tolov': ("💳 To'lov", (R,)),
     'qidir': ('🔍 Zakaz qidirish', (R, S, K)),
     'libos': ("👗 Libos bo'shmi?", (R, S, K)),
 }
-EGA_AMALLARI = {'salonlar': '🏢 Salonlar', 'holat': '🩺 Holat'}
+EGA_AMALLARI = {'salonlar': '🏢 Salonlar', 'holat': '🩺 Holat', 'tolov_ega': "💳 To'lov ma'lumoti",
+                'tolovlar': "🧾 To'lovlar"}
+_KARTA = re.compile(r'(?<!\d)(?:\d[ -]?){15}\d(?!\d)')  # 16 raqamli karta — «nusxa olish» tugmasi uchun
+# Ega shu xabarga javob (reply) qilib yozgan matn to'lov ma'lumoti bo'lib saqlanadi — holat saqlash shart emas
+TOLOV_SORAV = "✍️ Yangi to'lov ma'lumotini shu xabarga javob qilib yozing"
+TOLOV_MAKS = 1000
+# Rahbar shu xabarga javob qilib yuborgan rasm/PDF — to'lov cheki (platforma egasiga uzatiladi)
+CHEK_SORAV = "🧾 To'lov chekini shu xabarga javob qilib yuboring"
+CHEK_KUNLIK_MAKS = 5
 QIDIRUV_MAKS = 5
 ROYXAT_MAKS = 15
 
@@ -63,13 +72,24 @@ def klaviatura(chat_id):
             'resize_keyboard': True}
 
 
-def matn_ishla(chat_id, matn):
-    """Oddiy xabar (menyu tugmasi yoki erkin matn) → javoblar ro'yxati."""
+def matn_ishla(chat_id, matn, javobga=''):
+    """Oddiy xabar (menyu tugmasi yoki erkin matn) → javoblar ro'yxati.
+
+    `javobga` — foydalanuvchi javob (reply) qilgan xabar matni: ega to'lov ma'lumotini shu yo'l bilan kiritadi.
+    """
     matn = (matn or '').strip()
     xx = xodimlar(chat_id)
     ega = egami(chat_id)
     if not xx and not ega:
         return [("Libosa boti. Ulash uchun ilovada «Telegramni ulash» tugmasini bosing.", None)]
+    # Javob rejimi ochiq turganda menyu tugmasi bosilsa, Telegram uni ham «javob» qilib yuboradi — u saqlanmaydi
+    menyu_tugmasi = matn in EGA_AMALLARI.values() or matn in {nom for nom, _ in AMALLAR.values()}
+    if ega and (javobga or '').startswith(TOLOV_SORAV) and not menyu_tugmasi and not matn.startswith('/'):
+        return tolov_malumotini_saqla(matn)
+    if ega and matn == '/vidjet':
+        return _vidjet_sozlamasi()
+    if ega and matn.startswith('/tolov'):  # zaxira yo'l: /tolov <matn>
+        return tolov_malumotini_saqla(matn[6:].strip()) if matn[6:].strip() else _ega_amali('tolov_ega')
     for amal, nom in EGA_AMALLARI.items():
         if ega and matn == nom:
             return _ega_amali(amal)
@@ -107,7 +127,7 @@ def tugma_ishla(chat_id, data):
 
 def amal_bajar(x, amal):
     return {'bugun': _bugun, 'kassa': _kassa, 'qaror': _qaror, 'ertaga': _ertaga, 'ishlar': _ishlar,
-            'bonus': _bonus}[amal](x)
+            'bonus': _bonus, 'tolov': _tolov}[amal](x)
 
 
 # ---------- zakaz matni va qidiruv ----------
@@ -191,7 +211,11 @@ def libos_bandligi(x, matn, salon_nomi=False):
 
 def _bugun(x):
     from .management.commands.kunlik_hisobot import kunlik_matn
-    return [(kunlik_matn(x.salon, timezone.localdate()), None)]
+    matn = kunlik_matn(x.salon, timezone.localdate())
+    if not platforma_sozlama().bot_vidjet:
+        return [(matn, None)]
+    from .vidjet import bugun_vidjeti
+    return [(matn, bugun_vidjeti(x))]  # matn — vidjet izohi: vidjetni tanimaydigan Telegramda shu ko'rinadi
 
 
 def _kassa(x):
@@ -285,10 +309,173 @@ def _bonus(x):
              f"Bonus ({float(r['foiz']):g}%): {som(men['bonus'])}", None)]
 
 
+# ---------- obuna to'lovi ----------
+
+def obuna_holati_matni(salon, bugun=None):
+    """Bir qator: sinov/obuna qachongacha va necha kun qoldi (rahbar va ega xabarlari uchun bir xil)."""
+    bugun = bugun or timezone.localdate()
+    muddat = salon.obuna_muddati()
+    if muddat is None:
+        return 'Muddat belgilanmagan'
+    tur = 'Sinov' if salon.obuna_tugaydi is None else 'Obuna'
+    qolgan = (muddat - bugun).days
+    if qolgan > 0:
+        return f'{tur} {muddat:%d.%m.%Y} gacha — {qolgan} kun qoldi'
+    if qolgan == 0:
+        return f'{tur} bugun tugaydi ({muddat:%d.%m.%Y})'
+    return f'{tur} {muddat:%d.%m.%Y} da tugagan ({-qolgan} kun oldin)'
+
+
+def _tolov(x):
+    """Rahbar: obuna holati, tarif narxi va ega kiritgan to'lov ma'lumoti; «To'ladim» egaga xabar beradi."""
+    s = x.salon
+    qatorlar = [f"💳 To'lov · {s.nomi}", obuna_holati_matni(s)]
+    if s.holat == Salon.Holat.FAQAT_KORISH:
+        qatorlar.append("Salon hozir «faqat ko'rish» rejimida — to'lovdan keyin to'liq ochiladi.")
+    if s.tarif_id:
+        qatorlar.append(f'Tarif: {s.tarif.nomi}' + (f' — oyiga {som(s.tarif.oylik_narx)}' if s.tarif.oylik_narx else ''))
+    from apps.tenants.models import ObunaTolovi
+    if ObunaTolovi.objects.filter(salon=s, holat=ObunaTolovi.Holat.KUTILMOQDA).exists():
+        qatorlar.append("⏳ To'lovingiz tekshirilmoqda — platforma egasi tasdiqlagach xabar keladi.")
+    oxirgi = ObunaTolovi.objects.filter(salon=s, holat=ObunaTolovi.Holat.QABUL).order_by('-qaror_vaqt').first()
+    if oxirgi:
+        qatorlar.append(f"Oxirgi to'lov: {timezone.localtime(oxirgi.qaror_vaqt):%d.%m.%Y} — {oxirgi.oylar} oy"
+                        + (f', {som(oxirgi.summa)}' if oxirgi.summa else ''))
+    malumot = platforma_sozlama().tolov_malumoti.strip()
+    if not malumot:
+        qatorlar += ['', "To'lov ma'lumoti hali kiritilmagan. Platforma egasi bilan bog'laning."]
+        return [('\n'.join(qatorlar), None)]
+    karta = _KARTA.search(malumot)
+    nusxa = ([[{'text': '📋 Karta raqamini nusxalash', 'copy_text': {'text': re.sub(r'\D', '', karta.group())}}]]
+             if karta else [])
+    qatorlar += ['', "To'lov qilish:", malumot, '', "To'lagach chekni yuboring — platforma egasiga boradi."]
+    return [('\n'.join(qatorlar), nusxa + [[{'text': '🧾 Chek yuborish', 'callback_data': f'tc:{x.id}'}],
+                                   [{'text': "✅ To'ladim (cheksiz)", 'callback_data': f'tl:{x.id}'}]])]
+
+
+def chek_tugma(chat_id, data):
+    """`tc:<xodim_id>` — rahbar chek yubormoqchi: javob (reply) so'raladi, salon nomi so'rovning o'zida."""
+    q = (data or '').split(':')
+    x = next((x for x in xodimlar(chat_id) if len(q) == 2 and q[1].isdigit() and x.id == int(q[1]) and x.rol == R), None)
+    if not x:
+        return [("Bu amal faqat salon rahbariga ruxsat etilgan.", None)]
+    return [(f"{CHEK_SORAV}.\nSalon: {x.salon.nomi}\nRasm (skrinshot) yoki PDF fayl.",
+             {'force_reply': True, 'input_field_placeholder': 'Chek rasmi'})]
+
+
+def chek_ishla(chat_id, xabar, javobga=''):
+    """Rasm yoki fayl keldi. Faqat rahbar va faqat chek so'roviga javob bo'lsa — egaga uzatiladi."""
+    from django.core.cache import cache
+
+    from .services import chek_egaga
+    rahbarlar = [x for x in xodimlar(chat_id) if x.rol == R]
+    if not rahbarlar:
+        return [("Bot rasm va fayllarni qabul qilmaydi.", None)]
+    if not (javobga or '').startswith(CHEK_SORAV):
+        return [("To'lov chekini yuborish uchun: menyuda «💳 To'lov» → «🧾 Chek yuborish».", None)]
+    nom = next((q[7:].strip() for q in javobga.split('\n') if q.startswith('Salon: ')), '')
+    x = next((x for x in rahbarlar if x.salon.nomi == nom), None) or (rahbarlar[0] if len(rahbarlar) == 1 else None)
+    if not x:
+        return [("Salon aniqlanmadi. «💳 To'lov» → «🧾 Chek yuborish» ni qaytadan bosing.", None)]
+    if xabar.get('photo'):
+        tur, fayl = 'photo', xabar['photo'][-1]['file_id']  # oxirgisi — eng katta o'lcham
+    else:
+        hujjat = xabar.get('document') or {}
+        mime = hujjat.get('mime_type') or ''
+        if not (mime.startswith('image/') or mime == 'application/pdf'):
+            return [("Faqat rasm yoki PDF fayl qabul qilinadi.", None)]
+        tur, fayl = 'document', hujjat.get('file_id')
+    kalit = f'chek:{x.salon_id}:{timezone.localdate()}'
+    if (cache.get(kalit) or 0) >= CHEK_KUNLIK_MAKS:
+        return [(f"Bugun {CHEK_KUNLIK_MAKS} ta chek yuborilgan. Platforma egasi ularni ko'rib chiqadi.", None)]
+    if not chek_egaga(x, tur, fayl, (xabar.get('caption') or '').strip()):
+        return [("Chek platforma egasiga yetmadi. Birozdan keyin qayta yuboring.", None)]
+    cache.set(kalit, (cache.get(kalit) or 0) + 1, 24 * 3600)
+    cache.set(f'toladim:{x.salon_id}:{timezone.localdate()}', 1, 24 * 3600)  # chek — «to'ladim» degani
+    return [("✅ Chek platforma egasiga yuborildi. To'lov tekshirilgach obuna uzaytiriladi.", None)]
+
+
+def tolov_malumotini_saqla(matn):
+    matn = (matn or '').strip()
+    if not matn:
+        return [("Matn yuboring (rasm yoki fayl saqlanmaydi).", None)]
+    if len(matn) > TOLOV_MAKS:
+        return [(f"Matn juda uzun ({len(matn)} belgi). {TOLOV_MAKS} belgidan oshmasin.", None)]
+    s = platforma_sozlama()
+    s.tolov_malumoti = matn
+    s.save(update_fields=['tolov_malumoti'])
+    return [(f"✅ Saqlandi. Rahbarlar botdagi «💳 To'lov» bo'limida shuni ko'radi:\n\n{matn}", None)]
+
+
+def ega_tugma(chat_id, data):
+    """`e:<amal>` — platforma egasining inline tugmalari (faqat ega akkaunti)."""
+    if not egami(chat_id):
+        return [("Bu amal faqat platforma egasiga ruxsat etilgan.", None)]
+    if data == 'e:tolov_yoz':
+        return [(f"{TOLOV_SORAV}.\nMasalan: karta raqami, kimning nomida, aloqa telefoni. {TOLOV_MAKS} belgigacha.",
+                 {'force_reply': True, 'input_field_placeholder': 'Karta, telefon, izoh'})]
+    if data in ('e:vidjet_yoq', 'e:vidjet_och'):
+        s = platforma_sozlama()
+        s.bot_vidjet = data == 'e:vidjet_yoq'
+        s.save(update_fields=['bot_vidjet'])
+        return [("Vidjet yoqildi: rahbarlar «📊 Bugun» ni bosganda vidjet ko'radi." if s.bot_vidjet else
+                 "Vidjet o'chirildi: «📊 Bugun» yana oddiy matn bo'lib keladi.", None)]
+    if data == 'e:tolov_och':
+        s = platforma_sozlama()
+        s.tolov_malumoti = ''
+        s.save(update_fields=['tolov_malumoti'])
+        return [("To'lov ma'lumoti o'chirildi. Rahbarlar «hali kiritilmagan» degan yozuvni ko'radi.", None)]
+    return [("Noma'lum buyruq.", None)]
+
+
 # ---------- platforma egasi ----------
+
+def _vidjet_sozlamasi():
+    """`/vidjet` — ega namunani o'z telefonida ko'radi (o'ylab topilgan raqamlar), keyin rahbarlar uchun yoqadi."""
+    from .vidjet import namuna_vidjeti
+    yoqilgan = platforma_sozlama().bot_vidjet
+    return [("Namuna: rahbarning «Bugun» vidjeti (raqamlar o'ylab topilgan). Vidjet ko'rinmasa — Telegram ilovangiz "
+             "uni hali tanimaydi, rahbarlarda ham shunday bo'ladi.", namuna_vidjeti()),
+            (f"Vidjet rahbarlar uchun hozir {'yoqilgan' if yoqilgan else 'o‘chiq'}.".replace('‘', "'"),
+             [[{'text': "O'chirish", 'callback_data': 'e:vidjet_och'}] if yoqilgan else
+              [{'text': 'Rahbarlar uchun yoqish', 'callback_data': 'e:vidjet_yoq'}]])]
+
+
+def _ega_tolovlar(bugun):
+    """Kutayotgan so'rovlar (har biri o'z qaror tugmalari bilan), shu oy tushumi va oxirgi to'lovlar."""
+    from apps.tenants.models import ObunaTolovi
+
+    from .services import obuna_tugmalari
+    H = ObunaTolovi.Holat
+    javoblar = []
+    for t in ObunaTolovi.objects.filter(holat=H.KUTILMOQDA).select_related('salon__tarif', 'xodim').order_by('id')[:10]:
+        javoblar.append((f"⏳ {t.salon.nomi} — {timezone.localtime(t.yaratilgan):%d.%m %H:%M}, "
+                         + ('chek yuborilgan' if t.chek_fayl else 'cheksiz')
+                         + (f' · {t.xodim.ism}' if t.xodim_id else '') + f'\n{obuna_holati_matni(t.salon, bugun)}',
+                         obuna_tugmalari(t)))
+    qabul = ObunaTolovi.objects.filter(holat=H.QABUL)
+    oy = qabul.filter(qaror_vaqt__year=bugun.year, qaror_vaqt__month=bugun.month)
+    qatorlar = ["🧾 To'lovlar", f"Shu oy: {oy.count()} ta to'lov, {som(oy.aggregate(s=Sum('summa'))['s'] or 0)}",
+                f"Qaror kutmoqda: {len(javoblar)}"]
+    oxirgilar = list(qabul.select_related('salon').order_by('-qaror_vaqt')[:5])
+    if oxirgilar:
+        qatorlar += ['', 'Oxirgi to\'lovlar:'] + [
+            f"• {timezone.localtime(t.qaror_vaqt):%d.%m} {t.salon.nomi} — {t.oylar} oy" + (f', {som(t.summa)}' if t.summa else ', summa kiritilmagan')
+            for t in oxirgilar]
+    return [('\n'.join(qatorlar), None)] + javoblar
+
 
 def _ega_amali(amal):
     bugun = timezone.localdate()
+    if amal == 'tolovlar':
+        return _ega_tolovlar(bugun)
+    if amal == 'tolov_ega':
+        malumot = platforma_sozlama().tolov_malumoti.strip()
+        tugmalar = [[{'text': "✍️ O'zgartirish" if malumot else '✍️ Kiritish', 'callback_data': 'e:tolov_yoz'}]]
+        if malumot:
+            tugmalar.append([{'text': "🗑 O'chirish", 'callback_data': 'e:tolov_och'}])
+        return [("💳 To'lov ma'lumoti\nSalon rahbarlari botdagi «💳 To'lov» bo'limida shu matnni ko'radi.\n\n"
+                 + (malumot or 'Hali kiritilmagan.'), tugmalar)]
     if amal == 'salonlar':
         salonlar = list(Salon.objects.filter(chiqish_sanasi__isnull=True).order_by('nomi'))
         sonlar = {}
@@ -335,17 +522,19 @@ OBUNA_ESLATMA_KUNLARI = (3, 1, 0, -1, -Salon.OGOHLANTIRISH_KUN)
 
 def obuna_xabar_matni(salon, muddat, qolgan):
     tur = 'Sinov' if salon.obuna_tugaydi is None else 'Obuna'
+    qanday = "\nQanday to'lash — pastdagi menyuda «💳 To'lov»."
     if qolgan > 0:
         return (f"⏳ {salon.nomi}: {tur.lower()} muddati {muddat:%d.%m.%Y} da tugaydi — {qolgan} kun qoldi.\n"
-                "Salon uzilishsiz ishlashi uchun obunani uzaytiring.")
+                "Salon uzilishsiz ishlashi uchun obunani uzaytiring." + qanday)
     if qolgan == 0:
-        return f"⏳ {salon.nomi}: {tur.lower()} muddati bugun tugaydi.\nSalon uzilishsiz ishlashi uchun obunani uzaytiring."
+        return (f"⏳ {salon.nomi}: {tur.lower()} muddati bugun tugaydi.\n"
+                "Salon uzilishsiz ishlashi uchun obunani uzaytiring." + qanday)
     kun = Salon.OGOHLANTIRISH_KUN + qolgan  # «faqat ko'rish»gacha qolgan to'liq ish kunlari (bugundan tashqari)
     if kun <= 0:
         return (f"⚠️ {salon.nomi}: {tur.lower()} muddati {muddat:%d.%m.%Y} da tugagan. Ertadan salon «faqat ko'rish» rejimiga "
-                "o'tadi: yangi zakaz ochilmaydi, boshlangan zakazlarni yakunlash mumkin. Obunani bugun uzaytiring.")
+                "o'tadi: yangi zakaz ochilmaydi, boshlangan zakazlarni yakunlash mumkin. Obunani bugun uzaytiring." + qanday)
     return (f"⚠️ {salon.nomi}: {tur.lower()} muddati {muddat:%d.%m.%Y} da tugadi. Salon yana {kun} kun odatdagidek ishlaydi, "
-            "keyin «faqat ko'rish» rejimiga o'tadi. Obunani uzaytiring.")
+            "keyin «faqat ko'rish» rejimiga o'tadi. Obunani uzaytiring." + qanday)
 
 
 def obuna_ogohlantirishi(bugun=None, hozir=None):

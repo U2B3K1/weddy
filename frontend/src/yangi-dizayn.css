@@ -2804,3 +2804,19 @@
 .ilova .mijoz-oldindan .km-sanalar b { white-space: nowrap; font-variant-numeric: tabular-nums; }
 /* Telefon › Kassa: «Smena ochiq» belgisi sarlavha ostidagi izoh ustiga chiqib qolardi — izoh belgigacha joyda ikki qatorga o'tadi */
 @media (max-width: 767px) { .ilova main:has(.kassa-uy .ku-smena) .ustki-nom :is(.ustki-xulosa, p) { margin-right: 92px; } }
+
+/* Platforma paneli › salon kartasi › obuna to'lovlari tarixi: tor ustunga sig'adigan qatorlar (jadval emas) */
+.ilova .obuna-tolovlar { display: grid; gap: 8px; min-width: 0; }
+.ilova .obuna-tolovlar .ot-qator { display: grid; gap: 8px; padding: 10px 12px; border-radius: 10px;
+  background: rgba(255, 255, 255, .04); border: 1px solid rgba(255, 255, 255, .08); min-width: 0; }
+.ilova .obuna-tolovlar .ot-bosh { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; min-width: 0; }
+.ilova .obuna-tolovlar .ot-bosh b { font-family: Manrope, sans-serif; font-size: 13px; font-variant-numeric: tabular-nums; }
+.ilova .obuna-tolovlar .ot-bosh small { color: var(--matn-yorug); opacity: .75; overflow-wrap: anywhere; }
+.ilova .obuna-tolovlar .ot-malumot { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center;
+  gap: 6px 12px; font-size: 13px; font-variant-numeric: tabular-nums; }
+.ilova .obuna-tolovlar .ot-summa { font-family: Manrope, sans-serif; font-weight: 700; }
+.ilova .obuna-tolovlar .qator { flex-wrap: wrap; gap: 6px; }
+.ilova .obuna-tolovlar button.kichik { font-family: Manrope, sans-serif; }
+.ilova .obuna-tolovlar input { max-width: 140px; }
+.ilova .obuna-tolovlar .ot-yopiq > :not(.qator) { opacity: .55; }
+.ilova .obuna-tolovlar .ot-yopiq .ot-summa { text-decoration: line-through; }

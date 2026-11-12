@@ -8,20 +8,29 @@ from apps.orders.models import QaytarishAkti, Zakaz
 from apps.tenants.models import Salon, sozlama
 
 
-def kunlik_matn(salon, bugun, sarlavha='Kunlik hisobot'):
-    """Kun raqamlari: tushum (naqdsiz qismi alohida — bank bilan solishtirish uchun), bronlar, liboslar, kassa farqi."""
+def kunlik_raqamlar(salon, bugun):
+    """Kun raqamlari lug'at ko'rinishida — matnli hisobot va botdagi «Bugun» vidjeti bir manbadan oladi."""
     tushum_q = Tolov.objects.filter(Tolov.HAQIQIY, salon=salon, vaqt__date=bugun,
                                     tur__in=[Tolov.Tur.AVANS, Tolov.Tur.QOLDIQ, Tolov.Tur.JARIMA])
     usullar = {r['usul']: r['s'] for r in tushum_q.values('usul').annotate(s=Sum('summa'))}
-    tushum = sum(usullar.values())
     nomlar = dict(Tolov.Usul.choices)
-    naqdsiz = ', '.join(f'{nomlar.get(u, u)} {som(s)}' for u, s in usullar.items() if u != Tolov.Usul.NAQD and s)
-    yangi = Zakaz.objects.filter(salon=salon, yaratilgan__date=bugun).exclude(holat=Zakaz.Holat.BEKOR).count()
-    berilgan = Zakaz.objects.filter(salon=salon, olib_ketish=bugun,
-                                    holat__in=[Zakaz.Holat.BERILDI, Zakaz.Holat.QAYTARILDI, Zakaz.Holat.YOPILDI]).count()
-    qaytgan = QaytarishAkti.objects.filter(salon=salon, sana=bugun).count()
-    farq = Smena.objects.filter(salon=salon, sana=bugun, yopilgan__isnull=False).aggregate(s=Sum('farq'))['s']
-    ochiq = Smena.objects.filter(salon=salon, yopilgan__isnull=True).exists()
+    return {
+        'tushum': sum(usullar.values()), 'naqd': usullar.get(Tolov.Usul.NAQD) or 0,
+        'naqdsiz': [(str(nomlar.get(u, u)), s) for u, s in usullar.items() if u != Tolov.Usul.NAQD and s],
+        'yangi': Zakaz.objects.filter(salon=salon, yaratilgan__date=bugun).exclude(holat=Zakaz.Holat.BEKOR).count(),
+        'berilgan': Zakaz.objects.filter(salon=salon, olib_ketish=bugun, holat__in=[
+            Zakaz.Holat.BERILDI, Zakaz.Holat.QAYTARILDI, Zakaz.Holat.YOPILDI]).count(),
+        'qaytgan': QaytarishAkti.objects.filter(salon=salon, sana=bugun).count(),
+        'farq': Smena.objects.filter(salon=salon, sana=bugun, yopilgan__isnull=False).aggregate(s=Sum('farq'))['s'],
+        'ochiq': Smena.objects.filter(salon=salon, yopilgan__isnull=True).exists(),
+    }
+
+
+def kunlik_matn(salon, bugun, sarlavha='Kunlik hisobot'):
+    """Kun raqamlari: tushum (naqdsiz qismi alohida — bank bilan solishtirish uchun), bronlar, liboslar, kassa farqi."""
+    r = kunlik_raqamlar(salon, bugun)
+    tushum, yangi, berilgan, qaytgan, farq, ochiq = (r[k] for k in ('tushum', 'yangi', 'berilgan', 'qaytgan', 'farq', 'ochiq'))
+    naqdsiz = ', '.join(f'{nom} {som(s)}' for nom, s in r['naqdsiz'])
     return (f"{sarlavha} · {bugun:%d.%m.%Y}\nTushum: {som(tushum)}\n"
             f"{'Shundan naqdsiz: ' + naqdsiz + chr(10) if naqdsiz else ''}"
             f"Yangi bronlar: {yangi}\nBerilgan liboslar: {berilgan}\nQaytarilgan: {qaytgan}\n"

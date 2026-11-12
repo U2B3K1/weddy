@@ -252,6 +252,10 @@ def tugma_ishla(chat_id, data):
         return boglandim_tugma_ishla(chat_id, int(qismlar[1]), qismlar[2])
     if len(qismlar) == 2 and qismlar[0] == 'ar' and qismlar[1].isdigit():
         return ariza_tugma_ishla(chat_id, int(qismlar[1]))
+    if len(qismlar) == 3 and qismlar[0] == 'ob' and qismlar[1].isdigit() and qismlar[2] in ('1', '3', 'r'):
+        return obuna_tugma_ishla(chat_id, int(qismlar[1]), qismlar[2])
+    if len(qismlar) == 2 and qismlar[0] == 'tl' and qismlar[1].isdigit():
+        return toladim_tugma_ishla(chat_id, int(qismlar[1]))
     if len(qismlar) != 3 or qismlar[0] != 'ch' or not qismlar[1].isdigit() or qismlar[2] not in ('t', 'r'):
         return "Noma'lum buyruq."
     sorov = ChegirmaSorovi.objects.filter(id=int(qismlar[1])).first()
@@ -411,6 +415,97 @@ def qurilma_tasdiq_havolasi(qurilma):
 
 def _qurilma_tavsifi(q):
     return f"«{q.nomi}»" + (f"\n📱 {q.modeli}" if q.modeli else '')
+
+
+def _tolov_xabari(x, nima):
+    """Egaga: qaysi salon, kim, obuna holati, tarif, telefon — «to'ladim» va chek uchun bir xil."""
+    from .bot_menyu import obuna_holati_matni
+    s = x.salon
+    qatorlar = [f"💳 {s.nomi}: rahbar {x.ism} {nima}.", obuna_holati_matni(s)]
+    if s.tarif_id:
+        qatorlar.append(f'Tarif: {s.tarif.nomi}' + (f' — oyiga {som(s.tarif.oylik_narx)}' if s.tarif.oylik_narx else ''))
+    if s.rahbar_telefon:
+        qatorlar.append(f'Tel: {s.rahbar_telefon}')
+    qatorlar.append("Pul kelganini tekshirib, pastdagi tugma bilan qaror qiling.")
+    return '\n'.join(qatorlar)
+
+
+def obuna_tugmalari(tolov):
+    """Egaga: so'rov ostidagi qaror tugmalari — bir bosishda tarixga yoziladi va obuna uzayadi."""
+    narx = tolov.salon.tarif.oylik_narx if tolov.salon.tarif_id else 0
+    return [[{'text': f'✅ {oy} oy' + (f' — {som(narx * oy)}' if narx else ''), 'callback_data': f'ob:{tolov.id}:{oy}'}]
+            for oy in (1, 3)] + [[{'text': '❌ Rad etish', 'callback_data': f'ob:{tolov.id}:r'}]]
+
+
+def obuna_tugma_ishla(chat_id, tolov_id, qaror):
+    """`ob:<id>:<1|3|r>` — platforma egasining to'lov so'rovi bo'yicha qarori."""
+    from apps.tenants import obuna
+    from apps.tenants.models import ObunaTolovi
+    if platforma_sozlama().telegram_chat_id != chat_id:
+        return "Bu amal faqat platforma egasiga ruxsat etilgan."
+    t = ObunaTolovi.objects.filter(id=tolov_id).first()
+    if not t:
+        return "To'lov so'rovi topilmadi."
+    try:
+        if qaror == 'r':
+            obuna.tolov_rad(t.id, 'bot')
+            return "Rad etildi. Rahbarga xabar berildi."
+        t = obuna.tolov_qabul(t.salon_id, int(qaror), 'bot', tolov_id=t.id, manba=ObunaTolovi.Manba.BOT)
+    except obuna.ObunaXatosi as e:
+        return str(e)
+    return (f"Qabul qilindi: {t.oylar} oy" + (f', {som(t.summa)}' if t.summa else '') + f". Obuna {t.yangi_obuna:%d.%m.%Y} gacha. "
+            + ("Rahbarga xabar berildi." if t.summa else "Tarifda narx yo'q — summani panelda kiriting."))
+
+
+def chek_egaga(x, tur, fayl_id, izoh=''):
+    """Rahbar yuborgan chekni (Telegramdagi fayl — `file_id`) egaga qaror tugmalari bilan uzatadi.
+
+    Fayl serverga yuklab olinmaydi; so'rov tarixga «kutilmoqda» bo'lib yoziladi (apps/tenants/obuna.py).
+    """
+    from apps.tenants import obuna
+
+    from .egaga import ega_manzili
+    manzil = ega_manzili()
+    if not manzil or not fayl_id:
+        return False
+    t = obuna.tolov_sorovi(x.salon, x, fayl_id, tur, izoh)
+    matn = _tolov_xabari(x, "obuna to'lovi chekini yubordi") + (f'\nIzoh: {izoh[:200]}' if izoh else '')
+    try:
+        telegram.api('sendPhoto' if tur == 'photo' else 'sendDocument', _token=manzil[1], chat_id=manzil[0],
+                     caption=matn[:1000], reply_markup={'inline_keyboard': obuna_tugmalari(t)}, **{tur: fayl_id})
+        return True
+    except telegram.TelegramXatosi:
+        return False
+
+
+def toladim_tugma_ishla(chat_id, xodim_id):
+    """Rahbar obuna uchun to'laganini bildirdi → platforma egasiga xabar (salonga kuniga bir marta).
+
+    Obuna o'zi uzaymaydi: pul kelganini ega tekshiradi va platforma panelida uzaytiradi.
+    """
+    from django.core.cache import cache
+
+    from apps.tenants import obuna
+
+    from .egaga import ega_manzili
+    x = Xodim.objects.filter(id=xodim_id, telegram_id=chat_id, faol=True, rol=Xodim.Rol.RAHBAR).select_related('salon__tarif').first()
+    if not x:
+        return "Bu amal faqat salon rahbariga ruxsat etilgan."
+    s = x.salon
+    kalit = f'toladim:{s.id}:{timezone.localdate()}'
+    if cache.get(kalit):
+        return "Bugun platforma egasiga xabar berilgan. To'lov tekshirilgach obuna uzaytiriladi."
+    manzil = ega_manzili()
+    if not manzil:
+        return "Platforma egasiga xabar yetmadi. Birozdan keyin qayta urinib ko'ring."
+    t = obuna.tolov_sorovi(s, x)
+    try:
+        telegram.xabar_yubor(manzil[0], _tolov_xabari(x, "obuna uchun to'lov qilganini bildirdi (cheksiz)"),
+                             obuna_tugmalari(t), token=manzil[1])
+    except telegram.TelegramXatosi:
+        return "Platforma egasiga xabar yetmadi. Birozdan keyin qayta urinib ko'ring."
+    cache.set(kalit, 1, 24 * 3600)
+    return "Platforma egasiga xabar berildi. To'lov tekshirilgach obuna uzaytiriladi."
 
 
 def _salon_rahbari(salon_id, chat_id):

@@ -36,6 +36,8 @@ platforma_urlpatterns = [
     path('salonlar/', views_platforma.PlatformaSalonlarView.as_view()),
     path('salonlar/<int:pk>/', views_platforma.PlatformaSalonView.as_view()),
     path('salonlar/<int:pk>/tolov/', views_platforma.PlatformaTolovView.as_view()),
+    path('salonlar/<int:pk>/tolovlar/', views_platforma.PlatformaSalonTolovlarView.as_view()),
+    path('obuna-tolovlari/<int:pk>/', views_platforma.PlatformaObunaTolovView.as_view()),
     path('salonlar/<int:pk>/chiqish/', views_platforma.PlatformaChiqishView.as_view()),
     path('salonlar/<int:pk>/arxiv/', views_platforma.PlatformaArxivView.as_view()),
     path('salonlar/<int:pk>/yordam/', views_platforma.PlatformaYordamView.as_view()),
