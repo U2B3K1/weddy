@@ -32,19 +32,23 @@ export default function Reklama({ onKirish }) {
   const menyuOchiq = useRef(false)
   const tovush = useRef(null)
   const [ochiq, setOchiq] = useState(() => { try { return SINOV !== null || !!sessionStorage.getItem(KORILDI) || tinch() } catch { return true } })
+  // uygon — yuklanish ekranidagi «Xush kelibsiz» bosilgan lahza (ochiq undan 1,1 s keyin, tuman tarqalgach yonadi).
+  // Og'ir qismlar (ikki WebGL sahna, har kadrda ishlaydigan sikllar, pastki bo'limlar) shu lahzagacha ishga tushmaydi:
+  // yuklanish ekrani ortida ular ko'rinmaydi, lekin telefonni har kadrda band qilib, sahifani «qotirib» turardi.
+  const [uygon, setUygon] = useState(ochiq)
   const [menyu, setMenyu] = useState(false)
   const [ovoz, setOvoz] = useState(false)
   const [jonli, setJonli] = useState(() => !tinch())
 
   // WebGL sahnasi: bo'lmasa (yoki harakat kamaytirilgan bo'lsa) sahifa oddiy gradient fonda ishlaydi.
   useEffect(() => {
-    if (tinch()) return undefined
+    if (!uygon || tinch()) return undefined
     const s = sahnaYarat(tuval.current)
     if (!s) { setJonli(false); return undefined }
     sahna.current = s
     if (import.meta.env.DEV) window.__sahna = s   // brauzer konsolidan sahnani sinash uchun
     return () => { s.yop(); sahna.current = null }
-  }, [])
+  }, [uygon])
 
   // Aylantirishga bog'liq harakat: har sahnaga 0..1 oralig'idagi --p, bosh kadr uchun --bp, fondagi shakl uchun T.
   useEffect(() => {
@@ -171,11 +175,11 @@ export default function Reklama({ onKirish }) {
   return (
     <div className={`rk ${ochiq ? 'rk-ochiq' : 'rk-yopiq'} ${jonli ? '' : 'rk-statik'} ${menyu ? 'rk-menyuli' : ''}`} ref={ildiz}>
       <canvas className="rk-sahna" ref={tuval} aria-hidden="true" />
-      {jonli && <QasrVideo />}
+      {jonli && <QasrVideo faol={uygon} />}
       <span className="rk-soya" aria-hidden="true" />
       <span className="rk-tor" aria-hidden="true"><i /><i /><i /><i /><i /></span>
       {jonli && <Iz tovush={tovush} />}
-      {!ochiq && <Yuklanish onTayyor={kirdi} />}
+      {!ochiq && <Yuklanish onUygon={() => setUygon(true)} onTayyor={kirdi} />}
 
       <div className="rk-nav">
         <a className="rk-logo" href="#bosh" onClick={ot('bosh')}><Belgi /><span>LIBOSA</span></a>
@@ -231,6 +235,9 @@ export default function Reklama({ onKirish }) {
       {/* 2-sahna: kelin obrazlari gologrammasi (Lusion TEAM uslubida), keyin «Imkoniyatlar» slayderi (Orano "Innovation"
           uslubida: tilla sim-karkas fonlar va milliy libosdagi tilla kelinlar). Slayder avvalgi «Uch tashvish» va
           «Imkoniyatlar» o'yin kartalarini birlashtiradi — menyudagi #imkoniyatlar shu yerga olib keladi. */}
+      {/* Pastki bo'limlar (2-, 3- va 7-sahna) «Xush kelibsiz» bosilgandan keyin quriladi: yuklanish ekrani ortida ular
+          ko'rinmaydi, rasm va videolari esa (bir necha MB) birinchi ko'rinishni sekinlashtirardi. */}
+      {uygon && <>
       <div id="sahnalar" style={{ position: 'relative' }}>
         {/* fondagi zarrachalar shu oraliqda tinch "chang" shaklida turadi (kartalar ortida ko'rinadi) */}
         <i className="rk-langar" data-t="1" style={{ top: 0 }} />
@@ -262,6 +269,7 @@ export default function Reklama({ onKirish }) {
         <ArizaForma tur="azo" />
       </div>
       </div>
+      </>}
 
       {/* Oyoq: bitta ingichka qator — logo, «Tizimga kirish», © va tepaga tugmasi */}
       <footer className="rk-oyoq">
@@ -305,10 +313,11 @@ function Qator({ j, children }) {
 
 // Imkoniyat kartalari: kursor ustida karta 3D'da egiladi. Pastida nomi teskari yozilgan — o'yin kartasi kabi.
 // Yuklanish ekrani: foiz sanaladi, tugma bosilgach ekran tuman bo'lib erib ketadi.
-function Yuklanish({ onTayyor }) {
+function Yuklanish({ onUygon, onTayyor }) {
   const [foiz, setFoiz] = useState(0)
   const [ketmoqda, setKetmoqda] = useState(false)
   const video = useRef(null)
+  const bosildi = useRef(false)
   useEffect(() => {
     // Foiz fon videosining vaqtiga bog'lanadi: osmon.mp4 da bulutlar tarqalib saroy
     // ~8.5 soniyada to'liq ko'rinadi — o'sha lahzagacha ekran «tayyor» bo'lmaydi.
@@ -349,7 +358,14 @@ function Yuklanish({ onTayyor }) {
       v?.removeEventListener('error', () => {})
     }
   }, [])
-  const kir = () => { setKetmoqda(true); setTimeout(onTayyor, 1100) }
+  // Avval sahifaning og'ir qismi quriladi (onUygon), tuman esa ikki kadrdan keyin tarqala boshlaydi —
+  // qurilishdagi bir lahzalik tutilish tumanning silliq erishiga to'g'ri kelmaydi.
+  const kir = () => {
+    if (bosildi.current) return
+    bosildi.current = true
+    onUygon?.()
+    requestAnimationFrame(() => requestAnimationFrame(() => { setKetmoqda(true); setTimeout(onTayyor, 1100) }))
+  }
   return (
     <div className={`rk-yuklanish ${ketmoqda ? 'rk-ketmoqda' : ''}`}>
       {/* fon: tilla bulutli osmon (osmon.mp4) — «Xush kelibsiz» ekrani sarg'ish pardada; bulutlar tarqalib saroy ko'ringanda to'xtaydi */}

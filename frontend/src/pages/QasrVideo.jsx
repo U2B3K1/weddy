@@ -14,7 +14,9 @@ import { gulbargYarat } from './gulbargSahna'
 // 4.3 s — gulbarglar kameraga otilib chiqayotgan kadr; sahifa ochilganda LIBOSA yozuvi aynan shu kadr ustida turadi.
 const BOSHLANISH = 4.3
 
-export function QasrVideo() {
+// faol — yuklanish ekrani yopila boshlagach true (Reklama.jsx dagi `uygon`). Ungacha faqat video fayli yuklanib turadi:
+// gulbarg WebGL'i va har kadrda ishlaydigan sikl ko'rinmaydigan sahna uchun telefonni band qilmaydi.
+export function QasrVideo({ faol = true }) {
   const qobiq = useRef(null)
   const video = useRef(null)
   const tuval = useRef(null)
@@ -22,7 +24,7 @@ export function QasrVideo() {
   useEffect(() => {
     const v = video.current, w = qobiq.current
     const bosh = document.querySelector('.rk-bosh')       // bosh kadr bloki — aylantirish shu blok bo'yicha o'lchanadi
-    if (!v || !w || !bosh) return undefined
+    if (!v || !w || !bosh || !faol) return undefined
 
     // WebGL qatlam: harakat kamaytirilgan rejimda yoqilmaydi
     const tinch = window.matchMedia('(prefers-reduced-motion: reduce)').matches
@@ -73,7 +75,7 @@ export function QasrVideo() {
       v.removeEventListener('error', xato)
       g?.yop()
     }
-  }, [])
+  }, [faol])
 
   return (
     <div ref={qobiq} className="rk-qasr" aria-hidden="true">

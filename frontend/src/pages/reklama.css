@@ -93,7 +93,9 @@
 /* Menyu foni — «Imkoniyatlar → Eslatmalar» slaydidagi sharqona ayvon (tilla chizma), xira va sal yumshatilgan;
    chap tomonda (menyu bandlari turgan joy) qorong'iroq, katta matn o'qilsin */
 .rk-menyu::before { content: ''; position: absolute; inset: -12px; z-index: -1; pointer-events: none;
-  background: url('/tashvish/fon-7.jpg') 62% 50% / cover no-repeat; opacity: .3; filter: blur(2px) saturate(.9); }
+  background: 62% 50% / cover no-repeat; opacity: .3; filter: blur(2px) saturate(.9); }
+/* Rasm (0,5 MB) yuklanish ekrani yopilgandan keyingina so'raladi — birinchi ko'rinish bilan internet talashmaydi */
+.rk-ochiq .rk-menyu::before { background-image: url('/tashvish/fon-7.jpg'); }
 .rk-menyu::after { content: ''; position: absolute; inset: 0; z-index: -1; pointer-events: none;
   background: linear-gradient(90deg, rgba(14, 26, 43, .82), rgba(14, 26, 43, .35) 55%, rgba(14, 26, 43, .55)); }
 .rk-menyuli .rk-menyu { clip-path: circle(150vmax at calc(100% - var(--chet) - 50px) 46px); visibility: visible; }
