@@ -4,13 +4,57 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="Libosa — nafislik tartibdan boshlanadi. Kelin liboslari salonlari uchun ijara tizimi: bron, zakaz, zalog, kassa va oylik foyda bitta joyda." />
+    <!-- Qidiruv va ulashish uchun: nomda qidiriladigan so'zlar, shior o'zgarmaydi. Akademiya manzilida main.jsx bularni almashtiradi. -->
+    <title>Libosa — kelin liboslari saloni uchun dastur · Nafislik tartibdan boshlanadi</title>
+    <meta name="description" content="Libosa — kelin liboslari saloni uchun dastur: libos ijarasi (prokat) va bron, zakaz, zalog, kassa, mijozlar va oylik foyda bitta tizimda. 14 kun bepul sinov. Программа для салона свадебных платьев." />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Libosa" />
+    <meta property="og:title" content="Libosa — kelin liboslari saloni uchun dastur" />
+    <meta property="og:description" content="Nafislik tartibdan boshlanadi. Bron, zakaz, zalog, kassa va oylik foyda bitta tizimda — 14 kun bepul sinov." />
+    <meta property="og:image" content="https://libosa.uz/fon/qasr.jpg" />
+    <meta property="og:locale" content="uz_UZ" />
+    <meta property="og:locale:alternate" content="ru_RU" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <!-- Tuzilgan ma'lumot: faqat qidiruv tizimlari o'qiydi (bajariladigan skript emas) -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@graph": [
+          {
+            "@type": "Organization",
+            "@id": "https://libosa.uz/#tashkilot",
+            "name": "Libosa",
+            "url": "https://libosa.uz/",
+            "logo": "https://libosa.uz/favicon.svg",
+            "slogan": "Nafislik tartibdan boshlanadi"
+          },
+          {
+            "@type": "WebSite",
+            "@id": "https://libosa.uz/#sayt",
+            "name": "Libosa",
+            "url": "https://libosa.uz/",
+            "inLanguage": ["uz", "ru"],
+            "publisher": { "@id": "https://libosa.uz/#tashkilot" }
+          },
+          {
+            "@type": "SoftwareApplication",
+            "name": "Libosa",
+            "url": "https://libosa.uz/",
+            "applicationCategory": "BusinessApplication",
+            "operatingSystem": "Web",
+            "inLanguage": "uz",
+            "description": "Kelin liboslari saloni uchun dastur: libos ijarasi va bron, zakaz, zalog, kassa, mijozlar, hisobotlar va oylik foyda. Программа для салона свадебных платьев: прокат, бронирование, залог, касса и отчёты.",
+            "keywords": "kelin liboslari saloni dasturi, libos ijarasi, libos prokati, to'y libosi prokat, salon uchun CRM, программа для проката свадебных платьев, CRM для свадебного салона",
+            "publisher": { "@id": "https://libosa.uz/#tashkilot" }
+          }
+        ]
+      }
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <!-- Shriftlar uslubi birinchi ko'rinishni kutdirmaydi: bu yerda faqat oldindan yuklanadi, src/main.jsx uni ulaydi
          (sahifadagi skriptlarga ruxsat yo'q — CSP, shuning uchun onload emas). -->
     <link id="shriftlar" rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,600;0,700;1,500;1,600&family=Forum&family=Great+Vibes&family=Manrope:wght@300;400;500;600;700;800&family=Spectral:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap" />
-    <title>Libosa — nafislik tartibdan boshlanadi</title>
   </head>
   <body>
     <div id="root"></div>

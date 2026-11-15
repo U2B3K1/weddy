@@ -7,7 +7,7 @@ import './reklama.css'
 import './reklama-qasr.css'
 import { QasrVideo } from './QasrVideo'
 import { Kelinlar } from './Kelinlar'
-import { Tashvishlar } from './Tashvishlar'
+import { SLAYDLAR, Tashvishlar } from './Tashvishlar'
 import { Yakun } from './Yakun'
 
 // Bosh sahifa: loyihaning taqdimoti (lusion.co/about ruhida). Fon va zarracha shakllari WebGL'da chiziladi (reklamaSahna.js),
@@ -235,8 +235,9 @@ export default function Reklama({ onKirish }) {
       {/* 2-sahna: kelin obrazlari gologrammasi (Lusion TEAM uslubida), keyin «Imkoniyatlar» slayderi (Orano "Innovation"
           uslubida: tilla sim-karkas fonlar va milliy libosdagi tilla kelinlar). Slayder avvalgi «Uch tashvish» va
           «Imkoniyatlar» o'yin kartalarini birlashtiradi — menyudagi #imkoniyatlar shu yerga olib keladi. */}
-      {/* Pastki bo'limlar (2-, 3- va 7-sahna) «Xush kelibsiz» bosilgandan keyin quriladi: yuklanish ekrani ortida ular
-          ko'rinmaydi, rasm va videolari esa (bir necha MB) birinchi ko'rinishni sekinlashtirardi. */}
+      {/* 2- va 3-sahna «Xush kelibsiz» bosilgandan keyin quriladi: yuklanish ekrani ortida ular ko'rinmaydi, rasm,
+          video va WebGL'lari esa (bir necha MB) birinchi ko'rinishni sekinlashtirardi. Asosiy matn (a'zo bo'lish va
+          «Libosa haqida») bu shartdan tashqarida — qidiruv tizimi ham darhol ko'radi. */}
       {uygon && <>
       <div id="sahnalar" style={{ position: 'relative' }}>
         {/* fondagi zarrachalar shu oraliqda tinch "chang" shaklida turadi (kartalar ortida ko'rinadi) */}
@@ -250,12 +251,15 @@ export default function Reklama({ onKirish }) {
           uchta yopishqoq sahna: Chaqiriq («Saloningiz Libosaga tayyormi?») → Raqamlar (gologramma guldasta)
           → Kirish (to'liq ekranli video). Yakun.jsx da. */}
       <Yakun onAzo={ot('azo')} />
+      </>}
 
       {/* 7-sahna: a'zo bo'lish */}
       <div className="rk-azo-yol">
       <div className="rk-azo" id="azo" data-kir>
-        {/* fon: anime uslubidagi yomg'irli bog' (public/yakun/bog.mp4 — 2026-10-11 da Kie'da yaratilgan, uzluksiz aylanadi) */}
-        <video className="rk-azo-video" src="/yakun/bog.mp4" poster="/yakun/bog.jpg" muted autoPlay loop playsInline preload="metadata" aria-hidden="true" />
+        {/* fon: anime uslubidagi yomg'irli bog' (public/yakun/bog.mp4 — 2026-10-11 da Kie'da yaratilgan, uzluksiz aylanadi).
+            Fayllar «Xush kelibsiz» bosilgandan keyin so'raladi (yuqoridagi izohga qarang). */}
+        <video className="rk-azo-video" src={uygon ? '/yakun/bog.mp4' : undefined} poster={uygon ? '/yakun/bog.jpg' : undefined}
+          muted autoPlay loop playsInline preload="metadata" aria-hidden="true" />
         <div className="rk-azo-matn rk-ochil">
           <p className="rk-ustki">A'zo bo'lish</p>
           <h2 className="rk-h2">Saloningizni <em>Libosada</em> ko'ring</h2>
@@ -269,7 +273,36 @@ export default function Reklama({ onKirish }) {
         <ArizaForma tur="azo" />
       </div>
       </div>
-      </>}
+
+      {/* Libosa haqida: tizim nima qilishi — oddiy matnda, o'zbekcha va ruscha. Qidiruv tizimlari sahifani shu matn bo'yicha
+          taniydi (yuqoridagi sahnalarda matn bitta-bittalab, harakat bilan chiqadi). Imkoniyatlar ro'yxati — «Imkoniyatlar»
+          slayderining o'z ma'lumoti (Tashvishlar.jsx), takrorlanmaydi. */}
+      <section className="rk-haqida" aria-labelledby="rk-haqida-sarlavha">
+        <div className="rk-haqida-bosh">
+          <p className="rk-ustki">Libosa haqida</p>
+          <h2 className="rk-haqida-h2" id="rk-haqida-sarlavha">Kelin liboslari saloni uchun dastur</h2>
+          <p className="rk-haqida-lid">
+            Libosa — kelin liboslari ijarasi (prokat) bilan ishlaydigan salonlar uchun tizim: bron va zakaz, zalog, kassa,
+            mijozlar va oylik foyda bitta joyda. Planshet, telefon yoki kompyuterdan ishlaydi. Yangi salon 14 kun bepul
+            sinov bilan ulanadi.
+          </p>
+        </div>
+        <ul className="rk-haqida-royxat">
+          {SLAYDLAR.map((s) => (
+            <li key={s.nom}><b>{s.nom}</b><span>{s.shior}</span><small>{s.qatorlar.join(' · ')}</small></li>
+          ))}
+        </ul>
+        <div className="rk-haqida-ru" lang="ru">
+          <h3>Программа для салона свадебных платьев</h3>
+          <p>
+            Libosa — система учёта для салонов проката свадебных платьев: бронирование и заказы, залог, касса, клиенты
+            и прибыль за месяц в одном месте. Система сама следит, чтобы одно платье не забронировали дважды на одни
+            даты; напоминания приходят в Telegram и по SMS, отчёты формируются автоматически. Поддерживает несколько
+            филиалов, работает с планшета, телефона или компьютера. Интерфейс — на узбекском языке. Новый салон
+            подключается с бесплатным пробным периодом 14 дней.
+          </p>
+        </div>
+      </section>
 
       {/* Oyoq: bitta ingichka qator — logo, «Tizimga kirish», © va tepaga tugmasi */}
       <footer className="rk-oyoq">
@@ -307,8 +340,9 @@ function BoshVideo({ jonli }) {
 }
 
 // Bayonot qatori: niqob ichidan ko'tariladi (bosh kadr yo'liga bog'langan, --j — navbati).
+// Oxiridagi bo'sh joy ko'rinmaydi (qator — blok), lekin qidiruv tizimi va ekran o'quvchi so'zlarni qo'shib o'qimaydi.
 function Qator({ j, children }) {
-  return <span className="rk-qator" style={{ '--j': j }}><span>{children}</span></span>
+  return <span className="rk-qator" style={{ '--j': j }}><span>{children}{' '}</span></span>
 }
 
 // Imkoniyat kartalari: kursor ustida karta 3D'da egiladi. Pastida nomi teskari yozilgan — o'yin kartasi kabi.

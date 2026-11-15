@@ -20,7 +20,8 @@ import './tashvishlar.css'
 
 // Kelinning kadrdagi o'rni: x, y — oyog'i turadigan nuqta (bo'lim kengligi / balandligidan %), h — bo'yi (vh).
 // Har fonda pol boshqa joyda, shuning uchun har slaydga alohida.
-const SLAYDLAR = [
+// Eksport qilinadi: bosh sahifaning «Libosa haqida» bo'limi (Reklama.jsx) imkoniyatlar ro'yxatini shu yerdan oladi.
+export const SLAYDLAR = [
   { nom: 'Bron', obraz: 'Atlas ko\'ylak va zarchopon', joy: 'Saroy zali', x: 38, y: 90, h: 62, shior: 'Bitta libos — ikki kelin emas',
     qatorlar: ["Band libos ikkinchi marta bron bo'lmaydi — buni tizim o'zi tekshiradi", 'Kalendar va bandlik bir qarashda', 'Tozalash uchun bufer kunlar'] },
   { nom: 'Zakaz', obraz: 'Buxoro zardo\'zi libosi', joy: 'Saroy zinasi', x: 37, y: 88, h: 60, shior: 'Garov kimda qolgani — yozilgan',

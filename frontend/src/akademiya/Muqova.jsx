@@ -10,7 +10,7 @@ import { ASOSIY_MANZIL } from './host'
 const SAHNALAR = [
   { tasvir: 'muqova-1', joy: '62%', matn: 'Nafislik tartibdan boshlanadi' },
   { tasvir: 'muqova-2', joy: '80%', matn: "Nodira opa — salon egasi. Ishni sizga u o'rgatadi" },
-  { tasvir: 'hero-madina', joy: '82%', matn: 'Madina bugun birinchi kun ishda. Siz u bilan birga boshlaysiz' },
+  { tasvir: 'muqova-3', joy: '74%', matn: 'Madina bugun birinchi kun ishda. Siz u bilan birga boshlaysiz' },
   { tasvir: 'bob-toy-kuni', joy: '50%', matn: '' },   // oxirgi sahnada yozuv o'rnida sarlavha va «Boshlash»
 ]
 const N = SAHNALAR.length
