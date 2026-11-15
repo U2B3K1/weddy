@@ -79,7 +79,7 @@ def haftalik_xulosalarni_yoz(bugun=None, hozir=None):
     if bugun.weekday() != 0 or hozir.hour < 9:
         return 0
     soni = 0
-    for salon in Salon.objects.filter(chiqish_sanasi__isnull=True).exclude(holat=Salon.Holat.BLOKLANGAN):
+    for salon in Salon.objects.filter(chiqish_sanasi__isnull=True, oquv=False).exclude(holat=Salon.Holat.BLOKLANGAN):
         soni += sum(1 for x in rahbarlarga(salon, 'haftalik_xulosa', haftalik_matn(salon, bugun),
                                            kalit=f'haftalik:{bugun}', darhol=False) if x)
     return soni

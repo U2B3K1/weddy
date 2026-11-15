@@ -60,6 +60,11 @@ class StaffTokenAuthentication(BaseAuthentication):
             raise AuthenticationFailed('Sessiya tugagan, qayta kiring.')
         if xodim.salon.holat == Salon.Holat.BLOKLANGAN:
             raise AuthenticationFailed('Salon bloklangan.')
+        # Akademiya hostida faqat o'quv saloni, asosiy hostda faqat haqiqiy salon: o'quvchi manzilni adashtirib
+        # haqiqiy ma'lumotni o'zgartira olmaydi, o'quv tokeni esa haqiqiy ilovada ishlamaydi.
+        from apps.akademiya.host import akademiya_hostmi
+        if xodim.salon.oquv != akademiya_hostmi(request):
+            raise AuthenticationFailed('Sessiya tugagan, qayta kiring.')
         if 'd' in data and not IshonchliQurilma.objects.filter(
                 id=data['d'], salon_id=data['s'], faol=True, tasdiqlangan=True).exists():
             raise AuthenticationFailed("Qurilma ishonchli ro'yxatdan chiqarilgan.")

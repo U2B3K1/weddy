@@ -334,3 +334,46 @@ Deploy paytida bot bir necha soniya to'xtaydi — 5 daqiqadan qisqa bo'lsa ogohl
 3. `ALLOWED_HOSTS` ga faqat haqiqiy domenlar yozing — `*` productionda xavfli.
 4. Bot tokeni API javoblarida va loglarda **chiqmasligi kerak** — kod shuni ta'minlaydi.
 5. Frontend `VITE_API_URL=/api` bo'lgani uchun port 8000 tashqariga ochilmaydi — faqat nginx.
+
+## 18. Akademiya (academy.libosa.uz)
+
+Akademiya — o'sha ilova va o'sha backend, alohida manzilda. Server so'rov qaysi hostdan kelganiga qaraydi:
+`academy.libosa.uz` dan kelgan so'rov faqat o'quv saloni bilan ishlaydi, `libosa.uz` da esa o'quv saloni ochilmaydi
+(`backend/apps/akademiya/`). Alohida baza, alohida xizmat yoki alohida build kerak emas.
+
+Birinchi marta yoqish (bir martalik):
+
+1. **DNS.** Domen boshqaruvida `academy` uchun `A` yozuvi — serverning IP manzili (`libosa.uz` dagi bilan bir xil).
+   Tarqalganini tekshirish: `dig +short academy.libosa.uz`.
+2. **`.env`.** `ALLOWED_HOSTS` ga `academy.libosa.uz` qo'shiladi:
+
+   ```bash
+   sudo -u libosa nano /var/www/libosa/backend/.env     # ALLOWED_HOSTS=libosa.uz,www.libosa.uz,academy.libosa.uz
+   ```
+
+3. **Kod va migratsiya** — odatdagi yangilash (§14). Yangi migratsiyalar: `tenants/0047`, `akademiya/0001`–`0003`.
+4. **nginx.** `deploy/nginx-libosa.uz.conf` da `server_name` ga `academy.libosa.uz` qo'shilgan — serverdagi nusxani
+   yangilang (§14, «nginx sozlamasi o'zgargan bo'lsa»), keyin `sudo nginx -t`.
+5. **Sertifikat.** Mavjud sertifikatga yangi nom qo'shiladi:
+
+   ```bash
+   sudo certbot --nginx --expand -d libosa.uz -d www.libosa.uz -d academy.libosa.uz
+   sudo systemctl reload nginx
+   ```
+
+6. **Cron.** `deploy/crontab.txt` ga `oquv_tozalash` qatori qo'shilgan — `crontab /var/www/libosa/deploy/crontab.txt`.
+
+Tekshirish:
+
+- `https://academy.libosa.uz` — kirish filmi, keyin «Boshlash →» tugmali bosh sahifa chiqadi (salon logini so'ralmaydi);
+  «Boshlash» mehmon sifatida bepul darslarga olib kiradi.
+- `https://libosa.uz` da kirib, yuqoridagi ism → «Akademiya»: yangi tabda o'quv saloni ochiladi, o'ngda pastda
+  oltin «O'quv saloni» tugmasi turadi.
+- `curl -s -o /dev/null -w '%{http_code}
+' -X POST https://academy.libosa.uz/api/auth/salon-login/` → `403`
+  (akademiya manzilidan haqiqiy salonga kirib bo'lmaydi).
+
+O'quv salonlari platforma panelidagi salonlar ro'yxatiga, kunlik hisobot, eslatma va SMS buyruqlariga kirmaydi;
+ulardan SMS va Telegram xabari chiqmaydi. 30 kun ochilmagan o'quv saloni `oquv_tozalash` bilan o'chadi —
+o'quvchining dars natijalari saqlanib qoladi.
+

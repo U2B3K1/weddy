@@ -711,7 +711,10 @@ function YangiZakazForma({ onTayyor, onTolov, boshlangich }) {
               <NavIkona nom="chap" className="tugma-ikon" />{qadam === 2 ? 'Sanaga qaytish' : 'Liboslarga qaytish'}
             </button>
           </div>
-          {qadam === 2 && <p className="yz-izoh"><NavIkona nom="yordam" className="tugma-ikon" />«Qo'shish» bosilganda libos siz uchun vaqtincha qulflanadi — boshqa sotuvchi uni ololmaydi.</p>}
+          {/* o'chiq «Davom etish» sababi: libos hali qo'shilmagan (tugma jim turib qolmasin) */}
+          {qadam === 2 && <p className="yz-izoh"><NavIkona nom="yordam" className="tugma-ikon" />{tanlangan.length === 0
+            ? "Davom etish uchun avval libos qo'shing: ro'yxatdagi libos ostidagi «Qo'shish» ni bosing."
+            : "«Qo'shish» bosilganda libos siz uchun vaqtincha qulflanadi — boshqa sotuvchi uni ololmaydi."}</p>}
           {/* o'chiq «Zakazni saqlash» sababi — tugma ostida */}
           {qadam === 3 && ismKerak && <p className="zakaz-sabab" role="status">Yangi mijozning ismini yozing</p>}
           {qadam === 3 && telefon && !joriyMijoz && telefonRaqamlari(telefon) >= 9 && (

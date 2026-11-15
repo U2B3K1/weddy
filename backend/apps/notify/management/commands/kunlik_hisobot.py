@@ -58,7 +58,7 @@ def kunlik_hisobotlarni_yoz(bugun=None, hozir=None):
     bugun = bugun or timezone.localdate()
     hozir = hozir or timezone.localtime().time()
     soni = 0
-    for salon in Salon.objects.exclude(holat=Salon.Holat.BLOKLANGAN):
+    for salon in Salon.objects.filter(oquv=False).exclude(holat=Salon.Holat.BLOKLANGAN):
         soz = sozlama(salon)
         # 4.16: yoq-o'ch + vaqt. Cron tez-tez ishlasa ham kuniga bir marta yoziladi (kalit bo'yicha)
         if not soz.kunlik_hisobot or hozir < soz.kunlik_hisobot_vaqti:

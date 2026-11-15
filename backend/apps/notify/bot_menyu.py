@@ -665,7 +665,7 @@ def _ega_amali(amal):
         return [("💳 To'lov ma'lumoti\nSalon rahbarlari botdagi «💳 To'lov» bo'limida shu matnni ko'radi.\n\n"
                  + (malumot or 'Hali kiritilmagan.'), tugmalar)]
     if amal == 'salonlar':
-        salonlar = list(Salon.objects.filter(chiqish_sanasi__isnull=True).order_by('nomi'))
+        salonlar = list(Salon.objects.filter(chiqish_sanasi__isnull=True, oquv=False).order_by('nomi'))
         sonlar = {}
         for s in salonlar:
             sonlar[s.get_holat_display()] = sonlar.get(s.get_holat_display(), 0) + 1
@@ -722,7 +722,7 @@ def obuna_qatorlari(bugun, dan, gacha):
     """Muddati [dan, gacha] oralig'iga tushgan salonlar, eng yaqini birinchi (`dan=None` — pastki chegara yo'q)."""
     qatorlar = []
     salonlar = [(s.obuna_muddati(), s) for s in
-                Salon.objects.filter(chiqish_sanasi__isnull=True).exclude(holat=Salon.Holat.BLOKLANGAN).order_by('nomi')]
+                Salon.objects.filter(chiqish_sanasi__isnull=True, oquv=False).exclude(holat=Salon.Holat.BLOKLANGAN).order_by('nomi')]
     for muddat, s in sorted(((m, s) for m, s in salonlar if m is not None), key=lambda q: q[0]):
         if muddat > gacha or (dan is not None and muddat < dan):
             continue
@@ -770,7 +770,7 @@ def obuna_ogohlantirishi(bugun=None, hozir=None):
     if hozir.hour < 9:
         return 0
     soni, xulosa = 0, []
-    for s in Salon.objects.filter(chiqish_sanasi__isnull=True).exclude(holat=Salon.Holat.BLOKLANGAN).order_by('nomi'):
+    for s in Salon.objects.filter(chiqish_sanasi__isnull=True, oquv=False).exclude(holat=Salon.Holat.BLOKLANGAN).order_by('nomi'):
         muddat = s.obuna_muddati()
         if muddat is None or (muddat - bugun).days not in OBUNA_ESLATMA_KUNLARI:
             continue

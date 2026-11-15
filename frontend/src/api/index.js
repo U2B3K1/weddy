@@ -289,6 +289,15 @@ export const boglandim = (zakazId, tur, izoh = '') => post(`/zakazlar/${zakazId}
 export const qarzdorlar = () => get('/hisobotlar/qarzdorlar/')
 export const telegramHolat = () => get('/telegram/')
 export const telegramUlash = () => post('/telegram/')
+// Akademiya (academy.libosa.uz): haqiqiy ilovadan bir martalik havola; qolganlari faqat akademiya hostida ishlaydi
+export const akademiyaHavola = () => post('/akademiya/havola/')
+export const akademiyaKirish = (kod) => post('/akademiya/kirish/', { kod })
+export const akademiyaMehmon = () => post('/akademiya/mehmon/')  // kirmasdan sinab ko'rish: vaqtinchalik o'quv saloni
+export const akademiyaDarslar = () => get('/akademiya/darslar/')
+export const darsBoshla = (kod) => post(`/akademiya/darslar/${kod}/boshlash/`)
+export const darsTekshir = (kod, javob) => post(`/akademiya/darslar/${kod}/tekshir/`, javob ? { javob } : {})
+export const darsYordam = (kod) => post(`/akademiya/darslar/${kod}/yordam/`)
+export const akademiyaQayta = () => post('/akademiya/qayta/')  // kursni boshidan: natijalar o'chadi, rekord qoladi
 export const telegramUzish = () => api.delete('/telegram/').then((r) => r.data)
 export const hisobotlarRoyxati = () => get('/hisobotlar/royxat/')
 export const hisobot = (kalit, dan, gacha, filtr = {}) => get(`/hisobotlar/h/${kalit}/`, { dan, gacha, ...filtr })

@@ -43,6 +43,7 @@ urlpatterns = [
     path('api/kassa/', include('apps.cash.urls')),
     path('api/', include('apps.finance.urls')),
     path('api/', include('apps.notify.urls')),
+    path('api/akademiya/', include('apps.akademiya.urls')),
 ]
 
 if settings.DEBUG:

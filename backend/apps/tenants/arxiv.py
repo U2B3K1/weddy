@@ -90,14 +90,11 @@ def muddati_otganlar(bugun=None):
     return Salon.objects.filter(chiqish_sanasi__isnull=False, chiqish_sanasi__lte=bugun - timedelta(days=OCHIRISH_KUN))
 
 
-@transaction.atomic
-def salonni_ochirish(salon, bugun=None):
-    """Chiqqaniga 90 kun bo'lgan salonni barcha ma'lumoti va fayllari bilan butunlay o'chiradi. Qaytarib bo'lmaydi."""
-    bugun = bugun or timezone.localdate()
-    sana = ochiriladigan_sana(salon)
-    if sana is None or bugun < sana:
-        raise ArxivXatosi(f"Salonni o'chirish mumkin emas: chiqqanidan keyin {OCHIRISH_KUN} kun o'tishi kerak.")
-    modellar = salon_modellari()
+def salon_qatorlarini_ochir(salon, saqlanadi=()):
+    """Salonga bog'langan barcha qatorlarni o'chiradi (`saqlanadi` dagi modellardan tashqari) va shu qatorlarga
+    tegishli fayllar ro'yxatini qaytaradi — chaqiruvchi ularni tranzaksiya yakunlangach o'chiradi.
+    Tranzaksiya ichida chaqiriladi. Salonning o'zi o'chirilmaydi."""
+    modellar = [m for m in salon_modellari() if m not in saqlanadi]
     fayllar = []
     for m in modellar:
         fayl_maydonlari = [f.name for f in m._meta.fields if isinstance(f, models.FileField)]
@@ -119,6 +116,17 @@ def salonni_ochirish(salon, bugun=None):
         kutmoqda = qolgan
     else:
         raise ArxivXatosi("Salon ma'lumotlarini o'chirib bo'lmadi: " + ', '.join(m._meta.label for m in kutmoqda))
+    return fayllar
+
+
+@transaction.atomic
+def salonni_ochirish(salon, bugun=None):
+    """Chiqqaniga 90 kun bo'lgan salonni barcha ma'lumoti va fayllari bilan butunlay o'chiradi. Qaytarib bo'lmaydi."""
+    bugun = bugun or timezone.localdate()
+    sana = ochiriladigan_sana(salon)
+    if sana is None or bugun < sana:
+        raise ArxivXatosi(f"Salonni o'chirish mumkin emas: chiqqanidan keyin {OCHIRISH_KUN} kun o'tishi kerak.")
+    fayllar = salon_qatorlarini_ochir(salon)
     nomi = salon.nomi
     salon.delete()
     # Fayllar baza muvaffaqiyatli tozalangach o'chiriladi

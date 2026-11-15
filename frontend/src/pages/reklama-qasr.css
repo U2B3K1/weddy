@@ -66,7 +66,7 @@
    Ular sarlavhalar bilan bir vaqtda ko'rinmaydi, shuning uchun bir joyga ustma-ust qo'yish mumkin. */
 @media (min-width: 900px) and (min-aspect-ratio: 11/10) {
   .rk-bayonot-chap { position: relative; }
-  .rk-bayonot .rk-amallar { position: absolute; left: 0; bottom: 0; margin-top: 0; }
+  .rk-bayonot .rk-amallar { position: absolute; left: 0; bottom: 0; margin-top: 0; flex-wrap: nowrap; width: max-content; } /* uch tugma bir qatorda */
 }
 
 

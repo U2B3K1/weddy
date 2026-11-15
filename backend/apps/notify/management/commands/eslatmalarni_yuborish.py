@@ -22,7 +22,7 @@ def eslatmalarni_yoz(bugun=None, soat=None):
     """
     bugun = bugun or timezone.localdate()
     soni = 0
-    for salon in Salon.objects.exclude(holat=Salon.Holat.BLOKLANGAN):
+    for salon in Salon.objects.filter(oquv=False).exclude(holat=Salon.Holat.BLOKLANGAN):
         xodimlar = [x for x in Xodim.objects.filter(salon=salon, faol=True, telegram_id__isnull=False)
                     if soat is None or soat >= bot_soz(x)['eslatma']]
         if not xodimlar:

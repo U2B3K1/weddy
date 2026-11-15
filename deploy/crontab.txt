@@ -19,3 +19,6 @@
 
 # Har soatda: bufer kuni o'tgan «tozalashda» liboslarni avtomatik «bo'sh» qilish
 15 * * * * cd /var/www/libosa/backend && /var/www/libosa/venv/bin/python manage.py tozalashni_yakunlash >> /var/log/libosa-cron.log 2>&1
+
+# Har kuni 04:30: Akademiya — egasiz va 30 kundan beri ochilmagan o'quv salonlarini o'chirish
+30 4 * * * cd /var/www/libosa/backend && /var/www/libosa/venv/bin/python manage.py oquv_tozalash >> /var/log/libosa-cron.log 2>&1

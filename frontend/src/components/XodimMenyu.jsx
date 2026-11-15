@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import NavIkona from './NavIkona'
-import { smenaHolati, som } from '../api'
+import { akademiyaHavola, smenaHolati, som, xatoMatni } from '../api'
+import { AKADEMIYA } from '../akademiya/host'
 
 // Xodim menyusi: belgi (profil rasmi yoki ismning bosh harfi) bosilsa — salon nomi, profil rasmi va «Ilovadan chiqish».
 // Kompyuterda yuqori panelda ism va rol bilan; telefonda (`ixcham`) shapkada faqat doira belgi.
@@ -41,6 +42,19 @@ export default function XodimMenyu({ xodim, rol, onChiqish, onRasm, onRasmOchir,
     setTekshirilmoqda(false); setOchiq(false)
     if (s?.ochiq && s.men_ishtirokchi && s.mening_hisobim > 0) setOgoh({ naqd: s.mening_hisobim, yolgiz: s.ishtirokchilar.length === 1 })
     else onChiqish()
+  }
+  // Akademiya yangi tabda ochiladi. Tab bosish paytida ochiladi (so'rovdan keyin ochilsa brauzer to'sib qo'yadi),
+  // manzil esa havola kelgach beriladi; tab ochilmasa — shu tabning o'zida.
+  const [akademiya, setAkademiya] = useState(false)
+  const akademiyaOch = async () => {
+    const tab = window.open('', '_blank')
+    setAkademiya(true); setRasmXato('')
+    try {
+      const { havola } = await akademiyaHavola()
+      if (tab) tab.location.href = havola
+      else window.location.href = havola
+      setOchiq(false)
+    } catch (err) { tab?.close(); setRasmXato(xatoMatni(err)) } finally { setAkademiya(false) }
   }
   const harf = (xodim.ism || '?').trim().charAt(0).toUpperCase()
 
@@ -85,6 +99,12 @@ export default function XodimMenyu({ xodim, rol, onChiqish, onRasm, onRasmOchir,
             </button>
           )}
           {rasmXato && <p className="xato ustki-menyu-xato" role="alert">{rasmXato}</p>}
+          {/* Akademiya — alohida manzilda (academy.libosa.uz), o'quv salonida; bir martalik havola bilan parolsiz ochiladi */}
+          {!AKADEMIYA && (
+            <button type="button" role="menuitem" disabled={akademiya} onClick={akademiyaOch}>
+              <NavIkona nom="hujjat" className="tugma-ikon" />{akademiya ? 'Ochilmoqda…' : 'Akademiya'}
+            </button>
+          )}
           {/* xodim ilovadan chiqadi (PIN ekrani); salon logini qurilmada qoladi — keyingi xodim o'z PIN'i bilan kiradi.
               Smenadan chiqish bu emas — u Kassadagi «Pulni topshirib chiqish» */}
           <button type="button" role="menuitem" disabled={tekshirilmoqda} onClick={chiqishBos}>

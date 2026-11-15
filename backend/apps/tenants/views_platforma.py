@@ -80,7 +80,7 @@ def _salonlar():
     zakazlar = dict(Zakaz.objects.values_list('salon_id').annotate(n=Count('id')))
     xodimlar = dict(Xodim.objects.filter(faol=True).values_list('salon_id').annotate(n=Count('id')))
     natija = []
-    for s in Salon.objects.select_related('tarif').order_by('nomi'):
+    for s in Salon.objects.filter(oquv=False).select_related('tarif').order_by('nomi'):
         s.zakazlar_soni, s.faol_xodimlar = zakazlar.get(s.id, 0), xodimlar.get(s.id, 0)
         natija.append(s)
     return natija

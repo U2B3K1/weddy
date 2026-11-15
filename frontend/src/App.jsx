@@ -1,7 +1,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from 'react'
 import { BoshAmal } from './components/BoshJoy'
 import { BoshJoyi } from './components/boshJoyi'
-import { bildirishnomalar, boshlash, boshlashYop, dashbord, me, oflaynKesh, oflaynToplam, profilRasmOchir, profilRasmYukla, saqlangan, som, tarmoqXatosi, xatoMatni } from './api'
+import { akademiyaHavola, bildirishnomalar, boshlash, boshlashYop, dashbord, me, oflaynKesh, oflaynToplam, profilRasmOchir, profilRasmYukla, saqlangan, som, tarmoqXatosi, xatoMatni } from './api'
 import BoshEkran from './pages/BoshEkran'
 import Tasdiq from './components/Tasdiq'
 import NavIkona from './components/NavIkona'
@@ -24,6 +24,13 @@ import Sozlamalar from './pages/Sozlamalar'
 import YangiZakaz from './pages/YangiZakaz'
 import Zakazlar from './pages/Zakazlar'
 import { BELGI_D } from './pages/ezazBelgi'
+
+// Akademiya kirish sahifasidan kelgan odam: manzildagi `?akademiya=1` shu tab uchun eslab qolinadi va manzildan olib tashlanadi
+const AKADEMIYAGA = 'weddy.akademiyaga'
+if (new URLSearchParams(window.location.search).has('akademiya')) {
+  sessionStorage.setItem(AKADEMIYAGA, '1')
+  window.history.replaceState(null, '', window.location.pathname + window.location.hash)
+}
 
 const HARAKATSIZLIK_MS = 10 * 60 * 1000
 const OGOHLANTIRISH_MS = 30 * 1000 // chiqishdan 30 soniya oldin «Davom etyapsizmi?»
@@ -119,6 +126,19 @@ export default function App() {
   }, [xodim?.rol])
 
 
+  // Akademiya kirish sahifasidan kelgan odam (`?akademiya=1`): kirgach Dashboard ko'rsatilmaydi — bir martalik havola
+  // olinib, shu tabning o'zida akademiya ochiladi. Havola olinmasa (masalan, internet yo'q) — odatdagi ilova qoladi.
+  const [akademiyaga, setAkademiyaga] = useState(() => !!sessionStorage.getItem(AKADEMIYAGA))
+  // Havola bir marta so'raladi: kirgach `xodim` ikki marta yangilanadi (kirish javobi, keyin me()) — ikkinchi so'rov
+  // birinchi kodni serverda o'chirib yuborardi va akademiya «Havola eskirgan» deb chiqardi.
+  const havolaSoraldi = useRef(false)
+  useEffect(() => {
+    if (!xodim || !akademiyaga || havolaSoraldi.current) return
+    havolaSoraldi.current = true
+    sessionStorage.removeItem(AKADEMIYAGA)
+    akademiyaHavola().then(({ havola }) => { window.location.href = havola }).catch(() => setAkademiyaga(false))
+  }, [xodim, akademiyaga])
+
   // Sahifa yangilanganda mavjud sessiyani tiklash.
   useEffect(() => {
     if (!saqlangan.token()) return
@@ -198,6 +218,14 @@ export default function App() {
         <PlatformaFon nurli />
         <button className="kirish-orqaga ikkinchi kichik" onClick={() => kirishga(false)}>← Bosh sahifa</button>
         <Kirish onKirdi={(x) => { setXodim(x); setSahifaXom('bosh'); me().then(setXodim).catch(() => {}) }} />
+      </>
+    )
+  }
+  if (akademiyaga) {
+    return (
+      <>
+        <PlatformaFon nurli />
+        <p role="status" style={{ position: 'fixed', inset: 0, display: 'grid', placeItems: 'center', margin: 0, color: '#F5F2EE', fontSize: 18 }}>Akademiya ochilmoqda…</p>
       </>
     )
   }

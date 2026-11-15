@@ -63,12 +63,14 @@ INSTALLED_APPS = [
     'apps.cash',
     'apps.finance',
     'apps.notify',
+    'apps.akademiya',
 ]
 
 MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'apps.tenants.kiritish.NulRadMiddleware',  # NUL baytli so'rov — 400 (aks holda bazada 500)
+    'apps.akademiya.host.AkademiyaMiddleware',  # akademiya hostida haqiqiy salon va tashqi xabar yo'llari yopiq
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -156,6 +158,11 @@ if DEBUG and env.bool('DEV_LAN', default=False):
     ALLOWED_HOSTS = ['*']
     CORS_ALLOWED_ORIGIN_REGEXES = [r'^http://(192\.168\.\d+\.\d+|10\.\d+\.\d+\.\d+|172\.(1[6-9]|2\d|3[01])\.\d+\.\d+):5173$']
 
+# Akademiya dev manzili (academy.localhost — brauzerlar uni 127.0.0.1 ga o'zi yo'naltiradi): faqat DEBUG rejimida
+if DEBUG:
+    ALLOWED_HOSTS = [*ALLOWED_HOSTS, 'academy.localhost']
+    CORS_ALLOWED_ORIGIN_REGEXES = [*globals().get('CORS_ALLOWED_ORIGIN_REGEXES', []), r'^http://academy\.localhost:\d+$']
+
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': ['apps.tenants.auth.StaffTokenAuthentication'],
     'DEFAULT_PERMISSION_CLASSES': ['apps.tenants.permissions.IsStaff'],
@@ -196,6 +203,11 @@ LOGGING = {
 
 # Xodim sessiyasi (FT-1.6: 10 daqiqa harakatsizlik) va PIN bloklash (FT-1.7)
 STAFF_TOKEN_MAX_AGE = 60 * 60 * 12
+
+# Akademiya (apps/akademiya): shu hostlardan kelgan so'rov faqat o'quv saloni bilan ishlaydi. Productionda bu host
+# ALLOWED_HOSTS ga ham qo'shiladi (deploy/DEPLOY.md). AKADEMIYA_URL — libosa.uz dagi «Akademiya» tugmasi ochadigan manzil.
+AKADEMIYA_HOSTLAR = [h.lower() for h in env.list('AKADEMIYA_HOSTS', default=['academy.libosa.uz', 'academy.localhost'])]
+AKADEMIYA_URL = env('AKADEMIYA_URL', default='https://academy.libosa.uz').rstrip('/')
 PIN_MAX_ATTEMPTS = 5
 PIN_LOCK_MINUTES = 15
 VAQTINCHALIK_BRON_SOAT = 24  # FT-2.5

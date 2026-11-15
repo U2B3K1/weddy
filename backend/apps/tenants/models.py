@@ -111,6 +111,9 @@ class Salon(models.Model):
     # Demo/ishtirokchi salonlar uchun: yoqilgan bo'lsa yangi qurilmalar rahbar ruxsatisiz darhol ishonchli bo'ladi
     # (FT-22.2 ni chetlab o'tadi — faqat demo_ezaz kabi sinov salonlarida yoqiladi).
     qurilma_avto_tasdiq = models.BooleanField(default=False)
+    # Akademiyaning o'quv saloni (apps/akademiya): har o'quvchiga bittadan, faqat akademiya hostidan ochiladi.
+    # Tashqi xabar yubormaydi, platforma ro'yxati va kunlik buyruqlarga kirmaydi; salon logini bilan kirib bo'lmaydi.
+    oquv = models.BooleanField(default=False, db_index=True)
     # Platformadan chiqish (FT-22.10): shu kundan 90 kun o'tgach ma'lumotlar o'chiriladi
     chiqish_sanasi = models.DateField(null=True, blank=True)
     chiqish_izohi = models.CharField(max_length=300, blank=True)

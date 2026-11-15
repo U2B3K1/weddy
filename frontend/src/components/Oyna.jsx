@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import NavIkona from './NavIkona'
 
 const FOKUSLANADI = 'a[href], button:not([disabled]), input:not([disabled]):not([type="hidden"]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
@@ -55,7 +56,10 @@ export default function Oyna({ sarlavha, onYop, children, keng = false, yon = fa
   const davomRef = useRef(null)
   useEffect(() => { if (soraladi) davomRef.current?.focus() }, [soraladi])
 
-  return (
+  // Oyna ilova ildiziga (.ilova) chiqariladi: «Shisha» bloklaridagi backdrop-filter ichidagi position:fixed elementni
+  // o'z chegarasiga qamab qo'yadi — Sozlama panelidan ochilgan oyna qirqilib, pastki tugmasi ko'rinmay qolardi.
+  const ildiz = typeof document !== 'undefined' ? document.querySelector('.ilova') : null
+  const oyna = (
     <div className={`oyna-parda${yon ? ' oyna-parda-yon' : ''}`} onClick={ehtiyotYop}>
       <div className={`oyna${keng ? ' oyna-keng' : ''}${yon ? ' oyna-yon' : ''}`} role="dialog" aria-modal="true" aria-label={sarlavha} ref={ref}
         onClick={(e) => e.stopPropagation()}
@@ -78,4 +82,5 @@ export default function Oyna({ sarlavha, onYop, children, keng = false, yon = fa
       </div>
     </div>
   )
+  return ildiz ? createPortal(oyna, ildiz) : oyna
 }

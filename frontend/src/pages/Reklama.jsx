@@ -21,6 +21,8 @@ const chekla = (v, a, b) => Math.min(b, Math.max(a, v))
 
 const YIL = new Date().getFullYear()   // futerdagi yil
 const MENYU = [['imkoniyatlar', 'Imkoniyatlar'], ['azo', "A'zo bo'lish"]]
+// Libosa Academy alohida manzilda: libosa.uz → academy.libosa.uz (ishlab chiqishda localhost → academy.localhost)
+const AKADEMIYA_MANZIL = `${window.location.protocol}//academy.${window.location.host.replace(/^www\./, '')}/`
 
 export default function Reklama({ onKirish }) {
   const ildiz = useRef(null)
@@ -189,10 +191,11 @@ export default function Reklama({ onKirish }) {
 
       <div className="rk-menyu" id="rk-menyu" aria-hidden={!menyu} inert={!menyu}>
         <div className="rk-menyu-havolalar">
+          <a href={AKADEMIYA_MANZIL} style={{ '--i': 0 }}><span><small>01</small>Akademiya</span></a>
           {MENYU.map(([id, nom], i) => (
-            <a key={id} href={`#${id}`} onClick={ot(id)} style={{ '--i': i }}><span><small>{`0${i + 1}`}</small>{nom}</span></a>
+            <a key={id} href={`#${id}`} onClick={ot(id)} style={{ '--i': i + 1 }}><span><small>{`0${i + 2}`}</small>{nom}</span></a>
           ))}
-          <button onClick={() => { setMenyu(false); onKirish() }} style={{ '--i': MENYU.length }}><span><small>→</small>Kirish</span></button>
+          <button onClick={() => { setMenyu(false); onKirish() }} style={{ '--i': MENYU.length + 1 }}><span><small>→</small>Kirish</span></button>
         </div>
         <p className="rk-menyu-oyoq">Libosa — nafislik tartibdan boshlanadi</p>
       </div>
@@ -209,6 +212,7 @@ export default function Reklama({ onKirish }) {
                 <Qator j={0}>Kelin liboslari</Qator><Qator j={1}>salonlari uchun</Qator><Qator j={2}>ijara tizimi</Qator>
               </h1>
               <div className="rk-amallar">
+                <a className="rk-tugma rk-tugma-chiziq" href={AKADEMIYA_MANZIL} data-magnit><span>Akademiya</span></a>
                 <a className="rk-tugma" href="#azo" onClick={ot('azo')} data-magnit><span>A'zo bo'lish</span></a>
                 <button className="rk-tugma rk-tugma-chiziq" onClick={onKirish} data-magnit><span>Kirish</span></button>
               </div>

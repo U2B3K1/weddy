@@ -41,7 +41,10 @@ class SmsXatosi(Exception):
 def hisob(salon=None):
     """(email, parol, from) — salonning o'z Eskiz hisobi («Integratsiyalar»), bo'lmasa platforma hisobi (.env); yo'q bo'lsa None."""
     if salon is not None:
-        from apps.tenants.models import Integratsiya
+        from apps.tenants.models import Integratsiya, Salon
+        # O'quv salonidan hech qachon haqiqiy SMS ketmaydi (akademiya): shlyuz «sozlanmagan» deb ko'rinadi
+        if Salon.objects.filter(id=getattr(salon, 'id', salon), oquv=True).exists():
+            return None
         i = Integratsiya.objects.filter(salon_id=getattr(salon, 'id', salon)).first()
         if i and i.eskiz_email and i.eskiz_parol:
             return i.eskiz_email, i.eskiz_parol, i.eskiz_from or settings.ESKIZ_FROM
@@ -188,7 +191,7 @@ def eslatmalarni_yoz(bugun=None):
     bugun = bugun or timezone.localdate()
     ertaga = bugun + timedelta(days=1)
     soni = 0
-    for salon in Salon.objects.exclude(holat=Salon.Holat.BLOKLANGAN):
+    for salon in Salon.objects.filter(oquv=False).exclude(holat=Salon.Holat.BLOKLANGAN):
         if not sozlama(salon).sms_eslatma:
             continue
         umumiy = {'salon': salon.nomi, 'sana': f'{ertaga:%d.%m}', 'tel': salon.telefon or salon.rahbar_telefon}
