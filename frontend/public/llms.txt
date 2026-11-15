@@ -1,0 +1,26 @@
+# Libosa
+
+> Libosa — kelin liboslari salonlari uchun ijara tizimi: bron, zakaz, zalog, kassa va oylik foyda bitta joyda.
+> Shiori: «Nafislik tartibdan boshlanadi». Sayt va ilova o'zbek tilida.
+
+Libosa (libosa.uz) is a rental management system for bridal dress salons in Uzbekistan. Salon staff use it on a tablet,
+phone or computer to see which dress is where, who has it and when it comes back. The interface is in Uzbek.
+
+## Nima qiladi
+
+- Liboslar katalogi va bandlik kalendari: qaysi libos qaysi kunlarda bo'sh yoki band
+- Bron va zakaz: mijoz, sana, narx, zalog va to'lovlar
+- Kassa: kirim va chiqim, kunlik hisob
+- Hisobotlar: oylik tushum va foyda
+- Telegram orqali eslatmalar
+
+Yangi salon 14 kun bepul sinov bilan ulanadi. Ulanish uchun bosh sahifadagi «A'zo bo'lish» so'rovi qoldiriladi.
+
+## Sahifalar
+
+- [Libosa — bosh sahifa](https://libosa.uz/): tizim taqdimoti va «A'zo bo'lish» so'rovi
+- [Libosa Academy](https://academy.libosa.uz/): salon xodimlari uchun bepul darslar — ilovaning o'zida, hikoya ichida, qadam-baqadam
+
+## Eslatma
+
+Salon ilovasining ichki sahifalari faqat tizimga kirgan salon xodimlariga ochiq; ochiq API yo'q.

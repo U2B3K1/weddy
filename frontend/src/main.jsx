@@ -4,6 +4,10 @@ import './uslublar.js'   // barcha uslublar, qat'iy tartibda — birinchi import
 import Ildiz from './Ildiz.jsx'
 import { AKADEMIYA } from './akademiya/host'
 
+// Google shriftlari uslubi index.html da oldindan yuklanadi (preload) va shu yerda ulanadi — birinchi ko'rinishni to'smaydi
+const shriftlar = document.getElementById('shriftlar')
+if (shriftlar) shriftlar.rel = 'stylesheet'
+
 // Akademiya kodi faqat akademiya manzilida yuklanadi (asosiy saytga kerak emas)
 const Akademiya = lazy(() => import('./akademiya/Akademiya.jsx'))
 const IchkiIlova = lazy(() => import('./akademiya/IchkiIlova.jsx'))
