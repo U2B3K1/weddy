@@ -216,7 +216,6 @@ export default function Reklama({ onKirish }) {
                 <Qator j={0}>Kelin liboslari</Qator><Qator j={1}>salonlari uchun</Qator><Qator j={2}>ijara tizimi</Qator>
               </h1>
               <div className="rk-amallar">
-                <a className="rk-tugma rk-tugma-chiziq" href={AKADEMIYA_MANZIL} data-magnit><span>Akademiya</span></a>
                 <a className="rk-tugma" href="#azo" onClick={ot('azo')} data-magnit><span>A'zo bo'lish</span></a>
                 <button className="rk-tugma rk-tugma-chiziq" onClick={onKirish} data-magnit><span>Kirish</span></button>
               </div>

@@ -11,7 +11,7 @@ const SAHNALAR = [
   { tasvir: 'muqova-1', joy: '62%', matn: 'Nafislik tartibdan boshlanadi' },
   { tasvir: 'muqova-2', joy: '80%', matn: "Nodira opa — salon egasi. Ishni sizga u o'rgatadi" },
   { tasvir: 'muqova-3', joy: '74%', matn: 'Madina bugun birinchi kun ishda. Siz u bilan birga boshlaysiz' },
-  { tasvir: 'bob-toy-kuni', joy: '50%', matn: '' },   // oxirgi sahnada yozuv o'rnida sarlavha va «Boshlash»
+  { tasvir: 'muqova-4', joy: '50%', matn: '' },   // oxirgi sahnada yozuv o'rnida sarlavha va «Boshlash»
 ]
 const N = SAHNALAR.length
 const KINO = 'weddy.akademiya_kino'   // kirish filmi shu qurilmada ko'rilgan (DarsPaneli.jsx dagi bilan bir xil kalit)
