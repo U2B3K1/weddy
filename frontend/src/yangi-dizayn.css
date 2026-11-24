@@ -1900,6 +1900,9 @@
 .ilova .oyna-bosh .oyna-bosh-matn p { margin: 2px 0 0; color: var(--matn-3); font-size: 13.5px; }
 .ilova .oyna.oyna-yon > .oyna-bosh .oyna-yop { margin-left: auto; border-radius: 50%; width: 40px; height: 40px; padding: 0; }
 .ilova .oyna.oyna-yon > .libos-forma { padding: 18px 24px 0; }
+/* «Bittalab / Ko'plab» — forma ustida, forma bilan bir xil chekinishda */
+.ilova .oyna.oyna-yon > .lf-rejim { margin: 16px 24px 0; }
+.ilova .oyna.oyna-yon > .lf-rejim + .libos-forma { padding-top: 14px; }
 .ilova .lf-korinish { display: flex; align-items: center; gap: 14px; padding: 14px 16px; border-radius: 14px; border: 1px dashed rgba(243, 191, 112, .4); background: rgba(243, 191, 112, .05); }
 .ilova .lf-korinish img { width: 56px; height: 64px; border-radius: 10px; object-fit: cover; object-position: top; }
 .ilova .lf-korinish-matn { flex: 1; display: flex; flex-direction: column; min-width: 0; }
@@ -1921,6 +1924,8 @@
 .ilova .lf-past .r2-sabab { margin: 0; }
 @media (max-width: 760px) {
   .ilova .oyna.oyna-yon > .libos-forma { padding: 14px 16px 0; }
+  .ilova .oyna.oyna-yon > .lf-rejim { margin: 14px 16px 0; }
+  .ilova .oyna.oyna-yon > .lf-rejim + .libos-forma { padding-top: 12px; }
   .ilova .lf-past { margin: 4px -16px 0; padding: 12px 16px 16px; }
   .ilova .lf-qator { grid-template-columns: minmax(0, 1fr); }
 }

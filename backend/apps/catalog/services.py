@@ -30,6 +30,17 @@ def keyingi_artikul(salon, soz=None):
     return f'{p}{n:0{soz.artikul_xona}d}'
 
 
+def _qoshish_ruxsati(salon, xodim, kategoriya):
+    """Libos qo'shishning umumiy qoidalari (bittalab va ommaviy): kategoriya shu salonniki va libos turida,
+    sotuvchi faqat sozlamada ruxsat berilgan bo'lsa qo'shadi. (rahbarmi, sozlama) qaytaradi."""
+    if kategoriya.salon_id != salon.id or kategoriya.turi != kategoriya.Turi.LIBOS:
+        raise KatalogXatosi('Kategoriya topilmadi.')
+    soz = sozlama(salon)
+    if not _rahbar(xodim) and not soz.sotuvchi_libos_qoshadi:
+        raise KatalogXatosi("Libosni faqat rahbar qo'shadi (sozlamalarda belgilangan).")
+    return _rahbar(xodim), soz
+
+
 @transaction.atomic
 def libos_qoshish(*, salon, xodim, artikul, nomi, kategoriya, olcham='', rang='', ijara_narxi=0,
                   zalog=0, tannarx=None):
@@ -40,12 +51,7 @@ def libos_qoshish(*, salon, xodim, artikul, nomi, kategoriya, olcham='', rang=''
     chiqmaydi, `libos_tasdigi` sozlamasi endi ta'sir qilmaydi). Rahbar qo'shgani darhol katalogga chiqadi
     (tannarx va ijara narxi API da majburiy).
     """
-    if kategoriya.salon_id != salon.id or kategoriya.turi != kategoriya.Turi.LIBOS:
-        raise KatalogXatosi('Kategoriya topilmadi.')
-    rahbar = _rahbar(xodim)
-    soz = sozlama(salon)
-    if not rahbar and not soz.sotuvchi_libos_qoshadi:
-        raise KatalogXatosi("Libosni faqat rahbar qo'shadi (sozlamalarda belgilangan).")
+    rahbar, soz = _qoshish_ruxsati(salon, xodim, kategoriya)
     if not rahbar:
         tannarx = None  # sotuvchi tannarx kirita olmaydi
     artikul = artikul.strip()
@@ -70,6 +76,66 @@ def libos_qoshish(*, salon, xodim, artikul, nomi, kategoriya, olcham='', rang=''
         rahbarlarga(salon, 'yangi_libos',
                     f"{xodim.ism} yangi libos qo'shdi: {libos.artikul} {libos.nomi}.\nNarx va tannarxni kiritib tasdiqlang.")
     return libos
+
+
+OMMAVIY_MAKS = 500  # bir safarda qo'shiladigan liboslar: «100 dan 20000 gacha» kabi xato terishga qarshi
+ARTIKUL_MAKS = 50   # Libos.artikul maydoni uzunligi
+
+
+def oraliq_artikullari(prefiks, dan, gacha, xona=0):
+    """Prefiks va raqamlar oralig'i (ikkala chegara ham kiradi) → artikullar: «LB», 100, 200 → LB100 … LB200.
+    `xona` — raqam kamida necha xonali bo'lsin (boshi nol bilan): «001» dan boshlansa 3 → LB001, LB002 …"""
+    return [f'{prefiks}{n:0{xona}d}' for n in range(dan, gacha + 1)]
+
+
+@transaction.atomic
+def liboslarni_ommaviy_qoshish(*, salon, xodim, kategoriya, prefiks, dan, gacha, xona=0, nomi='',
+                               ijara_narxi=0, zalog=0, tannarx=None, filial=None):
+    """Bir nechta libosni bir safarda qo'shish: prefiks + raqamlar oralig'i, bitta kategoriya (masalan, LB100–LB200).
+
+    Qoidalar bittalab qo'shish bilan bir xil (`_qoshish_ruxsati`). Narx umumiy: rahbar ijara narxi va tannarxni
+    kiritsa liboslar darhol katalogga chiqadi; kiritmasa (yoki sotuvchi qo'shsa) — «Tasdiq kutilmoqda», narx va
+    tannarx har biriga keyin kiritiladi (tannarxsiz libos katalogga chiqmaydi). Nomi berilmasa — kategoriya nomi.
+    Salonda allaqachon bor artikullar o'tkazib yuboriladi va ro'yxati qaytariladi. Jurnalga bitta yozuv, sotuvchi
+    qo'shgan bo'lsa rahbarga bitta xabar ketadi.
+    """
+    rahbar, _ = _qoshish_ruxsati(salon, xodim, kategoriya)
+    prefiks = (prefiks or '').strip()
+    if dan > gacha:
+        raise KatalogXatosi("«Gacha» raqami «Dan» raqamidan kichik bo'lmasin.")
+    if gacha - dan + 1 > OMMAVIY_MAKS:
+        raise KatalogXatosi(f"Bir safarda ko'pi bilan {OMMAVIY_MAKS} ta libos qo'shiladi (siz {gacha - dan + 1} ta kiritdingiz).")
+    artikullar = oraliq_artikullari(prefiks, dan, gacha, xona)
+    if len(artikullar[-1]) > ARTIKUL_MAKS:
+        raise KatalogXatosi(f"Artikul juda uzun: {ARTIKUL_MAKS} belgidan oshmasin.")
+    if not rahbar:
+        tannarx = None  # sotuvchi tannarx kirita olmaydi
+    darhol = rahbar and ijara_narxi > 0 and tannarx is not None
+    holat = Libos.Holat.BOSH if darhol else Libos.Holat.TASDIQ_KUTILMOQDA
+    bor = set(Libos.objects.filter(salon=salon, artikul__in=artikullar).values_list('artikul', flat=True))
+    yangi = [a for a in artikullar if a not in bor]
+    if not yangi:
+        raise KatalogXatosi(f"{artikullar[0]}–{artikullar[-1]} oralig'idagi hamma artikul salonda allaqachon bor.")
+    nomi = (nomi or '').strip() or kategoriya.nomi
+    try:
+        with transaction.atomic():
+            Libos.objects.bulk_create([
+                Libos(salon=salon, artikul=a, nomi=nomi, kategoriya=kategoriya, ijara_narxi=ijara_narxi, zalog=zalog,
+                      tannarx=tannarx, qoshgan=xodim, holat=holat, filial=filial) for a in yangi])
+    except IntegrityError:  # shu daqiqada boshqa xodim ham shu oraliqdan qo'shgan
+        raise KatalogXatosi("Shu oraliqdagi ba'zi artikullar hozirgina qo'shildi. Qayta urinib ko'ring.")
+    otkazildi = [a for a in artikullar if a in bor]
+    # oraliq `yangi` maydonida (300 belgi): ikki artikul (50 tadan) `obyekt` ning 100 belgisiga sig'masligi mumkin
+    jurnalga_yoz(salon, xodim, 'libos_qoshildi', f'{len(yangi)} ta libos (ommaviy)', '',
+                 f'{yangi[0]}–{yangi[-1]}, {kategoriya.nomi}, narx {ijara_narxi}, holat {holat}'
+                 + (f', {len(otkazildi)} tasi avval bor edi' if otkazildi else ''))
+    if not rahbar:  # FT-3.6: rahbarga bitta xabar (har libos uchun alohida emas)
+        from apps.notify.services import rahbarlarga
+        rahbarlarga(salon, 'yangi_libos',
+                    f"{xodim.ism} {len(yangi)} ta libos qo'shdi: {yangi[0]}–{yangi[-1]} ({kategoriya.nomi}).\n"
+                    "Narx va tannarxni kiritib tasdiqlang.")
+    return {'qoshildi': len(yangi), 'birinchi': yangi[0], 'oxirgi': yangi[-1], 'otkazildi': otkazildi,
+            'holat': holat, 'kategoriya': kategoriya.nomi}
 
 
 @transaction.atomic

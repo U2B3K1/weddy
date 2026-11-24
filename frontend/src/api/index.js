@@ -224,6 +224,8 @@ export const sanoqBelgila = (body) => post('/sanoq/belgilash/', body)
 export const sanoqYakunla = (body) => post('/sanoq/yakunlash/', body)
 export const liboslar = (params) => get('/liboslar/', params)
 export const libosYarat = (body) => post('/liboslar/', body)
+// Bir nechta libos bir safarda: { prefiks, dan, gacha, xona, kategoriya, nomi?, ijara_narxi?, zalog?, tannarx? }
+export const liboslarOmmaviy = (body) => post('/liboslar/ommaviy/', body)
 export const keyingiArtikul = () => get('/liboslar/keyingi-artikul/')
 export const libosTasdiq = (id, body) => post(`/liboslar/${id}/tasdiq/`, body)
 export const libosOzgartir = (id, body) => patch(`/liboslar/${id}/`, body)

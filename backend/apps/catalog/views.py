@@ -18,8 +18,8 @@ from .rasm import rasm_yuklash, rasmni_ochirish
 from .sanoq import belgilash, ochiq_sanoq, qator_json, sanoq_bekor, sanoq_boshlash, sanoq_json, sanoq_yakunlash
 from .tamir import tamirga_berish, tamirni_tugatish
 from .yetkazib import YetkazibXatosi, libos_xaridi_yoz
-from .services import (KatalogXatosi, QOLDA_HOLATLAR, keyingi_artikul, tozalashni_yakunla, libos_qoshish,
-                       libosni_ozgartirish, libosni_rad_etish, libosni_tasdiqlash)
+from .services import (KatalogXatosi, OMMAVIY_MAKS, QOLDA_HOLATLAR, keyingi_artikul, tozalashni_yakunla, libos_qoshish,
+                       liboslarni_ommaviy_qoshish, libosni_ozgartirish, libosni_rad_etish, libosni_tasdiqlash)
 
 
 def rasm_json(r, request):
@@ -192,6 +192,36 @@ class LiboslarView(APIView):
                 libos.filial = filial
                 libos.save(update_fields=['filial'])
         return err or Response(libos_json(libos, _rahbar(request), request), status=201)
+
+
+class LiboslarOmmaviySerializer(serializers.Serializer):
+    prefiks = serializers.CharField(max_length=40, required=False, allow_blank=True, default='')  # masalan: LB
+    dan = serializers.IntegerField(min_value=0)
+    gacha = serializers.IntegerField(min_value=0)
+    xona = serializers.IntegerField(min_value=0, max_value=10, default=0)  # «001» dan boshlansa — 3 (LB001, LB002…)
+    kategoriya = serializers.IntegerField()
+    nomi = serializers.CharField(max_length=200, required=False, allow_blank=True, default='')  # bo'sh — kategoriya nomi
+    ijara_narxi = serializers.IntegerField(min_value=0, default=0)
+    zalog = serializers.IntegerField(min_value=0, default=0)
+    tannarx = serializers.IntegerField(min_value=0, required=False)
+
+
+class LiboslarOmmaviyView(APIView):
+    """POST — bir nechta libos bir safarda: prefiks + raqamlar oralig'i (LB100–LB200), bitta kategoriyaga.
+    Javob — qisqa xulosa: nechta qo'shildi, birinchi va oxirgi artikul, allaqachon bor bo'lgani uchun o'tkazilganlar."""
+    permission_classes = [SalonYozishRuxsati]
+
+    def post(self, request):
+        ser = LiboslarOmmaviySerializer(data=request.data)
+        ser.is_valid(raise_exception=True)
+        d = ser.validated_data
+        kat = Kategoriya.objects.filter(salon=request.salon, id=d.pop('kategoriya')).first()
+        if not kat:
+            return Response({'kategoriya': ['Topilmadi.']}, status=400)
+        from apps.tenants.views_filial import joriy_filial
+        natija, err = _bajar(liboslarni_ommaviy_qoshish, salon=request.salon, xodim=request.user, kategoriya=kat,
+                             filial=joriy_filial(request), **d)
+        return err or Response({**natija, 'maks': OMMAVIY_MAKS}, status=201)
 
 
 class LibosTafsilotView(APIView):

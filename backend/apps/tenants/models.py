@@ -277,7 +277,7 @@ class Jurnal(SalonModel):
 
 
 def jurnalga_yoz(salon, xodim, harakat, obyekt, eski='', yangi=''):
-    return Jurnal.objects.create(salon=salon, xodim=xodim, harakat=harakat, obyekt=obyekt,
+    return Jurnal.objects.create(salon=salon, xodim=xodim, harakat=harakat, obyekt=str(obyekt)[:100],
                                  eski=str(eski)[:300], yangi=str(yangi)[:300])  # uzun qiymat (masalan, shartnoma bandlari) kesiladi
 
 

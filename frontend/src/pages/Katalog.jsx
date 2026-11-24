@@ -10,7 +10,7 @@ import AksessuarBolimi from './AksessuarBolimi'
 import LibosSanogi from './LibosSanogi'
 import YetkazibBeruvchilar from './YetkazibBeruvchilar'
 import {
-  filiallar, kategoriyalar, kategoriyaOchir, kategoriyaOzgartir, kategoriyaYarat, keyingiArtikul, libosOzgartir, libosPasport, libosRad, libosTasdiq, libosYarat, liboslar, rasmYukla, som, xatoMatni, yetkazibBeruvchilar, guruhla,
+  filiallar, kategoriyalar, kategoriyaOchir, kategoriyaOzgartir, kategoriyaYarat, keyingiArtikul, libosOzgartir, libosPasport, libosRad, libosTasdiq, libosYarat, liboslar, liboslarOmmaviy, rasmYukla, som, xatoMatni, yetkazibBeruvchilar, guruhla,
 } from '../api'
 import { OYLAR, bugunIso, kunlarSoni } from '../components/kalendar/sana'
 import SummaInput from '../components/SummaInput'
@@ -39,12 +39,17 @@ const mlnQisqa = (n) => (n >= 1e6 ? `${(n / 1e6).toLocaleString('ru-RU', { maxim
 const kunOy = (s) => (s ? String(s).slice(5, 10).split('-').reverse().join('.') : '')
 // Kanvas saralashlari: artikul (standart), ko'p ijaraga berilgan (shu oy), narx, eng yaqin bron
 const TARTIBLAR = [['artikul', 'Artikul bo\'yicha'], ['kop', "Ko'p ijaraga berilgan"], ['narx', 'Narxi qimmatdan'], ['bron', 'Yaqin bron']]
+// Artikul — raqami bilan: LB2, LB10, LB100 (oddiy matn tartibida LB10 LB100 LB2 bo'lardi — oraliq bilan qo'shilganda chalkash)
+const artikulTartib = (a, b) => String(a.artikul).localeCompare(String(b.artikul), 'uz', { numeric: true, sensitivity: 'base' })
 function saralash(royxat, tartib) {
   if (tartib === 'kop') return [...royxat].sort((a, b) => (b.bu_oy || 0) - (a.bu_oy || 0))
   if (tartib === 'narx') return [...royxat].sort((a, b) => b.ijara_narxi - a.ijara_narxi)
   if (tartib === 'bron') return [...royxat].sort((a, b) => String(a.keyingi_bron || '9999').localeCompare(String(b.keyingi_bron || '9999')))
-  return royxat
+  return [...royxat].sort(artikulTartib)
 }
+// «Tasdiq kutmoqda»: ko'plab qo'shilganda (masalan, 101 ta) hammasi birdan chizilmaydi — har biri o'z rasmlarini so'raydi
+// va katalog ro'yxati pastda qolib ketadi. Avval shuncha, qolgani «Yana N ta» bilan ochiladi.
+const KUTAYOTGAN_KORSAT = 5
 // «bugun», «ertaga» yoki «15 noyabr»
 function kunMatni(sana) {
   const d = kunlarSoni(bugunIso(), sana)
@@ -111,6 +116,8 @@ function Liboslar({ rahbar, onZakaz, yangiOch, onYangiYopildi }) {
   const [tartib, setTartib] = useState('artikul')  // kanvas: «Ko'p ijaraga berilgan» va boshqa saralashlar
   const [olcham, setOlcham] = useState('')
   const [oyna, setOyna] = useState(yangiOch ? 'yangi' : null) // 'yangi' | 'kategoriya' | null
+  const [qoshishRejimi, setQoshishRejimi] = useState('bitta') // «Libos qo'shish» oynasida: 'bitta' | 'kop' (oraliq)
+  const [kutayotganHammasi, setKutayotganHammasi] = useState(false) // «Tasdiq kutmoqda» to'liq ochilganmi
   useEffect(() => { if (yangiOch && oyna !== 'yangi') onYangiYopildi?.(false) }, [yangiOch, oyna, onYangiYopildi])
   useEffect(() => { filiallar().then((r) => setFil(r.filiallar)).catch(() => {}) }, [])
   const [ybs, setYbs] = useState([])  // yetkazib beruvchilar (faqat rahbar)
@@ -138,7 +145,13 @@ function Liboslar({ rahbar, onZakaz, yangiOch, onYangiYopildi }) {
 
   useEkrangaSigdir(torRef, [royxat.length, xabar.matn])
   useEkrangaSigdir(filtrRef, [royxat.length, xabar.matn])
-  const kutayotgan = royxat.filter((l) => l.holat === 'tasdiq_kutilmoqda')
+  const kutayotgan = royxat.filter((l) => l.holat === 'tasdiq_kutilmoqda').sort(artikulTartib)
+  const korinadiganKutayotgan = kutayotganHammasi ? kutayotgan : kutayotgan.slice(0, KUTAYOTGAN_KORSAT)
+  const kutayotganTugma = kutayotgan.length > KUTAYOTGAN_KORSAT && (
+    <button type="button" className="havola" aria-expanded={kutayotganHammasi} onClick={() => setKutayotganHammasi(!kutayotganHammasi)}>
+      {kutayotganHammasi ? "Kamroq ko'rsatish" : `Yana ${kutayotgan.length - KUTAYOTGAN_KORSAT} ta libos — ko'rsatish`}
+    </button>
+  )
   const libosKats = kats.filter((k) => k.turi === 'libos')
   const katalogda = royxat.filter((l) => l.holat !== 'tasdiq_kutilmoqda')
   const faol = katalogda.filter((l) => !NOFAOL.includes(l.holat))
@@ -189,27 +202,53 @@ function Liboslar({ rahbar, onZakaz, yangiOch, onYangiYopildi }) {
       {kutayotgan.length > 0 && (rahbar ? (
         <section className="blok diqqat-blok">
           <h3>Tasdiq kutmoqda ({kutayotgan.length})</h3>
-          {kutayotgan.map((l) => (
+          {korinadiganKutayotgan.map((l) => (
             <TasdiqForma key={l.id} libos={l} rahbar={rahbar} onRasm={yukla}
               onYuborish={(b) => bajar(() => libosTasdiq(l.id, b), `${l.artikul} katalogga chiqdi.`)}
               onRad={(sabab) => bajar(() => libosRad(l.id, sabab), `${l.artikul} rad etildi — arxivga o'tdi.`)} />
           ))}
+          {kutayotganTugma}
         </section>
       ) : (
         <section className="blok diqqat-blok r3k-kutayotgan">
           <h3>Rahbar tasdig'ini kutmoqda ({kutayotgan.length})</h3>
           <p className="malumot">Bu liboslar rahbar narx va tannarxni tasdiqlagach katalogga chiqadi. Qayta qo'shmang.</p>
           <ul>
-            {kutayotgan.map((l) => (
+            {korinadiganKutayotgan.map((l) => (
               <li key={l.id}><b>{l.artikul}</b> {l.nomi}<span className="malumot"> · {l.kategoriya}{l.olcham ? `, ${l.olcham}` : ''} · {l.qoshgan || '—'} qo'shdi</span></li>
             ))}
           </ul>
+          {kutayotganTugma}
         </section>
       ))}
 
       {oyna === 'yangi' && (
         <Oyna sarlavha="Libos qo'shish" onYop={() => setOyna(null)} yon ikon="katalog"
-          izoh={rahbar ? "Rahbar qo'shgani darhol katalogga chiqadi" : "Rahbar narx va tannarxni tasdiqlagach katalogga chiqadi"}>
+          izoh={qoshishRejimi === 'kop'
+            ? (rahbar ? "Narx va tannarx kiritilsa — darhol katalogga chiqadi" : "Rahbar narx va tannarxni tasdiqlagach katalogga chiqadi")
+            : (rahbar ? "Rahbar qo'shgani darhol katalogga chiqadi" : "Rahbar narx va tannarxni tasdiqlagach katalogga chiqadi")}>
+          {/* Bittalab (to'liq forma) yoki ko'plab: prefiks + raqamlar oralig'i, masalan LB100 dan LB200 gacha */}
+          <div className="hisobot-chiplar lf-rejim" role="radiogroup" aria-label="Qanday qo'shiladi">
+            {[['bitta', 'Bittalab'], ['kop', "Ko'plab (raqamlar oralig'i)"]].map(([k, nom]) => (
+              <button key={k} type="button" role="radio" aria-checked={qoshishRejimi === k} className={qoshishRejimi === k ? 'faol' : ''}
+                onClick={() => setQoshishRejimi(k)}>{nom}</button>
+            ))}
+          </div>
+          {qoshishRejimi === 'kop' ? (
+            <OmmaviyForma kats={libosKats} rahbar={rahbar} onBekor={() => setOyna(null)}
+              onYuborish={async (b) => {
+                let n = null
+                const ok = await bajar(async () => { n = await liboslarOmmaviy(b) }, '')
+                if (ok && n) {
+                  const qayer = n.holat === 'bosh' ? 'katalogga tushdi'
+                    : rahbar ? "«Tasdiq kutmoqda» ro'yxatiga tushdi — narx va tannarxni kiritib tasdiqlang" : "rahbar tasdig'iga yuborildi"
+                  setXabar({ turi: 'ok', matn: `${n.qoshildi} ta libos (${n.birinchi} — ${n.oxirgi}) «${n.kategoriya}» kategoriyasiga qo'shildi va ${qayer}.`
+                    + (n.otkazildi.length ? ` ${n.otkazildi.length} tasi salonda allaqachon bor edi, o'tkazib yuborildi: ${n.otkazildi.slice(0, 10).join(', ')}${n.otkazildi.length > 10 ? ' …' : ''}.` : '') })
+                  setOyna(null)
+                }
+                return ok
+              }} />
+          ) : (
           <LibosForma kats={libosKats} rahbar={rahbar} ybs={ybs} onBekor={() => setOyna(null)}
             olchamlar={[...new Set(royxat.map((l) => l.olcham).filter(Boolean))].sort((a, b) => (Number(a) || 999) - (Number(b) || 999) || a.localeCompare(b)).slice(0, 8)}
             onYuborish={async (b, rasmlar) => {
@@ -223,6 +262,7 @@ function Liboslar({ rahbar, onZakaz, yangiOch, onYangiYopildi }) {
               if (ok) setOyna(null)
               return ok
             }} />
+          )}
         </Oyna>
       )}
       {rahbar && oyna === 'kategoriya' && (
@@ -310,7 +350,7 @@ function Liboslar({ rahbar, onZakaz, yangiOch, onYangiYopildi }) {
           </select>
           {rahbar && <button type="button" className="ikkinchi kichik" onClick={() => setOyna('kategoriya')}>Kategoriyalar</button>}
           {/* «Libos qo'shish» — kanvasdagidek bo'lim boshida, tablar qatorining o'ngida (BoshAmal) */}
-          <BoshAmal><button type="button" className="bosh-tugma" onClick={() => setOyna('yangi')}><NavIkona nom="qosh" className="tugma-ikon" />Libos qo'shish</button></BoshAmal>
+          <BoshAmal><button type="button" className="bosh-tugma" onClick={() => { setQoshishRejimi('bitta'); setOyna('yangi') }}><NavIkona nom="qosh" className="tugma-ikon" />Libos qo'shish</button></BoshAmal>
         </div>
         {/* O'lcham chiplari: «44 o'lchamda nima bor?» — bir bosishda (2 va undan ko'p o'lcham bo'lsa) */}
         {olchamlar.length > 1 && (
@@ -690,6 +730,112 @@ function LibosForma({ kats, rahbar, ybs = [], onYuborish, onBekor, olchamlar = [
           {onBekor && <button type="button" className="ikkinchi" onClick={onBekor}>Bekor qilish</button>}
           <button type="button" className="pos-tugma" disabled={!tayyor} onClick={yubor}>
             <NavIkona nom="bajarildi" className="tugma-ikon" />Qo'shish{rasmlar.length > 0 && ` · ${rasmlar.length} ta rasm bilan`}
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Bir nechta libos bir safarda: prefiks + raqamlar oralig'i (ikkala chegara kiradi), bitta kategoriyaga.
+// Raqam yozilganidek olinadi: «001» dan boshlansa — LB001, LB002 … (oldidagi nollar bilan). Narx hammasiga bir xil;
+// rahbar ijara narxi va tannarxni kiritmasa, liboslar «Tasdiq kutmoqda» ga tushadi (tannarxsiz libos katalogga chiqmaydi).
+const OMMAVIY_MAKS = 500
+function OmmaviyForma({ kats, rahbar, onYuborish, onBekor }) {
+  const [f, setF] = useState({ prefiks: '', dan: '', gacha: '', kategoriya: '', nomi: '' })
+  const [band, setBand] = useState(false)
+  const set = (k) => (e) => setF({ ...f, [k]: e.target.value })
+  const raqam = (k) => (e) => setF({ ...f, [k]: e.target.value.replace(/\D/g, '').slice(0, 9) })
+  const prefiks = f.prefiks.trim()
+  const dan = f.dan === '' ? null : Number(f.dan)
+  const gacha = f.gacha === '' ? null : Number(f.gacha)
+  const xona = f.dan.length > 1 && f.dan.startsWith('0') ? f.dan.length : 0
+  const art = (n) => prefiks + String(n).padStart(xona, '0')
+  const soni = dan != null && gacha != null && gacha >= dan ? gacha - dan + 1 : 0
+  const katId = String(f.kategoriya || kats[0]?.id || '')
+  const katNomi = kats.find((k) => String(k.id) === katId)?.nomi
+  const tannarxBor = f.tannarx !== undefined && f.tannarx !== ''
+  const darhol = rahbar && Number(f.ijara_narxi) > 0 && tannarxBor
+  const xato = dan != null && gacha != null && gacha < dan ? "«Gacha» raqami «Dan» raqamidan kichik bo'lmasin."
+    : soni > OMMAVIY_MAKS ? `Bir safarda ko'pi bilan ${OMMAVIY_MAKS} ta libos qo'shiladi (hozir ${soni} ta).`
+      : soni && art(gacha).length > 50 ? 'Artikul juda uzun: 50 belgidan oshmasin.' : ''
+  const yetishmaydi = [dan == null && 'Dan', gacha == null && 'Gacha', !katId && 'Kategoriya'].filter(Boolean)
+  const tayyor = !yetishmaydi.length && !xato && soni > 0 && !band
+  const misol = !soni || xato ? '' : soni <= 3 ? Array.from({ length: soni }, (_, i) => art(dan + i)).join(', ')
+    : `${art(dan)}, ${art(dan + 1)} … ${art(gacha)}`
+  const yubor = async () => {
+    setBand(true)
+    try {
+      await onYuborish({
+        prefiks, dan, gacha, xona, kategoriya: Number(katId), nomi: f.nomi.trim(),
+        ijara_narxi: Number(f.ijara_narxi || 0), zalog: Number(f.zalog || 0), ...(rahbar && tannarxBor ? { tannarx: Number(f.tannarx) } : {}),
+      })
+    } finally {
+      setBand(false)
+    }
+  }
+  return (
+    <div className="stack libos-forma">
+      <div className="lf-korinish">
+        <span className="aks-plitka katta" aria-hidden="true"><NavIkona nom="katalog" className="tugma-ikon" /></span>
+        <span className="lf-korinish-matn" aria-live="polite">
+          <small>Qo'shiladi</small>
+          <b>{soni && !xato ? `${soni} ta libos` : 'Oraliqni kiriting'}</b>
+          <small>{[misol || 'masalan: LB100 … LB200', katNomi].filter(Boolean).join(' · ')}</small>
+        </span>
+      </div>
+      <fieldset className="lf-bolim">
+        <legend>Artikullar</legend>
+        <div className="libos-narxlar">
+          <label>Prefiks
+            <input value={f.prefiks} placeholder="masalan: LB" maxLength={40} onChange={set('prefiks')} />
+            <Info nom="Prefiks">Artikul boshidagi harflar — har bir libosda bir xil: «LB» → LB100, LB101 … Bo'sh qoldirsangiz, artikul faqat raqamdan iborat bo'ladi.</Info>
+          </label>
+          <label>Dan *<input inputMode="numeric" value={f.dan} placeholder="100" onChange={raqam('dan')} /></label>
+          <label>Gacha *<input inputMode="numeric" value={f.gacha} placeholder="200" onChange={raqam('gacha')} /></label>
+        </div>
+        <p className="malumot">Ikkala raqam ham kiradi: 100 dan 200 gacha — 101 ta libos. «001» dan boshlasangiz, raqamlar oldidagi nollar bilan yoziladi (LB001, LB002 …). Salonda allaqachon bor artikullar o'tkazib yuboriladi.</p>
+      </fieldset>
+      <fieldset className="lf-bolim">
+        <legend>Asosiy</legend>
+        <div className="lf-maydon">
+          <span className="forma-yorliq" id="om-kat">Kategoriya</span>
+          <div className="hisobot-chiplar" role="radiogroup" aria-labelledby="om-kat">
+            {kats.map((k) => (
+              <button key={k.id} type="button" role="radio" aria-checked={katId === String(k.id)} className={katId === String(k.id) ? 'faol' : ''}
+                onClick={() => setF({ ...f, kategoriya: String(k.id) })}>{k.nomi}</button>
+            ))}
+          </div>
+        </div>
+        <label>Nomi
+          <input value={f.nomi} placeholder={katNomi ? `bo'sh qolsa: ${katNomi}` : ''} maxLength={200} onChange={set('nomi')} />
+          <Info nom="Nomi">Hamma libosga bir xil nom beriladi. Bo'sh qoldirsangiz — kategoriya nomi. Keyin har birini alohida o'zgartirish mumkin.</Info>
+        </label>
+      </fieldset>
+      <fieldset className="lf-bolim">
+        <legend>Narx — hammasiga bir xil</legend>
+        <div className="libos-narxlar">
+          <label>Ijara narxi<SummaInput value={f.ijara_narxi || ''} onChange={set('ijara_narxi')} /></label>
+          <label>Tavsiya etilgan garov<SummaInput value={f.zalog || ''} onChange={set('zalog')} /><Info nom="Garov">{ZALOG_INFO}</Info></label>
+          {rahbar && (
+            <label className="lf-tannarx">Tannarx<SummaInput value={f.tannarx ?? ''} onChange={set('tannarx')} /><Info nom="Tannarx">{TANNARX_INFO}</Info>
+              <small className="soz-mute">faqat rahbar ko'radi</small>
+            </label>
+          )}
+        </div>
+        <p className="malumot">
+          {darhol ? "Liboslar darhol katalogga chiqadi. Keyin har birining narxini alohida o'zgartirish mumkin."
+            : rahbar ? "Ijara narxi va tannarx kiritilmasa, liboslar «Tasdiq kutmoqda» ro'yxatiga tushadi — narxni har biriga keyin kiritasiz."
+              : 'Liboslar rahbar narx va tannarxni tasdiqlagach katalogga chiqadi.'}
+        </p>
+      </fieldset>
+      <div className="lf-past">
+        {xato ? <p className="xato r2-sabab">{xato}</p>
+          : yetishmaydi.length > 0 && <p className="malumot r2-sabab">To'ldiring: {yetishmaydi.join(', ')}</p>}
+        <div className="lf-tugmalar">
+          {onBekor && <button type="button" className="ikkinchi" onClick={onBekor}>Bekor qilish</button>}
+          <button type="button" className="pos-tugma" disabled={!tayyor} onClick={yubor}>
+            <NavIkona nom="bajarildi" className="tugma-ikon" />{band ? "Qo'shilmoqda…" : soni && !xato ? `${soni} ta libosni qo'shish` : "Liboslarni qo'shish"}
           </button>
         </div>
       </div>
