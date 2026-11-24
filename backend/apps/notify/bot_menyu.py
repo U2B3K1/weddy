@@ -41,7 +41,14 @@ ESKI_EGA_YORLIQLARI = {'🏢 Salonlar': 'platforma', '💼 Obunalar': 'platforma
 KOP_SALON_MAKS = 4  # bitta Telegram shuncha salonda bo'lsa — hammasi birdaniga; ko'p bo'lsa «Qaysi salon?»
 START_MATNI = ("Pastdagi menyudan tanlang.\n"
                "Zakazni topish — raqamini, mijoz telefonini yoki ismini yozing (masalan: 125).\n"
-               "Libos bo'shmi — kodi va sanasini yozing (masalan: A12 25.11).")
+               "Libos bo'shmi — kodi va sanasini yozing (masalan: A12 25.11).\n"
+               "Savol yoki muammo — /yordam (qo'llab-quvvatlash).")
+
+
+def menyu_tugmasimi(matn):
+    """Pastki menyu tugmasi (joriy, eski yoki egaga tegishli) — qo'llab-quvvatlash rejimidan chiqaradi."""
+    return (matn in {nom for nom, _ in MENYU.values()} or matn in ESKI_YORLIQLAR or matn == EGA_MENYU
+            or matn in ESKI_EGA_YORLIQLARI)
 _KARTA = re.compile(r'(?<!\d)(?:\d[ -]?){15}\d(?!\d)')  # 16 raqamli karta — «nusxa olish» tugmasi uchun
 # Ega shu xabarga javob (reply) qilib yozgan matn to'lov ma'lumoti bo'lib saqlanadi — holat saqlash shart emas
 TOLOV_SORAV = "✍️ Yangi to'lov ma'lumotini shu xabarga javob qilib yozing"
@@ -56,6 +63,20 @@ QIDIR_YORDAM = ("Zakaz raqamini, mijoz telefonini (kamida 4 raqam) yoki ismini y
                 "Masalan: 125 yoki 901234567 yoki Madina")
 LIBOS_YORDAM = ("Libos kodi (yoki nomi) va sanani yozing.\nMasalan: A12 25.11 yoki A12 25.11-27.11")
 _SANA = re.compile(r'(\d{1,2})[./](\d{1,2})(?:[./](\d{2,4}))?')
+_RAQAMLI = re.compile(r'[\d\s+()\-]{2,20}')
+
+
+def qidiruv_shaklimi(matn):
+    """Zakaz qidiruvi yoki libos bandligiga o'xshash matn: zakaz raqami, telefon yoki «A12 25.11».
+
+    Qo'llab-quvvatlash rejimida shunday matn yozilsa — rejim tugaydi va qidiruv bajariladi (mijoz ma'lumoti egaga
+    ketmaydi). Gap ichidagi raqam («Zakaz 125 ochilmayapti») — savol, egaga ketadi."""
+    matn = (matn or '').strip()
+    if not matn:
+        return False
+    if _RAQAMLI.fullmatch(matn) and any(c.isdigit() for c in matn):
+        return True
+    return bool(_SANA.search(matn) and re.sub(_SANA, '', matn).strip(' -–—') and len(matn.split()) <= 4)
 
 
 def xodimlar(chat_id):
@@ -529,6 +550,7 @@ def _sozlama_sahifasi(x, bolim='bosh'):
     tugmalar = [[t(nom, k)] for k, nom in bolimlar.items()]
     if x.rol == R:  # obuna to'lovi pastki menyudan shu yerga ko'chdi (yangi xabar bo'lib ochiladi)
         tugmalar.append([{'text': "💳 To'lov", 'callback_data': f'm:{x.id}:tolov'}])
+    tugmalar.append([{'text': "💬 Qo'llab-quvvatlash", 'callback_data': 'yd:1'}])  # savol — platforma egasiga
     return (f"⚙️ Sozlamalar · {x.salon.nomi}\n\n" + '\n'.join(f'{nom}: {holat[k]}' for k, nom in bolimlar.items()),
             tugmalar)
 
@@ -774,6 +796,9 @@ def _ega_amali(amal):
         yangi = Ariza.objects.filter(korilgan=False).count()
         if yangi:
             qatorlar.append(f"Ko'rilmagan so'rovlar: {yangi}")
+        from .yordam import javobsizlar
+        if (javobsiz := javobsizlar()):
+            qatorlar.append(f"💬 Javobsiz murojaatlar: {javobsiz} — javob: murojaat xabariga «reply»")
         (obuna, tugmalar), = _ega_obunalar(bugun)
         return [('\n'.join(qatorlar) + '\n\n' + obuna,
                  [[{'text': '🩺 Holat batafsil', 'callback_data': 'e:holat'}]] + tugmalar

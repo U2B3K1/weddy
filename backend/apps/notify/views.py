@@ -9,6 +9,20 @@ from .models import Xabar
 from .services import ulash_kodi_yarat, uzish
 
 
+class YordamView(APIView):
+    """GET — ilovadagi «Qo'llab-quvvatlash»: botda platforma egasiga yozish havolasi (har qanday xodim uchun).
+
+    Havola null bo'lsa (bot yoki ega ulanmagan, o'quv saloni) — `sabab` da tushuntirish."""
+    permission_classes = [IsStaff]
+
+    def get(self, request):
+        from .yordam import havola
+        h = havola(request.user)
+        return Response({'havola': h, 'sabab': None if h else (
+            "O'quv salonida qo'llab-quvvatlash yo'q." if request.salon.oquv
+            else "Qo'llab-quvvatlash hozircha ulanmagan: platformaning Telegram boti sozlanmagan.")})
+
+
 class TelegramView(APIView):
     """Xodim o'z Telegram akkauntini ulaydi: GET — holat, POST — bir martalik kod, DELETE — uzish."""
     permission_classes = [IsStaff]

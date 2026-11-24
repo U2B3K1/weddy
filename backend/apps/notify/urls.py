@@ -4,6 +4,7 @@ from . import views
 
 urlpatterns = [
     path('telegram/', views.TelegramView.as_view()),
+    path('yordam/', views.YordamView.as_view()),
     path('xabarlar/', views.XabarlarView.as_view()),
     path('sms/', views.SmsJurnaliView.as_view()),
 ]

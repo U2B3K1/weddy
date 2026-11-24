@@ -3,13 +3,17 @@ import time
 
 from django.core.management.base import BaseCommand, CommandError
 from django.db import close_old_connections
+from django.utils import timezone
 
-from apps.notify import bot_menyu, telegram, vidjet
+from apps.notify import bot_menyu, telegram, vidjet, yordam
 from apps.tenants.models import platforma_sozlama
 from apps.notify.services import (korsat_tugma_ishla, kutayotganlarni_yubor, qurilma_start_ishla, start_ishla,
                                   start_ishla_platforma, tugma_ishla)
 
 log = logging.getLogger(__name__)
+# Telegramdagi «Menu» tugmasi ro'yxati (setMyCommands): qo'llab-quvvatlash pastki menyuda emas — kam ishlatiladi
+BUYRUQLAR = [{'command': 'menyu', 'description': 'Menyuni ochish'},
+             {'command': 'yordam', 'description': "Qo'llab-quvvatlash: savol yoki muammo yozish"}]
 NAVBAT_MUDDATI = 8  # soniya: navbatdagi xabarlarni yuborish bir aylanishda shundan oshmaydi (tugmalar kutib qolmasin)
 SEKIN = 3  # soniya: bundan uzoq ishlagan yangilanish jurnalga yoziladi
 
@@ -48,12 +52,51 @@ def yangilanishni_ishla(u, token=None):
         if m['chat'].get('type') != 'private':
             return None  # guruhlarda ishlamaydi: xabarlarda mijoz ma'lumoti bor
         javobga = (m.get('reply_to_message') or {}).get('text') or ''
+        # Qo'llab-quvvatlash — boshqa ishlovlardan oldin: ega javobi chek, qidiruv yoki to'lov ma'lumotiga tushmasin,
+        # rejimdagi foydalanuvchi xabari esa zakaz qidiruviga emas, egaga ketsin
+        if m.get('reply_to_message') and bot_menyu.egami(chat_id) and yordam.ega_javobi(chat_id, m, token):
+            return 'yordam:javob'
+        buyruq = matn.split()[0].split('@')[0].lower() if matn.startswith('/') else ''
+        kod = matn[6:].strip() if buyruq == '/start' else ''
+        if buyruq == '/yordam' or kod == 'yordam' or kod.startswith('y_'):
+            javob = None
+            for javob, tugmalar in yordam.boshlash(chat_id, yordam.havola_xodimi(kod) if kod.startswith('y_') else None):
+                _javob_yubor(chat_id, javob, tugmalar, tk)
+            return javob
+        if buyruq == '/bekor':
+            javob = ("💬 Qo'llab-quvvatlash yozish rejimi tugadi." if yordam.tugat(chat_id)
+                     else "Bekor qilinadigan narsa yo'q.")
+            telegram.xabar_yubor(chat_id, javob, klaviatura=bot_menyu.klaviatura(chat_id), **tk)
+            return javob
+        if (r := yordam.rejim(chat_id)):
+            muddati_otgan = r.tugaydi <= timezone.now()
+            # Menyu tugmasi, buyruq, chek so'roviga javob yoki zakaz qidiruviga o'xshash matn (raqam, telefon,
+            # «A12 25.11») — rejimdan chiqadi va odatdagidek ishlanadi: mijoz ma'lumoti egaga ketib qolmasin
+            if (buyruq or bot_menyu.menyu_tugmasimi(matn) or javobga.startswith(bot_menyu.CHEK_SORAV)
+                    or bot_menyu.qidiruv_shaklimi(matn)):
+                yordam.tugat(chat_id)
+                if not muddati_otgan:
+                    telegram.xabar_yubor(chat_id, "💬 Qo'llab-quvvatlash yozish rejimi tugadi.", **tk)
+            elif muddati_otgan:  # jimlikdan keyin yozilgan matn yoki fayl — egaga ham, qidiruvga ham ketmaydi
+                yordam.tugat(chat_id)
+                javob = ("💬 Qo'llab-quvvatlash yozish rejimi 30 daqiqa jimlikdan keyin tugadi — bu xabar yuborilmadi. "
+                         "Yana yozish uchun: /yordam.")
+                telegram.xabar_yubor(chat_id, javob, klaviatura=bot_menyu.klaviatura(chat_id), **tk)
+                return javob
+            else:
+                javob = None
+                for javob, tugmalar in yordam.murojaat_qabul(chat_id, m, token):
+                    _javob_yubor(chat_id, javob, tugmalar, tk)
+                return javob or 'yordam:yuborildi'
         if m.get('photo') or m.get('document'):  # rasm/fayl: faqat rahbarning to'lov cheki
             javob = None
             for javob, tugmalar in bot_menyu.chek_ishla(chat_id, m, javobga):
                 _javob_yubor(chat_id, javob, tugmalar, tk)
             return javob
-        kod = matn[6:].strip() if matn.startswith('/start') else ''
+        if not matn and yordam.xabar_turi(m) not in (None, 'matn'):  # ovozli xabar, stiker… — faqat qo'llab-quvvatlashda
+            javob = "Ovozli xabar va boshqa fayllarni qo'llab-quvvatlashga yuborish uchun avval /yordam ni bosing."
+            telegram.xabar_yubor(chat_id, javob, **tk)
+            return javob
         if kod.startswith('q_'):  # yangi qurilmani tasdiqlash havolasi
             javob, tugmalar = qurilma_start_ishla(chat_id, kod[2:])
             telegram.xabar_yubor(chat_id, javob, tugmalar, **tk)
@@ -67,7 +110,8 @@ def yangilanishni_ishla(u, token=None):
         if matn in ('/start', '/menu', '/menyu'):
             kl = bot_menyu.klaviatura(chat_id)
             javob = (bot_menyu.START_MATNI if kl
-                     else "Libosa boti. Ulash uchun ilovada «Telegramni ulash» tugmasini bosing.")
+                     else "Libosa boti. Ulash uchun ilovada «Telegramni ulash» tugmasini bosing.\n"
+                          "Savol yoki muammo bo'lsa — /yordam (qo'llab-quvvatlash).")
             telegram.xabar_yubor(chat_id, javob, klaviatura=kl, **tk)
             return javob
         javob = None
@@ -81,10 +125,11 @@ def yangilanishni_ishla(u, token=None):
         c = u['callback_query']
         kw = {'_token': token} if token else {}
         data = c.get('data') or ''
-        if data.startswith(('m:', 'e:', 'tc:')):  # menyu, ega tugmasi, chek so'rovi — javob yangi xabar bo'lib keladi
+        if data.startswith(('m:', 'e:', 'tc:', 'yd:')):  # menyu, ega tugmasi, chek, qo'llab-quvvatlash — yangi xabar
             _tinchgina('answerCallbackQuery', callback_query_id=c['id'], **kw)
             javob = None
-            ishlovchi = {'m': bot_menyu.tugma_ishla, 'e': bot_menyu.ega_tugma, 'tc': bot_menyu.chek_tugma}[data.split(':')[0]]
+            ishlovchi = {'m': bot_menyu.tugma_ishla, 'e': bot_menyu.ega_tugma, 'tc': bot_menyu.chek_tugma,
+                         'yd': lambda chat, _data: yordam.boshlash(chat)}[data.split(':')[0]]
             for javob, tugmalar in ishlovchi(c['from']['id'], data):
                 _javob_yubor(c['from']['id'], javob, tugmalar, tk)
             return javob
@@ -146,6 +191,7 @@ class Command(BaseCommand):
         offset = 0
         vidjetsiz_gacha = 0.0  # `widget_query` ni so'rash xato bergan bo'lsa — shu vaqtgacha so'ralmaydi
         tekshirilgan = 0.0  # nazorat eslatmalari daqiqada ko'pi bilan bir marta
+        buyruqlar_qoyildi = None  # Telegram menyusidagi buyruqlar shu token uchun qo'yilgan
         while True:
             try:
                 # Uzoq yashaydigan jarayon: baza ulanishi uzilgan bo'lsa (Postgres qayta yoqilgan va h.k.) — yangisi
@@ -155,6 +201,10 @@ class Command(BaseCommand):
                 if not token:
                     time.sleep(15)
                     continue
+                if buyruqlar_qoyildi != token:  # bir marta (token almashsa — qayta); xato botni to'xtatmaydi
+                    buyruqlar_qoyildi = token
+                    if not _tinchgina('setMyCommands', _token=token, commands=BUYRUQLAR):
+                        self.stderr.write('Telegram menyusiga buyruqlarni qo\'yib bo\'lmadi')
                 if time.monotonic() - tekshirilgan >= 60:
                     tekshirilgan = time.monotonic()
                     try:

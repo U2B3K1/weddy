@@ -293,6 +293,8 @@ export const telegramHolat = () => get('/telegram/')
 export const telegramUlash = () => post('/telegram/')
 // Akademiya (academy.libosa.uz): haqiqiy ilovadan bir martalik havola; qolganlari faqat akademiya hostida ishlaydi
 export const akademiyaHavola = () => post('/akademiya/havola/')
+// Qo'llab-quvvatlash: Telegram botda platforma egasiga yozish havolasi → { havola, sabab }
+export const yordamHavola = () => get('/yordam/')
 export const akademiyaKirish = (kod) => post('/akademiya/kirish/', { kod })
 export const akademiyaMehmon = () => post('/akademiya/mehmon/')  // kirmasdan sinab ko'rish: vaqtinchalik o'quv saloni
 export const akademiyaDarslar = () => get('/akademiya/darslar/')

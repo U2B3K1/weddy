@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import NavIkona from './NavIkona'
-import { akademiyaHavola, smenaHolati, som, xatoMatni } from '../api'
+import { akademiyaHavola, smenaHolati, som, xatoMatni, yordamHavola } from '../api'
 import { AKADEMIYA } from '../akademiya/host'
 
 // Xodim menyusi: belgi (profil rasmi yoki ismning bosh harfi) bosilsa — salon nomi, profil rasmi va «Ilovadan chiqish».
@@ -56,6 +56,20 @@ export default function XodimMenyu({ xodim, rol, onChiqish, onRasm, onRasmOchir,
       setOchiq(false)
     } catch (err) { tab?.close(); setRasmXato(xatoMatni(err)) } finally { setAkademiya(false) }
   }
+  // Qo'llab-quvvatlash — Telegram botda platforma egasiga yozish (bot havolasi yangi tabda / Telegram ilovasida ochiladi).
+  // Akademiya kabi: tab bosish paytida ochiladi, manzil havola kelgach beriladi; havola bo'lmasa — sababi menyuda.
+  const [yordam, setYordam] = useState(false)
+  const yordamOch = async () => {
+    const tab = window.open('', '_blank')
+    setYordam(true); setRasmXato('')
+    try {
+      const { havola, sabab } = await yordamHavola()
+      if (!havola) { tab?.close(); setRasmXato(sabab); return }
+      if (tab) tab.location.href = havola
+      else window.location.href = havola
+      setOchiq(false)
+    } catch (err) { tab?.close(); setRasmXato(xatoMatni(err)) } finally { setYordam(false) }
+  }
   const harf = (xodim.ism || '?').trim().charAt(0).toUpperCase()
 
   if (yon) {
@@ -103,6 +117,12 @@ export default function XodimMenyu({ xodim, rol, onChiqish, onRasm, onRasmOchir,
           {!AKADEMIYA && (
             <button type="button" role="menuitem" disabled={akademiya} onClick={akademiyaOch}>
               <NavIkona nom="hujjat" className="tugma-ikon" />{akademiya ? 'Ochilmoqda…' : 'Akademiya'}
+            </button>
+          )}
+          {/* savol yoki muammo — platforma egasiga Telegram bot orqali; javob ham botga keladi */}
+          {!AKADEMIYA && (
+            <button type="button" role="menuitem" disabled={yordam} onClick={yordamOch}>
+              <NavIkona nom="yordam" className="tugma-ikon" />{yordam ? 'Ochilmoqda…' : "Qo'llab-quvvatlash"}
             </button>
           )}
           {/* xodim ilovadan chiqadi (PIN ekrani); salon logini qurilmada qoladi — keyingi xodim o'z PIN'i bilan kiradi.

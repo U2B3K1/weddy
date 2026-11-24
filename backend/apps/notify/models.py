@@ -93,3 +93,37 @@ class TugmaBosish(models.Model):
 
     class Meta:
         constraints = [models.UniqueConstraint(fields=['nom', 'sana'], name='tugma_bosish_kunlik')]
+
+
+class Murojaat(models.Model):
+    """Qo'llab-quvvatlash: botdagi foydalanuvchi xabari platforma egasiga uzatilgan (har xabar — bitta qator).
+
+    Ega javobni Telegramda shu xabarga «reply» qilib yozadi; javob qaysi chatga ketishi faqat shu qatordan olinadi
+    (ega chati + undagi xabar raqami bo'yicha — Telegramda xabar raqami faqat bitta chat ichida noyob).
+    """
+    chat_id = models.BigIntegerField(db_index=True)                    # yozgan foydalanuvchining chati
+    foydalanuvchi_xabar_id = models.BigIntegerField()                  # javob shu xabarga «reply» bo'lib boradi
+    ega_chat_id = models.BigIntegerField()
+    ega_xabar_id = models.BigIntegerField()                            # egadagi nusxa — ega shunga javob beradi
+    ega_sarlavha_id = models.BigIntegerField(null=True, blank=True)    # izohsiz turlar (stiker…): sarlavha alohida xabar
+    # Xabar matni va ismlar saqlanmaydi — ular Telegram chatlarida; bu yerda faqat yo'naltirish uchun raqamlar.
+    # Salon o'chirilsa qatorlari ham o'chadi (tenants/arxiv.py `salon` maydoni bor modellarni o'zi topadi).
+    xodim = models.ForeignKey('tenants.Xodim', null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    salon = models.ForeignKey('tenants.Salon', null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    yaratilgan = models.DateTimeField(auto_now_add=True)
+    javob_berildi = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        indexes = [models.Index(fields=['ega_chat_id', 'ega_xabar_id'], name='murojaat_ega_xabari'),
+                   models.Index(fields=['ega_chat_id', 'ega_sarlavha_id'], name='murojaat_ega_sarlavhasi')]
+
+
+class YordamRejimi(models.Model):
+    """Foydalanuvchi «qo'llab-quvvatlashga yozish» rejimida: shu vaqtgacha uning xabarlari egaga uzatiladi.
+
+    Bazada (keshda emas): bot qayta ishga tushsa ham rejim yo'qolmaydi va xabar tasodifan zakaz qidiruviga tushmaydi.
+    `xodim` — ilovadagi havola orqali kelganda havolani yaratgan xodim (kim ochgani emas).
+    """
+    chat_id = models.BigIntegerField(unique=True)
+    xodim = models.ForeignKey('tenants.Xodim', null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    tugaydi = models.DateTimeField()

@@ -726,8 +726,8 @@ class XabarSozlamaTests(Base):
         self.yoz(RAHBAR_CHAT, '⚙️ Sozlamalar')
         chat, matn, tugmalar, _ = self.yuborilgan[-1]
         self.assertIn('Bildirishnoma turlari: 5/5 yoqilgan', matn)
-        self.assertEqual([t['callback_data'].split(':')[2] for q in tugmalar for t in q],
-                         ['tur', 'esl', 'tinch', 'maxfiy', 'tolov'])  # tolov — m: tugma
+        self.assertEqual([t['callback_data'].split(':')[-1] for q in tugmalar for t in q],
+                         ['tur', 'esl', 'tinch', 'maxfiy', 'tolov', '1'])  # tolov — m: tugma, 1 — yd:1 (qo'llab-quvvatlash)
         self.tugma(RAHBAR_CHAT, f's:{self.rahbar.id}:tur')
         sahifa = self.tahrir()
         self.assertIn('doim keladi', sahifa['text'])
@@ -739,7 +739,7 @@ class XabarSozlamaTests(Base):
         self.assertEqual([t['callback_data'] for q in self.tahrir()['reply_markup']['inline_keyboard'][:-1] for t in q],
                          [f's:{self.malika.id}:tur:eslatma'])
         self.yoz(SOTUVCHI_CHAT, '⚙️ Sozlamalar')  # jamlanmaga kiradigan xabari yo'q — «Yetkazish tartibi» ham yo'q
-        self.assertEqual([q[0]['callback_data'].split(':')[2] for q in self.yuborilgan[-1][2]], ['tur', 'esl', 'tinch', 'maxfiy'])
+        self.assertEqual([q[0]['callback_data'].split(':')[-1] for q in self.yuborilgan[-1][2]], ['tur', 'esl', 'tinch', 'maxfiy', '1'])
         self.assertEqual(self.tugma(RAHBAR_CHAT, f's:{self.rahbar.id}:yet:18'), 'Bu amal sizga ruxsat etilmagan.')
 
     def test_ochirilgan_guruh_kelmaydi_qayta_yoqilsa_keladi(self):
@@ -1070,7 +1070,7 @@ class MinimalMenyuTests(Base):
 
     def test_tolov_sozlamalarda_va_obuna_eslatmasida(self):
         self.yoz(RAHBAR_CHAT, '⚙️ Sozlamalar')
-        self.assertEqual(self.yuborilgan[-1][2][-1][0]['callback_data'], f'm:{self.rahbar.id}:tolov')
+        self.assertEqual(self.yuborilgan[-1][2][-2][0]['callback_data'], f'm:{self.rahbar.id}:tolov')  # oxirgisi — yd:1
         self.yoz(SOTUVCHI_CHAT, '⚙️ Sozlamalar')
         self.assertNotIn(':tolov', str(self.yuborilgan[-1][2]))
         bugun = timezone.localdate()
