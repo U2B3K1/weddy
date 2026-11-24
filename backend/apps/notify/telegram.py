@@ -34,6 +34,14 @@ class TelegramLimitXatosi(TelegramXatosi):
         self.kuting = max(1, int(kuting or 1))
 
 
+class TelegramTarmoqXatosi(TelegramXatosi):
+    """Vaqtinchalik: tarmoq uzildi, javob kelmadi yoki Telegram serverida xato (5xx).
+
+    Xabar navbatda qoladi va keyinroq qayta yuboriladi. Ilgari bunday xato «XATO» deb belgilanardi va qayta
+    yuborilmasdi — bir lahzalik uzilish zakaz arxividagi xabarni butunlay yo'qotardi.
+    """
+
+
 def token_ol(salon=None):
     """Platforma bot tokeni: avval panel orqali kiritilgani, bo'lmasa `.env`; ikkalasi ham bo'sh bo'lsa ''."""
     from apps.tenants.models import platforma_sozlama
@@ -76,9 +84,11 @@ def api(metod, _token=None, **params):
         if e.code == 429:
             raise TelegramLimitXatosi(f'HTTP 429 {tavsif}'.strip(),
                                      kuting=(xato.get('parameters') or {}).get('retry_after', 1))
+        if e.code >= 500:
+            raise TelegramTarmoqXatosi(f'HTTP {e.code} {tavsif}'.strip())
         raise TelegramXatosi(f'HTTP {e.code} {tavsif}'.strip())
     except (urllib.error.URLError, TimeoutError, OSError, ValueError) as e:
-        raise TelegramXatosi(type(e).__name__)  # token URL ichida — xato matniga chiqarilmaydi
+        raise TelegramTarmoqXatosi(type(e).__name__)  # token URL ichida — xato matniga chiqarilmaydi
     if not javob.get('ok'):
         raise TelegramXatosi(str(javob.get('description', 'xato'))[:200])
     return javob.get('result')

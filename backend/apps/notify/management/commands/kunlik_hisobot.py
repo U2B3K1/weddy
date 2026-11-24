@@ -4,7 +4,7 @@ from django.utils import timezone
 
 from apps.cash.models import Smena, Tolov
 from apps.notify.services import kutayotganlarni_yubor, rahbarlarga, som
-from apps.orders.models import QaytarishAkti, Zakaz
+from apps.orders.models import QaytarishAkti, Zakaz, ZakazTarixi
 from apps.tenants.models import Salon, sozlama
 
 
@@ -35,6 +35,9 @@ def kunlik_raqamlar(salon, bugun):
         'berilgan': Zakaz.objects.filter(salon=salon, olib_ketish=bugun, holat__in=[
             Zakaz.Holat.BERILDI, Zakaz.Holat.QAYTARILDI, Zakaz.Holat.YOPILDI]).count(),
         'qaytgan': QaytarishAkti.objects.filter(salon=salon, sana=bugun).count(),
+        # zakaz o'zgarishi rahbarga ovozsiz keladi — bekor qilinganlar soni hisobotda ko'rinsin
+        'bekor': ZakazTarixi.objects.filter(salon=salon, vaqt__date=bugun,
+                                            harakat__in=['bekor_qilindi', 'avtomatik_bekor']).count(),
         'farq': Smena.objects.filter(salon=salon, sana=bugun, yopilgan__isnull=False).aggregate(s=Sum('farq'))['s'],
         'ochiq': Smena.objects.filter(salon=salon, yopilgan__isnull=True).exists(),
     }
@@ -49,6 +52,7 @@ def kunlik_matn(salon, bugun, sarlavha='Kunlik hisobot'):
             f"{filial_qatorlari(r['filiallar'])}"
             f"{'Shundan naqdsiz: ' + naqdsiz + chr(10) if naqdsiz else ''}"
             f"Yangi bronlar: {yangi}\nBerilgan liboslar: {berilgan}\nQaytarilgan: {qaytgan}\n"
+            f"{'Bekor qilingan zakazlar: ' + str(r['bekor']) + chr(10) if r['bekor'] else ''}"
             f"Kassa farqi: {som(farq) if farq is not None else 'smena yopilmagan'}"
             f"{chr(10) + 'Diqqat: smena hali ochiq.' if ochiq else ''}")
 

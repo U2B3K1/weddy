@@ -1,7 +1,7 @@
 """R14 — Yordam va obuna (rahbar). Texnik yordam ruxsati: platforma egasi salon ma'lumotini faqat rahbar bergan muddatda
 va faqat o'qish uchun ko'radi (Sozlamalar.jsx «Texnik yordam», tenants.views_admin YordamRuxsatiView: 2 yoki 24 soat, har
 kirish jurnalda, istalgan payt bekor). O'quv salonida ruxsat berilmaydi (host.py — faqat o'qish), shuning uchun bo'lim
-ko'rsatiladi va savol beriladi. Obuna: muddat — botdagi «💳 To'lov» (bot_menyu._tolov), tugashiga yaqin — ilovada banner
+ko'rsatiladi va savol beriladi. Obuna: muddat — botdagi «⚙️ Sozlamalar» → «💳 To'lov» (bot_menyu._tolov), tugashiga yaqin — ilovada banner
 (App.jsx), tugagach — 7 kun ogohlantirish, keyin «faqat ko'rish» (Salon.OGOHLANTIRISH_KUN, obuna_xabar_matni)."""
 from .asos import Dars, faqat_rahbar, nav, savollarni_tekshir, sozlama_qatori
 
@@ -28,10 +28,10 @@ SAVOLLAR = [
      'variantlar': [
          ('bilmayman', "Bilib bo'lmaydi — tugaganda ilova yopilib qoladi", False,
           "Kutilmaganda yopilmaydi: tugashiga yaqin ilovada ogohlantirish chiqadi va botga xabar keladi."),
-         ('tolov', "Botdagi «💳 To'lov» dan: muddat va necha kun qolgani; yaqinlashganda ilova va bot o'zi eslatadi", True,
+         ('tolov', "Botdagi «⚙️ Sozlamalar» → «💳 To'lov» dan: muddat va necha kun qolgani; yaqinlashganda ilova va bot o'zi eslatadi", True,
           "To'g'ri: «💳 To'lov» da muddat, tarif va to'lov ma'lumoti bor; to'lagach chekni shu yerdan yuborasiz."),
          ('sozlama', "Sozlama → «Rekvizitlar» dan", False,
-          "Rekvizitlar — salonning nomi va manzili. Obuna muddati — botdagi «💳 To'lov» da."),
+          "Rekvizitlar — salonning nomi va manzili. Obuna muddati — botdagi «⚙️ Sozlamalar» → «💳 To'lov» da."),
      ]},
     {'matn': "Obuna muddati o'tib ketdi va to'lov qilinmadi. Salon bilan nima bo'ladi?",
      'variantlar': [
@@ -62,7 +62,7 @@ def tekshir(m, javob):
 def qadamlar(h):
     return ["Menyuda «Sozlama» ni oching va «Texnik yordam» bo'limiga kiring («Xavfsizlik» guruhida).",
             "Bo'limda ikki tugma bor: «2 soat» va «24 soat» — ruxsat shu muddatga beriladi.",
-            "Obuna muddati esa ilovada emas — Telegram botdagi «💳 To'lov» da."]
+            "Obuna muddati esa ilovada emas — Telegram botdagi «⚙️ Sozlamalar» → «💳 To'lov» da."]
 
 
 def yol(h):
@@ -77,7 +77,7 @@ def bilim(h):
         "Yordamchiga parol yoki PIN berilmaydi. Shu bo'limda muddatli ruxsat beriladi: 2 yoki 24 soat, faqat ko'rish uchun, "
         "har kirish jurnalga yoziladi.",
         "Ish ertaroq bitsa — «Ruxsatni bekor qilish»: ruxsat shu zahoti yopiladi.",
-        "Obuna muddati va necha kun qolgani — botdagi «💳 To'lov» da. Muddat yaqinlashganda ilova va bot o'zi eslatadi.",
+        "Obuna muddati va necha kun qolgani — botdagi «⚙️ Sozlamalar» → «💳 To'lov» da (eslatma xabarining o'zida ham tugma bor). Muddat yaqinlashganda ilova va bot o'zi eslatadi.",
         "Muddat o'tib, to'lov qilinmasa: salon yana bir hafta odatdagidek ishlaydi, keyin «faqat ko'rish» ga o'tadi — yangi zakaz "
         "ochilmaydi, boshlanganlarini yakunlash mumkin. Hech narsa o'chmaydi.",
     ]
@@ -90,7 +90,7 @@ DARS = Dars(
             "obuna muddati tugayapti. Ikkalasida ham salon ma'lumoti sizning nazoratingizda qoladi.",
     natija="Yordamchiga ma'lumotni xavfsiz ko'rsatasiz va obuna muddatini kuzatib, salonni uzilishsiz ishlatasiz.",
     xulosa="Yordam kerak bo'lsa — parol emas, muddatli ruxsat: 2 yoki 24 soat, faqat ko'rish, har kirish jurnalda, istalgan payt "
-           "bekor qilasiz. Obuna — botdagi «💳 To'lov» da: muddat, to'lov ma'lumoti va chek yuborish. Muddat o'tsa ham salon "
+           "bekor qilasiz. Obuna — botdagi «⚙️ Sozlamalar» → «💳 To'lov» da: muddat, to'lov ma'lumoti va chek yuborish. Muddat o'tsa ham salon "
            "birdan to'xtamaydi va hech narsa o'chmaydi. Shu bilan rahbar yo'li tugadi: salonni sozlash, nazorat qilish va "
            "natijani o'qish — hammasi qo'lingizda.",
     tekshirilgan='2026-11-14 · ishchi nusxa; obuna va ruxsat qoidalari kod bilan solishtirilgan',

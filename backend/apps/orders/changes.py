@@ -38,11 +38,10 @@ def _log(zakaz, xodim, harakat, eski='', yangi='', sabab=''):
     ZakazTarixi.objects.create(salon=zakaz.salon, zakaz=zakaz, xodim=xodim, harakat=harakat,
                                eski=str(eski), yangi=str(yangi), sabab=sabab)
     if harakat in RAHBARGA_XABAR:  # FT-17.5: har bir o'zgartirish va bekor qilish haqida rahbarga xabar
-        from apps.notify.services import rahbarlarga
-        rahbarlarga(zakaz.salon, 'zakaz_ozgardi',
-                    f"Zakaz #{zakaz.raqam} {RAHBARGA_XABAR[harakat]}"
-                    f"{' (' + xodim.ism + ')' if xodim else ''}.\n{eski} → {yangi}"
-                    f"{chr(10) + 'Sabab: ' + sabab if sabab else ''}")
+        from apps.notify.services import zakaz_ozgarishi_xabari
+        zakaz_ozgarishi_xabari(zakaz, f"Zakaz #{zakaz.raqam} {RAHBARGA_XABAR[harakat]}"
+                                      f"{' (' + xodim.ism + ')' if xodim else ''}.\n{eski} → {yangi}"
+                                      f"{chr(10) + 'Sabab: ' + sabab if sabab else ''}")
 
 
 def _ochiq_zakaz(salon, zakaz):

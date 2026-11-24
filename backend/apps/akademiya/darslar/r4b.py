@@ -76,7 +76,7 @@ DARS = Dars(
             "tizim har oy har sotuvchi uchun o'zi hisoblaydi.",
     natija="Sotuvchi bonusini yoqasiz va u qachon, nimadan hisoblanishini bilasiz.",
     xulosa=f"Bonus yoqildi: endi libos qaytarib olingan har bir zakaz summasidan sotuvchiga {FOIZ}% hisoblanadi. Kim qancha "
-           "olishini Hisobotlar → «Sotuvchi bonusi» da ko'rasiz, sotuvchi esa o'zinikini botdagi «🎁 Bonusim» da. Bonus faqat "
+           "olishini Hisobotlar → «Sotuvchi bonusi» da ko'rasiz, sotuvchi esa o'zinikini botdagi «📊 Bugun» da. Bonus faqat "
            "sotuvchi rolidagi xodimlarga yoziladi va oylik foydadan o'zi ayiriladi.",
     tekshirilgan='2026-11-14 · ishchi nusxa',
     bilim=bilim, urug=urug, topshiriq=topshiriq, tekshir=tekshir, savollar=lambda h: SAVOLLAR, mos=faqat_rahbar,

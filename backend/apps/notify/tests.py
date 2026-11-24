@@ -159,6 +159,8 @@ class HodisalarTests(Base):
             r = self.api(self.malika).post('/api/liboslar/', {'artikul': 'N1', 'nomi': 'Yangi', 'kategoriya': self.kat.id},
                                            format='json')
             self.assertEqual(r.status_code, 201)
+        with mock.patch.object(services.time, 'sleep'):
+            services.kutayotganlarni_yubor()  # zakaz arxivi (yangi zakaz, bekor qilish) — navbat orqali
         matnlar = ' | '.join(m for _, m, _ in self.yuborilgan)
         self.assertIn('Zakaz #1 bekor qilindi (Malika)', matnlar)
         self.assertIn("Malika yangi libos qo'shdi: N1 Yangi", matnlar)
@@ -379,7 +381,8 @@ class QurilmaTelegramTasdiqTests(Base):
     def test_havola_avval_tasdiq_soraydi_va_ikkinchi_kodsiz_kirish(self):
         havola = self.holat().json()['tg_havola']
         self.assertTrue(havola.startswith('https://t.me/weddy_test_bot?start=q_'))
-        self.assertNotIn(havola.split('q_')[1], IshonchliQurilma.objects.get(id=self.q.id).tg_token)  # faqat xesh
+        # faqat xesh. Token tasodifiy base64 — o'zida «q_» bo'lishi mumkin, shuning uchun prefiks bo'yicha ajratiladi
+        self.assertNotIn(havola.split('start=q_', 1)[1], IshonchliQurilma.objects.get(id=self.q.id).tg_token)
         self.assertIn('Bu havola faqat shu salon rahbari', self.start(999, havola))  # begona akkaunt
         self.assertIn('Samsung SM-T505', self.start(111, havola))
         self.assertEqual([t['callback_data'] for t in self.yuborilgan[-1][2][0]], [f'qr:{self.q.id}:h', f'qr:{self.q.id}:r'])

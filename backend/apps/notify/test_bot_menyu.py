@@ -78,7 +78,8 @@ class YangiZakazTests(Base):
         with self.captureOnCommitCallbacks(execute=True):
             zakaz_yaratish(salon=self.salon, xodim=self.rahbar, telefon='+998901', olib_ketish=self.dan,
                            qaytarish=self.dan, libos_idlari=[self.libos.id])
-        self.assertEqual(Xabar.objects.filter(tur='yangi_zakaz').count(), 1)
+        self.assertEqual(set(Xabar.objects.filter(tur='yangi_zakaz').values_list('xodim_id', flat=True)),
+                         {self.rahbar.id, self.malika.id})  # arxiv: rahbar va salonning barcha sotuvchilari
         boshqa = libos_yarat(self.salon, self.kat, 'B1', ijara_narxi=1_000_000)
         with mock.patch.object(bot_menyu, 'zakaz_matni', side_effect=RuntimeError('x')), self.assertLogs(level='ERROR'), \
                 self.captureOnCommitCallbacks(execute=True):
@@ -92,15 +93,13 @@ class MenyuTests(Base):
         def nomlar(chat):
             kl = bot_menyu.klaviatura(chat)
             return [t['text'] for qator in kl['keyboard'] for t in qator] if kl else []
-        self.assertEqual(nomlar(RAHBAR_CHAT), ['📊 Bugun', '💰 Kassa', '✅ Qaror kutmoqda', '📅 Ertaga', "💳 To'lov",
-                                               '⚙️ Sozlamalar', '🔍 Zakaz qidirish', "👗 Libos bo'shmi?"])
-        self.assertEqual(nomlar(SOTUVCHI_CHAT), ['📅 Ertaga', '🗂 Bugungi ishlar', '🎁 Bonusim', '⚙️ Sozlamalar',
-                                                 '🔍 Zakaz qidirish', "👗 Libos bo'shmi?"])
+        self.assertEqual(nomlar(RAHBAR_CHAT), ['📊 Bugun', '✅ Qarorlar', '⚙️ Sozlamalar'])
+        self.assertEqual(nomlar(SOTUVCHI_CHAT), ['📊 Bugun', '⚙️ Sozlamalar'])
         self.assertEqual(nomlar(555), [])
         s = platforma_sozlama()
         s.telegram_chat_id = EGA_CHAT
         s.save()
-        self.assertEqual(nomlar(EGA_CHAT), ['🏢 Salonlar', '🩺 Holat', "💳 To'lov ma'lumoti", '💼 Obunalar'])
+        self.assertEqual(nomlar(EGA_CHAT), ['🏢 Platforma'])
 
     def test_start_menyuni_chiqaradi_begonaga_yoq(self):
         self.yoz(RAHBAR_CHAT, '/start')
@@ -112,10 +111,11 @@ class MenyuTests(Base):
         self.assertIn('Telegramni ulash', self.matnlar())
 
     def test_sotuvchi_rahbar_bolimini_ola_olmaydi(self):
-        self.yoz(SOTUVCHI_CHAT, '📊 Bugun')
+        self.yoz(SOTUVCHI_CHAT, '✅ Qarorlar')
         self.assertIn('rolingiz uchun emas', self.matnlar())
         self.assertIn('ruxsat etilmagan', self.bos(SOTUVCHI_CHAT, f'm:{self.rahbar.id}:bugun'))
-        self.assertIn('ruxsat etilmagan', self.bos(SOTUVCHI_CHAT, f'm:{self.malika.id}:bugun'))
+        self.assertIn('ruxsat etilmagan', self.bos(SOTUVCHI_CHAT, f'm:{self.malika.id}:kassa'))
+        self.assertIn('ruxsat etilmagan', self.bos(SOTUVCHI_CHAT, f'm:{self.malika.id}:tolov'))
 
     def test_bugun_kassa_ertaga_ishlar(self):
         smena_ochish(salon=self.salon, xodim=self.malika, boshlangich_qoldiq=50_000)
@@ -124,48 +124,57 @@ class MenyuTests(Base):
         tolov_qabul(salon=self.salon, xodim=self.malika, tur=Tolov.Tur.AVANS, summa=300_000, zakaz=z)
         tolov_qabul(salon=self.salon, xodim=self.malika, tur=Tolov.Tur.QOLDIQ, summa=700_000, zakaz=z, usul=Tolov.Usul.OTKAZMA)
         self.yoz(RAHBAR_CHAT, '📊 Bugun')
-        m = self.matnlar()
+        chat, m, tugmalar, _ = self.yuborilgan[-1]
         self.assertIn("Tushum: 1 000 000 so'm", m)
         self.assertIn("Shundan naqdsiz: O'tkazma 700 000 so'm", m)
         self.assertIn('Yangi bronlar: 1', m)
-        self.yoz(RAHBAR_CHAT, '💰 Kassa')
+        self.assertIn("Kassada naqd (hisob bo'yicha): 350 000 so'm", m)           # kassa — o'sha xabarning o'zida
+        self.assertIn('Bugun olib ketiladi: 1 · qaytariladi: 0', m)
+        self.assertEqual([t['callback_data'] for q in tugmalar for t in q],
+                         [f'm:{self.rahbar.id}:kassa', f'm:{self.rahbar.id}:ertaga', f'b:{self.rahbar.id}'])
+        self.bos(RAHBAR_CHAT, f'm:{self.rahbar.id}:kassa')
         m = self.matnlar()
         self.assertIn('smena ochiq (Malika)', m)
         self.assertIn("Kassadagi naqd (hisob bo'yicha): 350 000 so'm", m)
         self.assertIn("O'tkazma: 700 000 so'm", m)
-        self.yoz(SOTUVCHI_CHAT, '🗂 Bugungi ishlar')
+        self.yoz(SOTUVCHI_CHAT, '📊 Bugun')
         self.assertIn(f'Bugun olib ketiladi (1):\n#{z.raqam} · Dilnoza · +998901234567', self.matnlar())
         boshqa = libos_yarat(self.salon, self.kat, 'B1', ijara_narxi=1_000_000)
         with self.captureOnCommitCallbacks(execute=True):
             e = zakaz_yaratish(salon=self.salon, xodim=self.malika, telefon='+998905554433', fio='Ertangi',
                                olib_ketish=bugun + timedelta(days=1), qaytarish=bugun + timedelta(days=2), libos_idlari=[boshqa.id])
-        self.yoz(SOTUVCHI_CHAT, '📅 Ertaga')
+        self.bos(SOTUVCHI_CHAT, f'm:{self.malika.id}:ertaga')
         m = self.matnlar()
         self.assertIn(f'Olib ketiladi (1):\n#{e.raqam} · Ertangi', m)
         self.assertIn("Qaytariladi: yo'q", m)
 
     def test_kassa_yopiq_va_bonus(self):
-        self.yoz(RAHBAR_CHAT, '💰 Kassa')
+        self.bos(RAHBAR_CHAT, f'm:{self.rahbar.id}:kassa')
         self.assertIn('Kassa yopiq', self.matnlar())
-        self.yoz(SOTUVCHI_CHAT, '🎁 Bonusim')
-        self.assertIn('bonus hisoblanmaydi', self.matnlar())
+        self.yoz(SOTUVCHI_CHAT, '📊 Bugun')
+        self.assertNotIn('Bonus', self.matnlar())                                # bonus o'chiq — qator yo'q
         sozlama(self.salon)
         SalonSozlamalari.objects.filter(salon=self.salon).update(sotuvchi_bonusi=True, bonus_foiz=5)
-        self.yoz(SOTUVCHI_CHAT, '🎁 Bonusim')
-        self.assertIn("hozircha bonus yo'q", self.matnlar())
+        self.yoz(SOTUVCHI_CHAT, '📊 Bugun')
+        self.assertIn("hozircha yo'q", self.matnlar())
 
     def test_bir_nechta_salon_tanlash(self):
         salon2, _, _ = salon_yarat('ikkinchi')
         r2 = Xodim.objects.create(salon=salon2, ism='Rahbar', rol=Xodim.Rol.RAHBAR, telegram_id=RAHBAR_CHAT)
-        self.yoz(RAHBAR_CHAT, '💰 Kassa')
+        self.yoz(RAHBAR_CHAT, '📊 Bugun')                       # 4 tagacha salon — hammasi birdaniga, har biri o'z xabarida
+        self.assertEqual(len(self.yuborilgan), 2)
+        self.assertIn(f'📊 {salon2.nomi}', self.matnlar())
+        self.assertIn(f'📊 {self.salon.nomi}', self.matnlar())
+        self.assertIn('Kassa yopiq', self.bos(RAHBAR_CHAT, f'm:{r2.id}:kassa'))
+        with mock.patch.object(bot_menyu, 'KOP_SALON_MAKS', 1):  # ko'p salon — «Qaysi salon?»
+            self.yoz(RAHBAR_CHAT, '📊 Bugun')
         chat, matn, tugmalar, _ = self.yuborilgan[0]
         self.assertEqual(matn, 'Qaysi salon?')
-        self.assertEqual({t[0]['callback_data'] for t in tugmalar}, {f'm:{self.rahbar.id}:kassa', f'm:{r2.id}:kassa'})
-        self.assertIn('Kassa yopiq', self.bos(RAHBAR_CHAT, f'm:{r2.id}:kassa'))
+        self.assertEqual({t[0]['callback_data'] for t in tugmalar}, {f'm:{self.rahbar.id}:bugun', f'm:{r2.id}:bugun'})
         # bloklangan salon menyuda yo'q
         Salon.objects.filter(id=salon2.id).update(holat=Salon.Holat.BLOKLANGAN)
-        self.yoz(RAHBAR_CHAT, '💰 Kassa')
-        self.assertIn('Kassa yopiq', self.matnlar())
+        self.yoz(RAHBAR_CHAT, '📊 Bugun')
+        self.assertEqual(len(self.yuborilgan), 1)
 
 
 class QidiruvTests(Base):
@@ -281,16 +290,19 @@ class EgaTests(Base):
     def test_salonlar_va_holat(self):
         bugun = timezone.localdate()
         Salon.objects.filter(id=self.salon.id).update(obuna_tugaydi=bugun + timedelta(days=2), rahbar_telefon='+998900000001')
-        self.yoz(EGA_CHAT, '🏢 Salonlar')
+        self.yoz(EGA_CHAT, '🏢 Platforma')
         m = self.matnlar()
         self.assertIn('Salonlar: 1 ta', m)
-        self.assertIn('EZAZ — obuna', m)
-        self.assertIn('2 kun qoldi · +998900000001', m)
-        self.yoz(EGA_CHAT, '🩺 Holat')
+        self.assertIn('Holat: hammasi joyida', m)
+        self.assertIn('Yaqin 7 kunda tugaydi: 1', m)
+        self.bos(EGA_CHAT, 'e:ob_yaqin')
+        self.assertIn('EZAZ — obuna', self.matnlar())
+        self.assertIn('2 kun qoldi · +998900000001', self.matnlar())
+        self.bos(EGA_CHAT, 'e:holat')
         self.assertIn('Zaxira nusxa: hali yuborilmagan', self.matnlar())
         self.assertIn("Bot jarayoni: hali ma'lumot yo'q", self.matnlar())
         self.assertEqual(self.yuborilgan[-1][2][0][0]['callback_data'], 'e:holat')
-        self.yoz(RAHBAR_CHAT, '🏢 Salonlar')  # ega bo'lmagan akkauntga — zakaz qidiruvi sifatida
+        self.yoz(RAHBAR_CHAT, '🏢 Platforma')  # ega bo'lmagan akkauntga — zakaz qidiruvi sifatida
         self.assertNotIn('Salonlar: 1 ta', self.matnlar())
 
     def test_obuna_eslatmasi_salon_rahbariga_avtomatik_boradi(self):
@@ -366,7 +378,7 @@ class TolovTests(Base):
                                                 'reply_to_message': {'text': javobga}}})
 
     def test_ega_kiritadi_ozgartiradi_ochiradi(self):
-        self.yoz(EGA_CHAT, "💳 To'lov ma'lumoti")
+        self.bos(EGA_CHAT, 'e:tolov')
         chat, matn, tugmalar, _ = self.yuborilgan[-1]
         self.assertIn('Hali kiritilmagan', matn)
         self.assertEqual([t['callback_data'] for q in tugmalar for t in q], ['e:tolov_yoz'])
@@ -377,7 +389,7 @@ class TolovTests(Base):
         self.javob_yoz(EGA_CHAT, 'Karta: 8600 1234 5678 9012\nAliyev A.\nTel: +998901112233', sorov)
         self.assertIn('Saqlandi', self.matnlar())
         self.assertEqual(platforma_sozlama().tolov_malumoti, 'Karta: 8600 1234 5678 9012\nAliyev A.\nTel: +998901112233')
-        self.yoz(EGA_CHAT, "💳 To'lov ma'lumoti")
+        self.bos(EGA_CHAT, 'e:tolov')
         chat, matn, tugmalar, _ = self.yuborilgan[-1]
         self.assertIn('8600 1234 5678 9012', matn)
         self.assertEqual([t['callback_data'] for q in tugmalar for t in q], ['e:tolov_yoz', 'e:tolov_och'])
@@ -399,7 +411,7 @@ class TolovTests(Base):
         self.assertEqual(platforma_sozlama().tolov_malumoti, '')
 
     def test_rahbar_tolov_bolimi(self):
-        self.yoz(RAHBAR_CHAT, "💳 To'lov")
+        self.bos(RAHBAR_CHAT, f'm:{self.rahbar.id}:tolov')
         chat, matn, tugmalar, _ = self.yuborilgan[-1]
         self.assertIn(f'Obuna {self.bugun + timedelta(days=1):%d.%m.%Y} gacha — 1 kun qoldi', matn)
         self.assertIn("Tarif: Standart-test — oyiga 300 000 so'm", matn)
@@ -408,14 +420,14 @@ class TolovTests(Base):
         s = platforma_sozlama()
         s.tolov_malumoti = 'Karta: 8600 1234'
         s.save()
-        self.yoz(RAHBAR_CHAT, "💳 To'lov")
+        self.bos(RAHBAR_CHAT, f'm:{self.rahbar.id}:tolov')
         chat, matn, tugmalar, _ = self.yuborilgan[-1]
         self.assertIn('Karta: 8600 1234', matn)
         self.assertEqual([t['callback_data'] for q in tugmalar for t in q], [f'tc:{self.rahbar.id}', f'tl:{self.rahbar.id}'])
         self.assertIn("rolingiz uchun emas", self.yoz(SOTUVCHI_CHAT, "💳 To'lov"))
         Salon.objects.filter(id=self.salon.id).update(obuna_tugaydi=self.bugun - timedelta(days=9),
                                                       holat=Salon.Holat.FAQAT_KORISH)
-        self.yoz(RAHBAR_CHAT, "💳 To'lov")
+        self.bos(RAHBAR_CHAT, f'm:{self.rahbar.id}:tolov')
         self.assertIn('da tugagan (9 kun oldin)', self.matnlar())
         self.assertIn("faqat ko'rish", self.matnlar())
 
@@ -531,13 +543,13 @@ class TolovTests(Base):
         rahbarga = Xabar.objects.get(tur='obuna_tolovi', xodim=self.rahbar)
         self.assertIn('uzaytirildi (1 oy', rahbarga.matn)
         self.assertIn('qaror qabul qilingan', self.bos(EGA_CHAT, f'ob:{tolov.id}:3'))  # ikkinchi bosish uzaytirmaydi
-        self.yoz(RAHBAR_CHAT, "💳 To'lov")
+        self.bos(RAHBAR_CHAT, f'm:{self.rahbar.id}:tolov')
         self.assertIn(f"Oxirgi to'lov: {self.bugun:%d.%m.%Y} — 1 oy, 300 000 so'm", self.matnlar())
 
     def test_ega_rad_etadi_va_tarifsiz_salon(self):
         self.bos(RAHBAR_CHAT, f'tl:{self.rahbar.id}')
         tolov = ObunaTolovi.objects.get()
-        self.yoz(RAHBAR_CHAT, "💳 To'lov")
+        self.bos(RAHBAR_CHAT, f'm:{self.rahbar.id}:tolov')
         self.assertIn("To'lovingiz tekshirilmoqda", self.matnlar())
         with self.captureOnCommitCallbacks(execute=True):
             self.assertIn('Rad etildi', self.bos(EGA_CHAT, f'ob:{tolov.id}:r'))
@@ -559,12 +571,12 @@ class TolovTests(Base):
         from apps.tenants import obuna
         obuna.tolov_qabul(self.salon.id, 3, 'egasi')
         kutmoqda = obuna.tolov_sorovi(self.salon, self.rahbar, 'F', 'photo')
-        self.yoz(EGA_CHAT, '💼 Obunalar')
+        self.yoz(EGA_CHAT, '🏢 Platforma')
         self.assertIn("Shu oy: 1 ta to'lov, 900 000 so'm", self.matnlar())
         self.assertIn("To'lovi tekshirilishi kerak: 1", self.matnlar())
         self.assertIn("EZAZ — 3 oy, 900 000 so'm", self.matnlar())
         self.assertEqual([t['callback_data'] for q in self.yuborilgan[-1][2] for t in q],
-                         ['e:ob_yaqin', 'e:ob_tugagan', 'e:ob_tekshir'])
+                         ['e:holat', 'e:ob_yaqin', 'e:ob_tugagan', 'e:ob_tekshir', 'e:tolov'])
         self.assertIn('faqat platforma egasiga', self.bos(RAHBAR_CHAT, 'e:ob_tekshir'))
         self.bos(EGA_CHAT, 'e:ob_tekshir')
         chat, matn, tugmalar, _ = self.yuborilgan[-1]  # kutayotgan so'rov — o'z tugmalari bilan
@@ -575,12 +587,12 @@ class TolovTests(Base):
         s = platforma_sozlama()
         s.tolov_malumoti = 'Karta: 8600 1234 5678 9012\nAliyev A.'
         s.save()
-        self.yoz(RAHBAR_CHAT, "💳 To'lov")
+        self.bos(RAHBAR_CHAT, f'm:{self.rahbar.id}:tolov')
         tugmalar = self.yuborilgan[-1][2]
         self.assertEqual(tugmalar[0][0]['copy_text'], {'text': '8600123456789012'})
         s.tolov_malumoti = "Naqd, ofisga keling. Tel: +998 90 111 22 33"
         s.save()
-        self.yoz(RAHBAR_CHAT, "💳 To'lov")
+        self.bos(RAHBAR_CHAT, f'm:{self.rahbar.id}:tolov')
         self.assertFalse(any('copy_text' in t for q in self.yuborilgan[-1][2] for t in q))  # telefon — karta emas
 
     def test_nusxa_tugmasi_ishlamasa_xabar_usiz_ketadi(self):
@@ -614,7 +626,7 @@ class VidjetTests(Base):
     def test_standart_ochiq_emas_matn_keladi(self):
         self.yoz(RAHBAR_CHAT, '📊 Bugun')
         self.assertEqual(self.vidjetlar(), [])
-        self.assertIn('Kunlik hisobot', self.matnlar())
+        self.assertIn(f'📊 {self.salon.nomi}', self.matnlar())
 
     def test_ega_namunani_koradi_va_yoqadi(self):
         self.api.reset_mock()
@@ -713,33 +725,53 @@ class XabarSozlamaTests(Base):
     def test_rolga_qarab_guruhlar(self):
         self.yoz(RAHBAR_CHAT, '⚙️ Sozlamalar')
         chat, matn, tugmalar, _ = self.yuborilgan[-1]
-        self.assertIn('Bildirishnoma turlari: 6/6 yoqilgan', matn)
+        self.assertIn('Bildirishnoma turlari: 5/5 yoqilgan', matn)
         self.assertEqual([t['callback_data'].split(':')[2] for q in tugmalar for t in q],
-                         ['tur', 'yet', 'esl', 'tinch', 'muhim', 'maxfiy', 'til', 'hisob'])
+                         ['tur', 'esl', 'tinch', 'maxfiy', 'tolov'])  # tolov — m: tugma
         self.tugma(RAHBAR_CHAT, f's:{self.rahbar.id}:tur')
         sahifa = self.tahrir()
         self.assertIn('doim keladi', sahifa['text'])
         tugmalar = sahifa['reply_markup']['inline_keyboard'][:-1]   # oxirgisi — «‹ Sozlamalar»
         self.assertEqual([t['callback_data'].split(':')[3] for q in tugmalar for t in q],
-                         ['zakaz', 'eslatma', 'kunlik', 'haftalik', 'kassa', 'libos'])
+                         ['eslatma', 'kunlik', 'haftalik', 'kassa', 'libos'])  # zakaz — arxiv, o'chirilmaydi
         self.assertTrue(all(t['text'].startswith('✅') for q in tugmalar for t in q))
         self.tugma(SOTUVCHI_CHAT, f's:{self.malika.id}:tur')
         self.assertEqual([t['callback_data'] for q in self.tahrir()['reply_markup']['inline_keyboard'][:-1] for t in q],
-                         [f's:{self.malika.id}:tur:zakaz', f's:{self.malika.id}:tur:eslatma'])
+                         [f's:{self.malika.id}:tur:eslatma'])
+        self.yoz(SOTUVCHI_CHAT, '⚙️ Sozlamalar')  # jamlanmaga kiradigan xabari yo'q — «Yetkazish tartibi» ham yo'q
+        self.assertEqual([q[0]['callback_data'].split(':')[2] for q in self.yuborilgan[-1][2]], ['tur', 'esl', 'tinch', 'maxfiy'])
+        self.assertEqual(self.tugma(RAHBAR_CHAT, f's:{self.rahbar.id}:yet:18'), 'Bu amal sizga ruxsat etilmagan.')
 
     def test_ochirilgan_guruh_kelmaydi_qayta_yoqilsa_keladi(self):
-        javob = self.tugma(RAHBAR_CHAT, f's:{self.rahbar.id}:tur:zakaz')
+        javob = self.tugma(RAHBAR_CHAT, f's:{self.rahbar.id}:tur:kunlik')
         self.assertIn("o'chirildi", javob)
         tahrir = [c for c in self.api.call_args_list if c[0][0] == 'editMessageText'][0][1]
         self.assertEqual(tahrir['message_id'], 5)
-        self.assertTrue(tahrir['reply_markup']['inline_keyboard'][0][0]['text'].startswith('🔕'))
+        self.assertTrue(tahrir['reply_markup']['inline_keyboard'][1][0]['text'].startswith('🔕'))
         self.rahbar.refresh_from_db()
-        self.assertEqual(self.rahbar.bot_ochirilgan, ['zakaz'])
-        self.zakaz()
-        self.assertEqual({x.xodim_id for x in Xabar.objects.filter(tur='yangi_zakaz')}, {self.malika.id})  # rahbarga yo'q
-        self.assertIn('yoqildi', self.tugma(RAHBAR_CHAT, f's:{self.rahbar.id}:tur:zakaz'))
-        self.zakaz(dan=self.dan + timedelta(days=10), telefon='+998909998877')
-        self.assertEqual(Xabar.objects.filter(tur='yangi_zakaz', xodim=self.rahbar).count(), 1)
+        self.assertEqual(self.rahbar.bot_ochirilgan, ['kunlik'])
+        self.assertIsNone(services.xabar_yoz(self.rahbar, 'kunlik_hisobot', 'Hisobot'))
+        self.assertIn('yoqildi', self.tugma(RAHBAR_CHAT, f's:{self.rahbar.id}:tur:kunlik'))
+        self.rahbar.refresh_from_db()
+        self.assertIsNotNone(services.xabar_yoz(self.rahbar, 'kunlik_hisobot', 'Hisobot'))
+
+    def test_zakaz_arxivi_ochirilmaydi_yashirilmaydi_kutmaydi(self):
+        # ilgari «zakaz» guruhini o'chirgan, yashirin rejim, jamlanma va tinch vaqt yoqilgan — arxiv baribir to'liq keladi
+        Xodim.objects.filter(id=self.malika.id).update(bot_ochirilgan=['zakaz'])
+        self.malika.refresh_from_db()
+        self.soz(self.malika, maxfiy=True, jamlanma=18, tinch=[21, 9])
+        self.assertEqual(self.tugma(SOTUVCHI_CHAT, f's:{self.malika.id}:tur:zakaz'), 'Bu amal sizga ruxsat etilmagan.')
+        tun = timezone.localtime().replace(hour=23, minute=0)
+        with mock.patch.object(services.timezone, 'localtime', return_value=tun):
+            z = self.zakaz()
+        x = Xabar.objects.get(tur='yangi_zakaz', xodim=self.malika)
+        self.assertIsNone(x.keyin)
+        self.yuborilgan.clear()
+        services.kutayotganlarni_yubor()
+        matn = next(m for c, m, _, kw in self.yuborilgan if c == SOTUVCHI_CHAT)
+        self.assertIn(f'Zakaz #{z.raqam}', matn)
+        self.assertIn('+998901234567', matn)
+        self.assertTrue(all(kw.get('jim') for *_, kw in self.yuborilgan))
 
     def test_muhim_xabar_ochirilmaydi_va_begona_ozgartira_olmaydi(self):
         self.rahbar.bot_ochirilgan = ['zakaz', 'kunlik', 'haftalik', 'eslatma', 'kassa', 'libos']
@@ -759,7 +791,7 @@ class XabarSozlamaTests(Base):
 
     def test_bolimlar_saqlanadi_va_sahifa_yangilanadi(self):
         r = self.rahbar.id
-        for data, kalit, qiymat in ((f's:{r}:yet:18', 'jamlanma', 18), (f's:{r}:esl:10', 'eslatma', 10),
+        for data, kalit, qiymat in ((f's:{r}:esl:10', 'eslatma', 10),
                                     (f's:{r}:esl:p', 'primerka', True), (f's:{r}:tinch:22-8', 'tinch', (22, 8)),
                                     (f's:{r}:muhim:nazorat', 'tinch_kutadi', ['nazorat']), (f's:{r}:maxfiy:1', 'maxfiy', True)):
             self.assertEqual(self.tugma(RAHBAR_CHAT, data), 'Saqlandi', data)
@@ -768,19 +800,19 @@ class XabarSozlamaTests(Base):
             self.assertEqual(self.tahrir()['message_id'], 5)
         self.tugma(RAHBAR_CHAT, f's:{r}:bosh')
         bosh = self.tahrir()['text']
-        for qator in ('Yetkazish tartibi: jamlanma, soat 18:00 da', 'Eslatma vaqti: 10:00, primerkadan 1 soat oldin ham',
-                      'Tinch vaqt: 22:00–08:00', 'Muhim xabarlar: 1 tasi ertalabgacha kutadi', 'Maxfiylik: yashirin'):
+        for qator in ('Eslatma vaqti: 10:00, primerkadan 1 soat oldin ham',
+                      'Tinch vaqt: 22:00–08:00, 1 ta muhim xabar ertalabgacha kutadi', 'Maxfiylik: yashirin'):
             self.assertIn(qator, bosh)
-        self.tugma(RAHBAR_CHAT, f's:{r}:yet:d')
+        self.tugma(RAHBAR_CHAT, f's:{r}:tinch')                       # muhim xabarlar tanlovi — tinch vaqt sahifasida
+        self.assertIn(f's:{r}:muhim:nazorat', str(self.tahrir()['reply_markup']))
         self.tugma(RAHBAR_CHAT, f's:{r}:tinch:0')
+        self.assertNotIn(':muhim:', str(self.tahrir()['reply_markup']))  # tinch vaqt o'chiq — tanlov ko'rinmaydi
         self.rahbar.refresh_from_db()
-        self.assertIsNone(services.bot_soz(self.rahbar)['jamlanma'])
         self.assertIsNone(services.bot_soz(self.rahbar)['tinch'])
-        self.tugma(RAHBAR_CHAT, f's:{r}:hisob')
-        self.assertIn(f'Salon: {self.salon.nomi}', self.tahrir()['text'])
-        self.assertIn('Rahbar', self.tahrir()['text'])
-        self.tugma(RAHBAR_CHAT, f's:{r}:til')
-        self.assertIn("o'zbekcha", self.tahrir()['text'])
+        for eski, sahifa in (('hisob', '⚙️ Sozlamalar'), ('til', '⚙️ Sozlamalar'), ('yet', '⚙️ Sozlamalar'),
+                             ('muhim', '🌙 Tinch vaqt')):
+            self.tugma(RAHBAR_CHAT, f's:{r}:{eski}')                  # eski xabardagi tugma
+            self.assertTrue(self.tahrir()['text'].startswith(sahifa), eski)
 
     def test_yuborish_vaqti_jamlanma_va_tinch_vaqt(self):
         tz = timezone.get_current_timezone()
@@ -788,27 +820,26 @@ class XabarSozlamaTests(Base):
         tun = timezone.datetime(2026, 11, 12, 23, 10, tzinfo=tz)
         erta = timezone.datetime(2026, 11, 13, 6, 0, tzinfo=tz)
         v = services.yuborish_vaqti
-        self.assertIsNone(v(self.rahbar, 'yangi_zakaz', tun))                     # sozlama yo'q — darhol
-        self.soz(self.rahbar, jamlanma=18)
-        self.assertEqual(v(self.rahbar, 'yangi_zakaz', kun), kun.replace(hour=18, minute=0))
-        self.assertEqual(v(self.rahbar, 'kassa_farqi', kun.replace(hour=19)), kun.replace(day=13, hour=18, minute=0))
-        for tur in ('kunlik_hisobot', 'eslatma', 'chegirma_sorovi', 'qurilma_kutmoqda'):   # jamlanmaga kirmaydi
-            self.assertIsNone(v(self.rahbar, tur, kun), tur)
+        self.assertIsNone(v(self.rahbar, 'yangi_libos', tun))                     # sozlama yo'q — darhol
+        self.soz(self.rahbar, jamlanma=18)                                        # eski sozlama — endi e'tiborga olinmaydi
+        self.assertIsNone(v(self.rahbar, 'yangi_libos', kun))
+        self.assertIsNone(v(self.rahbar, 'yangi_zakaz', kun))                     # zakaz arxivi — doim darhol
         self.soz(self.rahbar, tinch=[22, 8], tinch_kutadi=['nazorat'])
         sakkiz = tun.replace(day=13, hour=8, minute=0)
-        self.assertEqual(v(self.rahbar, 'yangi_zakaz', tun), sakkiz)              # odatiy xabar kutadi
+        self.assertEqual(v(self.rahbar, 'yangi_libos', tun), sakkiz)              # odatiy xabar kutadi
+        self.assertIsNone(v(self.rahbar, 'zakaz_ozgardi', tun))                   # zakaz arxivi — kutmaydi
         self.assertEqual(v(self.rahbar, 'kunlik_hisobot', erta), erta.replace(hour=8))
         self.assertEqual(v(self.rahbar, 'libos_qaytmadi', tun), sakkiz)           # o'zi «kutsin» degan muhim toifa
         self.assertIsNone(v(self.rahbar, 'chegirma_sorovi', tun))                 # qolgan muhimlar darhol
         self.assertIsNone(v(self.rahbar, 'qurilma_kutmoqda', tun))                # xavfsizlik — doim darhol
-        self.assertIsNone(v(self.rahbar, 'yangi_zakaz', kun))                     # kunduzi — darhol
+        self.assertIsNone(v(self.rahbar, 'yangi_libos', kun))                     # kunduzi — darhol
 
     def test_kutgan_xabarlar_vaqti_kelganda_bitta_jamlanma_bolib_ketadi(self):
         self.soz(self.rahbar, tinch=[22, 8])
         tun = timezone.localtime().replace(hour=23, minute=0)
         with mock.patch.object(services.timezone, 'localtime', return_value=tun), self.captureOnCommitCallbacks(execute=True):
             a = services.xabar_yoz(self.rahbar, 'yangi_libos', 'Yangi libos: Elsa')
-            b = services.xabar_yoz(self.rahbar, 'zakaz_ozgardi', "Zakaz #5 o'zgardi")
+            b = services.xabar_yoz(self.rahbar, 'kassa_farqi', 'Kassa farqi: -5 000')
             c = services.xabar_yoz(self.rahbar, 'eslatma', 'Eslatma', [[{'text': 'T', 'callback_data': 'bg:1:x'}]])
             d = services.xabar_yoz(self.rahbar, 'chegirma_sorovi', 'Chegirma')
         self.assertEqual([m for _, m, _, _ in self.yuborilgan], ['Chegirma'])     # faqat muhim xabar darhol ketdi
@@ -820,7 +851,7 @@ class XabarSozlamaTests(Base):
             self.assertEqual(services.kutayotganlarni_yubor(), 2)                 # jamlanma + tugmali eslatma
         matnlar = sorted(m for _, m, _, _ in self.yuborilgan)
         self.assertEqual(matnlar[0], 'Eslatma')
-        self.assertEqual(matnlar[1], "🗞 Jamlanma · 2 ta xabar\n\nYangi libos: Elsa\n\nZakaz #5 o'zgardi")
+        self.assertEqual(matnlar[1], "🗞 Jamlanma · 2 ta xabar\n\nYangi libos: Elsa\n\nKassa farqi: -5 000")
         self.assertEqual(set(Xabar.objects.filter(id__in=[a.id, b.id]).values_list('holat', 'xato_matni')),
                          {('yuborildi', 'jamlanmada')})
         with mock.patch.object(services.time, 'sleep'):
@@ -952,7 +983,7 @@ class EgaNazoratTests(Base):
         Salon.objects.filter(id=self.salon.id).update(obuna_tugaydi=bugun + timedelta(days=3))
         eski = Salon.objects.create(nomi='Eski salon', login='eski', obuna_tugaydi=bugun - timedelta(days=10))
         uzoq = Salon.objects.create(nomi='Uzoq salon', login='uzoq', obuna_tugaydi=bugun + timedelta(days=40))
-        self.yoz(EGA_CHAT, '💼 Obunalar')
+        self.yoz(EGA_CHAT, '🏢 Salonlar')
         self.assertIn('Yaqin 7 kunda tugaydi: 1', self.matnlar())
         self.assertIn('Muddati tugagan: 1', self.matnlar())
         self.bos(EGA_CHAT, 'e:ob_yaqin')
@@ -1015,3 +1046,167 @@ class FilialTests(Base):
         self.assertIn("  • Chilonzor — 1 500 000 so'm", haftalik.haftalik_matn(self.salon, dushanba))
         self.f2.delete()
         self.assertNotIn('•', kunlik_matn(self.salon, self.bugun))
+
+
+class MinimalMenyuTests(Base):
+    """Menyudan olingan tugmalar (2026-11-19): eski klaviaturadan bosilsa ham ishlaydi va yangi menyu yuboriladi."""
+
+    def test_eski_tugmalar_ishlaydi_va_yangi_menyu_keladi(self):
+        self.yoz(SOTUVCHI_CHAT, '🔍 Zakaz qidirish')
+        chat, matn, _, kw = self.yuborilgan[-1]
+        self.assertIn('tugma shart emas', matn)
+        self.assertNotIn('🔍 Zakaz qidirish', [t['text'] for q in kw['klaviatura']['keyboard'] for t in q])
+        self.yoz(RAHBAR_CHAT, "💳 To'lov")
+        self.assertIn("💳 To'lov · EZAZ", self.yuborilgan[0][1])
+        self.assertIn('Menyu yangilandi', self.yuborilgan[-1][1])
+        self.assertTrue(self.yuborilgan[-1][3]['klaviatura']['keyboard'])
+        # to'lov ma'lumotini kutayotganda eski tugma bosilsa — u to'lov ma'lumoti bo'lib saqlanmaydi
+        s = platforma_sozlama()
+        s.telegram_chat_id = EGA_CHAT
+        s.save()
+        yangilanishni_ishla({'message': {'text': '💼 Obunalar', 'chat': {'id': EGA_CHAT, 'type': 'private'},
+                                         'reply_to_message': {'text': bot_menyu.TOLOV_SORAV + '.'}}})
+        self.assertEqual(platforma_sozlama().tolov_malumoti, '')
+
+    def test_tolov_sozlamalarda_va_obuna_eslatmasida(self):
+        self.yoz(RAHBAR_CHAT, '⚙️ Sozlamalar')
+        self.assertEqual(self.yuborilgan[-1][2][-1][0]['callback_data'], f'm:{self.rahbar.id}:tolov')
+        self.yoz(SOTUVCHI_CHAT, '⚙️ Sozlamalar')
+        self.assertNotIn(':tolov', str(self.yuborilgan[-1][2]))
+        bugun = timezone.localdate()
+        Salon.objects.filter(id=self.salon.id).update(sinov_tugaydi=bugun + timedelta(days=3))
+        bot_menyu.obuna_ogohlantirishi(bugun, time(10, 0))
+        self.assertEqual(Xabar.objects.get(tur='obuna_muddati').tugmalar[0][0]['callback_data'], f'm:{self.rahbar.id}:tolov')
+        self.assertIn("💳 To'lov · EZAZ", self.bos(RAHBAR_CHAT, f'm:{self.rahbar.id}:tolov'))
+
+
+class QotishTests(Base):
+    """Tugma eskirgan bo'lsa (bot band bo'lib qolgan) yoki tahrir rad etilsa ham javob baribir yetib boradi."""
+
+    def setUp(self):
+        super().setUp()
+
+        def api(metod, **kw):
+            if metod in ('answerCallbackQuery', 'editMessageText'):
+                raise telegram.TelegramXatosi('HTTP 400 Bad Request: query is too old')
+        self.api.side_effect = api
+
+    def test_eskirgan_tugma_javobni_toxtatmaydi(self):
+        self.bos(RAHBAR_CHAT, f'm:{self.rahbar.id}:ertaga')
+        self.assertIn('📅 Ertaga', self.matnlar())
+        self.assertIn('Saqlandi', yangilanishni_ishla({'callback_query': {
+            'id': '1', 'from': {'id': RAHBAR_CHAT}, 'data': f's:{self.rahbar.id}:maxfiy:1',
+            'message': {'chat': {'id': RAHBAR_CHAT}, 'message_id': 5}}}))
+        self.rahbar.refresh_from_db()
+        self.assertTrue(self.rahbar.bot_sozlama['maxfiy'])
+
+    def test_navbat_vaqt_chegarasida_toxtaydi(self):
+        self.zakaz()
+        self.zakaz(dan=self.dan + timedelta(days=5), telefon='+998907777777')
+        self.assertEqual(Xabar.objects.filter(holat=Xabar.Holat.KUTILMOQDA).count(), 4)
+        self.assertEqual(services.kutayotganlarni_yubor(muddat=1e-9), 1)  # bittasidan keyin to'xtadi
+        self.assertEqual(services.kutayotganlarni_yubor(), 3)
+
+    def test_bot_aylanishi_xatodan_keyin_davom_etadi(self):
+        from io import StringIO
+
+        from django.core.management import call_command
+
+        from .management.commands import telegram_bot as tb
+        offsetlar = []
+
+        def api(metod, **kw):
+            if metod != 'getUpdates':
+                return None
+            offsetlar.append(kw['offset'])
+            if len(offsetlar) == 1:
+                return [{'update_id': 7, 'message': {'text': '📅 Ertaga', 'chat': {'id': RAHBAR_CHAT, 'type': 'private'}}}]
+            if len(offsetlar) == 2:
+                raise RuntimeError('baza uzildi')  # kutilmagan xato aylanishni to'xtatmaydi
+            raise KeyboardInterrupt
+        self.api.side_effect = api
+        xato = StringIO()
+        with mock.patch.object(tb, 'close_old_connections'), mock.patch.object(tb.time, 'sleep'):
+            call_command('telegram_bot', stdout=StringIO(), stderr=xato)
+        self.assertEqual(offsetlar, [0, 8, 8])
+        self.assertIn('📅 Ertaga', self.matnlar())
+        self.assertTrue(self.yuborilgan[-1][3]['klaviatura']['keyboard'])  # javob bilan yangi menyu ham ketdi
+        self.assertIn('Aylanishda xato: RuntimeError: baza uzildi', xato.getvalue())
+
+
+class UchinchiVariantTests(Base):
+    """Pastki menyu 3-variant (2026-11-19): «Bugun» xabari, yangilash, arxiv oluvchilar, tugma statistikasi."""
+
+    def tugma(self, chat, data):
+        self.api.reset_mock()
+        return yangilanishni_ishla({'callback_query': {'id': '1', 'from': {'id': chat}, 'data': data,
+                                                      'message': {'chat': {'id': chat}, 'message_id': 7}}})
+
+    def test_bugun_yangilash_xabarning_ozini_ozgartiradi(self):
+        self.yoz(RAHBAR_CHAT, '📊 Bugun')
+        self.assertEqual(self.tugma(RAHBAR_CHAT, f'b:{self.rahbar.id}'), 'Yangilandi')
+        tahrir = [c for c in self.api.call_args_list if c[0][0] == 'editMessageText'][0][1]
+        self.assertEqual(tahrir['message_id'], 7)
+        self.assertIn(f'📊 {self.salon.nomi}', tahrir['text'])
+        self.assertIn('Yangilandi:', tahrir['text'])
+        self.assertIn('ruxsat etilmagan', self.tugma(SOTUVCHI_CHAT, f'b:{self.rahbar.id}'))
+
+    def test_qaror_soni_va_faqat_korish_holati(self):
+        from apps.orders.models import ChegirmaSorovi
+        z = self.zakaz()
+        ChegirmaSorovi.objects.create(salon=self.salon, zakaz=z, sotuvchi=self.malika, summa=100_000)
+        Salon.objects.filter(id=self.salon.id).update(holat=Salon.Holat.FAQAT_KORISH)
+        self.yoz(RAHBAR_CHAT, '📊 Bugun')
+        chat, m, tugmalar, _ = self.yuborilgan[-1]
+        self.assertIn('Qaror kutmoqda: 1', m)
+        self.assertIn("«faqat ko'rish» rejimida", m)
+        self.assertEqual(tugmalar[0][0]['callback_data'], f'm:{self.rahbar.id}:tolov')
+
+    def test_sotuvchi_bugun_primerka_bilan(self):
+        from apps.orders.models import Primerka
+        z = self.zakaz()
+        vaqt = timezone.localtime().replace(hour=15, minute=30)
+        Primerka.objects.create(salon=self.salon, zakaz=z, vaqt=vaqt)
+        self.yoz(SOTUVCHI_CHAT, '📊 Bugun')
+        chat, m, tugmalar, _ = self.yuborilgan[-1]
+        self.assertIn(f'15:30 · #{z.raqam} · Dilnoza', m)
+        self.assertIn('Bugun olib ketiladi', m)
+        self.assertEqual([t['callback_data'] for q in tugmalar for t in q],
+                         [f'm:{self.malika.id}:ertaga', f'b:{self.malika.id}'])
+
+    def test_arxiv_filialning_barcha_sotuvchilariga(self):
+        from apps.orders.models import Zakaz
+        from apps.tenants.models import Filial
+        f1 = Filial.objects.create(salon=self.salon, nomi='Chilonzor')
+        f2 = Filial.objects.create(salon=self.salon, nomi='Yunusobod')
+        kamola = Xodim.objects.create(salon=self.salon, ism='Kamola', rol=Xodim.Rol.SOTUVCHI, filial=f1)
+        nodir = Xodim.objects.create(salon=self.salon, ism='Nodir', rol=Xodim.Rol.SOTUVCHI, filial=f2)
+        kassir = Xodim.objects.create(salon=self.salon, ism='Kassir', rol=Xodim.Rol.KASSIR, filial=f1)
+        z = self.zakaz()
+        Zakaz.objects.filter(id=z.id).update(filial=f1)
+        z.refresh_from_db()
+        self.assertEqual({x.id for x in services.arxiv_oluvchilar(z)},
+                         {self.rahbar.id, self.malika.id, kamola.id})        # Nodir — boshqa filial, kassir — sotuvchi emas
+        self.assertNotIn(nodir.id, {x.id for x in services.arxiv_oluvchilar(z)})
+        self.assertNotIn(kassir.id, {x.id for x in services.arxiv_oluvchilar(z)})
+
+    def test_tugma_statistikasi_holatda(self):
+        s = platforma_sozlama()
+        s.telegram_chat_id = EGA_CHAT
+        s.save()
+        self.yoz(RAHBAR_CHAT, '📊 Bugun')
+        self.yoz(RAHBAR_CHAT, '📊 Bugun')
+        self.yoz(RAHBAR_CHAT, '125')
+        self.bos(EGA_CHAT, 'e:holat')
+        m = self.matnlar()
+        self.assertIn('Bot tugmalari (30 kun):', m)
+        self.assertIn('• menyu:bugun — 2', m)
+        self.assertIn('• yozish:qidiruv — 1', m)
+
+    def test_kunlik_hisobotda_bekor_qilinganlar(self):
+        from apps.orders.models import ZakazTarixi
+        from .management.commands.kunlik_hisobot import kunlik_matn
+        self.assertNotIn('Bekor qilingan', kunlik_matn(self.salon, timezone.localdate()))
+        z = self.zakaz()
+        ZakazTarixi.objects.create(salon=self.salon, zakaz=z, xodim=self.malika, harakat='bekor_qilindi')
+        self.assertIn('Bekor qilingan zakazlar: 1', kunlik_matn(self.salon, timezone.localdate()))

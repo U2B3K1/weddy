@@ -1,11 +1,17 @@
+import logging
 import time
 
 from django.core.management.base import BaseCommand, CommandError
+from django.db import close_old_connections
 
 from apps.notify import bot_menyu, telegram, vidjet
 from apps.tenants.models import platforma_sozlama
 from apps.notify.services import (korsat_tugma_ishla, kutayotganlarni_yubor, qurilma_start_ishla, start_ishla,
                                   start_ishla_platforma, tugma_ishla)
+
+log = logging.getLogger(__name__)
+NAVBAT_MUDDATI = 8  # soniya: navbatdagi xabarlarni yuborish bir aylanishda shundan oshmaydi (tugmalar kutib qolmasin)
+SEKIN = 3  # soniya: bundan uzoq ishlagan yangilanish jurnalga yoziladi
 
 
 def _javob_yubor(chat_id, javob, tugmalar, tk):
@@ -60,13 +66,14 @@ def yangilanishni_ishla(u, token=None):
             return javob
         if matn in ('/start', '/menu', '/menyu'):
             kl = bot_menyu.klaviatura(chat_id)
-            javob = ("Pastdagi menyudan tanlang. Zakazni topish uchun raqamini yoki mijoz telefonini yozing." if kl
+            javob = (bot_menyu.START_MATNI if kl
                      else "Libosa boti. Ulash uchun ilovada «Telegramni ulash» tugmasini bosing.")
             telegram.xabar_yubor(chat_id, javob, klaviatura=kl, **tk)
             return javob
         javob = None
+        kl = bot_menyu.klaviatura(chat_id)  # tugmasiz javob bilan joriy menyu ham ketadi: telefondagi eski menyu yangilanadi
         for javob, tugmalar in bot_menyu.matn_ishla(chat_id, matn, javobga):
-            _javob_yubor(chat_id, javob, tugmalar, tk)
+            _javob_yubor(chat_id, javob, tugmalar if tugmalar is not None else kl, tk)
         return javob
     if 'widget_query' in u:  # vidjetdagi «Yangilash»
         return vidjet.sorov_ishla(u['widget_query'], token)
@@ -75,33 +82,53 @@ def yangilanishni_ishla(u, token=None):
         kw = {'_token': token} if token else {}
         data = c.get('data') or ''
         if data.startswith(('m:', 'e:', 'tc:')):  # menyu, ega tugmasi, chek so'rovi — javob yangi xabar bo'lib keladi
-            telegram.api('answerCallbackQuery', callback_query_id=c['id'], **kw)
+            _tinchgina('answerCallbackQuery', callback_query_id=c['id'], **kw)
             javob = None
             ishlovchi = {'m': bot_menyu.tugma_ishla, 'e': bot_menyu.ega_tugma, 'tc': bot_menyu.chek_tugma}[data.split(':')[0]]
             for javob, tugmalar in ishlovchi(c['from']['id'], data):
                 _javob_yubor(c['from']['id'], javob, tugmalar, tk)
             return javob
-        if data.startswith(('s:', 'k:')):  # sozlamalar va yashirin xabarni ochish: o'sha xabarning o'zi yangilanadi
+        if data.startswith(('s:', 'k:', 'b:')):  # sozlamalar, yashirin xabar, «Bugun» yangilash: o'sha xabar yangilanadi
             if data.startswith('s:'):
                 javob, matn, tugmalar = bot_menyu.sozlama_tugma(c['from']['id'], data)
+            elif data.startswith('b:'):
+                javob, matn, tugmalar = bot_menyu.bugun_tugma(c['from']['id'], data)
             else:
                 javob, matn, tugmalar = korsat_tugma_ishla(c['from']['id'], data[2:] if data[2:].isdigit() else 0)
-            telegram.api('answerCallbackQuery', callback_query_id=c['id'], text=javob[:190], **kw)
+            _tinchgina('answerCallbackQuery', callback_query_id=c['id'], text=javob[:190], **kw)
             if matn and c.get('message'):
-                telegram.api('editMessageText', chat_id=c['message']['chat']['id'], message_id=c['message']['message_id'],
-                             text=matn, **({'reply_markup': {'inline_keyboard': tugmalar}} if tugmalar else {}), **kw)
+                _tinchgina('editMessageText', chat_id=c['message']['chat']['id'], message_id=c['message']['message_id'],
+                           text=matn, **({'reply_markup': {'inline_keyboard': tugmalar}} if tugmalar else {}), **kw)
             return javob or matn
         javob = tugma_ishla(c['from']['id'], data)
-        telegram.api('answerCallbackQuery', callback_query_id=c['id'], text=javob[:190], **kw)
+        _tinchgina('answerCallbackQuery', callback_query_id=c['id'], text=javob[:190], **kw)
         if c.get('message'):  # tugmalarni olib tashlab, natijani yozib qo'yadi (ikki marta bosilmasligi uchun)
             xabar = c['message']
             manzil = {'chat_id': xabar['chat']['id'], 'message_id': xabar['message_id']}
             if 'text' in xabar or 'caption' not in xabar:
-                telegram.api('editMessageText', text=f"{xabar.get('text', '')}\n\n— {javob}", **manzil, **kw)
+                _tinchgina('editMessageText', text=f"{xabar.get('text', '')}\n\n— {javob}", **manzil, **kw)
             else:  # rasm yoki fayl (to'lov cheki): matni — izohda
-                telegram.api('editMessageCaption', caption=f"{xabar['caption']}\n\n— {javob}"[:1024], **manzil, **kw)
+                _tinchgina('editMessageCaption', caption=f"{xabar['caption']}\n\n— {javob}"[:1024], **manzil, **kw)
         return javob
     return None
+
+
+def _tinchgina(metod, **params):
+    """Tugma javobi va xabarni tahrirlash. Xato amalni to'xtatmasin: bot band bo'lib qolganda tugma 15 soniyadan
+    eskiradi («query is too old»), bir xil tanlov qayta bosilsa — «message is not modified». Ilgari shu xato
+    butun javobni tashlab yuborardi va foydalanuvchi uchun bot «qotib» qolardi."""
+    try:
+        return telegram.api(metod, **params)
+    except telegram.TelegramXatosi as e:
+        log.warning('%s bajarilmadi: %s', metod, e)
+        return None
+
+
+def _tur(u):
+    """Jurnal uchun yangilanish turi (matn yoki shaxsiy ma'lumotsiz): «xabar», «tugma:m» va h.k."""
+    if 'callback_query' in u:
+        return 'tugma:' + ((u['callback_query'].get('data') or '').split(':')[0] or '?')
+    return 'xabar' if 'message' in u else next(iter(u.keys() - {'update_id'}), '?')
 
 
 class Command(BaseCommand):
@@ -121,6 +148,9 @@ class Command(BaseCommand):
         tekshirilgan = 0.0  # nazorat eslatmalari daqiqada ko'pi bilan bir marta
         while True:
             try:
+                # Uzoq yashaydigan jarayon: baza ulanishi uzilgan bo'lsa (Postgres qayta yoqilgan va h.k.) — yangisi
+                # ochiladi. Aks holda har so'rov xato berib, bot qayta ishga tushirilguncha «qotib» turardi.
+                close_old_connections()
                 token = (telegram.barcha_tokenlar() or [None])[0]
                 if not token:
                     time.sleep(15)
@@ -138,9 +168,9 @@ class Command(BaseCommand):
                     except Exception as e:  # noqa: BLE001 — eslatma xatosi botni to'xtatmasin
                         self.stderr.write(f'Nazorat eslatmalarida xato: {type(e).__name__}')
                 try:
-                    kutayotganlarni_yubor()
+                    kutayotganlarni_yubor(muddat=NAVBAT_MUDDATI)
                 except Exception as e:  # noqa: BLE001 — navbatdagi xato tinglashni to'xtatmasin
-                    self.stderr.write(f'Navbatni yuborishda xato: {type(e).__name__}')
+                    self.stderr.write(f'Navbatni yuborishda xato: {type(e).__name__}: {str(e)[:150]}')
                 # Vidjet so'rovlari faqat vidjet yoqilganda so'raladi: yangi tur tufayli getUpdates rad etilsa,
                 # bot butunlay to'xtab qolmasligi uchun bir soat usiz ishlaydi
                 turlar = ['message', 'callback_query']
@@ -156,9 +186,16 @@ class Command(BaseCommand):
                     continue
                 for u in yangilanishlar:
                     offset = u['update_id'] + 1
+                    boshlandi = time.monotonic()
                     try:
                         yangilanishni_ishla(u, token)
                     except Exception as e:  # noqa: BLE001 — bitta yomon yangilanish botni to'xtatmasin
-                        self.stderr.write(f'Yangilanishda xato: {type(e).__name__}')
+                        self.stderr.write(f'Yangilanishda xato ({_tur(u)}): {type(e).__name__}: {str(e)[:150]}')
+                    sarf = time.monotonic() - boshlandi
+                    if sarf >= SEKIN:
+                        self.stderr.write(f'Sekin javob ({_tur(u)}): {sarf:.1f} s')
             except KeyboardInterrupt:
                 break
+            except Exception as e:  # noqa: BLE001 — baza yoki tarmoq uzilishi: biroz kutib, qaytadan
+                self.stderr.write(f'Aylanishda xato: {type(e).__name__}: {str(e)[:150]}')
+                time.sleep(3)

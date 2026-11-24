@@ -8,6 +8,7 @@ so'raydi (`m:<xodim_id>:<amal>`), javob o'sha tugmaning o'zidan aniqlanadi.
 
 Har bir funksiya javoblar ro'yxatini qaytaradi: `[(matn, inline_tugmalar yoki None), ...]`.
 """
+import logging
 import re
 from datetime import date, timedelta
 
@@ -20,21 +21,27 @@ from .services import som
 
 R, S, K = Xodim.Rol.RAHBAR, Xodim.Rol.SOTUVCHI, Xodim.Rol.KASSIR
 
-# amal kodi → (tugma matni, shu amalni ko'radigan rollar)
-AMALLAR = {
-    'bugun': ('📊 Bugun', (R,)),
-    'kassa': ('💰 Kassa', (R, K)),
-    'qaror': ('✅ Qaror kutmoqda', (R,)),
-    'ertaga': ('📅 Ertaga', (R, S)),
-    'ishlar': ('🗂 Bugungi ishlar', (S, K)),
-    'bonus': ('🎁 Bonusim', (S,)),
-    'tolov': ("💳 To'lov", (R,)),
+# Pastki menyu (2026-11-19, «3-variant»). Tugma pastki menyuga faqat shunday bo'lsa kiradi: telefonda, ilovadan uzoqda
+# kerak; tez-tez ishlatiladi; bot uni o'z vaqtida o'zi yubormaydi; yozib olib bo'lmaydi. Qolgani — «📊 Bugun» xabari
+# ostidagi tugmalarda (`m:<xodim_id>:<amal>`). Pastki menyu tugmasi aniq matni bilan taniladi — yorliq o'zgarmas bo'lsin.
+MENYU = {
+    'bugun': ('📊 Bugun', (R, S, K)),      # rolga qarab bitta xabar
+    'qaror': ('✅ Qarorlar', (R,)),        # javobsiz qolgan so'rovlar (har biri o'z tugmasi bilan)
     'sozlama': ('⚙️ Sozlamalar', (R, S, K)),
-    'qidir': ('🔍 Zakaz qidirish', (R, S, K)),
-    'libos': ("👗 Libos bo'shmi?", (R, S, K)),
 }
-EGA_AMALLARI = {'salonlar': '🏢 Salonlar', 'holat': '🩺 Holat', 'tolov_ega': "💳 To'lov ma'lumoti",
-                'tolovlar': '💼 Obunalar'}
+# Faqat xabar ostidagi tugmadan chaqiriladigan amallar: amal → ruxsat etilgan rollar
+ICHKI_AMALLAR = {'kassa': (R, K), 'ertaga': (R, S, K), 'tolov': (R,)}
+AMALLAR = {**{amal: kimga for amal, (_, kimga) in MENYU.items()}, **ICHKI_AMALLAR}
+# Eski menyu yorliqlari: telefonda eski klaviatura qolgan bo'lishi mumkin — bosilsa ishlaydi va yangi menyu yuboriladi
+ESKI_YORLIQLAR = {'💰 Kassa': 'kassa', '✅ Qaror kutmoqda': 'qaror', '📅 Ertaga': 'ertaga', '🗂 Bugungi ishlar': 'bugun',
+                  '🎁 Bonusim': 'bugun', "💳 To'lov": 'tolov', '🔍 Zakaz qidirish': 'qidir', "👗 Libos bo'shmi?": 'libos'}
+EGA_MENYU = '🏢 Platforma'  # platforma egasi: salonlar, holat, obunalar, to'lov ma'lumoti — hammasi shu xabarda
+ESKI_EGA_YORLIQLARI = {'🏢 Salonlar': 'platforma', '💼 Obunalar': 'platforma', '🩺 Holat': 'holat',
+                       "💳 To'lov ma'lumoti": 'tolov_ega'}
+KOP_SALON_MAKS = 4  # bitta Telegram shuncha salonda bo'lsa — hammasi birdaniga; ko'p bo'lsa «Qaysi salon?»
+START_MATNI = ("Pastdagi menyudan tanlang.\n"
+               "Zakazni topish — raqamini, mijoz telefonini yoki ismini yozing (masalan: 125).\n"
+               "Libos bo'shmi — kodi va sanasini yozing (masalan: A12 25.11).")
 _KARTA = re.compile(r'(?<!\d)(?:\d[ -]?){15}\d(?!\d)')  # 16 raqamli karta — «nusxa olish» tugmasi uchun
 # Ega shu xabarga javob (reply) qilib yozgan matn to'lov ma'lumoti bo'lib saqlanadi — holat saqlash shart emas
 TOLOV_SORAV = "✍️ Yangi to'lov ma'lumotini shu xabarga javob qilib yozing"
@@ -64,9 +71,9 @@ def egami(chat_id):
 def klaviatura(chat_id):
     """Pastki menyu: akkauntning barcha rollariga tegishli tugmalar (ega bo'lsa — platforma tugmalari ham)."""
     rollar = {x.rol for x in xodimlar(chat_id)}
-    nomlar = [nom for nom, kimga in AMALLAR.values() if rollar & set(kimga)]
+    nomlar = [nom for nom, kimga in MENYU.values() if rollar & set(kimga)]
     if egami(chat_id):
-        nomlar += list(EGA_AMALLARI.values())
+        nomlar.append(EGA_MENYU)
     if not nomlar:
         return None
     return {'keyboard': [[{'text': n} for n in nomlar[i:i + 2]] for i in range(0, len(nomlar), 2)],
@@ -83,52 +90,79 @@ def matn_ishla(chat_id, matn, javobga=''):
     ega = egami(chat_id)
     if not xx and not ega:
         return [("Libosa boti. Ulash uchun ilovada «Telegramni ulash» tugmasini bosing.", None)]
+    yorliqlar = {nom: amal for amal, (nom, _) in MENYU.items()}
     # Javob rejimi ochiq turganda menyu tugmasi bosilsa, Telegram uni ham «javob» qilib yuboradi — u saqlanmaydi
-    menyu_tugmasi = matn in EGA_AMALLARI.values() or matn in {nom for nom, _ in AMALLAR.values()}
+    menyu_tugmasi = (matn in yorliqlar or matn in ESKI_YORLIQLAR or matn == EGA_MENYU or matn in ESKI_EGA_YORLIQLARI)
     if ega and (javobga or '').startswith(TOLOV_SORAV) and not menyu_tugmasi and not matn.startswith('/'):
         return tolov_malumotini_saqla(matn)
     if ega and matn == '/vidjet':
         return _vidjet_sozlamasi()
     if ega and matn.startswith('/tolov'):  # zaxira yo'l: /tolov <matn>
         return tolov_malumotini_saqla(matn[6:].strip()) if matn[6:].strip() else _ega_amali('tolov_ega')
-    for amal, nom in EGA_AMALLARI.items():
-        if ega and matn == nom:
-            return _ega_amali(amal)
-    for amal, (nom, kimga) in AMALLAR.items():
-        if matn == nom:
-            mos = [x for x in xx if x.rol in kimga]
-            if not mos:
-                return [("Bu bo'lim sizning rolingiz uchun emas.", None)]
-            if amal == 'qidir':
-                return [(QIDIR_YORDAM, None)]
-            if amal == 'libos':
-                return [(LIBOS_YORDAM, None)]
-            if len(mos) > 1:  # bir nechta salon — qaysi biri?
-                return [("Qaysi salon?", [[{'text': x.salon.nomi[:40], 'callback_data': f'm:{x.id}:{amal}'}] for x in mos])]
-            return amal_bajar(mos[0], amal)
+    if ega and (matn == EGA_MENYU or matn in ESKI_EGA_YORLIQLARI):
+        hisobla('menyu:platforma' if matn == EGA_MENYU else 'eski:' + ESKI_EGA_YORLIQLARI[matn])
+        javob = _ega_amali(ESKI_EGA_YORLIQLARI.get(matn, 'platforma'))
+        return javob if matn == EGA_MENYU else javob + [_menyu_yangilandi(chat_id)]
+    amal = yorliqlar.get(matn) or ESKI_YORLIQLAR.get(matn)
+    if amal:
+        eski = matn not in yorliqlar
+        hisobla(('eski:' if eski else 'menyu:') + amal)
+        if amal in ('qidir', 'libos'):  # eski menyudagi tugma: yo'riqnoma va yangi menyu bitta xabarda
+            return [((QIDIR_YORDAM if amal == 'qidir' else LIBOS_YORDAM) + "\n\nBuning uchun tugma shart emas — "
+                     "shunchaki yozing. Menyu yangilandi.", klaviatura(chat_id))]
+        mos = [x for x in xx if x.rol in AMALLAR[amal]]
+        if not mos:
+            return [("Bu bo'lim sizning rolingiz uchun emas.", None)]
+        if len(mos) > KOP_SALON_MAKS:  # juda ko'p salon — qaysi biri?
+            return [("Qaysi salon?", [[{'text': x.salon.nomi[:40], 'callback_data': f'm:{x.id}:{amal}'}] for x in mos])]
+        javob = [j for x in mos for j in amal_bajar(x, amal)]
+        if amal == 'qaror':  # har so'rov o'z tugmasi bilan; bo'sh salonlar «yo'q» deb qayta-qayta chiqmasin
+            javob = [j for j in javob if j[1] is not None] or [("Qaror kutayotgan narsa yo'q.", None)]
+        return javob + ([_menyu_yangilandi(chat_id)] if eski else [])
     if not xx:
         return [("Pastdagi menyudan tanlang.", None)]
     if matn.startswith('/'):
         return [("Pastdagi menyudan tanlang yoki zakaz raqamini yozing.", None)]
     if _SANA.search(matn) and re.sub(_SANA, '', matn).strip(' -–—'):
+        hisobla('yozish:libos')
         return [j for x in xx for j in libos_bandligi(x, matn, len(xx) > 1)]
+    hisobla('yozish:qidiruv')
     return zakaz_qidir(xx, matn)
 
 
+def _menyu_yangilandi(chat_id):
+    """Eski klaviaturadagi tugma bosildi — yangi menyu yuboriladi (bir marta yetadi)."""
+    return ("Menyu yangilandi: qolgan bo'limlar endi «📊 Bugun» xabari ostidagi tugmalarda.", klaviatura(chat_id))
+
+
+def hisobla(nom):
+    """Tugma statistikasi (kunlik): qaysi tugma qancha bosilishini «🩺 Holat» da ko'rish uchun. Xato ishni to'xtatmaydi."""
+    try:
+        from django.db.models import F
+
+        from .models import TugmaBosish
+        bugun = timezone.localdate()
+        if not TugmaBosish.objects.filter(nom=nom[:40], sana=bugun).update(soni=F('soni') + 1):
+            TugmaBosish.objects.get_or_create(nom=nom[:40], sana=bugun)
+    except Exception:  # noqa: BLE001
+        pass
+
+
 def tugma_ishla(chat_id, data):
-    """`m:<xodim_id>:<amal>` — salon tanlangan. Tugma bosgan akkaunt o'sha xodimning o'zi bo'lishi shart."""
+    """`m:<xodim_id>:<amal>` — xabar ostidagi tugma. Tugma bosgan akkaunt o'sha xodimning o'zi bo'lishi shart."""
     q = (data or '').split(':')
     if len(q) != 3 or not q[1].isdigit() or q[2] not in AMALLAR:
         return [("Noma'lum buyruq.", None)]
     x = next((x for x in xodimlar(chat_id) if x.id == int(q[1])), None)
-    if not x or x.rol not in AMALLAR[q[2]][1]:
+    if not x or x.rol not in AMALLAR[q[2]]:
         return [("Bu amal sizga ruxsat etilmagan.", None)]
+    hisobla('tugma:' + q[2])
     return amal_bajar(x, q[2])
 
 
 def amal_bajar(x, amal):
-    return {'bugun': _bugun, 'kassa': _kassa, 'qaror': _qaror, 'ertaga': _ertaga, 'ishlar': _ishlar,
-            'bonus': _bonus, 'tolov': _tolov, 'sozlama': _sozlamalar}[amal](x)
+    return {'bugun': _bugun, 'kassa': _kassa, 'qaror': _qaror, 'ertaga': _ertaga, 'tolov': _tolov,
+            'sozlama': _sozlamalar}[amal](x)
 
 
 # ---------- zakaz matni va qidiruv ----------
@@ -219,12 +253,11 @@ def libos_bandligi(x, matn, salon_nomi=False):
 # ---------- menyu amallari ----------
 
 def _bugun(x):
-    from .management.commands.kunlik_hisobot import kunlik_matn
-    matn = kunlik_matn(x.salon, timezone.localdate())
-    if not platforma_sozlama().bot_vidjet:
-        return [(matn, None)]
-    from .vidjet import bugun_vidjeti
-    return [(matn, bugun_vidjeti(x))]  # matn — vidjet izohi: vidjetni tanimaydigan Telegramda shu ko'rinadi
+    if x.rol == R and platforma_sozlama().bot_vidjet:  # sinov: rahbarga vidjet (matn — vidjet izohi)
+        from .management.commands.kunlik_hisobot import kunlik_matn
+        from .vidjet import bugun_vidjeti
+        return [(kunlik_matn(x.salon, timezone.localdate()), bugun_vidjeti(x))]
+    return [bugun_xabari(x)]
 
 
 def _kassa(x):
@@ -315,34 +348,124 @@ def _ertaga(x):
 
 
 def _ishlar(x):
+    """Bugungi ishlar: olib ketiladi, qaytariladi, kechikkan (sotuvchi va kassir «Bugun» xabari uchun)."""
     from apps.orders.views_royxat import BUGUN_FILTRLARI as F
     kf = kop_filialli(x.salon) and not oz_filiali(x)
     qismlar = [_royxat(F['bugun_olib'](_zakazlar(x)), 'Bugun olib ketiladi', kf),
                _royxat(F['bugun_qaytar'](_zakazlar(x)), 'Bugun qaytariladi', kf)]
     if F['kechikkan'](_zakazlar(x)).exists():
         qismlar.append(_royxat(F['kechikkan'](_zakazlar(x)), '⚠️ Kechikkan', kf))
-    return [(f"🗂 Bugungi ishlar · {timezone.localdate():%d.%m.%Y}{_filial_yorligi(x)}\n\n" + '\n\n'.join(qismlar), None)]
+    return '\n\n'.join(qismlar)
 
 
-def _bonus(x):
+def _primerkalar(x):
+    """Bugungi primerkalar (vaqti bilan); filialga biriktirilgan xodimga — faqat o'z filiali."""
+    from apps.orders.models import Primerka
+    qs = Primerka.objects.filter(salon=x.salon, vaqt__date=timezone.localdate(),
+                                 holat=Primerka.Holat.REJALASHTIRILGAN).select_related('zakaz__mijoz').order_by('vaqt')
+    if oz_filiali(x):
+        from django.db.models import Q
+        qs = qs.filter(Q(zakaz__filial_id=x.filial_id) | Q(zakaz__filial__isnull=True))
+    pp = list(qs[:ROYXAT_MAKS])
+    if not pp:
+        return ''
+    return 'Primerka:\n' + '\n'.join(f"{timezone.localtime(p.vaqt):%H:%M} · #{p.zakaz.raqam} · "
+                                     f"{p.zakaz.mijoz.fio or 'mijoz'}" for p in pp)
+
+
+def _bonus_qatori(x):
+    """Sotuvchining shu oydagi bonusi — bitta qator; salonda bonus o'chiq bo'lsa bo'sh."""
     from apps.finance.reports import sotuvchi_bonuslari
     bugun = timezone.localdate()
     r = sotuvchi_bonuslari(x.salon, bugun.year, bugun.month)
     if not r['yoqilgan']:
-        return [("Bu salonda bonus hisoblanmaydi.", None)]
+        return ''
     men = next((q for q in r['sotuvchilar'] if q['id'] == x.id), None)
     if not men or not men['zakazlar']:
-        return [(f"🎁 {bugun:%m.%Y}: hozircha bonus yo'q — bonus libos qaytarib olingandan keyin hisoblanadi.", None)]
-    return [(f"🎁 Bonus · {bugun:%m.%Y}\nYopilgan zakazlar: {men['zakazlar']} ta, {som(men['tushum'])}\n"
-             f"Bonus ({float(r['foiz']):g}%): {som(men['bonus'])}", None)]
+        return f"🎁 Bonus ({bugun:%m.%Y}): hozircha yo'q — libos qaytarib olingach hisoblanadi"
+    return f"🎁 Bonus ({bugun:%m.%Y}): {som(men['bonus'])} — {men['zakazlar']} ta yopilgan zakaz"
+
+
+def _qaror_soni(salon):
+    from apps.cash.models import Tolov
+    from apps.finance.models import Xarajat
+    from apps.orders.models import ChegirmaSorovi
+    return (ChegirmaSorovi.objects.filter(salon=salon, holat=ChegirmaSorovi.Holat.KUTILMOQDA).count()
+            + Xarajat.objects.filter(salon=salon, holat=Xarajat.Holat.KUTILMOQDA).count()
+            + Tolov.objects.filter(salon=salon, tasdiq=Tolov.Tasdiq.KUTILMOQDA).count())
+
+
+def _rahbar_holati(x):
+    """Rahbar «Bugun» xabari uchun: kassadagi naqd (har ochiq smena), bugungi ishlar soni va kechikkanlar."""
+    from apps.cash.models import Smena
+    from apps.cash.services import kassa_hisobot
+    from apps.orders.views_royxat import BUGUN_FILTRLARI as F
+    qatorlar = []
+    smenalar = list(Smena.objects.filter(salon=x.salon, yopilgan__isnull=True).select_related('filial'))
+    for s in smenalar:
+        h = kassa_hisobot(s)
+        qatorlar.append(f"💰 Kassada naqd{' · ' + s.filial.nomi if s.filial_id else ''} (hisob bo'yicha): "
+                        f"{som(h['hisobdagi_qoldiq'])}" + (f", xarajat {som(h['xarajatlar'])}" if h['xarajatlar'] else ''))
+    if not smenalar:
+        qatorlar.append("💰 Kassa yopiq: ochiq smena yo'q")
+    olib, qaytar, kechikkan = (F[k](_zakazlar(x)).count() for k in ('bugun_olib', 'bugun_qaytar', 'kechikkan'))
+    qatorlar.append(f"Bugun olib ketiladi: {olib} · qaytariladi: {qaytar}")
+    if kechikkan:
+        qatorlar.append(f"⚠️ Kechikkan: {kechikkan}")
+    return '\n'.join(qatorlar)
+
+
+def bugun_xabari(x):
+    """«📊 Bugun» — rolga qarab bitta xabar: (matn, inline tugmalar). «🔄 Yangilash» xabarning o'zini yangilaydi."""
+    from .management.commands.kunlik_hisobot import kunlik_matn
+    salon, hozir = x.salon, timezone.localtime()
+
+    def t(matn, amal):
+        return {'text': matn, 'callback_data': f'm:{x.id}:{amal}'}
+    yangila = {'text': '🔄 Yangilash', 'callback_data': f'b:{x.id}'}
+    vaqt = f'Yangilandi: {hozir:%H:%M}'
+    if x.rol == R:
+        qismlar = [kunlik_matn(salon, hozir.date(), sarlavha=f'📊 {salon.nomi}'), _rahbar_holati(x)]
+        q = _qaror_soni(salon)
+        if q:
+            qismlar.append(f"✅ Qaror kutmoqda: {q} — «✅ Qarorlar»")
+        qismlar.append(vaqt)
+        tugmalar = [[t('💰 Kassa batafsil', 'kassa'), t('📅 Ertaga', 'ertaga')], [yangila]]
+        if salon.holat == Salon.Holat.FAQAT_KORISH:
+            qismlar.insert(0, "⚠️ Salon «faqat ko'rish» rejimida: yangi zakaz ochilmaydi. Obunani uzaytiring.")
+            tugmalar.insert(0, [t("💳 To'lov", 'tolov')])
+        return '\n\n'.join(qismlar), tugmalar
+    qismlar = [f"📊 {salon.nomi} · {hozir:%d.%m.%Y}{_filial_yorligi(x)}"]
+    if x.rol == K:
+        qismlar += [m for m, _ in _kassa(x)]
+    qismlar += [_ishlar(x), _primerkalar(x)]
+    if x.rol == S:
+        qismlar.append(_bonus_qatori(x))
+    qismlar.append(vaqt)
+    return '\n\n'.join(q for q in qismlar if q), [[t('📅 Ertaga', 'ertaga'), yangila]]
+
+
+def bugun_tugma(chat_id, data):
+    """`b:<xodim_id>` — «🔄 Yangilash»: (qisqa javob, matn, tugmalar) — o'sha xabar yangilanadi."""
+    q = (data or '').split(':')
+    x = next((x for x in xodimlar(chat_id) if len(q) == 2 and q[1].isdigit() and x.id == int(q[1])), None)
+    if not x:
+        return "Bu amal sizga ruxsat etilmagan.", None, None
+    hisobla('tugma:yangilash')
+    return ('Yangilandi', *bugun_xabari(x))
 
 
 # ---------- sozlamalar ----------
 # Hammasi bitta xabar ichida: tugma bosilganda o'sha xabar yangilanadi (`s:<xodim_id>:<bo'lim>[:<qiymat>]`).
 
-SOZLAMA_BOLIMLARI = {'tur': '🔔 Bildirishnoma turlari', 'yet': '📬 Yetkazish tartibi', 'esl': '⏰ Eslatma vaqti',
-                     'tinch': '🌙 Tinch vaqt', 'muhim': '❗ Muhim xabarlar', 'maxfiy': '🙈 Maxfiylik',
-                     'til': '🌐 Til va vaqt mintaqasi', 'hisob': '👤 Ulangan hisob'}
+SOZLAMA_BOLIMLARI = {'tur': '🔔 Bildirishnoma turlari', 'esl': '⏰ Eslatma vaqti',
+                     'tinch': '🌙 Tinch vaqt', 'maxfiy': '🙈 Maxfiylik'}
+# Minimalizm (2026-11-19): «Muhim xabarlar» — «Tinch vaqt» sahifasiga qo'shildi (faqat tinch vaqt yoqilganda kerak);
+# «Til va vaqt mintaqasi» va «Ulangan hisob» olib tashlandi (tanlov yo'q, faqat ma'lumot edi).
+# Eski xabarlardagi tugmalar uchun: muhim → tinch, til/hisob → bosh sahifa.
+# «Yetkazish tartibi» (jamlanma) ham olib tashlandi: u faqat rahbarning ikki kam uchraydigan xabariga taalluqli edi,
+# tunda bezovta qilmaslikni «Tinch vaqt» hal qiladi.
+ESKI_BOLIMLAR = {'muhim': 'tinch', 'til': 'bosh', 'hisob': 'bosh', 'yet': 'bosh'}
 
 
 def _kabinet_manzili():
@@ -356,7 +479,7 @@ def _belgi(tanlangan):
 
 def _sozlama_sahifasi(x, bolim='bosh'):
     """Bitta sahifa: (matn, inline tugmalar)."""
-    from .services import (ESLATMA_SOATLARI, JAMLANMA_SOATLARI, MUHIM_TOIFALAR, TINCH_VAQTLAR, XABAR_GURUHLARI, bot_soz)
+    from .services import ESLATMA_SOATLARI, MUHIM_TOIFALAR, TINCH_VAQTLAR, XABAR_GURUHLARI, bot_soz
     s = bot_soz(x)
     ochirilgan = set(x.bot_ochirilgan or [])
     guruhlar = {k: v for k, v in XABAR_GURUHLARI.items() if x.rol in v[2]}
@@ -369,34 +492,25 @@ def _sozlama_sahifasi(x, bolim='bosh'):
     orqaga = [t('‹ Sozlamalar', 'bosh')]
     if bolim == 'tur':
         return (f"🔔 Bildirishnoma turlari · {x.salon.nomi}\nQaysi xabarlar kelib tursin? Bosib yoqing yoki o'chiring.\n"
-                "✅ — keladi, 🔕 — kelmaydi.\n\nQaror va pul bilan bog'liq xabarlar (chegirma, xarajat, o'tkazma, "
-                "yangi qurilma, qaytmagan libos, obuna) doim keladi.",
+                "✅ — keladi, 🔕 — kelmaydi.\n\nYangi zakaz va zakaz o'zgarishi doim keladi (ovozsiz) — chatda mijozlar "
+                "arxivi bo'lib qoladi: ilova ishlamay qolsa ham ma'lumot shu yerda.\n"
+                "Qaror va pul bilan bog'liq xabarlar (chegirma, xarajat, o'tkazma, yangi qurilma, qaytmagan libos, obuna) "
+                "ham doim keladi.",
                 [[t(('🔕 ' if k in ochirilgan else '✅ ') + nom, 'tur', k)] for k, (nom, _, _) in guruhlar.items()] + [orqaga])
-    if bolim == 'yet':
-        return ("📬 Yetkazish tartibi\nYangi zakaz, zakaz o'zgarishi, kassa farqi va yangi libos xabarlari qanday kelsin?\n\n"
-                "Darhol — har biri yuz bergan paytda.\nJamlanma — kuniga bir marta, tanlangan soatda, bitta xabar bo'lib.\n\n"
-                "Qaror so'rovlari, eslatmalar va hisobotlar jamlanmaga kirmaydi — ular o'z vaqtida keladi.",
-                [[t(_belgi(s['jamlanma'] is None) + 'Darhol', 'yet', 'd')]]
-                + [[t(_belgi(s['jamlanma'] == h) + f'Jamlanma — soat {h:02d}:00 da', 'yet', h)] for h in JAMLANMA_SOATLARI]
-                + [orqaga])
     if bolim == 'esl':
         return ("⏰ Eslatma vaqti\nKunlik eslatmalar (ertaga olib ketadi, bugun qaytaradi, kechikdi, primerka) "
                 "ertalab soat nechada kelsin?\n\nPrimerkaga bir soat qolganda yana bir marta eslatishni ham yoqish mumkin.",
                 [[t(_belgi(s['eslatma'] == h) + f'{h:02d}:00', 'esl', h) for h in ESLATMA_SOATLARI],
                  [t(('✅ ' if s['primerka'] else '🔕 ') + 'Primerkadan 1 soat oldin', 'esl', 'p')], orqaga])
-    if bolim == 'tinch':
+    if bolim == 'tinch':  # muhim xabarlar tanlovi ham shu yerda — faqat tinch vaqt yoqilganda ko'rinadi
+        muhim = ("\n\nMuhim xabarlar tinch vaqtda ham kelsinmi? ✅ — darhol keladi, 🌙 — ertalabgacha kutadi."
+                 if s['tinch'] else '')
         return ("🌙 Tinch vaqt\nShu oraliqda odatiy xabarlar yig'ilib turadi va tinch vaqt tugagach bitta xabar bo'lib keladi.\n\n"
-                "Yangi qurilmadan kirish va PIN bloklanishi kabi xavfsizlik xabarlari tinch vaqtda ham darhol keladi. "
-                "Qolgan muhim xabarlar — «Muhim xabarlar» bo'limida.",
+                "Xavfsizlik xabarlari (yangi qurilma, PIN bloklanishi) doim darhol keladi." + muhim,
                 [[t(_belgi(not s['tinch']) + "O'chiq", 'tinch', 0)]]
                 + [[t(_belgi(s['tinch'] == (b, o)) + f'{b}:00–{o:02d}:00', 'tinch', f'{b}-{o}')] for b, o in TINCH_VAQTLAR]
-                + [orqaga])
-    if bolim == 'muhim':
-        return (f"❗ Muhim xabarlar\nTinch vaqtda{' (' + tinch + ')' if s['tinch'] else ''} qaysi muhim xabarlar baribir kelsin?\n"
-                "✅ — tinch vaqtda ham darhol keladi, 🌙 — ertalabgacha kutadi.\n\n"
-                "Xavfsizlik xabarlari (yangi qurilma, PIN bloklanishi) doim darhol keladi."
-                + ('' if s['tinch'] else "\n\nHozir tinch vaqt o'chiq — bu tanlov u yoqilganda ishlaydi."),
-                [[t(('🌙 ' if k in s['tinch_kutadi'] else '✅ ') + nom, 'muhim', k)] for k, (nom, _, _) in toifalar.items()]
+                + ([[t(('🌙 ' if k in s['tinch_kutadi'] else '✅ ') + nom, 'muhim', k)] for k, (nom, _, _) in toifalar.items()]
+                   if s['tinch'] else [])
                 + [orqaga])
     if bolim == 'maxfiy':
         return ("🙈 Maxfiylik\nTo'liq matn — xabar chatda darhol o'qiladi.\n"
@@ -405,28 +519,18 @@ def _sozlama_sahifasi(x, bolim='bosh'):
                 "Kirish kodi va menyudan o'zingiz so'ragan ma'lumot har doim ochiq keladi.",
                 [[t(_belgi(not s['maxfiy']) + "To'liq matn", 'maxfiy', 0)],
                  [t(_belgi(s['maxfiy']) + 'Yashirin', 'maxfiy', 1)], orqaga])
-    if bolim == 'til':
-        return ("🌐 Til va vaqt mintaqasi\nTil: o'zbekcha (lotin).\nVaqt: Toshkent vaqti (UTC+5), 24 soatlik ko'rinish.\n"
-                "Sana: kun.oy.yil — masalan, 25.11.2026.\n\nHozircha boshqa til va vaqt mintaqasi yo'q.", [orqaga])
-    if bolim == 'hisob':
-        boshqalar = [b for b in xodimlar(x.telegram_id) if b.id != x.id] if x.telegram_id else []
-        matn = (f"👤 Ulangan hisob\nSalon: {x.salon.nomi}\nXodim: {x.ism} · {x.get_rol_display()}\n"
-                + (f"Filial: {x.filial.nomi}\n" if x.filial_id else '')
-                + (''.join(f"\nShu Telegram yana ulangan: {b.salon.nomi} — {b.ism} ({b.get_rol_display()})" for b in boshqalar)
-                   + '\n' if boshqalar else '')
-                + "\nUlanishni uzish yoki boshqa Telegramga o'tkazish — ilovada: «Bildirishnomalar» oynasi → «Telegramni uzish».")
-        manzil = _kabinet_manzili()
-        return matn, ([[{'text': 'Ilovani ochish', 'url': manzil}]] if manzil else []) + [orqaga]
     yoqilgan = sum(1 for k in guruhlar if k not in ochirilgan)
-    muhim = ('hammasi tinch vaqtda ham keladi' if not s['tinch_kutadi']
-             else f"{len([k for k in toifalar if k in s['tinch_kutadi']])} tasi ertalabgacha kutadi")
+    kutadi = len([k for k in toifalar if k in s['tinch_kutadi']])
     holat = {'tur': f'{yoqilgan}/{len(guruhlar)} yoqilgan',
-             'yet': 'darhol' if s['jamlanma'] is None else f"jamlanma, soat {s['jamlanma']:02d}:00 da",
              'esl': f"{s['eslatma']:02d}:00" + (', primerkadan 1 soat oldin ham' if s['primerka'] else ''),
-             'tinch': tinch, 'muhim': muhim, 'maxfiy': 'yashirin' if s['maxfiy'] else "to'liq matn",
-             'til': "o'zbekcha, Toshkent vaqti", 'hisob': f'{x.ism} · {x.get_rol_display()}'}
-    return (f"⚙️ Sozlamalar · {x.salon.nomi}\n\n" + '\n'.join(f'{nom}: {holat[k]}' for k, nom in SOZLAMA_BOLIMLARI.items()),
-            [[t(nom, k)] for k, nom in SOZLAMA_BOLIMLARI.items()])
+             'tinch': tinch + (f', {kutadi} ta muhim xabar ertalabgacha kutadi' if s['tinch'] and kutadi else ''),
+             'maxfiy': 'yashirin' if s['maxfiy'] else "to'liq matn"}
+    bolimlar = SOZLAMA_BOLIMLARI
+    tugmalar = [[t(nom, k)] for k, nom in bolimlar.items()]
+    if x.rol == R:  # obuna to'lovi pastki menyudan shu yerga ko'chdi (yangi xabar bo'lib ochiladi)
+        tugmalar.append([{'text': "💳 To'lov", 'callback_data': f'm:{x.id}:tolov'}])
+    return (f"⚙️ Sozlamalar · {x.salon.nomi}\n\n" + '\n'.join(f'{nom}: {holat[k]}' for k, nom in bolimlar.items()),
+            tugmalar)
 
 
 def _sozlamalar(x):
@@ -438,17 +542,17 @@ def sozlama_tugma(chat_id, data):
 
     Har kim faqat o'z sozlamasini o'zgartiradi; rolga tegishli bo'lmagan guruh va ro'yxatda yo'q qiymat rad etiladi.
     """
-    from .services import (ESLATMA_SOATLARI, JAMLANMA_SOATLARI, MUHIM_TOIFALAR, TINCH_VAQTLAR, XABAR_GURUHLARI)
+    from .services import ESLATMA_SOATLARI, MUHIM_TOIFALAR, TINCH_VAQTLAR, XABAR_GURUHLARI
     RAD = ("Bu amal sizga ruxsat etilmagan.", None, None)
     q = (data or '').split(':')
     if len(q) not in (3, 4) or not q[1].isdigit():
         return RAD
     x = next((x for x in xodimlar(chat_id) if x.id == int(q[1])), None)
     bolim, qiymat = q[2], (q[3] if len(q) == 4 else None)
-    if not x or bolim not in ('bosh', *SOZLAMA_BOLIMLARI):
+    if not x or bolim not in ('bosh', *SOZLAMA_BOLIMLARI, *ESKI_BOLIMLAR):
         return RAD
     if qiymat is None:
-        return ('', *_sozlama_sahifasi(x, bolim))
+        return ('', *_sozlama_sahifasi(x, ESKI_BOLIMLAR.get(bolim, bolim)))
     s = dict(x.bot_sozlama) if isinstance(x.bot_sozlama, dict) else {}
     son = int(qiymat) if qiymat.isdigit() else None
     javob = 'Saqlandi'
@@ -456,8 +560,6 @@ def sozlama_tugma(chat_id, data):
         ochirilgan = set(x.bot_ochirilgan or []) ^ {qiymat}
         x.bot_ochirilgan = sorted(ochirilgan & set(XABAR_GURUHLARI))
         javob = XABAR_GURUHLARI[qiymat][0] + (": o'chirildi" if qiymat in ochirilgan else ': yoqildi')
-    elif bolim == 'yet' and (qiymat == 'd' or son in JAMLANMA_SOATLARI):
-        s['jamlanma'] = son
     elif bolim == 'esl' and son in ESLATMA_SOATLARI:
         s['eslatma'] = son
     elif bolim == 'esl' and qiymat == 'p':
@@ -474,7 +576,7 @@ def sozlama_tugma(chat_id, data):
         return RAD
     x.bot_sozlama = s
     x.save(update_fields=['bot_ochirilgan', 'bot_sozlama'])
-    return (javob, *_sozlama_sahifasi(x, bolim))
+    return (javob, *_sozlama_sahifasi(x, ESKI_BOLIMLAR.get(bolim, bolim)))
 
 
 # ---------- obuna to'lovi ----------
@@ -540,7 +642,7 @@ def chek_ishla(chat_id, xabar, javobga=''):
     if not rahbarlar:
         return [("Bot rasm va fayllarni qabul qilmaydi.", None)]
     if not (javobga or '').startswith(CHEK_SORAV):
-        return [("To'lov chekini yuborish uchun: menyuda «💳 To'lov» → «🧾 Chek yuborish».", None)]
+        return [("To'lov chekini yuborish uchun: «⚙️ Sozlamalar» → «💳 To'lov» → «🧾 Chek yuborish».", None)]
     nom = next((q[7:].strip() for q in javobga.split('\n') if q.startswith('Salon: ')), '')
     x = next((x for x in rahbarlar if x.salon.nomi == nom), None) or (rahbarlar[0] if len(rahbarlar) == 1 else None)
     if not x:
@@ -579,11 +681,14 @@ def ega_tugma(chat_id, data):
     """`e:<amal>` — platforma egasining inline tugmalari (faqat ega akkaunti)."""
     if not egami(chat_id):
         return [("Bu amal faqat platforma egasiga ruxsat etilgan.", None)]
+    hisobla('ega:' + (data or '')[2:])
     if data == 'e:tolov_yoz':
         return [(f"{TOLOV_SORAV}.\nMasalan: karta raqami, kimning nomida, aloqa telefoni. {TOLOV_MAKS} belgigacha.",
                  {'force_reply': True, 'input_field_placeholder': 'Karta, telefon, izoh'})]
     if data == 'e:holat':
         return [_holat_kartasi()]
+    if data == 'e:tolov':
+        return _ega_amali('tolov_ega')
     if data in ('e:ob_yaqin', 'e:ob_tugagan', 'e:ob_tekshir'):
         return _ega_obunalar(timezone.localdate(), data[5:])
     if data in ('e:vidjet_yoq', 'e:vidjet_och'):
@@ -655,8 +760,24 @@ def _ega_obunalar(bugun, bolim=''):
 
 def _ega_amali(amal):
     bugun = timezone.localdate()
-    if amal == 'tolovlar':
-        return _ega_obunalar(bugun)
+    if amal in ('platforma', 'salonlar', 'tolovlar'):  # «🏢 Platforma»: salonlar, holat, obunalar, to'lov ma'lumoti
+        from . import yurak
+        salonlar = list(Salon.objects.filter(chiqish_sanasi__isnull=True, oquv=False).order_by('nomi'))
+        sonlar = {}
+        for s in salonlar:
+            sonlar[s.get_holat_display()] = sonlar.get(s.get_holat_display(), 0) + 1
+        toxtagan = yurak.toxtaganlar()
+        qatorlar = [f'🏢 Platforma · {timezone.localtime():%d.%m %H:%M}',
+                    "🩺 Holat: hammasi joyida" if not toxtagan else
+                    "🩺 Holat: ⚠️ to'xtagan — " + ', '.join(sarlavha for _, sarlavha, _, _ in toxtagan),
+                    '', f'Salonlar: {len(salonlar)} ta'] + [f'{nom}: {n}' for nom, n in sonlar.items()]
+        yangi = Ariza.objects.filter(korilgan=False).count()
+        if yangi:
+            qatorlar.append(f"Ko'rilmagan so'rovlar: {yangi}")
+        (obuna, tugmalar), = _ega_obunalar(bugun)
+        return [('\n'.join(qatorlar) + '\n\n' + obuna,
+                 [[{'text': '🩺 Holat batafsil', 'callback_data': 'e:holat'}]] + tugmalar
+                 + [[{'text': "💳 To'lov ma'lumoti", 'callback_data': 'e:tolov'}]])]
     if amal == 'tolov_ega':
         malumot = platforma_sozlama().tolov_malumoti.strip()
         tugmalar = [[{'text': "✍️ O'zgartirish" if malumot else '✍️ Kiritish', 'callback_data': 'e:tolov_yoz'}]]
@@ -664,19 +785,6 @@ def _ega_amali(amal):
             tugmalar.append([{'text': "🗑 O'chirish", 'callback_data': 'e:tolov_och'}])
         return [("💳 To'lov ma'lumoti\nSalon rahbarlari botdagi «💳 To'lov» bo'limida shu matnni ko'radi.\n\n"
                  + (malumot or 'Hali kiritilmagan.'), tugmalar)]
-    if amal == 'salonlar':
-        salonlar = list(Salon.objects.filter(chiqish_sanasi__isnull=True, oquv=False).order_by('nomi'))
-        sonlar = {}
-        for s in salonlar:
-            sonlar[s.get_holat_display()] = sonlar.get(s.get_holat_display(), 0) + 1
-        qatorlar = [f'🏢 Salonlar: {len(salonlar)} ta'] + [f'{nom}: {n}' for nom, n in sonlar.items()]
-        yaqin = obunasi_tugayotganlar(bugun, 7)
-        if yaqin:
-            qatorlar += ['', 'Muddati yaqin (7 kun):'] + yaqin
-        yangi = Ariza.objects.filter(korilgan=False).count()
-        if yangi:
-            qatorlar += ['', f"Ko'rilmagan so'rovlar: {yangi}"]
-        return [('\n'.join(qatorlar), None)]
     return [_holat_kartasi()]
 
 
@@ -703,19 +811,24 @@ def _holat_kartasi(hozir=None):
         eski = s.oxirgi_zaxira < hozir - timedelta(hours=36)
         muammo += eski
         qatorlar.append(f"Zaxira nusxa: {timezone.localtime(s.oxirgi_zaxira):%d.%m.%Y %H:%M}" + (' ⚠️ 36 soatdan eski' if eski else ''))
-    navbat = Xabar.objects.filter(holat=Xabar.Holat.KUTILMOQDA, yaratilgan__gt=kecha).exclude(keyin__gt=hozir).count()
+    from django.db.models import Q
+
+    from .services import ARXIV_KUN, ARXIV_TURLAR
+    navbat = (Xabar.objects.filter(holat=Xabar.Holat.KUTILMOQDA)  # navbat bilan bir xil oyna: arxiv 7 kungacha kutadi
+              .filter(Q(yaratilgan__gt=kecha) | Q(tur__in=ARXIV_TURLAR, yaratilgan__gt=hozir - timedelta(days=ARXIV_KUN)))
+              .exclude(keyin__gt=hozir).count())
     xato = Xabar.objects.filter(holat=Xabar.Holat.XATO, yaratilgan__gt=kecha).count()
     qatorlar.append(f"Xabar navbati: {navbat} ta kutmoqda" + (f", 24 soatda {xato} tasi yetib bormadi" if xato else ''))
+    from .models import TugmaBosish
+    stat = list(TugmaBosish.objects.filter(sana__gte=timezone.localdate() - timedelta(days=29)).values('nom')
+                .annotate(s=Sum('soni')).order_by('-s')[:10])
+    if stat:
+        qatorlar += ['', 'Bot tugmalari (30 kun):'] + [f"• {r['nom']} — {r['s']}" for r in stat]
     qatorlar += ['', f"⚠️ E'tibor talab qiladi: {muammo}" if muammo else "Hammasi joyida."]
     tugmalar = [[{'text': '🔄 Yangilash', 'callback_data': 'e:holat'}]]
     if _kabinet_manzili():
         tugmalar.append([{'text': 'Panelni ochish', 'url': _kabinet_manzili() + '/#platforma'}])
     return '\n'.join(qatorlar), tugmalar
-
-
-def obunasi_tugayotganlar(bugun, kun):
-    """Sinov yoki obuna muddati `kun` kun ichida tugaydigan (yoki o'tib, ogohlantirish davrida turgan) salonlar."""
-    return obuna_qatorlari(bugun, bugun - timedelta(days=Salon.OGOHLANTIRISH_KUN), bugun + timedelta(days=kun))
 
 
 def obuna_qatorlari(bugun, dan, gacha):
@@ -740,7 +853,7 @@ OBUNA_ESLATMA_KUNLARI = (3, 1, 0, -1, -Salon.OGOHLANTIRISH_KUN)
 
 def obuna_xabar_matni(salon, muddat, qolgan):
     tur = 'Sinov' if salon.obuna_tugaydi is None else 'Obuna'
-    qanday = "\nQanday to'lash — pastdagi menyuda «💳 To'lov»."
+    qanday = "\nQanday to'lash — pastdagi «💳 To'lov» tugmasida."
     if qolgan > 0:
         return (f"⏳ {salon.nomi}: {tur.lower()} muddati {muddat:%d.%m.%Y} da tugaydi — {qolgan} kun qoldi.\n"
                 "Salon uzilishsiz ishlashi uchun obunani uzaytiring." + qanday)
@@ -764,7 +877,7 @@ def obuna_ogohlantirishi(bugun=None, hozir=None):
     Rahbarlarga yozilgan xabarlar sonini qaytaradi.
     """
     from .egaga import egaga_xabar
-    from .services import rahbarlarga
+    from .services import xabar_yoz
     bugun = bugun or timezone.localdate()
     hozir = hozir or timezone.localtime().time()
     if hozir.hour < 9:
@@ -775,8 +888,14 @@ def obuna_ogohlantirishi(bugun=None, hozir=None):
         if muddat is None or (muddat - bugun).days not in OBUNA_ESLATMA_KUNLARI:
             continue
         qolgan = (muddat - bugun).days
-        yozilgan = [x for x in rahbarlarga(s, 'obuna_muddati', obuna_xabar_matni(s, muddat, qolgan),
-                                           kalit=f'obuna:{muddat}:{qolgan}') if x]
+        matn = obuna_xabar_matni(s, muddat, qolgan)
+        try:
+            yozilgan = [x for x in (xabar_yoz(r, 'obuna_muddati', matn, kalit=f'obuna:{muddat}:{qolgan}', tugmalar=[[
+                {'text': "💳 To'lov", 'callback_data': f'm:{r.id}:tolov'}]])  # to'lov menyuda yo'q — eslatmaning o'zida
+                for r in Xodim.objects.filter(salon=s, rol=R, faol=True)) if x]
+        except Exception:  # noqa: BLE001 — bitta salondagi xato qolgan salonlarning eslatmasini to'xtatmasin
+            logging.getLogger(__name__).exception("Obuna eslatmasini yozib bo'lmadi")
+            yozilgan = []
         soni += len(yozilgan)
         yetdi = Xodim.objects.filter(salon=s, rol=R, faol=True, telegram_id__isnull=False).exists()
         holat = 'bugun tugaydi' if qolgan == 0 else f'{qolgan} kun qoldi' if qolgan > 0 else f'{-qolgan} kun oldin tugagan'

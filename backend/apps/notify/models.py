@@ -80,3 +80,16 @@ class SmsXabar(SalonModel):
         constraints = [
             models.UniqueConstraint(fields=['salon', 'kalit'], name='sms_takrorlanmaydi'),
         ]
+
+
+class TugmaBosish(models.Model):
+    """Bot tugmalari statistikasi: kuniga har tugma necha marta bosilgani (keyingi soddalashtirish raqam bilan bo'lsin).
+
+    Kim bosgani saqlanmaydi — faqat soni. «🩺 Holat» da oxirgi 30 kun ko'rsatiladi.
+    """
+    nom = models.CharField(max_length=40)  # 'menyu:bugun', 'tugma:kassa', 'yozish:qidiruv', 'eski:tolov' …
+    sana = models.DateField()
+    soni = models.PositiveIntegerField(default=1)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['nom', 'sana'], name='tugma_bosish_kunlik')]
