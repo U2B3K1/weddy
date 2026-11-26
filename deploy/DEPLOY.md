@@ -377,3 +377,104 @@ O'quv salonlari platforma panelidagi salonlar ro'yxatiga, kunlik hisobot, eslatm
 ulardan SMS va Telegram xabari chiqmaydi. 30 kun ochilmagan o'quv saloni `oquv_tozalash` bilan o'chadi —
 o'quvchining dars natijalari saqlanib qoladi.
 
+
+---
+
+## 19. Cloudflare (foydalanuvchi IP bloklaridan himoya)
+
+**Nima uchun.** Hostinger tarmoq himoyasi «yomon nom» olgan IP manzillarni o'zi to'sadi va biz uni boshqara olmaymiz.
+2026-11-26 da egasining uy interneti (O'zbektelekom) shunday bloklandi: bu manzilni ko'p abonent birga ishlatadi (CGNAT)
+va boshqalarning harakati uchun u shikoyatlar bazasida yomon nom olgan. Sayt, SSH va Web console ochilmadi, mobil
+internetdan esa ochildi; Hostinger blokni olib tashlashni rad etdi. Shu provayder orqali ishlaydigan salonlar ham shunday
+bloklanishi mumkin. Cloudflare orqasida foydalanuvchi Cloudflare'ga ulanadi, Hostinger esa faqat Cloudflare manzillarini
+ko'radi.
+
+### 19.1 Server (nameserver almashtirishdan OLDIN)
+
+`deploy/nginx-libosa.uz.conf` boshida `set_real_ip_from` (Cloudflare manzillari) va `real_ip_header CF-Connecting-IP`
+bor: Cloudflare orqali kelgan so'rovda nginx mijozning haqiqiy IP manzilini oladi. Busiz hamma Cloudflare manzili
+bo'lib ko'rinardi va login himoyasi (IP bo'yicha 5 ta xato) bir odamning xatosi uchun boshqalarni ham bloklardi.
+Cloudflare'siz kelgan so'rovga ta'sir qilmaydi — shuning uchun oldindan qo'yish xavfsiz. `git pull` dan keyin:
+
+```bash
+sudo cp /etc/nginx/sites-available/libosa.uz /etc/nginx/sites-available/libosa.uz.zaxira
+sudo cp /var/www/libosa/deploy/nginx-libosa.uz.conf /etc/nginx/sites-available/libosa.uz
+sudo nginx -t && sudo systemctl reload nginx
+# `nginx -t` xato bersa — zaxirani qaytaring:
+#   sudo cp /etc/nginx/sites-available/libosa.uz.zaxira /etc/nginx/sites-available/libosa.uz
+```
+
+Cloudflare manzillari ro'yxati: https://www.cloudflare.com/ips/ — yiliga bir-ikki marta conf dagi ro'yxat bilan solishtiring.
+
+### 19.2 Cloudflare paneli (bepul tarif)
+
+1. cloudflare.com da hisob oching → **Domains → Overview → Add domain** → `libosa.uz`, «Quick scan for DNS records» →
+   tarif **Free**. AI botlarni to'sish haqida so'rasa — to'smang (saytda `llms.txt` bor: AI qidiruvlarida ko'rinish uchun).
+2. **DNS yozuvlarini tekshiring.** Cloudflare hozirgi yozuvlarni o'zi ko'chiradi, lekin hammasini topmasligi mumkin.
+   2026-11-26 dagi holat (DNS hozir webspace.uz da: `dns1`–`dns4.webspace.uz`) — shu ro'yxat bilan solishtiring:
+
+   | Tur | Nom | Qiymat | Proxy (hozircha) |
+   |---|---|---|---|
+   | A | `libosa.uz` (@) | `187.7.77.233` | DNS only (kulrang bulut) |
+   | CNAME | `www` | `libosa.uz` | DNS only |
+   | A | `academy` | `187.7.77.233` | DNS only |
+   | TXT | `libosa.uz` (@) | `google-site-verification=…` (Google Search Console, o'zgarishsiz) | — |
+   | MX | `libosa.uz` (@) | `libosa.uz` | — |
+
+   MX — webspace.uz shablonidan qolgan yozuv: serverda pochta yo'q, `@libosa.uz` pochtasi hozir ham ishlamaydi.
+   Cloudflare «pochta ishlamasligi mumkin» deb ogohlantirsa — e'tibor bermang (yoki MX ni o'chiring), hech narsa o'zgarmaydi.
+
+   **Uchala sayt yozuvi hozircha DNS only bo'lsin** (Cloudflare ularni o'zi Proxied qilib qo'ygan bo'lsa — bulutchani bosib
+   kulrang qiling). Cloudflare o'z HTTPS sertifikatini domen faollashgandan keyin 15 daqiqa–24 soat ichida beradi; undan
+   oldin Proxied qilinsa, saytga kirganlar sertifikat xatosini ko'radi va HSTS tufayli uni chetlab o'tolmaydi.
+   Proxied 19.4 da yoqiladi.
+
+3. **SSL/TLS → Overview** → «Custom SSL/TLS» → **Full (strict)**. Standart «Automatic SSL/TLS» ham server sertifikatini
+   tekshirib odatda shuni tanlaydi, lekin aniq qo'ygan ma'qul. Server Let's Encrypt sertifikati bilan — bu rejimga mos.
+   **Flexible ni tanlamang:** Cloudflare serverga doim oddiy HTTP da ulanadi, server esa HTTPS ga yo'naltiradi —
+   sayt cheksiz yo'naltirishga tushib, ochilmay qoladi.
+4. **Security → Settings** → «Bot traffic» → **Bot Fight Mode — o'chiq.** U ilovaning API so'rovlarini (fon so'rovlari)
+   to'xtatishi mumkin va uni qoida bilan istisno qilib bo'lmaydi. **Under Attack mode — o'chiq.**
+5. **SSL/TLS → Edge Certificates → Always Use HTTPS — o'chiq qoldiring.** HTTPS ga yo'naltirishni server o'zi qiladi.
+   «Full (strict)» da Cloudflare serverga mijoz kelgan protokolda ulanadi: Let's Encrypt sertifikatini yangilash
+   tekshiruvi (`/.well-known/acme-challenge/`, 80-port) serverga oddiy HTTP da yetib boradi.
+6. **Rocket Loader — o'chiq** (Speed bo'limi). Sahifaning xavfsizlik siyosati (CSP) begona skriptni to'sadi.
+
+### 19.3 Domen paneli (webspace.uz)
+
+1. DNSSEC yoqilmagan (2026-11-26 da tekshirildi: `.uz` zonasida DS yozuvi yo'q) — bu qadam kerak emas.
+2. webspace.uz panelida `libosa.uz` domenining NS (nameserver) sozlamasi: hozirgi to'rttasi (`dns1`–`dns4.webspace.uz`)
+   o'rniga Cloudflare bergan ikkitasini yozing (Cloudflare panelida ko'rsatiladi, `….ns.cloudflare.com` ko'rinishida).
+3. Kutish: odatda bir necha daqiqa–soat, ko'pi bilan 24 soat. Cloudflare panelida domen «Active» bo'ladi.
+   Bu vaqtda sayt avvalgidek ishlaydi — yozuvlar kulrang, eski va yangi DNS ikkalasi ham to'g'ridan-to'g'ri serverga
+   olib boradi (bloklangan tarmoqdan esa hali ochilmaydi).
+4. Bundan keyin DNS yozuvlari (yangi subdomen va h.k.) faqat Cloudflare panelida o'zgartiriladi — webspace.uz dagi
+   yozuvlar endi ishlatilmaydi.
+
+### 19.4 Proxy'ni yoqish
+
+Ikki shart bajarilganda: **Domains** sahifasida `libosa.uz` — «Active», **SSL/TLS → Edge Certificates** da Universal
+sertifikat — «Active». Shunda **DNS** bo'limida `libosa.uz`, `www`, `academy` bulutchasini bosib **Proxied** (to'q sariq)
+qiling. Shu daqiqadan bloklangan tarmoqlardan ham sayt ochiladi.
+
+### 19.5 Tekshirish
+
+```bash
+curl -sI https://libosa.uz/ | grep -i "^server"          # «server: cloudflare» chiqishi kerak
+curl -s https://libosa.uz/api/sogliq/                     # {"holat": "ok", ...}
+sudo tail -n 5 /var/log/nginx/access.log                  # serverda: mijozlarning haqiqiy IP manzillari (Cloudflare emas)
+sudo certbot renew --dry-run                              # sertifikat yangilanishi Cloudflare orqali ishlaydi
+```
+
+- Avval bloklangan tarmoqdan (masalan, O'zbektelekom uy interneti) sayt ochilishini tekshiring.
+- Ilovaga kirib, bir nechta bo'lim va Telegram botni sinab ko'ring.
+- **SSH endi faqat IP bilan:** `ssh root@187.7.77.233` (`libosa.uz` nomi Cloudflare manziliga qaraydi).
+  Bloklangan tarmoqdan SSH baribir ochilmaydi — mobil internet yoki boshqa tarmoq kerak.
+- Tashqi monitoring (§16) ulangan bo'lsa — `/api/sogliq/` tekshiruvi 200 olayotganini ko'ring.
+- Brauzer konsolida `cloudflareinsights` skripti to'silgani (CSP) haqida xato chiqsa — Cloudflare'da Web Analytics'ni
+  o'chiring, CSP ni bo'shatmang. Sayt baribir ishlaydi, bu faqat ortiqcha xato.
+
+### 19.6 Orqaga qaytarish
+
+Muammo chiqsa, Cloudflare **DNS** bo'limida `libosa.uz`, `www`, `academy` yozuvlarining bulutchasini bosib
+**DNS only** (kulrang) qiling — trafik darhol to'g'ridan-to'g'ri serverga boradi, nameserver'ni qaytarish shart emas.
