@@ -118,6 +118,8 @@ def matn_ishla(chat_id, matn, javobga=''):
         return tolov_malumotini_saqla(matn)
     if ega and matn == '/vidjet':
         return _vidjet_sozlamasi()
+    if ega and matn == '/vidjet_sinov':
+        return _vidjet_sinov()
     if ega and matn.startswith('/tolov'):  # zaxira yo'l: /tolov <matn>
         return tolov_malumotini_saqla(matn[6:].strip()) if matn[6:].strip() else _ega_amali('tolov_ega')
     if ega and (matn == EGA_MENYU or matn in ESKI_EGA_YORLIQLARI):
@@ -750,6 +752,9 @@ def ega_tugma(chat_id, data):
         return _ega_amali('tolov_ega')
     if data in ('e:ob_yaqin', 'e:ob_tugagan', 'e:ob_tekshir'):
         return _ega_obunalar(timezone.localdate(), data[5:])
+    if data == 'e:vs_rad':
+        return [("Telegram serveri bu vidjetni qabul qilmadi, shuning uchun oddiy matn keldi. Sabab — bot tomonida "
+                 "(vidjet tuzilishi yoki bot API versiyasi), telefoningizda emas. Shu xabarni dasturchiga yuboring.", None)]
     if data in ('e:vidjet_yoq', 'e:vidjet_och'):
         s = platforma_sozlama()
         s.bot_vidjet = data == 'e:vidjet_yoq'
@@ -766,6 +771,33 @@ def ega_tugma(chat_id, data):
 
 
 # ---------- platforma egasi ----------
+
+# `/vidjet_sinov`: vidjet nega ko'rinmayotganini aniqlash — uch xil soddalikdagi vidjet. Qaysi biri chizilsa, muammo
+# undan keyingi qadamda; birortasi ham chizilmasa — Telegram ilovasi vidjetni hali qo'llamaydi.
+VIDJET_SINOVLARI = (
+    ("1/3 — eng sodda: faqat matn, dizayn va skript yo'q.",
+     '<p style="margin:0;padding:16px;font:16px system-ui,sans-serif">Salom! 1-vidjet chizildi.</p>'),
+    ("2/3 — dizayn bilan (to'q fon, tilla chegara), skript yo'q.",
+     '<style>body{margin:0;background:#0D1320;color:#F5F2EE;font:15px system-ui,sans-serif}'
+     '.k{margin:14px;padding:16px;border:1px solid #F3BF70;border-radius:16px}b{color:#F3BF70}</style>'
+     '<div class=k><b>LIBOSA</b><p>2-vidjet chizildi: dizayn ishlayapti.</p></div>'),
+    ("3/3 — dizayn + skript (tugma bosilsa yozuv o'zgaradi).",
+     '<style>body{margin:0;background:#0D1320;color:#F5F2EE;font:15px system-ui,sans-serif}'
+     'button{margin:14px;padding:10px 16px;border:1px solid #F3BF70;border-radius:999px;background:none;color:#F3BF70}</style>'
+     '<p id=t style="margin:14px">3-vidjet chizildi.</p><button id=b>Bosing</button>'
+     '<script>var W=window.TelegramWidget;document.getElementById("b").onclick=function(){'
+     'document.getElementById("t").textContent="Skript ham ishlayapti."};W&&W.ready&&W.ready()</script>'),
+)
+
+
+def _vidjet_sinov():
+    """Ega uchun: uch sinov vidjeti. Server rad etsa — oddiy matn «⚠️ rad etdi» tugmasi bilan keladi."""
+    rad = [[{'text': '⚠️ Telegram vidjetni rad etdi', 'callback_data': 'e:vs_rad'}]]
+    return ([("Vidjet sinovi: quyida 3 ta xabar keladi. Har biri chizilgan oyna bo'lib ko'rinsa — vidjet ishlaydi. "
+              "Faqat «Sinov …» yozuvi ko'rinsa — Telegram ilovasi uni chizmadi. Qaysi raqamgacha chizilganini ayting.", None)]
+            + [(f'Sinov {izoh}', {'vidjet': {'html': html, 'chat_data': '{}', 'allow_queries': False}, 'zaxira': rad})
+               for izoh, html in VIDJET_SINOVLARI])
+
 
 def _vidjet_sozlamasi():
     """`/vidjet` — ega namunani o'z telefonida ko'radi (o'ylab topilgan raqamlar), keyin rahbarlar uchun yoqadi."""

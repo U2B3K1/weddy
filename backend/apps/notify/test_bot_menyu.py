@@ -669,6 +669,21 @@ class VidjetTests(Base):
     def vidjetlar(self):
         return [c for c in self.api.call_args_list if c[0][0] == 'sendWidget']
 
+    def test_vidjet_sinovi_faqat_egaga(self):
+        self.api.reset_mock()
+        self.yoz(EGA_CHAT, '/vidjet_sinov')
+        sinovlar = self.vidjetlar()
+        self.assertEqual(len(sinovlar), 3)
+        for n in sinovlar:
+            self.assertEqual(n[1]['chat_id'], EGA_CHAT)
+            self.assertLess(len(n[1]['html'].encode()), 4096)
+        self.assertIn('<script>', sinovlar[2][1]['html'])
+        self.assertNotIn('<style>', sinovlar[0][1]['html'])
+        self.api.reset_mock()
+        self.yoz(RAHBAR_CHAT, '/vidjet_sinov')  # rahbarda — oddiy matn (zakaz qidiruvi), vidjet yo'q
+        self.assertEqual(self.vidjetlar(), [])
+        self.assertIn('dasturchiga', self.bos(EGA_CHAT, 'e:vs_rad'))
+
     def test_standart_ochiq_emas_matn_keladi(self):
         self.yoz(RAHBAR_CHAT, '📊 Bugun')
         self.assertEqual(self.vidjetlar(), [])
