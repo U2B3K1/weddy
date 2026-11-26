@@ -135,17 +135,28 @@ class MiniIlovaTests(TestCase):
         self.assertTrue(kw['reply_markup']['force_reply'])
         self.assertIn(self.salon.nomi, kw['text'])
 
-    def test_toladim_va_ruxsat(self):
+    def test_cheksiz_yoq_faqat_chek(self):
         self.kim(RAHBAR)
-        with mock.patch('apps.notify.services.toladim_tugma_ishla', return_value='Platforma egasiga xabar berildi.') as t:
-            r = self.c.post('/api/tg/tolov/', {'xodim': self.rahbar.id, 'amal': 'toladim'}, format='json')
-        self.assertEqual(r.data['javob'], 'Platforma egasiga xabar berildi.')
-        t.assert_called_once_with(RAHBAR, self.rahbar.id)
-        self.assertIn('tolov', r.data)
-        self.assertEqual(self.c.post('/api/tg/tolov/', {'xodim': self.rahbar.id, 'amal': 'boshqa'}, format='json').status_code, 403)
+        for amal in ('toladim', 'boshqa'):  # «To'ladim (cheksiz)» olib tashlangan
+            self.assertEqual(self.c.post('/api/tg/tolov/', {'xodim': self.rahbar.id, 'amal': amal}, format='json').status_code, 403)
         self.kim(SOTUVCHI)
         for x in (self.sotuvchi.id, self.rahbar.id):
             self.assertEqual(self.c.post('/api/tg/tolov/', {'xodim': x, 'amal': 'chek'}, format='json').status_code, 403)
+
+    def test_yordam_rejimi_chatda_ochiladi(self):
+        from .models import YordamRejimi
+        s = platforma_sozlama()
+        s.telegram_chat_id = BEGONA
+        s.save()
+        self.kim(SOTUVCHI)
+        r = self.c.post('/api/tg/yordam/', {'xodim': self.sotuvchi.id}, format='json')
+        self.assertEqual(r.status_code, 200)
+        self.assertEqual((self.api.call_args[0][0], self.api.call_args[1]['chat_id']), ('sendMessage', SOTUVCHI))
+        self.assertIn("Qo'llab-quvvatlash", self.api.call_args[1]['text'])
+        self.assertTrue(YordamRejimi.objects.filter(chat_id=SOTUVCHI).exists())
+        self.assertEqual(self.c.post('/api/tg/yordam/', {'xodim': self.rahbar.id}, format='json').status_code, 403)  # boshqaniki
+        self.kim(BEGONA)  # eganing o'zi — murojaatlar unga keladi
+        self.assertEqual(self.c.post('/api/tg/yordam/', {}, format='json').status_code, 403)
 
     # ---------- menyu tugmasi ----------
 
@@ -180,7 +191,7 @@ class MiniIlovaTests(TestCase):
         self.assertEqual(s['nomi'], self.salon.nomi)
         self.assertEqual([t['oy'] for t in s['takliflar']], [1, 3, 6, 12])
         self.assertEqual(s['rahbarlar'], [{'ism': 'Rahbar', 'tg': True}])
-        for k in ('toxtagan', 'holat_matni', 'yaqin', 'tugagan', 'kutayotgan', 'arizalar', 'tolov_malumoti'):
+        for k in ('toxtagan', 'holat', 'yaqin', 'tugagan', 'kutayotgan', 'arizalar', 'tolov_malumoti'):
             self.assertIn(k, p)
 
     def test_ega_tolov_kiritadi_ikki_marta_emas(self):
@@ -217,3 +228,24 @@ class MiniIlovaTests(TestCase):
         self.assertEqual(r.data['platforma']['arizalar'], [])
         for yomon in ({'amal': 'ariza_ok', 'gacha': 'x'}, {'amal': 'tolov', 'salon': 'a'}, {'amal': 'nimadir'}):
             self.assertEqual(self.c.post('/api/tg/ega/', yomon, format='json').status_code, 403)
+
+    def test_egaga_kunlik_tekshirish_eslatmasi(self):
+        from datetime import time as soat
+
+        from apps.tenants import obuna
+
+        from .bot_menyu import obuna_ogohlantirishi
+        s = platforma_sozlama()
+        s.telegram_chat_id = BEGONA
+        s.save()
+        with mock.patch('apps.notify.egaga.egaga_xabar', return_value=True) as e:
+            obuna_ogohlantirishi(hozir=soat(10, 0))
+            e.assert_not_called()  # kutayotgan to'lov ham, muddati yaqin salon ham yo'q
+            obuna.tolov_sorovi(self.salon, self.rahbar)
+            obuna_ogohlantirishi(hozir=soat(10, 0))
+            matn = e.call_args[0][0]
+            self.assertIn("tekshirilishi kerak: 1", matn)
+            self.assertIn(self.salon.nomi, matn)
+            e.reset_mock()
+            obuna_ogohlantirishi(hozir=soat(11, 0))  # shu kuni ikkinchi marta yuborilmaydi
+            e.assert_not_called()

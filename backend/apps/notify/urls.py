@@ -7,6 +7,7 @@ urlpatterns = [
     path('tg/sozlama/', miniilova.TgSozlamaView.as_view()),
     path('tg/tolov/', miniilova.TgTolovView.as_view()),
     path('tg/ega/', miniilova.TgEgaView.as_view()),
+    path('tg/yordam/', miniilova.TgYordamView.as_view()),
     path('telegram/', views.TelegramView.as_view()),
     path('yordam/', views.YordamView.as_view()),
     path('xabarlar/', views.XabarlarView.as_view()),

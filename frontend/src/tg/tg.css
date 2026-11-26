@@ -177,6 +177,29 @@
 .tg-ichi { animation: tg-kirish .22s ease-out; }
 @keyframes tg-kirish { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
 
+/* Tizim holati paneli (ega) */
+.tg-bolim-sarlavha { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin: 22px 2px 10px; }
+.tg .tg-bolim-sarlavha h2 { margin: 0; }
+.tg-vazifalar { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 12px; }
+.tg-vazifa { display: flex; flex-direction: column; gap: 6px; padding: 12px 14px; border: 1px solid rgba(255, 255, 255, .12); border-radius: 16px;
+  background: rgba(14, 19, 30, .62); }
+.tg-vazifa.xato { border-color: rgba(240, 128, 137, .6); background: rgba(240, 128, 137, .08); }
+.tg-vazifa-nom { font-weight: 700; font-size: 14px; line-height: 1.25; }
+.tg .tg-vazifa-holat { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--tg-xira); }
+.tg .tg-vazifa-holat::before { content: ''; flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--tg-xira); }
+.tg .tg-vazifa-holat.ok::before { background: var(--tg-yashil); }
+.tg .tg-vazifa-holat.xato { color: #F7B3B9; }
+.tg .tg-vazifa-holat.xato::before { background: var(--tg-qizil); }
+.tg-plita b.tg-plita-kichik { font-size: 17px; line-height: 1.2; }
+.tg .tg-plita.ogoh { border-color: rgba(242, 196, 109, .6); }
+.tg-ustunlar { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 10px; }
+.tg-ustunlar li { display: grid; grid-template-columns: minmax(0, 1fr) 34px; grid-template-areas: 'nom son' 'yol son'; column-gap: 10px; row-gap: 4px; align-items: center; }
+.tg-ustun-nom { grid-area: nom; font-size: 13px; color: #D4D7DE; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tg-ustun-yol { grid-area: yol; height: 8px; border-radius: 4px; background: rgba(255, 255, 255, .07); overflow: hidden; }
+.tg-ustun-yol i { display: block; height: 100%; min-width: 4px; border-radius: 4px; background: var(--tg-oltin); }
+.tg-ustunlar b { grid-area: son; text-align: right; font-variant-numeric: tabular-nums; }
+.tg-qadamlar { margin: 12px 0 14px; padding-left: 20px; color: #D4D7DE; font-size: 14px; display: grid; gap: 4px; }
+
 /* Qisqa xabar (saqlandi / xato) */
 .tg .tg-xabar { position: fixed; left: 16px; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom)); z-index: 4; padding: 12px 16px;
   border-radius: 14px; text-align: center; font-weight: 700; font-size: 14px; color: #171717; background: var(--tg-yashil);

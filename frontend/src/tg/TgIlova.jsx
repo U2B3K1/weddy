@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { tgEga, tgHolat, tgSozla, tgTolov } from '../api'
+import { tgEga, tgHolat, tgSozla, tgTolov, tgYordam } from '../api'
 import Platforma, { PLATFORMA_BOLIMLARI } from './Platforma'
 import { initData, nusxala, tanlovTitrash, tayyor, titrat, yop } from './telegram'
 
@@ -78,7 +78,6 @@ function Kalit({ yoqilgan, nom, izoh, bos, band }) {
 }
 
 function Sozlamalar({ d, sozla, band }) {
-  const tinch = d.t ? d.t.join('-') : '0'
   return (
     <>
       <section className="tg-karta">
@@ -98,24 +97,6 @@ function Sozlamalar({ d, sozla, band }) {
           ))}
         </div>
         <Kalit nom="Primerkadan 1 soat oldin ham" yoqilgan={d.p} band={band} bos={() => sozla('esl', 'p')} />
-      </section>
-      <section className="tg-karta">
-        <h2>Tinch vaqt</h2>
-        <p className="tg-izoh">Shu oraliqda xabarlar yig'ilib turadi va tugagach bitta bo'lib keladi.</p>
-        <div className="tg-chiplar">
-          {[['0', "O'chiq"], ...d.tv.map((v) => [v.join('-'), `${v[0]}:00–${soat(v[1])}`])].map(([q, nom]) => (
-            <button type="button" key={q} className={q === tinch ? 'on' : ''} aria-pressed={q === tinch} disabled={band}
-              onClick={() => q !== tinch && sozla('tinch', q)}>{nom}</button>
-          ))}
-        </div>
-        {d.t && d.m.length > 0 && (
-          <>
-            <p className="tg-izoh tg-ost">Tinch vaqtda ham darhol kelsin:</p>
-            {d.m.map(([k, nom, kutadi]) => (
-              <Kalit key={k} nom={nom} yoqilgan={!kutadi} band={band} bos={() => sozla('muhim', k)} />
-            ))}
-          </>
-        )}
       </section>
       <section className="tg-karta">
         <h2>Maxfiylik</h2>
@@ -176,23 +157,41 @@ function Tolov({ d, amal, band }) {
         {d.k && d.z && <p className="tg-izoh tg-matn">{d.z}</p>}
       </section>
       {d.bor && (
-        <div className="tg-amallar">
-          <button type="button" className="tg-tugma" disabled={band} onClick={() => amal('chek')}>
+        <section className="tg-karta">
+          <h2>To'lagach</h2>
+          <p className="tg-izoh">Chek rasmini (skrinshot) yoki PDF faylini yuboring — platforma egasiga boradi va tekshirilgach obuna uzaytiriladi.</p>
+          <button type="button" className="tg-tugma tg-toliq tg-ost" disabled={band} onClick={() => amal('chek')}>
             <Belgi d="M6 2h12v20l-3-2-3 2-3-2-3 2zM9 7h6M9 11h6M9 15h4" o={16} />Chek yuborish
           </button>
-          <button type="button" className="tg-tugma" disabled={band} onClick={() => amal('toladim')}>
-            <Belgi d="M20 6 9 17l-5-5" o={16} />To'ladim (cheksiz)
-          </button>
-        </div>
+        </section>
       )}
     </>
   )
 }
 
+// ---------- Qo'llab-quvvatlash ----------
+
+function Yordam({ boshla, band }) {
+  return (
+    <section className="tg-karta">
+      <h2>Savol yoki muammo</h2>
+      <p>Libosa jamoasiga yozing: matn, skrinshot yoki ovozli xabar. Javob shu bot chatiga keladi.</p>
+      <ol className="tg-qadamlar">
+        <li>«Savol yozish» ni bosing — ilova yopiladi.</li>
+        <li>Chatda savolingizni yuboring.</li>
+        <li>Tugatish — /bekor.</li>
+      </ol>
+      <button type="button" className="tg-asosiy" disabled={band} onClick={boshla}>
+        <Belgi d="M21 12a8 8 0 0 1-11.6 7.1L3 21l1.9-6.4A8 8 0 1 1 21 12z" o={18} />Savol yozish
+      </button>
+    </section>
+  )
+}
+
 // ---------- Ilova ----------
 
-const RAHBAR_BOLIMLARI = [['bugun', 'Bugun'], ['sozlama', 'Sozlamalar'], ['tolov', "To'lov"]]
-const XODIM_BOLIMLARI = [['bugun', 'Bugun'], ['sozlama', 'Sozlamalar']]
+const RAHBAR_BOLIMLARI = [['bugun', 'Bugun'], ['sozlama', 'Sozlamalar'], ['tolov', "To'lov"], ['yordam', 'Yordam']]
+const XODIM_BOLIMLARI = [['bugun', 'Bugun'], ['sozlama', 'Sozlamalar'], ['yordam', 'Yordam']]
 // Pastki panel belgilari (24×24, bitta yo'l)
 const BELGILAR = {
   bugun: 'M3 3v18h18M7 15l4-4 3 3 5-6',
@@ -200,6 +199,7 @@ const BELGILAR = {
   tolov: 'M2 5h20v14H2zM2 10h20M6 15h4',
   umumiy: 'M3 10.5 12 3l9 7.5V21h-6v-6H9v6H3z',
   salonlar: 'M3 9l1.5-5h15L21 9M4 9v11h16V9M3 9h18M9 20v-6h6v6',
+  yordam: 'M21 12a8 8 0 0 1-11.6 7.1L3 21l1.9-6.4A8 8 0 1 1 21 12z',
 }
 
 export default function TgIlova() {
@@ -232,11 +232,20 @@ export default function TgIlova() {
   const egami = p && (tanlangan === 'ega' || !holat.xodimlar.length)
   const x = egami ? null : holat?.xodimlar.find((v) => v.id === tanlangan) || holat?.xodimlar[0]
   const rahbar = x && x.bugun
-  const bolimlar = egami ? PLATFORMA_BOLIMLARI : rahbar ? RAHBAR_BOLIMLARI : XODIM_BOLIMLARI
+  // Ega o'zi salon xodimi ham bo'lsa — «Yordam» yo'q: murojaatlar unga keladi
+  const bolimlar = egami ? PLATFORMA_BOLIMLARI
+    : (rahbar ? RAHBAR_BOLIMLARI : XODIM_BOLIMLARI).filter(([k]) => !(k === 'yordam' && holat?.ega))
   const joriy = egami ? egaBolim : bolimlar.some(([k]) => k === bolim) ? bolim : 'bugun'
   const yangi = (qism) => setHolat((h) => ({ ...h, xodimlar: h.xodimlar.map((v) => (v.id === x.id ? { ...v, ...qism } : v)) }))
   const tanlovlar = holat ? [...(p ? [['ega', 'Platforma']] : []), ...holat.xodimlar.map((v) => [v.id, v.salon])] : []
 
+  const yordamBoshla = () => {
+    setBand(true)
+    tgYordam(kirish, x.id)
+      .then((r) => { setXabar(['ok', r.javob]); titrat(); setTimeout(yop, 1200) })   // savol chatda yoziladi
+      .catch((e) => setXabar(['xato', xatoMatni(e, "Bajarilmadi. Qayta urinib ko'ring.")]))
+      .finally(() => setBand(false))
+  }
   const egaAmal = (malumot, keyin) => {
     setBand(true)
     tgEga(kirish, malumot)
@@ -297,6 +306,7 @@ export default function TgIlova() {
           ))}
         {!egami && joriy === 'sozlama' && <Sozlamalar d={x.sozlama} sozla={sozla} band={band} />}
         {!egami && joriy === 'tolov' && x.tolov && <Tolov d={x.tolov} amal={amal} band={band} />}
+        {!egami && joriy === 'yordam' && <Yordam boshla={yordamBoshla} band={band} />}
       </>
     )
   }
@@ -307,7 +317,8 @@ export default function TgIlova() {
       tolov: ["To'lov ma'lumoti", 'Rahbarlar ko\'radigan matn'] }[joriy]
     : !x ? ['Libosa', '']
       : joriy === 'bugun' ? ['Bugun', rahbar ? sana(x.bugun.d) : x.salon]
-        : joriy === 'tolov' ? ["To'lov", 'Obuna'] : ['Sozlamalar', 'Bot xabarlari qachon va qanday kelsin']
+        : joriy === 'tolov' ? ["To'lov", 'Obuna']
+          : joriy === 'yordam' ? ["Qo'llab-quvvatlash", 'Libosa jamoasi bilan aloqa'] : ['Sozlamalar', 'Bot xabarlari qachon va qanday kelsin']
   const joriyTanlov = egami ? 'ega' : x?.id
   const panel = holat && (egami || x)
   const bolimTanla = (k) => {

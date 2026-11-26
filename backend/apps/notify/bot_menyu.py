@@ -479,14 +479,15 @@ def bugun_tugma(chat_id, data):
 # ---------- sozlamalar ----------
 # Hammasi bitta xabar ichida: tugma bosilganda o'sha xabar yangilanadi (`s:<xodim_id>:<bo'lim>[:<qiymat>]`).
 
-SOZLAMA_BOLIMLARI = {'tur': '🔔 Bildirishnoma turlari', 'esl': '⏰ Eslatma vaqti',
-                     'tinch': '🌙 Tinch vaqt', 'maxfiy': '🙈 Maxfiylik'}
+SOZLAMA_BOLIMLARI = {'tur': '🔔 Bildirishnoma turlari', 'esl': '⏰ Eslatma vaqti', 'maxfiy': '🙈 Maxfiylik'}
+# «Tinch vaqt» menyudan olib tashlandi (egasi, 2026-11-27: salon 24/7 ishlamaydi — tunda bezovta qilinmaydi).
+# Mantiq (services.yuborish_vaqti) va eski tugmalar joyida: kimdir avval yoqgan bo'lsa, eski xabardagi tugma bilan o'chira oladi.
 # Minimalizm (2026-11-19): «Muhim xabarlar» — «Tinch vaqt» sahifasiga qo'shildi (faqat tinch vaqt yoqilganda kerak);
 # «Til va vaqt mintaqasi» va «Ulangan hisob» olib tashlandi (tanlov yo'q, faqat ma'lumot edi).
 # Eski xabarlardagi tugmalar uchun: muhim → tinch, til/hisob → bosh sahifa.
 # «Yetkazish tartibi» (jamlanma) ham olib tashlandi: u faqat rahbarning ikki kam uchraydigan xabariga taalluqli edi,
 # tunda bezovta qilmaslikni «Tinch vaqt» hal qiladi.
-ESKI_BOLIMLAR = {'muhim': 'tinch', 'til': 'bosh', 'hisob': 'bosh', 'yet': 'bosh'}
+ESKI_BOLIMLAR = {'muhim': 'tinch', 'tinch': 'tinch', 'til': 'bosh', 'hisob': 'bosh', 'yet': 'bosh'}
 
 
 def _kabinet_manzili():
@@ -657,8 +658,9 @@ def _tolov(x):
     nusxa = ([[{'text': '📋 Karta raqamini nusxalash', 'copy_text': {'text': re.sub(r'\D', '', karta.group())}}]]
              if karta else [])
     qatorlar += ['', "To'lov qilish:", malumot, '', "To'lagach chekni yuboring — platforma egasiga boradi."]
-    amallar = [[{'text': '🧾 Chek yuborish', 'callback_data': f'tc:{x.id}'}],
-               [{'text': "✅ To'ladim (cheksiz)", 'callback_data': f'tl:{x.id}'}]]
+    # «To'ladim (cheksiz)» olib tashlandi (egasi, 2026-11-27): to'lov faqat chek bilan bildiriladi. Eski xabarlardagi
+    # `tl:` tugmasi ishlashda davom etadi (services.toladim_tugma_ishla).
+    amallar = [[{'text': '🧾 Chek yuborish', 'callback_data': f'tc:{x.id}'}]]
     if platforma_sozlama().bot_vidjet:  # vidjet: karta ko'rinishi va nusxalash ichida, chek tugmalari ostida
         from .vidjet import tolov_vidjeti
         return [('\n'.join(qatorlar), {**tolov_vidjeti(x, malumot, amallar, oxirgi_qator, kutilmoqda),
@@ -963,43 +965,50 @@ def _ega_amali(amal):
     return [_holat_kartasi()]
 
 
-def _holat_kartasi(hozir=None):
-    """Platforma holati: fon vazifalari va bot oxirgi marta qachon ishlagani, zaxira nusxa, xabar navbati."""
+def holat_malumoti(hozir=None):
+    """Platforma holati — ma'lumot sifatida (bot kartasi va Telegram ilovasidagi statistika paneli uchun bir xil)."""
+    from django.db.models import Q
+
     from . import yurak
-    from .models import Xabar
+    from .models import TugmaBosish, Xabar
+    from .services import ARXIV_KUN, ARXIV_TURLAR
     hozir = hozir or timezone.now()
     s = platforma_sozlama()
     kecha = hozir - timedelta(days=1)
-    qatorlar = ['🩺 Platforma holati', f'Tekshirildi · {timezone.localtime(hozir):%H:%M}', '', 'Baza: ishlayapti']
-    muammo = 0
-    for _, sarlavha, vaqt, toxtagan in yurak.holatlar(hozir):
-        if vaqt is None:
-            qatorlar.append(f"{sarlavha}: hali ma'lumot yo'q")
-        elif toxtagan:
-            muammo += 1
-            qatorlar.append(f"{sarlavha}: ⚠️ to'xtagan (oxirgi marta {timezone.localtime(vaqt):%d.%m %H:%M})")
-        else:
-            qatorlar.append(f"{sarlavha}: ishlayapti ({timezone.localtime(vaqt):%H:%M})")
-    if not s.oxirgi_zaxira:
-        qatorlar.append("Zaxira nusxa: hali yuborilmagan")
-    else:
-        eski = s.oxirgi_zaxira < hozir - timedelta(hours=36)
-        muammo += eski
-        qatorlar.append(f"Zaxira nusxa: {timezone.localtime(s.oxirgi_zaxira):%d.%m.%Y %H:%M}" + (' ⚠️ 36 soatdan eski' if eski else ''))
-    from django.db.models import Q
-
-    from .services import ARXIV_KUN, ARXIV_TURLAR
+    vazifalar = [{'nom': sarlavha, 'vaqt': vaqt, 'toxtagan': toxtagan} for _, sarlavha, vaqt, toxtagan in yurak.holatlar(hozir)]
+    zaxira_eski = bool(s.oxirgi_zaxira and s.oxirgi_zaxira < hozir - timedelta(hours=36))
     navbat = (Xabar.objects.filter(holat=Xabar.Holat.KUTILMOQDA)  # navbat bilan bir xil oyna: arxiv 7 kungacha kutadi
               .filter(Q(yaratilgan__gt=kecha) | Q(tur__in=ARXIV_TURLAR, yaratilgan__gt=hozir - timedelta(days=ARXIV_KUN)))
               .exclude(keyin__gt=hozir).count())
     xato = Xabar.objects.filter(holat=Xabar.Holat.XATO, yaratilgan__gt=kecha).count()
-    qatorlar.append(f"Xabar navbati: {navbat} ta kutmoqda" + (f", 24 soatda {xato} tasi yetib bormadi" if xato else ''))
-    from .models import TugmaBosish
-    stat = list(TugmaBosish.objects.filter(sana__gte=timezone.localdate() - timedelta(days=29)).values('nom')
-                .annotate(s=Sum('soni')).order_by('-s')[:10])
-    if stat:
-        qatorlar += ['', 'Bot tugmalari (30 kun):'] + [f"• {r['nom']} — {r['s']}" for r in stat]
-    qatorlar += ['', f"⚠️ E'tibor talab qiladi: {muammo}" if muammo else "Hammasi joyida."]
+    tugmalar = [(r['nom'], r['s']) for r in TugmaBosish.objects.filter(sana__gte=timezone.localdate() - timedelta(days=29))
+                .values('nom').annotate(s=Sum('soni')).order_by('-s')[:10]]
+    return {'hozir': hozir, 'vazifalar': vazifalar, 'zaxira': s.oxirgi_zaxira, 'zaxira_eski': zaxira_eski,
+            'navbat': navbat, 'xato': xato, 'tugmalar': tugmalar,
+            'muammo': sum(v['toxtagan'] for v in vazifalar) + zaxira_eski}
+
+
+def _holat_kartasi(hozir=None):
+    """Platforma holati: fon vazifalari va bot oxirgi marta qachon ishlagani, zaxira nusxa, xabar navbati."""
+    h = holat_malumoti(hozir)
+    qatorlar = ['🩺 Platforma holati', f"Tekshirildi · {timezone.localtime(h['hozir']):%H:%M}", '', 'Baza: ishlayapti']
+    for v in h['vazifalar']:
+        if v['vaqt'] is None:
+            qatorlar.append(f"{v['nom']}: hali ma'lumot yo'q")
+        elif v['toxtagan']:
+            qatorlar.append(f"{v['nom']}: ⚠️ to'xtagan (oxirgi marta {timezone.localtime(v['vaqt']):%d.%m %H:%M})")
+        else:
+            qatorlar.append(f"{v['nom']}: ishlayapti ({timezone.localtime(v['vaqt']):%H:%M})")
+    if not h['zaxira']:
+        qatorlar.append("Zaxira nusxa: hali yuborilmagan")
+    else:
+        qatorlar.append(f"Zaxira nusxa: {timezone.localtime(h['zaxira']):%d.%m.%Y %H:%M}"
+                        + (' ⚠️ 36 soatdan eski' if h['zaxira_eski'] else ''))
+    qatorlar.append(f"Xabar navbati: {h['navbat']} ta kutmoqda"
+                    + (f", 24 soatda {h['xato']} tasi yetib bormadi" if h['xato'] else ''))
+    if h['tugmalar']:
+        qatorlar += ['', 'Bot tugmalari (30 kun):'] + [f"• {nom} — {soni}" for nom, soni in h['tugmalar']]
+    qatorlar += ['', f"⚠️ E'tibor talab qiladi: {h['muammo']}" if h['muammo'] else "Hammasi joyida."]
     tugmalar = [[{'text': '🔄 Yangilash', 'callback_data': 'e:holat'}]]
     if _kabinet_manzili():
         tugmalar.append([{'text': 'Panelni ochish', 'url': _kabinet_manzili() + '/#platforma'}])
@@ -1076,8 +1085,17 @@ def obuna_ogohlantirishi(bugun=None, hozir=None):
         holat = 'bugun tugaydi' if qolgan == 0 else f'{qolgan} kun qoldi' if qolgan > 0 else f'{-qolgan} kun oldin tugagan'
         xulosa.append(f'• {s.nomi} — {muddat:%d.%m}, {holat}: ' + ('rahbarga eslatma yuborildi' if yetdi else
                       "⚠️ rahbar Telegramga ulanmagan — o'zingiz bog'laning" + (f' ({s.rahbar_telefon})' if s.rahbar_telefon else '')))
+    # To'lovi tekshirilishi kerak bo'lgan salonlar — egaga har kuni (so'rov paytidagi bitta xabar ko'rilmay qolishi mumkin)
+    from apps.tenants.models import ObunaTolovi
+    kutmoqda = [f"• {t.salon.nomi} — {timezone.localtime(t.yaratilgan):%d.%m}, "
+                + ('chek yuborilgan' if t.chek_fayl else "chek yo'q")
+                for t in ObunaTolovi.objects.filter(holat=ObunaTolovi.Holat.KUTILMOQDA).select_related('salon').order_by('id')[:10]]
+    qismlar = (['⏳ Obuna muddati:\n' + '\n'.join(xulosa)] if xulosa else []) + (
+        [f"🧾 To'lovi tekshirilishi kerak: {len(kutmoqda)}\n" + '\n'.join(kutmoqda)
+         + "\nPul kelganini tekshirib, «Libosa» ilovasida (Salonlar) yoki «🏢 Platforma» → «Tekshirish kerak» da kiriting."]
+        if kutmoqda else [])
     ps = platforma_sozlama()
-    if xulosa and ps.obuna_xabar_sana != bugun and egaga_xabar('⏳ Obuna muddati:\n' + '\n'.join(xulosa)):
+    if qismlar and ps.obuna_xabar_sana != bugun and egaga_xabar('\n\n'.join(qismlar)):
         ps.obuna_xabar_sana = bugun
         ps.save(update_fields=['obuna_xabar_sana'])
     return soni

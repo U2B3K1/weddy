@@ -10,7 +10,6 @@ const mos = (s, f) => (f === 'yaqin' ? s.qolgan != null && s.qolgan >= 0 && s.qo
 const kunYorliq = (s) => (s.qolgan == null ? '' : s.qolgan < 0 ? 'tugagan' : s.qolgan === 0 ? 'bugun' : `${s.qolgan} kun`)
 
 function Umumiy({ p, ochSalon, ochRoyxat, amal, band }) {
-  const [batafsil, setBatafsil] = useState(false)
   const plitalar = [['hammasi', 'Salonlar', p.salonlar.length], ['yaqin', 'Yaqin 7 kunda tugaydi', p.yaqin],
     ['tugagan', 'Muddati tugagan', p.tugagan], ['tekshir', "To'lovi tekshirilishi kerak", p.kutayotgan.length]]
   return (
@@ -21,10 +20,6 @@ function Umumiy({ p, ochSalon, ochRoyxat, amal, band }) {
         </p>
         {p.javobsiz > 0 && <p className="tg-holat kut">Javobsiz murojaatlar: {p.javobsiz} — javob botda, xabarga «reply»</p>}
         <p className="tg-holat">Shu oy: {p.oy_soni} ta to'lov, {som(p.oy_summa)}</p>
-        <button type="button" className="tg-havola" aria-expanded={batafsil} onClick={() => setBatafsil(!batafsil)}>
-          {batafsil ? 'Batafsilni yopish' : 'Holat batafsil'}
-        </button>
-        {batafsil && <p className="tg-izoh tg-matn">{p.holat_matni}</p>}
       </section>
       <div className="tg-plitalar">
         {plitalar.map(([f, nom, n]) => (
@@ -59,6 +54,73 @@ function Umumiy({ p, ochSalon, ochRoyxat, amal, band }) {
             onClick={() => amal({ amal: 'ariza_ok', gacha: p.arizalar[p.arizalar.length - 1].id })}>Ko'rildi deb belgilash</button>
         </section>
       )}
+      <TizimHolati h={p.holat} />
+    </>
+  )
+}
+
+// Bot tugmalari statistikasi (TugmaBosish.nom): «menyu:sozlama» → «Sozlamalar · menyu»
+const TUGMA_JOYI = { menyu: 'menyu', tugma: 'tugma', ega: 'ega', eski: 'eski menyu' }
+const TUGMA_NOMI = {
+  sozlama: 'Sozlamalar', platforma: 'Platforma', tolov: "To'lov", qaror: 'Qarorlar', bugun: 'Bugun', kassa: 'Kassa',
+  ertaga: 'Ertaga', holat: 'Holat', ob_tugagan: 'Tugagan obunalar', ob_yaqin: 'Yaqin 7 kun', ob_tekshir: 'Tekshirish kerak',
+  tolov_yoz: "To'lov ma'lumotini yozish", tolov_och: "To'lov ma'lumotini o'chirish", sl: 'Salonlar', s: 'Salon kartasi',
+  to: "To'lov oyi", tq: "To'lov tasdig'i", ar: "So'rovlar", ar_ok: "So'rov ko'rildi", soz_matn: "Oddiy ko'rinish",
+  vidjet_yoq: 'Vidjet yoqish', vidjet_och: "Vidjet o'chirish", tolov_ega: "To'lov ma'lumoti",
+}
+const tugmaNomi = (n) => {
+  const [joy, ...qolgan] = String(n).split(':')
+  const k = qolgan.join(':')
+  return TUGMA_JOYI[joy] ? `${TUGMA_NOMI[k] || k} · ${TUGMA_JOYI[joy]}` : n
+}
+
+function TizimHolati({ h }) {
+  const eng = Math.max(1, ...h.tugmalar.map((t) => t[1]))
+  return (
+    <>
+      <div className="tg-bolim-sarlavha">
+        <h2>Tizim holati</h2>
+        <span className={`tg-kun${h.muammo ? ' xato' : ''}`}>{h.muammo ? `${h.muammo} ta muammo` : 'hammasi joyida'}</span>
+      </div>
+      <div className="tg-vazifalar">
+        <div className="tg-vazifa">
+          <span className="tg-vazifa-nom">Baza</span>
+          <span className="tg-vazifa-holat ok">ishlayapti</span>
+        </div>
+        {h.vazifalar.map((v) => (
+          <div key={v.nom} className={`tg-vazifa${v.toxtagan ? ' xato' : ''}`}>
+            <span className="tg-vazifa-nom">{v.nom}</span>
+            <span className={`tg-vazifa-holat ${!v.vaqt ? '' : v.toxtagan ? 'xato' : 'ok'}`}>
+              {!v.vaqt ? "ma'lumot yo'q" : v.toxtagan ? `to'xtagan · ${v.vaqt}` : `ishlayapti · ${v.vaqt}`}
+            </span>
+          </div>
+        ))}
+      </div>
+      <div className="tg-plitalar">
+        <div className={`tg-plita${h.zaxira_eski || !h.zaxira ? ' ogoh' : ''}`}>
+          <b className="tg-plita-kichik">{h.zaxira || "yo'q"}</b>
+          <span>Zaxira nusxa{h.zaxira_eski ? ' — 36 soatdan eski' : ''}</span>
+        </div>
+        <div className={`tg-plita${h.xato ? ' ogoh' : ''}`}>
+          <b>{h.navbat}</b>
+          <span>Xabar navbatida{h.xato ? ` · 24 soatda ${h.xato} tasi yetmadi` : ''}</span>
+        </div>
+      </div>
+      {h.tugmalar.length > 0 && (
+        <section className="tg-karta">
+          <h2>Bot tugmalari · 30 kun</h2>
+          <ul className="tg-ustunlar">
+            {h.tugmalar.map(([nom, soni]) => (
+              <li key={nom}>
+                <span className="tg-ustun-nom">{tugmaNomi(nom)}</span>
+                <span className="tg-ustun-yol" aria-hidden="true"><i style={{ width: `${(soni / eng) * 100}%` }} /></span>
+                <b>{soni}</b>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+      <p className="tg-izoh tg-markaz">Tekshirildi · {h.vaqt}</p>
     </>
   )
 }

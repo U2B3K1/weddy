@@ -410,3 +410,4 @@ export const tgSozla = (initData, xodim, bolim, qiymat) =>
 export const tgTolov = (initData, xodim, amal) =>
   api.post('/tg/tolov/', { xodim, amal }, tgSarlavha(initData)).then((r) => r.data)
 export const tgEga = (initData, malumot) => api.post('/tg/ega/', malumot, tgSarlavha(initData)).then((r) => r.data)
+export const tgYordam = (initData, xodim) => api.post('/tg/yordam/', { xodim }, tgSarlavha(initData)).then((r) => r.data)

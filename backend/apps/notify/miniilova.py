@@ -114,24 +114,45 @@ class TgSozlamaView(OchiqView):
 
 
 class TgTolovView(OchiqView):
-    """POST {xodim, amal}: `toladim` — egaga «to'ladim» xabari; `chek` — bot chatda chek rasmini so'raydi."""
+    """POST {xodim, amal: 'chek'} — bot chatda chek rasmini so'raydi (rasm yoki PDF chatda yuboriladi, egaga boradi)."""
     def post(self, request):
         uid = foydalanuvchi(request)
         x = _xodim(uid, request.data.get('xodim'))
         if x.rol != R:
             raise PermissionDenied("Bu amal faqat salon rahbariga ruxsat etilgan.")
-        amal = request.data.get('amal')
-        if amal == 'toladim':
-            from .services import toladim_tugma_ishla
-            return Response({'javob': toladim_tugma_ishla(uid, x.id), 'tolov': _tolov(x)})
-        if amal == 'chek':
-            ((matn, belgi),) = bot_menyu.chek_tugma(uid, f'tc:{x.id}')
-            try:
-                telegram.api('sendMessage', chat_id=uid, text=matn, reply_markup=belgi)
-            except telegram.TelegramXatosi:
-                return Response({'detail': "Bot xabar yubora olmadi. Birozdan keyin qayta urinib ko'ring."}, status=503)
-            return Response({'javob': "Chatga qayting: bot chek rasmini so'radi."})
-        raise PermissionDenied("Noma'lum amal.")
+        if request.data.get('amal') != 'chek':  # «To'ladim (cheksiz)» olib tashlangan — to'lov faqat chek bilan
+            raise PermissionDenied("Noma'lum amal.")
+        ((matn, belgi),) = bot_menyu.chek_tugma(uid, f'tc:{x.id}')
+        if not _chatga(uid, matn, belgi):
+            return Response({'detail': "Bot xabar yubora olmadi. Birozdan keyin qayta urinib ko'ring."}, status=503)
+        return Response({'javob': "Chatga qayting: bot chek rasmini so'radi."})
+
+
+class TgYordamView(OchiqView):
+    """POST {xodim?} — qo'llab-quvvatlash: botdagi «/yordam» bilan bir xil rejim yoqiladi, savol chatda yoziladi
+    (matn, skrinshot, ovozli xabar) va platforma egasiga boradi; javob ham shu chatga keladi."""
+    def post(self, request):
+        from . import yordam
+        uid = foydalanuvchi(request)
+        if bot_menyu.egami(uid):
+            raise PermissionDenied("Siz platforma egasisiz: murojaatlar sizga keladi.")
+        xid = request.data.get('xodim')
+        x = _xodim(uid, xid) if xid else None
+        ((matn, _),) = yordam.boshlash(uid, x)
+        if matn != yordam.SAVOL_MATNI:  # ega manzili yo'q va h.k.
+            return Response({'detail': matn}, status=503)
+        if not _chatga(uid, matn):
+            yordam.tugat(uid)
+            return Response({'detail': "Bot xabar yubora olmadi. Birozdan keyin qayta urinib ko'ring."}, status=503)
+        return Response({'javob': "Chatga qayting va savolingizni yozing."})
+
+
+def _chatga(uid, matn, belgi=None):
+    try:
+        telegram.api('sendMessage', chat_id=uid, text=matn, **({'reply_markup': belgi} if belgi else {}))
+        return True
+    except telegram.TelegramXatosi:
+        return False
 
 
 # ---------- platforma egasi ----------
@@ -162,6 +183,22 @@ def salon_holati(s, bugun):
     }
 
 
+def _holat():
+    """Statistika paneli: fon vazifalari, zaxira nusxa, xabar navbati, bot tugmalari (30 kun)."""
+    h = bot_menyu.holat_malumoti()
+    return {'vazifalar': [{'nom': v['nom'], 'vaqt': _soat(v['vaqt']), 'toxtagan': v['toxtagan']} for v in h['vazifalar']],
+            'zaxira': _sana(h['zaxira']), 'zaxira_eski': h['zaxira_eski'], 'navbat': h['navbat'], 'xato': h['xato'],
+            'tugmalar': h['tugmalar'], 'muammo': h['muammo'], 'vaqt': _soat(h['hozir'])}
+
+
+def _soat(d):
+    """Bugun bo'lsa «14:32», aks holda «26.11 14:32»."""
+    if not d:
+        return ''
+    d = timezone.localtime(d)
+    return f'{d:%H:%M}' if d.date() == timezone.localdate() else f'{d:%d.%m %H:%M}'
+
+
 def platforma_holati():
     """Ega ko'radigan hamma narsa: botdagi «🏢 Platforma» xabari va uning tugmalari ortidagi ma'lumot."""
     from datetime import timedelta
@@ -181,7 +218,7 @@ def platforma_holati():
     arizalar = list(Ariza.objects.filter(korilgan=False).order_by('id')[:bot_menyu.ARIZA_MAKS])
     return {
         'toxtagan': [sarlavha for _, sarlavha, _, _ in yurak.toxtaganlar()],
-        'holat_matni': bot_menyu._holat_kartasi()[0],
+        'holat': _holat(),
         'salonlar': [salon_holati(s, bugun) for s in salonlar],
         'yaqin': len(bot_menyu.obuna_qatorlari(bugun, bugun, bugun + timedelta(days=7))),
         'tugagan': len(bot_menyu.obuna_qatorlari(bugun, None, bugun - timedelta(days=1))),

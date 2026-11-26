@@ -222,8 +222,11 @@ def karta_ajrat(matn):
     def ismmi(q):
         sozlar = q.split()
         return 2 <= len(sozlar) <= 4 and all(_ISM.fullmatch(s) for s in sozlar)
-    # ustuvorlik: belgilangan qator, karta qatori, keyingi qator, oldingi qator
-    qoshni = {karta_qatori: 1, karta_qatori + 1: 2, karta_qatori - 1: 3}
+    # ustuvorlik: belgilangan qator, karta qatori, keyingi qator, oldingi qator (bo'sh qatorlar o'tkazib yuboriladi —
+    # ega ko'pincha karta raqami va ism orasiga bo'sh qator qo'yadi)
+    keyingi = next((i for i in range(karta_qatori + 1, len(qatorlar)) if qatorlar[i].strip()), None)
+    oldingi = next((i for i in range(karta_qatori - 1, -1, -1) if qatorlar[i].strip()), None)
+    qoshni = {i: u for i, u in ((oldingi, 3), (keyingi, 2), (karta_qatori, 1)) if i is not None}
     tanlov = None  # (ustuvorlik, qator raqami, ism)
     for i, qator in enumerate(qatorlar):
         q = qator.strip(' ,;-—–')

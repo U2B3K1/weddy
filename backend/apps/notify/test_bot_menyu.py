@@ -423,7 +423,7 @@ class TolovTests(Base):
         self.bos(RAHBAR_CHAT, f'm:{self.rahbar.id}:tolov')
         chat, matn, tugmalar, _ = self.yuborilgan[-1]
         self.assertIn('Karta: 8600 1234', matn)
-        self.assertEqual([t['callback_data'] for q in tugmalar for t in q], [f'tc:{self.rahbar.id}', f'tl:{self.rahbar.id}'])
+        self.assertEqual([t['callback_data'] for q in tugmalar for t in q], [f'tc:{self.rahbar.id}'])  # «To'ladim (cheksiz)» yo'q
         self.assertIn("rolingiz uchun emas", self.yoz(SOTUVCHI_CHAT, "💳 To'lov"))
         Salon.objects.filter(id=self.salon.id).update(obuna_tugaydi=self.bugun - timedelta(days=9),
                                                       holat=Salon.Holat.FAQAT_KORISH)
@@ -787,6 +787,10 @@ class VidjetTests(Base):
                          ('8600123456789012', 'Aliyev Vali', "Click orqali to'lang"))
         self.assertEqual(karta_ajrat("Ism: Sanjar Xushboqov\nIzoh qoldiring iltimos\n8600 1234 5678 9012"),
                          ('8600123456789012', 'Sanjar Xushboqov', 'Izoh qoldiring iltimos'))
+        # karta raqami va ism orasida bo'sh qator (egasining haqiqiy kiritishi shunday edi)
+        self.assertEqual(karta_ajrat('5440810315542893\n\nSanjar Xushboqov'), ('5440810315542893', 'Sanjar Xushboqov', ''))
+        self.assertEqual(karta_ajrat('Sanjar Xushboqov\n\n\n5440 8103 1554 2893\n\nTel: +998 90 123 45 67'),
+                         ('5440810315542893', 'Sanjar Xushboqov', 'Tel: +998 90 123 45 67'))
         self.assertEqual(karta_ajrat("8600 1234 5678 9012\nTel: +998 90 123 45 67\nObuna uchun to'lov"),
                          ('8600123456789012', '', "Tel: +998 90 123 45 67\nObuna uchun to'lov"))
 
@@ -851,7 +855,7 @@ class VidjetTests(Base):
         d = json.loads(v[1]['chat_data'])
         self.assertEqual((d['k'], d['i'], d['s']), ('8600123456789012', 'Sanjar Xushboqov', 'EZAZ'))
         self.assertEqual([t['callback_data'] for q in v[1]['reply_markup']['inline_keyboard'] for t in q],
-                         [f'tc:{self.rahbar.id}', f'tl:{self.rahbar.id}'])
+                         [f'tc:{self.rahbar.id}'])  # «To'ladim (cheksiz)» yo'q
         self.assertIn('8600 1234 5678 9012', v[1]['caption'])  # vidjetni tanimaydigan Telegramda
 
     def test_vidjet_rad_etilsa_oddiy_tugmalar_bilan(self):
@@ -897,7 +901,7 @@ class XabarSozlamaTests(Base):
         chat, matn, tugmalar, _ = self.yuborilgan[-1]
         self.assertIn('Bildirishnoma turlari: 5/5 yoqilgan', matn)
         self.assertEqual([t['callback_data'].split(':')[-1] for q in tugmalar for t in q],
-                         ['tur', 'esl', 'tinch', 'maxfiy', 'tolov', '1'])  # tolov — m: tugma, 1 — yd:1 (qo'llab-quvvatlash)
+                         ['tur', 'esl', 'maxfiy', 'tolov', '1'])  # «Tinch vaqt» menyuda yo'q (eski tugmalar ishlaydi)  # tolov — m: tugma, 1 — yd:1 (qo'llab-quvvatlash)
         self.tugma(RAHBAR_CHAT, f's:{self.rahbar.id}:tur')
         sahifa = self.tahrir()
         self.assertIn('doim keladi', sahifa['text'])
@@ -909,7 +913,7 @@ class XabarSozlamaTests(Base):
         self.assertEqual([t['callback_data'] for q in self.tahrir()['reply_markup']['inline_keyboard'][:-1] for t in q],
                          [f's:{self.malika.id}:tur:eslatma'])
         self.yoz(SOTUVCHI_CHAT, '⚙️ Sozlamalar')  # jamlanmaga kiradigan xabari yo'q — «Yetkazish tartibi» ham yo'q
-        self.assertEqual([q[0]['callback_data'].split(':')[-1] for q in self.yuborilgan[-1][2]], ['tur', 'esl', 'tinch', 'maxfiy', '1'])
+        self.assertEqual([q[0]['callback_data'].split(':')[-1] for q in self.yuborilgan[-1][2]], ['tur', 'esl', 'maxfiy', '1'])
         self.assertEqual(self.tugma(RAHBAR_CHAT, f's:{self.rahbar.id}:yet:18'), 'Bu amal sizga ruxsat etilmagan.')
 
     def test_ochirilgan_guruh_kelmaydi_qayta_yoqilsa_keladi(self):
@@ -970,9 +974,9 @@ class XabarSozlamaTests(Base):
             self.assertEqual(self.tahrir()['message_id'], 5)
         self.tugma(RAHBAR_CHAT, f's:{r}:bosh')
         bosh = self.tahrir()['text']
-        for qator in ('Eslatma vaqti: 10:00, primerkadan 1 soat oldin ham',
-                      'Tinch vaqt: 22:00–08:00, 1 ta muhim xabar ertalabgacha kutadi', 'Maxfiylik: yashirin'):
+        for qator in ('Eslatma vaqti: 10:00, primerkadan 1 soat oldin ham', 'Maxfiylik: yashirin'):
             self.assertIn(qator, bosh)
+        self.assertNotIn('Tinch vaqt', bosh)  # menyudan olib tashlangan; eski tugmalar ishlaydi (pastda)
         self.tugma(RAHBAR_CHAT, f's:{r}:tinch')                       # muhim xabarlar tanlovi — tinch vaqt sahifasida
         self.assertIn(f's:{r}:muhim:nazorat', str(self.tahrir()['reply_markup']))
         self.tugma(RAHBAR_CHAT, f's:{r}:tinch:0')
