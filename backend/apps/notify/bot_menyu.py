@@ -30,7 +30,7 @@ MENYU = {
     'sozlama': ('⚙️ Sozlamalar', (R, S, K)),
 }
 # Faqat xabar ostidagi tugmadan chaqiriladigan amallar: amal → ruxsat etilgan rollar
-ICHKI_AMALLAR = {'kassa': (R, K), 'ertaga': (R, S, K), 'tolov': (R,)}
+ICHKI_AMALLAR = {'kassa': (R, K), 'ertaga': (R, S, K), 'tolov': (R,), 'soz_matn': (R, S, K)}
 AMALLAR = {**{amal: kimga for amal, (_, kimga) in MENYU.items()}, **ICHKI_AMALLAR}
 # Eski menyu yorliqlari: telefonda eski klaviatura qolgan bo'lishi mumkin — bosilsa ishlaydi va yangi menyu yuboriladi
 ESKI_YORLIQLAR = {'💰 Kassa': 'kassa', '✅ Qaror kutmoqda': 'qaror', '📅 Ertaga': 'ertaga', '🗂 Bugungi ishlar': 'bugun',
@@ -183,7 +183,7 @@ def tugma_ishla(chat_id, data):
 
 def amal_bajar(x, amal):
     return {'bugun': _bugun, 'kassa': _kassa, 'qaror': _qaror, 'ertaga': _ertaga, 'tolov': _tolov,
-            'sozlama': _sozlamalar}[amal](x)
+            'sozlama': _sozlamalar, 'soz_matn': lambda x: [_sozlama_sahifasi(x)]}[amal](x)
 
 
 # ---------- zakaz matni va qidiruv ----------
@@ -556,7 +556,14 @@ def _sozlama_sahifasi(x, bolim='bosh'):
 
 
 def _sozlamalar(x):
-    return [_sozlama_sahifasi(x)]
+    matn, tugmalar = _sozlama_sahifasi(x)
+    if platforma_sozlama().bot_vidjet:  # vidjet: tanlovlar uning ichida; ostida — «To'lov» va «Qo'llab-quvvatlash»
+        from .vidjet import sozlama_vidjeti
+        ostida = [q for q in tugmalar if q[0]['callback_data'].startswith(('m:', 'yd:'))]
+        # vidjetni ko'rsatmaydigan eski ilovada faqat izoh va shu tugmalar ko'rinadi — oddiy sozlamalarga yo'l qolsin
+        ostida.append([{'text': "📝 Oddiy ko'rinish", 'callback_data': f'm:{x.id}:soz_matn'}])
+        return [(matn, {**sozlama_vidjeti(x, ostida), 'zaxira': tugmalar})]
+    return [(matn, tugmalar)]
 
 
 def sozlama_tugma(chat_id, data):
@@ -627,12 +634,15 @@ def _tolov(x):
     if s.tarif_id:
         qatorlar.append(f'Tarif: {s.tarif.nomi}' + (f' — oyiga {som(s.tarif.oylik_narx)}' if s.tarif.oylik_narx else ''))
     from apps.tenants.models import ObunaTolovi
-    if ObunaTolovi.objects.filter(salon=s, holat=ObunaTolovi.Holat.KUTILMOQDA).exists():
+    kutilmoqda = ObunaTolovi.objects.filter(salon=s, holat=ObunaTolovi.Holat.KUTILMOQDA).exists()
+    if kutilmoqda:
         qatorlar.append("⏳ To'lovingiz tekshirilmoqda — platforma egasi tasdiqlagach xabar keladi.")
     oxirgi = ObunaTolovi.objects.filter(salon=s, holat=ObunaTolovi.Holat.QABUL).order_by('-qaror_vaqt').first()
+    oxirgi_qator = ''
     if oxirgi:
-        qatorlar.append(f"Oxirgi to'lov: {timezone.localtime(oxirgi.qaror_vaqt):%d.%m.%Y} — {oxirgi.oylar} oy"
+        oxirgi_qator = (f"Oxirgi to'lov: {timezone.localtime(oxirgi.qaror_vaqt):%d.%m.%Y} — {oxirgi.oylar} oy"
                         + (f', {som(oxirgi.summa)}' if oxirgi.summa else ''))
+        qatorlar.append(oxirgi_qator)
     malumot = platforma_sozlama().tolov_malumoti.strip()
     if not malumot:
         qatorlar += ['', "To'lov ma'lumoti hali kiritilmagan. Platforma egasi bilan bog'laning."]
@@ -641,8 +651,13 @@ def _tolov(x):
     nusxa = ([[{'text': '📋 Karta raqamini nusxalash', 'copy_text': {'text': re.sub(r'\D', '', karta.group())}}]]
              if karta else [])
     qatorlar += ['', "To'lov qilish:", malumot, '', "To'lagach chekni yuboring — platforma egasiga boradi."]
-    return [('\n'.join(qatorlar), nusxa + [[{'text': '🧾 Chek yuborish', 'callback_data': f'tc:{x.id}'}],
-                                   [{'text': "✅ To'ladim (cheksiz)", 'callback_data': f'tl:{x.id}'}]])]
+    amallar = [[{'text': '🧾 Chek yuborish', 'callback_data': f'tc:{x.id}'}],
+               [{'text': "✅ To'ladim (cheksiz)", 'callback_data': f'tl:{x.id}'}]]
+    if platforma_sozlama().bot_vidjet:  # vidjet: karta ko'rinishi va nusxalash ichida, chek tugmalari ostida
+        from .vidjet import tolov_vidjeti
+        return [('\n'.join(qatorlar), {**tolov_vidjeti(x, malumot, amallar, oxirgi_qator, kutilmoqda),
+                                       'zaxira': nusxa + amallar})]
+    return [('\n'.join(qatorlar), nusxa + amallar)]
 
 
 def chek_tugma(chat_id, data):
@@ -703,7 +718,21 @@ def ega_tugma(chat_id, data):
     """`e:<amal>` — platforma egasining inline tugmalari (faqat ega akkaunti)."""
     if not egami(chat_id):
         return [("Bu amal faqat platforma egasiga ruxsat etilgan.", None)]
-    hisobla('ega:' + (data or '')[2:])
+    hisobla('ega:' + (data or '')[2:].split(':')[0])
+    q = (data or '').split(':')
+    if data == 'e:sl':
+        return _salonlar_royxati()
+    if data == 'e:ar':
+        return _arizalar()
+    if len(q) == 3 and q[1] == 'ar_ok' and q[2].isdigit():  # ko'rsatilganlar (shu id gacha) ko'rildi
+        n = Ariza.objects.filter(korilgan=False, id__lte=int(q[2])).update(korilgan=True)
+        return [(f"✅ {n} ta so'rov ko'rildi deb belgilandi.", None)]
+    if len(q) == 3 and q[1] == 's' and q[2].isdigit():
+        return _salon_kartasi(int(q[2]))
+    if len(q) == 4 and q[1] == 'to' and q[2].isdigit() and q[3].isdigit():
+        return _tolov_tasdiq(int(q[2]), int(q[3]))
+    if len(q) == 5 and q[1] == 'tq' and q[2].isdigit() and q[3].isdigit() and q[4].isdigit():
+        return _tolov_kirit(int(q[2]), int(q[3]), int(q[4]))
     if data == 'e:tolov_yoz':
         return [(f"{TOLOV_SORAV}.\nMasalan: karta raqami, kimning nomida, aloqa telefoni. {TOLOV_MAKS} belgigacha.",
                  {'force_reply': True, 'input_field_placeholder': 'Karta, telefon, izoh'})]
@@ -717,8 +746,9 @@ def ega_tugma(chat_id, data):
         s = platforma_sozlama()
         s.bot_vidjet = data == 'e:vidjet_yoq'
         s.save(update_fields=['bot_vidjet'])
-        return [("Vidjet yoqildi: rahbarlar «📊 Bugun» ni bosganda vidjet ko'radi." if s.bot_vidjet else
-                 "Vidjet o'chirildi: «📊 Bugun» yana oddiy matn bo'lib keladi.", None)]
+        return [("Vidjet yoqildi: «📊 Bugun» (rahbar), «⚙️ Sozlamalar» (hamma xodim) va «💳 To'lov» (rahbar) "
+                 "vidjet bo'lib ochiladi." if s.bot_vidjet else
+                 "Vidjet o'chirildi: «📊 Bugun», «⚙️ Sozlamalar» va «💳 To'lov» yana oddiy matn bo'lib keladi.", None)]
     if data == 'e:tolov_och':
         s = platforma_sozlama()
         s.tolov_malumoti = ''
@@ -731,13 +761,15 @@ def ega_tugma(chat_id, data):
 
 def _vidjet_sozlamasi():
     """`/vidjet` — ega namunani o'z telefonida ko'radi (o'ylab topilgan raqamlar), keyin rahbarlar uchun yoqadi."""
-    from .vidjet import namuna_vidjeti
+    from .vidjet import namuna_sozlama, namuna_tolov, namuna_vidjeti
     yoqilgan = platforma_sozlama().bot_vidjet
     return [("Namuna: rahbarning «Bugun» vidjeti (raqamlar o'ylab topilgan). Vidjet ko'rinmasa — Telegram ilovangiz "
              "uni hali tanimaydi, rahbarlarda ham shunday bo'ladi.", namuna_vidjeti()),
-            (f"Vidjet rahbarlar uchun hozir {'yoqilgan' if yoqilgan else 'o‘chiq'}.".replace('‘', "'"),
+            ("Namuna: «⚙️ Sozlamalar» vidjeti (bo'limlar almashadi; namunada tanlov saqlanmaydi).", namuna_sozlama()),
+            ("Namuna: «💳 To'lov» vidjeti — siz kiritgan to'lov ma'lumoti bilan.", namuna_tolov()),
+            (f"Vidjetlar xodimlar uchun hozir {'yoqilgan' if yoqilgan else 'o‘chiq'}.".replace('‘', "'"),
              [[{'text': "O'chirish", 'callback_data': 'e:vidjet_och'}] if yoqilgan else
-              [{'text': 'Rahbarlar uchun yoqish', 'callback_data': 'e:vidjet_yoq'}]])]
+              [{'text': 'Xodimlar uchun yoqish', 'callback_data': 'e:vidjet_yoq'}]])]
 
 
 def _kutayotgan_tolovlar(bugun):
@@ -780,6 +812,115 @@ def _ega_obunalar(bugun, bolim=''):
         [{'text': f'Tekshirish kerak · {len(kutmoqda)}', 'callback_data': 'e:ob_tekshir'}]])]
 
 
+ARIZA_MAKS = 10
+
+
+def _arizalar():
+    """Ega: saytdan qoldirilgan, hali ko'rilmagan so'rovlar (a'zo bo'lish / bog'lanish)."""
+    royxat = list(Ariza.objects.filter(korilgan=False).order_by('id')[:ARIZA_MAKS])
+    if not royxat:
+        return [("Ko'rilmagan so'rov yo'q.", None)]
+    qatorlar = [f"📨 Ko'rilmagan so'rovlar: {Ariza.objects.filter(korilgan=False).count()} ta", '']
+    for a in royxat:
+        qatorlar.append(f"• {timezone.localtime(a.yaratilgan):%d.%m %H:%M} · {a.get_tur_display()}\n"
+                        f"  {a.ism} · {a.telefon}" + (f" · {a.salon_nomi}" if a.salon_nomi else '')
+                        + (f"\n  {a.xabar[:300]}" if a.xabar else ''))
+    return [('\n'.join(qatorlar)[:4000],
+             [[{'text': "✅ Ko'rildi deb belgilash", 'callback_data': f'e:ar_ok:{royxat[-1].id}'}]])]
+
+
+TOLOV_OYLARI = (1, 3, 6, 12)
+SALON_ROYXAT_MAKS = 40
+
+
+def _platforma_salonlari():
+    return Salon.objects.filter(chiqish_sanasi__isnull=True, oquv=False).order_by('nomi')
+
+
+def _salonlar_royxati():
+    """Ega: har salon — tugma (bosilsa salon kartasi: obuna, rahbar, to'lov kiritish)."""
+    bugun = timezone.localdate()
+    salonlar = list(_platforma_salonlari().select_related('tarif')[:SALON_ROYXAT_MAKS])
+    if not salonlar:
+        return [("Hali salon yo'q.", None)]
+
+    def yorliq(s):
+        muddat = s.obuna_muddati()
+        kun = f' · {(muddat - bugun).days} kun' if muddat and muddat >= bugun else (' · tugagan' if muddat else '')
+        return f'{s.nomi[:30]} · {s.get_holat_display().lower()}{kun}'
+    return [(f"🏪 Salonlar: {len(salonlar)} ta\nSalonni tanlang — obuna, rahbar va to'lov kiritish.",
+             [[{'text': yorliq(s), 'callback_data': f'e:s:{s.id}'}] for s in salonlar])]
+
+
+def _salon_kartasi(salon_id):
+    """Ega: bitta salon — holat, obuna, tarif, rahbar, oxirgi to'lov; ostida to'lov kiritish tugmalari."""
+    from apps.tenants.models import ObunaTolovi
+    s = Salon.objects.select_related('tarif').filter(id=salon_id).first()
+    if not s:
+        return [("Salon topilmadi.", None)]
+    qatorlar = [f'🏪 {s.nomi}', f'Holat: {s.get_holat_display()}', obuna_holati_matni(s)]
+    narx = s.tarif.oylik_narx if s.tarif_id else 0
+    qatorlar.append(f'Tarif: {s.tarif.nomi}' + (f' — oyiga {som(narx)}' if narx else '') if s.tarif_id
+                    else 'Tarif: belgilanmagan')
+    rahbarlar = list(Xodim.objects.filter(salon=s, rol=R, faol=True).order_by('id'))
+    for x in rahbarlar[:3]:
+        qatorlar.append(f"Rahbar: {x.ism}" + ('' if x.telegram_id else ' (Telegram ulanmagan)'))
+    if s.rahbar_telefon:
+        qatorlar.append(f'Tel: {s.rahbar_telefon}')
+    qatorlar.append(f"Xodimlar: {Xodim.objects.filter(salon=s, faol=True).count()} ta")
+    oxirgi = ObunaTolovi.objects.filter(salon=s, holat=ObunaTolovi.Holat.QABUL).order_by('-qaror_vaqt').first()
+    if oxirgi:
+        qatorlar.append(f"Oxirgi to'lov: {timezone.localtime(oxirgi.qaror_vaqt):%d.%m.%Y} — {oxirgi.oylar} oy"
+                        + (f', {som(oxirgi.summa)}' if oxirgi.summa else ''))
+    if ObunaTolovi.objects.filter(salon=s, holat=ObunaTolovi.Holat.KUTILMOQDA).exists():
+        qatorlar.append("⏳ Rahbarning to'lov so'rovi kutmoqda — «Tekshirish kerak» bo'limida.")
+    qatorlar += ['', "💳 To'lov kiritish — necha oyga?"]
+    tugmalar = [[{'text': f'{oy} oy' + (f' · {som(narx * oy)}' if narx else ''), 'callback_data': f'e:to:{s.id}:{oy}'}
+                 for oy in TOLOV_OYLARI[i:i + 2]] for i in (0, 2)]
+    tugmalar.append([{'text': '🏪 Salonlar', 'callback_data': 'e:sl'}])
+    return [('\n'.join(qatorlar), tugmalar)]
+
+
+def _muddat_kodi(s):
+    """Salonning hozirgi obuna sanasi (tasdiq tugmasida): oradan to'lov kiritilgan bo'lsa — eski tugma ishlamaydi."""
+    return s.obuna_tugaydi.toordinal() if s.obuna_tugaydi else 0
+
+
+def _tolov_tasdiq(salon_id, oylar):
+    from apps.tenants import obuna
+    s = Salon.objects.select_related('tarif').filter(id=salon_id).first()
+    if not s or oylar not in TOLOV_OYLARI:
+        return [("Salon topilmadi.", None)]
+    summa = obuna.standart_summa(s, oylar)
+    yangi = obuna.keyingi_muddat(s, oylar)
+    summa_matni = som(summa) if summa else "tarifda narx yo'q — keyin panelda kiritasiz"
+    return [(f"💳 {s.nomi}: {oylar} oylik to'lov kiritilsinmi?\n"
+             f"Summa: {summa_matni}\n"
+             f"Obuna: {obuna_holati_matni(s)}\nKiritilgach: {yangi:%d.%m.%Y} gacha.\n\n"
+             "Pul kelganini tekshirib oling. Xato kiritilsa — panelda «bekor qilish» bor.",
+             [[{'text': f'✅ Ha, {oylar} oy kiritish', 'callback_data': f'e:tq:{s.id}:{oylar}:{_muddat_kodi(s)}'}],
+              [{'text': '‹ Ortga', 'callback_data': f'e:s:{s.id}'}]])]
+
+
+def _tolov_kirit(salon_id, oylar, kod):
+    from apps.tenants import obuna
+    from apps.tenants.models import ObunaTolovi
+    s = Salon.objects.filter(id=salon_id).first()
+    if not s or oylar not in TOLOV_OYLARI:
+        return [("Salon topilmadi.", None)]
+    if _muddat_kodi(s) != kod:  # ikkinchi bosish yoki eski xabar: muddat allaqachon o'zgargan
+        return [(f"Bu tasdiq eskirgan — {s.nomi} obunasi o'zgargan ({obuna_holati_matni(s)}). "
+                 "Kerak bo'lsa salon kartasidan qaytadan kiriting.", [[{'text': '🏪 Salon kartasi', 'callback_data': f'e:s:{s.id}'}]])]
+    try:
+        t = obuna.tolov_qabul(s.id, oylar, 'bot', manba=ObunaTolovi.Manba.BOT)
+    except obuna.ObunaXatosi as e:
+        return [(str(e), None)]
+    return [(f"✅ {s.nomi}: {t.oylar} oy" + (f', {som(t.summa)}' if t.summa else '') + f" kiritildi. "
+             f"Obuna {t.yangi_obuna:%d.%m.%Y} gacha. Rahbarga xabar boradi."
+             + ('' if t.summa else " Tarifda narx yo'q — summani panelda kiriting."),
+             [[{'text': '🏪 Salon kartasi', 'callback_data': f'e:s:{s.id}'}]])]
+
+
 def _ega_amali(amal):
     bugun = timezone.localdate()
     if amal in ('platforma', 'salonlar', 'tolovlar'):  # «🏢 Platforma»: salonlar, holat, obunalar, to'lov ma'lumoti
@@ -801,7 +942,10 @@ def _ega_amali(amal):
             qatorlar.append(f"💬 Javobsiz murojaatlar: {javobsiz} — javob: murojaat xabariga «reply»")
         (obuna, tugmalar), = _ega_obunalar(bugun)
         return [('\n'.join(qatorlar) + '\n\n' + obuna,
-                 [[{'text': '🩺 Holat batafsil', 'callback_data': 'e:holat'}]] + tugmalar
+                 [[{'text': f'🏪 Salonlar · {len(salonlar)}', 'callback_data': 'e:sl'}],
+                  [{'text': '🩺 Holat batafsil', 'callback_data': 'e:holat'}]]
+                 + ([[{'text': f"📨 Ko'rilmagan so'rovlar · {yangi}", 'callback_data': 'e:ar'}]] if yangi else [])
+                 + tugmalar
                  + [[{'text': "💳 To'lov ma'lumoti", 'callback_data': 'e:tolov'}]])]
     if amal == 'tolov_ega':
         malumot = platforma_sozlama().tolov_malumoti.strip()

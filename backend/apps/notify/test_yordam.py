@@ -54,6 +54,7 @@ class YordamTests(Base):
         self.xabar(SOTUVCHI_CHAT, 'Kassa ochilmayapti')
         (yuborildi,) = self.egaga()
         self.assertIn(f'{self.salon.nomi} · Malika (Sotuvchi)', yuborildi['text'])
+        self.assertEqual(yuborildi['reply_markup']['inline_keyboard'][0][0]['callback_data'], f'e:s:{self.salon.id}')
         self.assertIn('Kassa ochilmayapti', yuborildi['text'])
         self.assertIn('«reply»', yuborildi['text'])
         q = Murojaat.objects.get()
@@ -150,6 +151,7 @@ class YordamTests(Base):
         self.xabar(BEGONA_CHAT, '/yordam')
         self.xabar(BEGONA_CHAT, 'Salom', profil={'id': BEGONA_CHAT, 'first_name': 'Ali', 'username': 'ali'})
         self.assertIn('Telegram: Ali (@ali) — salonga ulanmagan, tasdiqlanmagan', self.egaga()[0]['text'])
+        self.assertEqual(self.egaga()[0]['reply_markup']['inline_keyboard'][0][0]['callback_data'], 'e:sl')
         Salon.objects.filter(id=self.salon.id).update(holat=Salon.Holat.BLOKLANGAN)  # bot menyusi yo'q, yordam — bor
         self.xabar(RAHBAR_CHAT, '/yordam')
         self.xabar(RAHBAR_CHAT, 'Nega bloklandi?')

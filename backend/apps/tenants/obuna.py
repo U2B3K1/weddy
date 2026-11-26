@@ -85,8 +85,13 @@ def tolov_qabul(salon_id, oylar, kim, tolov_id=None, summa=None, manba=ObunaTolo
     s.save(update_fields=['obuna_tugaydi'])
     s.obunani_yangila()
     from apps.notify.services import som
-    _rahbarlarga(s, f"✅ {s.nomi}: obuna {t.yangi_obuna:%d.%m.%Y} gacha uzaytirildi ({oylar} oy"
-                 + (f', {som(summa)}' if summa else '') + ').', f'obuna-tolov:{t.id}:qabul')
+    # Rahbarga to'lov cheki: pul qabul qilingani, qaysi davr uchun va obuna qachongacha
+    _rahbarlarga(s, f"🧾 To'lov cheki № {t.id}\n"
+                 f"✅ {s.nomi}: obuna {t.yangi_obuna:%d.%m.%Y} gacha uzaytirildi ({oylar} oy"
+                 + (f', {som(summa)}' if summa else '') + ').\n'
+                 f"Qabul qilindi: {timezone.localtime(t.qaror_vaqt):%d.%m.%Y %H:%M}"
+                 + (f"\nOldingi muddat: {t.eski_obuna:%d.%m.%Y}" if t.eski_obuna else ''),
+                 f'obuna-tolov:{t.id}:qabul')
     return t
 
 

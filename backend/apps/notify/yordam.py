@@ -150,21 +150,27 @@ def murojaat_qabul(chat_id, m, token=None):
     sarlavha = f"{SARLAVHA} · {kim}\n↩️ Javob berish: shu xabarga «reply» qiling."
     ega_chat, ega_token = manzil
     kw = {'_token': ega_token, 'chat_id': ega_chat}
+    # Ega murojaatdan salonga o'tadi (obuna, rahbar, to'lov kiritish); salon noma'lum bo'lsa — salonlar ro'yxati
+    tugma = {'reply_markup': {'inline_keyboard': [[
+        {'text': f'🏪 {salon.nomi[:40]}', 'callback_data': f'e:s:{salon.id}'} if salon else
+        {'text': '🏪 Salonlar', 'callback_data': 'e:sl'}]]}}
     sarlavha_id = None
     try:
         if tur == 'matn':
-            ega_id = telegram.api('sendMessage', text=f"{sarlavha}\n\n{m['text']}"[:4096], **kw)['message_id']
+            ega_id = telegram.api('sendMessage', text=f"{sarlavha}\n\n{m['text']}"[:4096], **tugma, **kw)['message_id']
         else:
             izoh = (m.get('caption') or '').strip()
             try:
                 if tur not in IZOHLI_TURLAR:
                     raise telegram.TelegramXatosi('izohsiz tur')
                 ega_id = telegram.api('copyMessage', from_chat_id=chat_id, message_id=m['message_id'],
-                                      caption=(sarlavha + (f"\n\n{izoh}" if izoh else ''))[:1024], **kw)['message_id']
+                                      caption=(sarlavha + (f"\n\n{izoh}" if izoh else ''))[:1024], **tugma,
+                                      **kw)['message_id']
             except (telegram.TelegramTarmoqXatosi, telegram.TelegramLimitXatosi):  # vaqtinchalik — boshqa yo'l bilan urinmaydi
                 raise
             except telegram.TelegramXatosi:  # izohsiz tur yoki izoh rad etildi — sarlavha alohida, nusxa izohsiz
-                sarlavha_id = telegram.api('sendMessage', text=f"{sarlavha}\n({TURLAR[tur]})", **kw)['message_id']
+                sarlavha_id = telegram.api('sendMessage', text=f"{sarlavha}\n({TURLAR[tur]})", **tugma,
+                                           **kw)['message_id']
                 ega_id = telegram.api('copyMessage', from_chat_id=chat_id, message_id=m['message_id'], **kw)['message_id']
     except (telegram.TelegramXatosi, KeyError, TypeError):
         return [("Xabar yetib bormadi — birozdan keyin qayta yuboring.", None)]

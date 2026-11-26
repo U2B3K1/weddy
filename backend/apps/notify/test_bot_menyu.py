@@ -567,6 +567,52 @@ class TolovTests(Base):
         self.assertIn('summani panelda kiriting', self.bos(EGA_CHAT, f'ob:{yangi.id}:1'))
         self.assertEqual(self.bos(EGA_CHAT, 'ob:999999:1'), "To'lov so'rovi topilmadi.")
 
+    def test_ega_korilmagan_sorovlar(self):
+        Ariza.objects.create(ism='Nodira', telefon='+998901112233', salon_nomi='Gulnoz', xabar='Ulamoqchimiz')
+        self.yoz(EGA_CHAT, '🏢 Platforma')
+        self.assertIn('e:ar', [t['callback_data'] for q in self.yuborilgan[-1][2] for t in q])
+        self.bos(EGA_CHAT, 'e:ar')
+        _, matn, tugmalar, _ = self.yuborilgan[-1]
+        self.assertIn('Nodira · +998901112233 · Gulnoz', matn)
+        self.assertIn('Ulamoqchimiz', matn)
+        self.bos(EGA_CHAT, tugmalar[0][0]['callback_data'])
+        self.assertIn("1 ta so'rov ko'rildi", self.matnlar())
+        self.assertFalse(Ariza.objects.filter(korilgan=False).exists())
+        self.bos(EGA_CHAT, 'e:ar')
+        self.assertIn("Ko'rilmagan so'rov yo'q", self.matnlar())
+
+    def test_ega_salonlar_kartasi_va_tolov_kiritish(self):
+        self.assertIn('faqat platforma egasiga', self.bos(RAHBAR_CHAT, 'e:sl'))
+        self.bos(EGA_CHAT, 'e:sl')
+        _, matn, tugmalar, _ = self.yuborilgan[-1]
+        self.assertIn('Salonlar: 1 ta', matn)
+        self.assertEqual(tugmalar[0][0]['callback_data'], f'e:s:{self.salon.id}')
+        self.assertIn('EZAZ', tugmalar[0][0]['text'])
+        self.bos(EGA_CHAT, f'e:s:{self.salon.id}')
+        _, matn, tugmalar, _ = self.yuborilgan[-1]
+        self.assertIn('Rahbar: Rahbar', matn)
+        self.assertIn('Tel: +998900000001', matn)
+        self.assertEqual([t['callback_data'] for q in tugmalar for t in q],
+                         [f'e:to:{self.salon.id}:{oy}' for oy in (1, 3, 6, 12)] + ['e:sl'])
+        self.bos(EGA_CHAT, f'e:to:{self.salon.id}:3')
+        _, matn, tugmalar, _ = self.yuborilgan[-1]
+        self.assertIn("900 000 so'm", matn)
+        self.assertEqual(ObunaTolovi.objects.count(), 0)  # tasdiqsiz yozilmaydi
+        tasdiq = tugmalar[0][0]['callback_data']
+        with self.captureOnCommitCallbacks(execute=True):
+            self.bos(EGA_CHAT, tasdiq)
+        self.assertIn("3 oy, 900 000 so'm kiritildi", self.matnlar())
+        t = ObunaTolovi.objects.get()
+        self.assertEqual((t.holat, t.manba, t.oylar), ('qabul', 'bot', 3))
+        self.salon.refresh_from_db()
+        self.assertEqual(self.salon.obuna_tugaydi, t.yangi_obuna)
+        self.assertIn('uzaytirildi (3 oy', Xabar.objects.get(tur='obuna_tolovi', xodim=self.rahbar).matn)
+        self.bos(EGA_CHAT, tasdiq)  # ikkinchi bosish — obuna ikki marta uzaymaydi
+        self.assertIn('tasdiq eskirgan', self.matnlar())
+        self.assertEqual(ObunaTolovi.objects.count(), 1)
+        self.assertIn('Salon topilmadi', self.bos(EGA_CHAT, 'e:s:999999') or self.matnlar())
+        self.assertIn('Salon topilmadi', self.bos(EGA_CHAT, f'e:to:{self.salon.id}:5') or self.matnlar())
+
     def test_ega_tolovlar_bolimi_va_karta_nusxasi(self):
         from apps.tenants import obuna
         obuna.tolov_qabul(self.salon.id, 3, 'egasi')
@@ -576,7 +622,7 @@ class TolovTests(Base):
         self.assertIn("To'lovi tekshirilishi kerak: 1", self.matnlar())
         self.assertIn("EZAZ — 3 oy, 900 000 so'm", self.matnlar())
         self.assertEqual([t['callback_data'] for q in self.yuborilgan[-1][2] for t in q],
-                         ['e:holat', 'e:ob_yaqin', 'e:ob_tugagan', 'e:ob_tekshir', 'e:tolov'])
+                         ['e:sl', 'e:holat', 'e:ob_yaqin', 'e:ob_tugagan', 'e:ob_tekshir', 'e:tolov'])
         self.assertIn('faqat platforma egasiga', self.bos(RAHBAR_CHAT, 'e:ob_tekshir'))
         self.bos(EGA_CHAT, 'e:ob_tekshir')
         chat, matn, tugmalar, _ = self.yuborilgan[-1]  # kutayotgan so'rov — o'z tugmalari bilan
@@ -631,8 +677,10 @@ class VidjetTests(Base):
     def test_ega_namunani_koradi_va_yoqadi(self):
         self.api.reset_mock()
         self.yoz(EGA_CHAT, '/vidjet')
-        (namuna,) = self.vidjetlar()
-        self.assertEqual((namuna[1]['chat_id'], namuna[1]['allow_queries']), (EGA_CHAT, False))
+        namuna, sozlama_namuna, tolov_namuna = self.vidjetlar()  # Bugun, Sozlamalar, To'lov
+        for n in (namuna, sozlama_namuna, tolov_namuna):
+            self.assertEqual((n[1]['chat_id'], n[1]['allow_queries']), (EGA_CHAT, False))
+        self.assertIn('8600000000000000', tolov_namuna[1]['chat_data'])  # to'lov ma'lumoti kiritilmagan — namuna karta
         self.assertIn('Namuna salon', namuna[1]['chat_data'])
         self.assertIn("o'chiq", self.matnlar())
         self.assertEqual(self.yuborilgan[-1][2][0][0]['callback_data'], 'e:vidjet_yoq')
@@ -703,6 +751,128 @@ class VidjetTests(Base):
             Salon.objects.filter(id=self.salon.id).update(nomi='Ю' * 200)
             self.salon.refresh_from_db()
             self.assertLessEqual(len(vidjet.bugun_malumot(self.salon, 1).encode()), vidjet.MALUMOT_MAKS)
+
+    def yoqish(self, tolov=''):
+        s = platforma_sozlama()
+        s.bot_vidjet, s.tolov_malumoti = True, tolov
+        s.save()
+
+    def test_uchala_vidjet_telegram_chegarasida(self):
+        import zlib
+
+        from . import vidjet
+        for nom in ('BUGUN_HTML', 'SOZLAMA_HTML', 'TOLOV_HTML'):
+            h = getattr(vidjet, nom)
+            self.assertLessEqual(len(h.encode()), 32768, nom)
+            self.assertLessEqual(len(zlib.compress(h.encode(), 9)), 4096, nom)
+            self.assertNotIn('@FON@', h)
+            # Telegram olib tashlaydigan yoki vidjetni to'xtatadigan CSS ishlatilmaydi
+            for taqiq in ('backdrop-filter', 'text-shadow', 'saturate(', '@font-face', 'Georgia', 'Manrope'):
+                self.assertNotIn(taqiq, h, (nom, taqiq))
+            self.assertNotRegex(h, r'\d(vh|svh|dvh)\b')  # balandlik birliklari olib tashlanadi
+        for d in (vidjet.namuna_sozlama(), vidjet.namuna_tolov()):
+            self.assertLessEqual(len(d['vidjet']['chat_data'].encode()), vidjet.MALUMOT_MAKS)
+
+    def test_karta_ajratish(self):
+        from .vidjet import karta_ajrat
+        self.assertEqual(karta_ajrat('8600 1234 5678 9012\nSanjar Xushboqov\nTel: +998 90 123 45 67'),
+                         ('8600123456789012', 'Sanjar Xushboqov', 'Tel: +998 90 123 45 67'))
+        self.assertEqual(karta_ajrat('Karta: 9860-1234-5678-9012\nKarta egasi: Aliyev A.'),
+                         ('9860123456789012', 'Aliyev A.', ''))
+        self.assertEqual(karta_ajrat("Click orqali to'lang"), ('', '', "Click orqali to'lang"))
+        # ism deb olinmasligi kerak bo'lgan qator karta va ismdan oldin turibdi
+        self.assertEqual(karta_ajrat("Obuna uchun to'lov\nKarta: 8600 1234 5678 9012\nSanjar Xushboqov"),
+                         ('8600123456789012', 'Sanjar Xushboqov', "Obuna uchun to'lov"))
+        self.assertEqual(karta_ajrat("Click orqali to'lang\nUzcard 8600123456789012 Aliyev Vali"),
+                         ('8600123456789012', 'Aliyev Vali', "Click orqali to'lang"))
+        self.assertEqual(karta_ajrat("Ism: Sanjar Xushboqov\nIzoh qoldiring iltimos\n8600 1234 5678 9012"),
+                         ('8600123456789012', 'Sanjar Xushboqov', 'Izoh qoldiring iltimos'))
+        self.assertEqual(karta_ajrat("8600 1234 5678 9012\nTel: +998 90 123 45 67\nObuna uchun to'lov"),
+                         ('8600123456789012', '', "Tel: +998 90 123 45 67\nObuna uchun to'lov"))
+
+    def test_sozlamalar_vidjet_va_tanlov_sorovi(self):
+        import json
+
+        from . import vidjet
+        self.yoqish()
+        self.api.reset_mock()
+        self.bos(RAHBAR_CHAT, f'm:{self.rahbar.id}:sozlama')
+        (v,) = self.vidjetlar()
+        self.assertEqual((v[1]['html'], v[1]['allow_queries']), (vidjet.SOZLAMA_HTML, True))
+        self.assertIn('Sozlamalar', v[1]['caption'])
+        ostida = [t['callback_data'] for q in v[1]['reply_markup']['inline_keyboard'] for t in q]
+        self.assertEqual(ostida, [f'm:{self.rahbar.id}:tolov', 'yd:1', f'm:{self.rahbar.id}:soz_matn'])
+        # eski ilova uchun: oddiy (matnli) sozlamalar yangi xabar bo'lib keladi
+        self.bos(RAHBAR_CHAT, f'm:{self.rahbar.id}:soz_matn')
+        (_, matn, tugmalar, _), = self.yuborilgan
+        self.assertIn('⚙️ Sozlamalar', matn)
+        self.assertIn(f's:{self.rahbar.id}:esl', [q[0]['callback_data'] for q in tugmalar])
+        self.api.reset_mock()
+        d = json.loads(v[1]['chat_data'])
+        self.assertEqual((d['x'], d['e'], d['t'], d['z']), (self.rahbar.id, services.ESLATMA_SOATI, 0, False))
+        self.assertIn('kunlik', [g[0] for g in d['g']])
+
+        def sorov(chat, data):
+            self.api.reset_mock()
+            return yangilanishni_ishla({'widget_query': {'id': 'w1', 'from': {'id': chat}, 'data': data,
+                                                         'chat': {'id': chat}, 'message_id': 7}})
+        javob = sorov(RAHBAR_CHAT, f's:{self.rahbar.id}:esl:10')
+        self.assertEqual(json.loads(javob)['e'], 10)
+        self.rahbar.refresh_from_db()
+        self.assertEqual(services.bot_soz(self.rahbar)['eslatma'], 10)
+        chaqiruvlar = {c[0][0]: c[1] for c in self.api.call_args_list}
+        self.assertEqual(chaqiruvlar['answerWidgetQuery']['data'], javob)
+        self.assertEqual(chaqiruvlar['editMessageWidgetData']['chat_data'], javob)
+        self.assertEqual(json.loads(sorov(RAHBAR_CHAT, f's:{self.rahbar.id}:tur:kunlik'))['g'][1][2], False)
+        self.assertEqual(json.loads(sorov(RAHBAR_CHAT, f's:{self.rahbar.id}:tinch:22-8'))['t'], [22, 8])
+        # boshqaning sozlamasi, ro'yxatda yo'q qiymat, sotuvchiga tegishli bo'lmagan guruh — rad
+        for chat, data in ((SOTUVCHI_CHAT, f's:{self.rahbar.id}:esl:8'), (RAHBAR_CHAT, f's:{self.rahbar.id}:esl:3'),
+                           (SOTUVCHI_CHAT, f's:{self.malika.id}:tur:kunlik'), (RAHBAR_CHAT, f's:{self.rahbar.id}:esl')):
+            self.assertIsNone(sorov(chat, data), (chat, data))
+            self.assertNotIn('data', self.api.call_args[1])
+        self.rahbar.refresh_from_db()
+        self.assertEqual(services.bot_soz(self.rahbar)['eslatma'], 10)
+        # sotuvchi: o'z sozlamasi, ostida «To'lov» yo'q
+        self.api.reset_mock()
+        self.bos(SOTUVCHI_CHAT, f'm:{self.malika.id}:sozlama')
+        (v,) = self.vidjetlar()
+        self.assertEqual([t['callback_data'] for q in v[1]['reply_markup']['inline_keyboard'] for t in q],
+                         ['yd:1', f'm:{self.malika.id}:soz_matn'])
+
+    def test_tolov_vidjeti_karta_bilan(self):
+        import json
+
+        from . import vidjet
+        self.yoqish('8600 1234 5678 9012\nSanjar Xushboqov')
+        self.api.reset_mock()
+        self.bos(RAHBAR_CHAT, f'm:{self.rahbar.id}:tolov')
+        (v,) = self.vidjetlar()
+        self.assertEqual(v[1]['html'], vidjet.TOLOV_HTML)
+        d = json.loads(v[1]['chat_data'])
+        self.assertEqual((d['k'], d['i'], d['s']), ('8600123456789012', 'Sanjar Xushboqov', 'EZAZ'))
+        self.assertEqual([t['callback_data'] for q in v[1]['reply_markup']['inline_keyboard'] for t in q],
+                         [f'tc:{self.rahbar.id}', f'tl:{self.rahbar.id}'])
+        self.assertIn('8600 1234 5678 9012', v[1]['caption'])  # vidjetni tanimaydigan Telegramda
+
+    def test_vidjet_rad_etilsa_oddiy_tugmalar_bilan(self):
+        self.yoqish('8600 1234 5678 9012\nSanjar Xushboqov')
+        self.api.side_effect = telegram.TelegramXatosi('HTTP 400')
+        self.bos(RAHBAR_CHAT, f'm:{self.rahbar.id}:tolov')
+        (_, matn, tugmalar, _), = self.yuborilgan
+        self.assertIn('8600 1234 5678 9012', matn)
+        self.assertEqual(tugmalar[0][0]['copy_text'], {'text': '8600123456789012'})
+        self.bos(RAHBAR_CHAT, f'm:{self.rahbar.id}:sozlama')
+        (_, matn, tugmalar, _), = self.yuborilgan
+        self.assertIn(f's:{self.rahbar.id}:esl', [q[0]['callback_data'] for q in tugmalar])
+
+    def test_qabul_qilingan_tolov_rahbarga_chek_bolib_boradi(self):
+        from apps.tenants import obuna
+        with self.captureOnCommitCallbacks(execute=True):
+            t = obuna.tolov_qabul(self.salon.id, 2, 'ega', summa=600_000)
+        x = Xabar.objects.get(tur='obuna_tolovi', xodim=self.rahbar)
+        self.assertIn(f"🧾 To'lov cheki № {t.id}", x.matn)
+        self.assertIn("uzaytirildi (2 oy, 600 000 so'm)", x.matn)
+        self.assertIn('Qabul qilindi:', x.matn)
 
 
 class XabarSozlamaTests(Base):

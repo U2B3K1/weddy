@@ -27,8 +27,8 @@ def _javob_yubor(chat_id, javob, tugmalar, tk):
     if isinstance(tugmalar, dict) and 'vidjet' in tugmalar:
         try:
             vidjet.yubor(chat_id, javob, tugmalar['vidjet'], tk.get('token'))
-        except telegram.TelegramXatosi:  # server vidjetni qabul qilmadi — matnning o'zi ketadi
-            telegram.xabar_yubor(chat_id, javob, **tk)
+        except telegram.TelegramXatosi:  # server vidjetni qabul qilmadi — matn o'zining oddiy tugmalari bilan ketadi
+            _javob_yubor(chat_id, javob, tugmalar.get('zaxira'), tk)
         return
     if isinstance(tugmalar, dict):
         telegram.xabar_yubor(chat_id, javob, klaviatura=tugmalar, **tk)
