@@ -21,11 +21,15 @@ if (AKADEMIYA) {
 const Akademiya = lazy(() => import('./akademiya/Akademiya.jsx'))
 const IchkiIlova = lazy(() => import('./akademiya/IchkiIlova.jsx'))
 
+// Telegram ichidagi ilova (botdagi «Libosa» tugmasi): o'z sahifasi, asosiy ilova kodi yuklanmaydi
+const TgIlova = lazy(() => import('./tg/TgIlova.jsx'))
+const TG = !AKADEMIYA && window.location.pathname.replace(/\/+$/, '') === '/tg'
+
 // Akademiya manzilida: tashqi sahifa — dars paneli va ichki oyna; ichki oyna (`?ilova`) — ilovaning o'zi
 const ICHKI = new URLSearchParams(window.location.search).has('ilova')
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
-    {!AKADEMIYA ? <Ildiz /> : <Suspense fallback={null}>{ICHKI ? <IchkiIlova /> : <Akademiya />}</Suspense>}
+    {TG ? <Suspense fallback={null}><TgIlova /></Suspense> : !AKADEMIYA ? <Ildiz /> : <Suspense fallback={null}>{ICHKI ? <IchkiIlova /> : <Akademiya />}</Suspense>}
   </StrictMode>,
 )

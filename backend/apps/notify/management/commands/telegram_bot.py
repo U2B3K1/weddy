@@ -209,6 +209,10 @@ class Command(BaseCommand):
                     buyruqlar_qoyildi = token
                     if not _tinchgina('setMyCommands', _token=token, commands=BUYRUQLAR):
                         self.stderr.write('Telegram menyusiga buyruqlarni qo\'yib bo\'lmadi')
+                    from apps.notify.miniilova import menyu_tugmasi  # «Menu» o'rnida — Telegram ichidagi ilova
+                    tugma = menyu_tugmasi()
+                    if tugma and not _tinchgina('setChatMenuButton', _token=token, menu_button=tugma):
+                        self.stderr.write('Telegram ilovasi tugmasini qo\'yib bo\'lmadi')
                 oraliq = time.monotonic()  # eslatma va navbat ishi: shu payt tugmalar kutib turadi
                 if time.monotonic() - tekshirilgan >= 60:
                     tekshirilgan = time.monotonic()

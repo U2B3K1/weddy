@@ -625,6 +625,17 @@ def obuna_holati_matni(salon, bugun=None):
     return f'{tur} {muddat:%d.%m.%Y} da tugagan ({-qolgan} kun oldin)'
 
 
+def tolov_holati(salon):
+    """(to'lov tekshirilmoqdami, «Oxirgi to'lov: …» qatori yoki '') — bot xabari va Telegram ilovasi uchun bir xil."""
+    from apps.tenants.models import ObunaTolovi
+    kutilmoqda = ObunaTolovi.objects.filter(salon=salon, holat=ObunaTolovi.Holat.KUTILMOQDA).exists()
+    oxirgi = ObunaTolovi.objects.filter(salon=salon, holat=ObunaTolovi.Holat.QABUL).order_by('-qaror_vaqt').first()
+    if not oxirgi:
+        return kutilmoqda, ''
+    return kutilmoqda, (f"Oxirgi to'lov: {timezone.localtime(oxirgi.qaror_vaqt):%d.%m.%Y} — {oxirgi.oylar} oy"
+                        + (f', {som(oxirgi.summa)}' if oxirgi.summa else ''))
+
+
 def _tolov(x):
     """Rahbar: obuna holati, tarif narxi va ega kiritgan to'lov ma'lumoti; «To'ladim» egaga xabar beradi."""
     s = x.salon
@@ -633,15 +644,10 @@ def _tolov(x):
         qatorlar.append("Salon hozir «faqat ko'rish» rejimida — to'lovdan keyin to'liq ochiladi.")
     if s.tarif_id:
         qatorlar.append(f'Tarif: {s.tarif.nomi}' + (f' — oyiga {som(s.tarif.oylik_narx)}' if s.tarif.oylik_narx else ''))
-    from apps.tenants.models import ObunaTolovi
-    kutilmoqda = ObunaTolovi.objects.filter(salon=s, holat=ObunaTolovi.Holat.KUTILMOQDA).exists()
+    kutilmoqda, oxirgi_qator = tolov_holati(s)
     if kutilmoqda:
         qatorlar.append("⏳ To'lovingiz tekshirilmoqda — platforma egasi tasdiqlagach xabar keladi.")
-    oxirgi = ObunaTolovi.objects.filter(salon=s, holat=ObunaTolovi.Holat.QABUL).order_by('-qaror_vaqt').first()
-    oxirgi_qator = ''
-    if oxirgi:
-        oxirgi_qator = (f"Oxirgi to'lov: {timezone.localtime(oxirgi.qaror_vaqt):%d.%m.%Y} — {oxirgi.oylar} oy"
-                        + (f', {som(oxirgi.summa)}' if oxirgi.summa else ''))
+    if oxirgi_qator:
         qatorlar.append(oxirgi_qator)
     malumot = platforma_sozlama().tolov_malumoti.strip()
     if not malumot:

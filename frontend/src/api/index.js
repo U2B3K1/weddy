@@ -30,7 +30,7 @@ api.interceptors.request.use((cfg) => {
   const q = saqlangan.qurilma()
   const t = saqlangan.token()
   if (q) cfg.headers['X-Device-Token'] = q
-  if (t) cfg.headers.Authorization = `Bearer ${t}`
+  if (t && !cfg.headers.Authorization) cfg.headers.Authorization = `Bearer ${t}`  // Telegram ilovasi o'z sarlavhasini beradi
   return cfg
 })
 
@@ -401,3 +401,12 @@ export const guruhla = (n) => String(Math.round(Number(n || 0))).replace(/\B(?=(
 export const som = (n) => `${guruhla(n)} so'm`
 
 export default api
+
+// Telegram ichidagi ilova (Mini App, src/tg/): kirish — Telegram bergan imzolangan `initData` bilan (`tma …`)
+const tgSarlavha = (initData) => ({ headers: { Authorization: `tma ${initData}` } })
+export const tgHolat = (initData) => api.get('/tg/', tgSarlavha(initData)).then((r) => r.data)
+export const tgSozla = (initData, xodim, bolim, qiymat) =>
+  api.post('/tg/sozlama/', { xodim, bolim, qiymat }, tgSarlavha(initData)).then((r) => r.data)
+export const tgTolov = (initData, xodim, amal) =>
+  api.post('/tg/tolov/', { xodim, amal }, tgSarlavha(initData)).then((r) => r.data)
+export const tgEga = (initData, malumot) => api.post('/tg/ega/', malumot, tgSarlavha(initData)).then((r) => r.data)
