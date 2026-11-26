@@ -361,3 +361,43 @@ def sorov_ishla(wq, token=None):
         except telegram.TelegramXatosi:  # «message is not modified» yoki limit — javob baribir yetib borgan
             pass
     return malumot
+
+
+# ---------- Telegram vidjetni qachon ochishini kuzatish ----------
+
+def kuzatuv(bugun=None, hozir=None):
+    """Kuniga bir marta (soat 10 dan keyin, soatlik cron): egaga sinov vidjeti yuborib ko'riladi.
+
+    Telegram hali yopiq bo'lsa (INPUT_MEDIA_WIDGET_NOT_ALLOWED) — jim. Qabul qilsa: sinov xabari darhol o'chiriladi,
+    egaga «vidjetlar ochildi» xabari boradi va kuzatuv to'xtaydi. Natija: None — tekshirilmadi, False — yopiq, True — ochildi.
+    """
+    import logging
+
+    from apps.tenants.models import platforma_sozlama
+
+    from .egaga import ega_manzili, egaga_xabar
+    bugun = bugun or timezone.localdate()
+    hozir = hozir or timezone.localtime().time()
+    ps = platforma_sozlama()
+    manzil = ega_manzili()
+    if ps.vidjet_ochiq or ps.bot_vidjet or hozir.hour < 10 or ps.vidjet_sinov_sana == bugun or not manzil:
+        return None
+    ps.vidjet_sinov_sana = bugun
+    ps.save(update_fields=['vidjet_sinov_sana'])
+    try:
+        r = telegram.api('sendWidget', _token=manzil[1], chat_id=manzil[0], caption='Vidjet sinovi',
+                         html='<p style="margin:0;padding:12px;font:15px system-ui,sans-serif">Vidjet sinovi</p>',
+                         chat_data='{}', allow_queries=False)
+    except telegram.TelegramXatosi as e:
+        if 'WIDGET_NOT_ALLOWED' not in str(e):
+            logging.getLogger(__name__).warning('Vidjet kuzatuvi: %s', e)
+        return False
+    try:
+        telegram.api('deleteMessage', _token=manzil[1], chat_id=manzil[0], message_id=r['message_id'])
+    except (telegram.TelegramXatosi, KeyError, TypeError):
+        pass
+    if egaga_xabar("✅ Telegram vidjetlarni yana ochdi. Yoqish: botga /vidjet yozing — namunalar dizayn bilan "
+                   "chiqsa «Xodimlar uchun yoqish» ni bosing."):
+        ps.vidjet_ochiq = True
+        ps.save(update_fields=['vidjet_ochiq'])
+    return True

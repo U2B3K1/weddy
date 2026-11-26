@@ -73,6 +73,11 @@ class Command(BaseCommand):
         yurak.nazorat('eslatma')  # bot jarayoni to'xtab qolgan bo'lsa — egaga
         obuna_ogohlantirishi()  # obuna muddati: salon rahbarlariga eslatma, egaga kunlik xulosa
         haftalik_xulosalarni_yoz()  # dushanba kuni soat 9 dan keyin, har salonga bir marta
+        from apps.notify.vidjet import kuzatuv
+        try:
+            kuzatuv()  # Telegram vidjetni qayta ochganmi — kuniga bir marta, ochilsa egaga xabar
+        except Exception:  # noqa: BLE001 — kuzatuv xatosi eslatmalarni to'xtatmasin
+            pass
         self.stdout.write(f'Yozilgan eslatmalar: {eslatmalarni_yoz(soat=timezone.localtime().hour)}; '
                           f'nazorat: {nazorat_eslatmalari()}; '
                           f'yuborilgan: {kutayotganlarni_yubor()}')

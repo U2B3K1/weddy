@@ -286,3 +286,25 @@ class MiniIlovaTests(TestCase):
         self.assertEqual([c[0][0] for c in self.api.call_args_list], ['sendWidget', 'sendMessage'])
         x.refresh_from_db()
         self.assertEqual(x.holat, x.Holat.YUBORILDI)
+
+    def test_vidjet_kuzatuvi(self):
+        from datetime import date, time as soat
+
+        from .vidjet import kuzatuv
+        s = platforma_sozlama()
+        s.telegram_chat_id = BEGONA
+        s.save()
+        kun = date(2026, 11, 28)
+        self.assertIsNone(kuzatuv(kun, soat(9, 0)))                 # soat 10 dan oldin — tekshirilmaydi
+        self.api.side_effect = telegram.TelegramXatosi('HTTP 400 Bad Request: INPUT_MEDIA_WIDGET_NOT_ALLOWED')
+        with mock.patch('apps.notify.egaga.egaga_xabar') as e:
+            self.assertFalse(kuzatuv(kun, soat(10, 0)))             # hali yopiq — jim
+            e.assert_not_called()
+            self.assertIsNone(kuzatuv(kun, soat(15, 0)))            # shu kuni ikkinchi marta emas
+        self.api.side_effect = lambda metod, **kw: {'message_id': 77} if metod == 'sendWidget' else True
+        with mock.patch('apps.notify.egaga.egaga_xabar', return_value=True) as e:
+            self.assertTrue(kuzatuv(date(2026, 11, 29), soat(10, 0)))
+            self.assertIn('ochdi', e.call_args[0][0])
+        self.assertIn('deleteMessage', [c[0][0] for c in self.api.call_args_list])  # sinov xabari o'chirildi
+        self.assertTrue(platforma_sozlama().vidjet_ochiq)
+        self.assertIsNone(kuzatuv(date(2026, 11, 30), soat(10, 0)))  # ochilgach kuzatuv to'xtaydi

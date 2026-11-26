@@ -79,6 +79,10 @@ class PlatformaSozlama(models.Model):
     # Qo'llab-quvvatlash guruhi (mavzuli yopiq guruh, faqat ega va bot): har murojaatchiga alohida mavzu.
     # Bo'sh — murojaatlar avvalgidek eganing shaxsiy chatiga keladi. Ega guruhda `/murojaat_guruhi` yozib ulaydi.
     yordam_guruh_id = models.BigIntegerField(null=True, blank=True)
+    # Telegram botlarga vidjetni 2026-11-13 dan yopgan (INPUT_MEDIA_WIDGET_NOT_ALLOWED). Kuniga bir marta sinab ko'riladi;
+    # ochilgan kuni egaga xabar boradi va kuzatuv to'xtaydi (`vidjet_ochiq`). notify/vidjet.py `kuzatuv`.
+    vidjet_sinov_sana = models.DateField(null=True, blank=True)
+    vidjet_ochiq = models.BooleanField(default=False)
 
 
 def platforma_sozlama():
