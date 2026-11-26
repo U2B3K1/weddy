@@ -118,6 +118,22 @@ class Murojaat(models.Model):
                    models.Index(fields=['ega_chat_id', 'ega_sarlavha_id'], name='murojaat_ega_sarlavhasi')]
 
 
+class YordamMavzu(models.Model):
+    """Qo'llab-quvvatlash guruhidagi mavzu: bitta murojaatchi (Telegram chati) — bitta mavzu.
+
+    Foydalanuvchi xabarlari shu mavzuga tushadi; ega mavzu ichida yozgan xabar shu chatga javob bo'lib boradi.
+    Guruh almashtirilsa (boshqa guruh ulansa) — eski mavzular ishlatilmaydi (`guruh_id` bo'yicha).
+    """
+    chat_id = models.BigIntegerField()
+    guruh_id = models.BigIntegerField()
+    mavzu_id = models.BigIntegerField()                 # message_thread_id
+    yaratilgan = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [models.UniqueConstraint(fields=['guruh_id', 'chat_id'], name='yordam_mavzu_chat'),
+                       models.UniqueConstraint(fields=['guruh_id', 'mavzu_id'], name='yordam_mavzu_id')]
+
+
 class YordamRejimi(models.Model):
     """Foydalanuvchi «qo'llab-quvvatlashga yozish» rejimida: shu vaqtgacha uning xabarlari egaga uzatiladi.
 

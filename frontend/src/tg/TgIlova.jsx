@@ -230,7 +230,10 @@ export default function TgIlova() {
   // Tanlov: 'ega' (platforma) yoki xodim id si. Bir akkaunt ham ega, ham salon xodimi bo'lishi mumkin — tepada almashtiriladi
   const p = holat?.platforma
   const egami = p && (tanlangan === 'ega' || !holat.xodimlar.length)
-  const x = egami ? null : holat?.xodimlar.find((v) => v.id === tanlangan) || holat?.xodimlar[0]
+  // Xabar ostidagi «📊 Ilovada ochish» (`/tg?salon=<id>`) — o'sha salon birinchi ochiladi
+  const boshSalon = new URLSearchParams(window.location.search).get('salon')
+  const x = egami ? null : holat?.xodimlar.find((v) => v.id === tanlangan)
+    || holat?.xodimlar.find((v) => String(v.salon_id) === boshSalon) || holat?.xodimlar[0]
   const rahbar = x && x.bugun
   // Ega o'zi salon xodimi ham bo'lsa — «Yordam» yo'q: murojaatlar unga keladi
   const bolimlar = egami ? PLATFORMA_BOLIMLARI

@@ -249,3 +249,11 @@ class MiniIlovaTests(TestCase):
             e.reset_mock()
             obuna_ogohlantirishi(hozir=soat(11, 0))  # shu kuni ikkinchi marta yuborilmaydi
             e.assert_not_called()
+
+    def test_kunlik_hisobot_ostida_ilova_tugmasi(self):
+        from .management.commands.kunlik_hisobot import ilova_tugmasi
+        with override_settings(CORS_ALLOWED_ORIGINS=['https://libosa.uz']):
+            self.assertEqual(ilova_tugmasi(self.salon), [[{'text': '📊 Ilovada ochish',
+                                                          'web_app': {'url': f'https://libosa.uz/tg?salon={self.salon.id}'}}]])
+        with override_settings(CORS_ALLOWED_ORIGINS=['http://localhost:5173']):
+            self.assertIsNone(ilova_tugmasi(self.salon))  # lokalda https yo'q — tugma qo'yilmaydi

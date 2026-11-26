@@ -192,7 +192,7 @@
 .tg .tg-vazifa-holat.xato::before { background: var(--tg-qizil); }
 .tg-plita b.tg-plita-kichik { font-size: 17px; line-height: 1.2; }
 .tg .tg-plita.ogoh { border-color: rgba(242, 196, 109, .6); }
-.tg-ustunlar { list-style: none; margin: 4px 0 0; padding: 0; display: grid; gap: 10px; }
+.tg-ustunlar { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 10px; }
 .tg-ustunlar li { display: grid; grid-template-columns: minmax(0, 1fr) 34px; grid-template-areas: 'nom son' 'yol son'; column-gap: 10px; row-gap: 4px; align-items: center; }
 .tg-ustun-nom { grid-area: nom; font-size: 13px; color: #D4D7DE; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tg-ustun-yol { grid-area: yol; height: 8px; border-radius: 4px; background: rgba(255, 255, 255, .07); overflow: hidden; }

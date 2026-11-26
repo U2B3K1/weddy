@@ -57,6 +57,13 @@ def kunlik_matn(salon, bugun, sarlavha='Kunlik hisobot'):
             f"{chr(10) + 'Diqqat: smena hali ochiq.' if ochiq else ''}")
 
 
+def ilova_tugmasi(salon):
+    """Xabar ostida «📊 Ilovada ochish» — Telegram ichidagi ilova shu salonning «Bugun» sahifasida ochiladi (dizayn bilan)."""
+    from apps.notify.miniilova import ilova_manzili
+    manzil = ilova_manzili()
+    return [[{'text': '📊 Ilovada ochish', 'web_app': {'url': f'{manzil}?salon={salon.id}'}}]] if manzil else None
+
+
 def kunlik_hisobotlarni_yoz(bugun=None, hozir=None):
     """FT-15.5: rahbarga kunlik hisobot — tushum, yangi bronlar, berilgan va qaytarilgan liboslar, kassa farqi."""
     bugun = bugun or timezone.localdate()
@@ -68,7 +75,7 @@ def kunlik_hisobotlarni_yoz(bugun=None, hozir=None):
         if not soz.kunlik_hisobot or hozir < soz.kunlik_hisobot_vaqti:
             continue
         matn = kunlik_matn(salon, bugun)
-        soni += sum(1 for x in rahbarlarga(salon, 'kunlik_hisobot', matn, kalit=f'kunlik:{bugun}') if x)
+        soni += sum(1 for x in rahbarlarga(salon, 'kunlik_hisobot', matn, ilova_tugmasi(salon), kalit=f'kunlik:{bugun}') if x)
     return soni
 
 

@@ -54,7 +54,8 @@ def yangilanishni_ishla(u, token=None):
         matn = (m.get('text') or '').strip()
         chat_id = m['chat']['id']
         if m['chat'].get('type') != 'private':
-            return None  # guruhlarda ishlamaydi: xabarlarda mijoz ma'lumoti bor
+            # guruhlarda ishlamaydi (xabarlarda mijoz ma'lumoti bor) — faqat eganing qo'llab-quvvatlash guruhi
+            return yordam.guruh_ishla(m, token) if m['chat'].get('type') == 'supergroup' else None
         javobga = (m.get('reply_to_message') or {}).get('text') or ''
         # Qo'llab-quvvatlash — boshqa ishlovlardan oldin: ega javobi chek, qidiruv yoki to'lov ma'lumotiga tushmasin,
         # rejimdagi foydalanuvchi xabari esa zakaz qidiruviga emas, egaga ketsin

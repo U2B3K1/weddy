@@ -81,7 +81,7 @@ def xodim_holati(x):
     """Bitta salon uchun ilova ko'radigan hamma narsa. Kalitlar vidjetlardagi bilan bir xil (vidjet.py)."""
     from .vidjet import bugun_malumot, sozlama_malumot
     rahbar = x.rol == R
-    return {'id': x.id, 'ism': x.ism, 'rol': x.rol, 'salon': x.salon.nomi,
+    return {'id': x.id, 'ism': x.ism, 'rol': x.rol, 'salon': x.salon.nomi, 'salon_id': x.salon_id,
             'bugun': json.loads(bugun_malumot(x.salon, x.id)) if rahbar else None,
             'kun': None if rahbar else bot_menyu.bugun_xabari(x)[0],  # sotuvchi/kassir: botdagi «Bugun» matni
             'sozlama': json.loads(sozlama_malumot(x)),

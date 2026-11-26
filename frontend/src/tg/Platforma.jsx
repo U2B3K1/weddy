@@ -60,7 +60,7 @@ function Umumiy({ p, ochSalon, ochRoyxat, amal, band }) {
 }
 
 // Bot tugmalari statistikasi (TugmaBosish.nom): «menyu:sozlama» → «Sozlamalar · menyu»
-const TUGMA_JOYI = { menyu: 'menyu', tugma: 'tugma', ega: 'ega', eski: 'eski menyu' }
+const TUGMA_JOYI = { menyu: 'pastki menyu', tugma: 'xabar ostida', ega: 'sizning menyu', eski: 'eski menyu' }
 const TUGMA_NOMI = {
   sozlama: 'Sozlamalar', platforma: 'Platforma', tolov: "To'lov", qaror: 'Qarorlar', bugun: 'Bugun', kassa: 'Kassa',
   ertaga: 'Ertaga', holat: 'Holat', ob_tugagan: 'Tugagan obunalar', ob_yaqin: 'Yaqin 7 kun', ob_tekshir: 'Tekshirish kerak',
@@ -109,6 +109,7 @@ function TizimHolati({ h }) {
       {h.tugmalar.length > 0 && (
         <section className="tg-karta">
           <h2>Bot tugmalari · 30 kun</h2>
+          <p className="tg-izoh">Oxirgi 30 kunda botda qaysi tugma necha marta bosilgani. Kam bosilgani — kam kerak bo'lgani.</p>
           <ul className="tg-ustunlar">
             {h.tugmalar.map(([nom, soni]) => (
               <li key={nom}>

@@ -257,3 +257,98 @@ class YordamTests(Base):
         YordamRejimi.objects.all().delete()
         self.assertIn('/yordam', self.xabar(SOTUVCHI_CHAT, voice={'file_id': 'V'}))
         self.assertEqual(self.egaga('copyMessage'), [])
+
+
+GURUH = -1001234
+
+
+class YordamGuruhTests(YordamTests):
+    """Mavzuli qo'llab-quvvatlash guruhi: har murojaatchiga alohida mavzu, javob — mavzu ichida."""
+
+    def setUp(self):
+        super().setUp()
+        self.mavzu = iter(range(40, 60))
+        eski = self.api.side_effect
+
+        def api(metod, **kw):
+            if metod == 'createForumTopic':
+                self.chaqiruvlar.append((metod, kw))
+                return {'message_thread_id': next(self.mavzu), 'name': kw['name']}
+            return eski(metod, **kw)
+        self.api.side_effect = api
+
+    def guruhda(self, matn=None, kimdan=EGA_CHAT, mavzu=None, forum=True, **qism):
+        self.mid += 1
+        m = {'message_id': self.mid, 'chat': {'id': GURUH, 'type': 'supergroup', 'is_forum': forum},
+             'from': {'id': kimdan, 'first_name': 'Ega'}, **qism}
+        if matn is not None:
+            m['text'] = matn
+        if mavzu:
+            m['message_thread_id'], m['is_topic_message'] = mavzu, True
+        self.chaqiruvlar.clear()
+        return yangilanishni_ishla({'message': m})
+
+    def ulash(self):
+        self.assertIn('✅', self.guruhda('/murojaat_guruhi@weddy_test_bot'))
+        self.assertEqual(platforma_sozlama().yordam_guruh_id, GURUH)
+
+    def test_ulash_faqat_ega_va_mavzuli_guruh(self):
+        self.assertIsNone(self.guruhda('/murojaat_guruhi', kimdan=RAHBAR_CHAT))   # begona — jim
+        self.assertIsNone(platforma_sozlama().yordam_guruh_id)
+        self.assertIn('Mavzular', self.guruhda('/murojaat_guruhi', forum=False))
+        self.assertIsNone(platforma_sozlama().yordam_guruh_id)
+        self.ulash()
+        self.assertIsNone(self.guruhda('Salom', kimdan=RAHBAR_CHAT, mavzu=40))   # boshqa a'zo — hech kimga ketmaydi
+        self.assertEqual(self.chaqiruvlar, [])
+
+    def test_har_murojaatchiga_alohida_mavzu_va_javob(self):
+        self.ulash()
+        self.xabar(SOTUVCHI_CHAT, '/yordam')
+        self.xabar(SOTUVCHI_CHAT, 'Kassa ochilmayapti')
+        (yaratildi,) = [kw for m, kw in self.chaqiruvlar if m == 'createForumTopic']
+        self.assertEqual(yaratildi['chat_id'], GURUH)
+        self.assertIn(self.salon.nomi, yaratildi['name'])
+        (yuborildi,) = [kw for m, kw in self.chaqiruvlar if m == 'sendMessage' and kw.get('chat_id') == GURUH]
+        self.assertEqual(yuborildi['message_thread_id'], 40)
+        self.assertNotIn('«reply»', yuborildi['text'])
+        foydalanuvchi_xabari = self.mid
+        self.xabar(SOTUVCHI_CHAT, 'Yana bir savol')                               # o'sha mavzu, yangisi ochilmaydi
+        self.assertEqual([m for m, _ in self.chaqiruvlar if m == 'createForumTopic'], [])
+        self.xabar(RAHBAR_CHAT, '/yordam')
+        self.xabar(RAHBAR_CHAT, 'Obuna haqida')
+        self.assertEqual([kw['message_thread_id'] for m, kw in self.chaqiruvlar if m == 'sendMessage' and kw.get('chat_id') == GURUH], [41])
+        # ega sotuvchining mavzusida oddiy yozadi — javob sotuvchiga, oxirgi xabariga javob bo'lib
+        self.assertEqual(self.guruhda('Hozir tekshiramiz', mavzu=40), 'yordam:guruh_javob')
+        (javob,) = [kw for m, kw in self.chaqiruvlar if m == 'sendMessage' and kw['chat_id'] == SOTUVCHI_CHAT]
+        self.assertIn('Hozir tekshiramiz', javob['text'])
+        self.assertEqual(javob['reply_parameters']['message_id'], foydalanuvchi_xabari + 1)
+        self.assertFalse(Murojaat.objects.filter(chat_id=SOTUVCHI_CHAT, javob_berildi__isnull=True).exists())
+        self.assertTrue(Murojaat.objects.filter(chat_id=RAHBAR_CHAT, javob_berildi__isnull=True).exists())
+        self.assertIsNone(self.guruhda('General da yozildi'))                      # mavzusiz — hech kimga
+        self.assertIsNone(self.guruhda('Noma\'lum mavzu', mavzu=99))
+
+    def test_ochirilgan_mavzu_qayta_ochiladi_guruh_ishlamasa_shaxsiy_chat(self):
+        self.ulash()
+        self.xabar(SOTUVCHI_CHAT, '/yordam')
+        self.xabar(SOTUVCHI_CHAT, 'Birinchi')
+        eski = self.api.side_effect
+        bir_marta = {'ha': True}
+
+        def api(metod, **kw):
+            if metod == 'sendMessage' and kw.get('message_thread_id') == 40 and bir_marta.pop('ha', False):
+                raise telegram.TelegramXatosi('Bad Request: message thread not found')
+            return eski(metod, **kw)
+        self.api.side_effect = api
+        self.xabar(SOTUVCHI_CHAT, 'Ikkinchi')
+        self.assertIn(41, [kw.get('message_thread_id') for m, kw in self.chaqiruvlar if m == 'sendMessage'])
+        self.assertIn("yuborildi", self.matnlar())
+
+        def buzuq(metod, **kw):
+            if metod == 'createForumTopic':
+                raise telegram.TelegramXatosi('Forbidden: not enough rights')
+            return eski(metod, **kw)
+        self.api.side_effect = buzuq
+        self.xabar(RAHBAR_CHAT, '/yordam')
+        self.xabar(RAHBAR_CHAT, 'Guruh ishlamayapti')
+        (shaxsiy,) = self.egaga()
+        self.assertIn('«reply»', shaxsiy['text'])

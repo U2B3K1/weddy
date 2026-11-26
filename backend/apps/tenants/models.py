@@ -76,6 +76,9 @@ class PlatformaSozlama(models.Model):
     tolov_malumoti = models.TextField(blank=True)
     # Botda vidjetlar (rahbarning «Bugun» ekrani) — sinov: ega `/vidjet` bilan namunani ko'rib, keyin yoqadi
     bot_vidjet = models.BooleanField(default=False)
+    # Qo'llab-quvvatlash guruhi (mavzuli yopiq guruh, faqat ega va bot): har murojaatchiga alohida mavzu.
+    # Bo'sh — murojaatlar avvalgidek eganing shaxsiy chatiga keladi. Ega guruhda `/murojaat_guruhi` yozib ulaydi.
+    yordam_guruh_id = models.BigIntegerField(null=True, blank=True)
 
 
 def platforma_sozlama():
