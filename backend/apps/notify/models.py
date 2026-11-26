@@ -118,6 +118,51 @@ class Murojaat(models.Model):
                    models.Index(fields=['ega_chat_id', 'ega_sarlavha_id'], name='murojaat_ega_sarlavhasi')]
 
 
+class BilimMaqola(models.Model):
+    """Qo'llab-quvvatlash bilim bazasi: bitta savol va unga tayyor javob. Agent faqat shu javoblardan birini tanlaydi
+    va uni so'zma-so'z yuboradi (o'zi matn yozmaydi). Faqat `faol` maqolalar ishlatiladi; qoralamalarni ega tekshirib yoqadi."""
+    class Manba(models.TextChoices):
+        QORALAMA = 'qoralama', 'Qoralama (dasturchi tayyorlagan)'
+        EGA = 'ega', 'Ega javobidan'
+        QOLDA = 'qolda', "Ega qo'lda yozgan"
+
+    savol = models.CharField(max_length=300)
+    javob = models.TextField(max_length=2000)
+    faol = models.BooleanField(default=False)
+    manba = models.CharField(max_length=10, choices=Manba.choices, default=Manba.QOLDA)
+    yaratilgan = models.DateTimeField(auto_now_add=True)
+    ozgargan = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ['savol']
+
+    def __str__(self):
+        return self.savol
+
+
+class AgentTaklif(models.Model):
+    """Agent ishi: murojaat navbatga tushadi (bot jarayoni ishlaydi — so'rov kutmasin), taklif guruh mavzusiga
+    «✅ Yuborish / ❌ Kerak emas» tugmalari bilan chiqadi. `savol` — telefon/karta raqamlari yashirilgan matn;
+    «📚 Bazaga qo'shish» uchun saqlanadi va 30 kundan keyin o'chiriladi (agent.tozala)."""
+    class Holat(models.TextChoices):
+        NAVBATDA = 'navbatda', 'Navbatda'
+        TAKLIF = 'taklif', 'Taklif qilindi'
+        TOPILMADI = 'topilmadi', "Bazada yo'q"
+        YUBORILDI = 'yuborildi', 'Yuborildi'
+        RAD = 'rad', 'Kerak emas'
+        XATO = 'xato', 'Xato'
+
+    murojaat = models.ForeignKey(Murojaat, on_delete=models.CASCADE, related_name='+')
+    savol = models.TextField(max_length=4096)
+    maqola = models.ForeignKey(BilimMaqola, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
+    holat = models.CharField(max_length=10, choices=Holat.choices, default=Holat.NAVBATDA)
+    taklif_xabar_id = models.BigIntegerField(null=True, blank=True)   # mavzudagi taklif xabari (tugmalari bilan)
+    ega_javobi = models.TextField(blank=True)                          # «📚 Bazaga qo'shish» uchun
+    bazada = models.BooleanField(default=False)
+    xato = models.CharField(max_length=300, blank=True)
+    yaratilgan = models.DateTimeField(auto_now_add=True)
+
+
 class YordamMavzu(models.Model):
     """Qo'llab-quvvatlash guruhidagi mavzu: bitta murojaatchi (Telegram chati) — bitta mavzu.
 

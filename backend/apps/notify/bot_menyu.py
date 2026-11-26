@@ -120,6 +120,11 @@ def matn_ishla(chat_id, matn, javobga=''):
         return _vidjet_sozlamasi()
     if ega and matn == '/vidjet_sinov':
         return _vidjet_sinov()
+    if ega and matn.split()[0:1] == ['/agent_sinov']:  # OpenAI ishlayaptimi va qaysi maqolani tanlaydi
+        from . import agent
+        return [(agent.sinov(matn[len('/agent_sinov'):]), None)]
+    if ega and matn == '/agent':
+        return [_agent_sozlamasi()]
     if ega and matn.startswith('/tolov'):  # zaxira yo'l: /tolov <matn>
         return tolov_malumotini_saqla(matn[6:].strip()) if matn[6:].strip() else _ega_amali('tolov_ega')
     if ega and (matn == EGA_MENYU or matn in ESKI_EGA_YORLIQLARI):
@@ -752,6 +757,19 @@ def ega_tugma(chat_id, data):
         return _ega_amali('tolov_ega')
     if data in ('e:ob_yaqin', 'e:ob_tugagan', 'e:ob_tekshir'):
         return _ega_obunalar(timezone.localdate(), data[5:])
+    if data in ('e:ag_on', 'e:ag_off'):
+        from . import agent
+        from .models import BilimMaqola
+        s = platforma_sozlama()
+        if data == 'e:ag_on' and not agent.sozlangan():
+            return [("Avval serverdagi .env fayliga OPENAI_API_KEY ni yozing va /agent_sinov bilan tekshiring.", None)]
+        if data == 'e:ag_on' and not BilimMaqola.objects.filter(faol=True).exists():
+            return [("Bilim bazasida faol maqola yo'q. «Libosa» ilovasi → Platforma → Bilim bo'limida maqolalarni yoqing.", None)]
+        s.agent_yoqilgan = data == 'e:ag_on'
+        s.save(update_fields=['agent_yoqilgan'])
+        return [("🤖 Agent yoqildi (tasdiq rejimi): murojaatga bazadan mos javob topilsa, mavzuda «✅ Yuborish» tugmasi "
+                 "bilan taklif chiqadi — javob faqat siz bosgandan keyin ketadi." if s.agent_yoqilgan else
+                 "🤖 Agent o'chirildi: murojaatlar avvalgidek faqat sizga keladi.", None)]
     if data == 'e:vs_rad':
         return [("Telegram serveri bu vidjetni qabul qilmadi, shuning uchun oddiy matn keldi. Sabab — bot tomonida "
                  "(vidjet tuzilishi yoki bot API versiyasi), telefoningizda emas. Shu xabarni dasturchiga yuboring.", None)]
@@ -788,6 +806,13 @@ VIDJET_SINOVLARI = (
      '<script>var W=window.TelegramWidget;document.getElementById("b").onclick=function(){'
      'document.getElementById("t").textContent="Skript ham ishlayapti."};W&&W.ready&&W.ready()</script>'),
 )
+
+
+def _agent_sozlamasi():
+    from . import agent
+    yoqilgan = platforma_sozlama().agent_yoqilgan
+    return (agent.holat_matni(), [[{'text': "O'chirish", 'callback_data': 'e:ag_off'}] if yoqilgan else
+                                  [{'text': 'Yoqish (tasdiq rejimi)', 'callback_data': 'e:ag_on'}]])
 
 
 def _vidjet_sinov():

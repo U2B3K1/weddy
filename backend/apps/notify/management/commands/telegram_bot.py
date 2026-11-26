@@ -141,6 +141,11 @@ def yangilanishni_ishla(u, token=None):
             for javob, tugmalar in ishlovchi(c['from']['id'], data):
                 _javob_yubor(c['from']['id'], javob, tugmalar, tk)
             return javob
+        if data.startswith('ag:'):  # agent taklifi: yuborish / kerak emas / bazaga qo'shish (faqat ega)
+            from apps.notify import agent
+            javob = agent.tugma(c, token)
+            _tinchgina('answerCallbackQuery', callback_query_id=c['id'], text=javob[:190], **kw)
+            return javob
         if data.startswith(('s:', 'k:', 'b:')):  # sozlamalar, yashirin xabar, «Bugun» yangilash: o'sha xabar yangilanadi
             if data.startswith('s:'):
                 javob, matn, tugmalar = bot_menyu.sozlama_tugma(c['from']['id'], data)
@@ -234,6 +239,11 @@ class Command(BaseCommand):
                     kutayotganlarni_yubor(muddat=NAVBAT_MUDDATI)
                 except Exception as e:  # noqa: BLE001 — navbatdagi xato tinglashni to'xtatmasin
                     self.stderr.write(f'Navbatni yuborishda xato: {type(e).__name__}: {str(e)[:150]}')
+                try:  # qo'llab-quvvatlash agenti: navbatdagi savollar (OpenAI) — bir aylanishda ko'pi bilan 2 ta
+                    from apps.notify import agent
+                    agent.navbatni_ishla()
+                except Exception as e:  # noqa: BLE001 — agent xatosi botni to'xtatmasin
+                    self.stderr.write(f'Agent navbatida xato: {type(e).__name__}')
                 if (sarf := time.monotonic() - oraliq) >= SEKIN:
                     self.stderr.write(f'Sekin aylanish (eslatma/navbat): {sarf:.1f} s')
                 # Vidjet so'rovlari faqat vidjet yoqilganda so'raladi: yangi tur tufayli getUpdates rad etilsa,

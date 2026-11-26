@@ -231,6 +231,11 @@ ESKIZ_EMAIL = env('ESKIZ_EMAIL', default='')
 ESKIZ_PASSWORD = env('ESKIZ_PASSWORD', default='')
 ESKIZ_FROM = env('ESKIZ_FROM', default='4546')
 
+# Qo'llab-quvvatlash agenti (OpenAI): savolga bilim bazasidan mos maqolani tanlaydi (javobni o'zi yozmaydi).
+# Kalit bo'sh bo'lsa agent ishlamaydi. Model — OpenAI ning joriy arzon modeli (2026-11: gpt-6-luna).
+OPENAI_API_KEY = env('OPENAI_API_KEY', default='')
+OPENAI_MODEL = env('OPENAI_MODEL', default='gpt-6-luna')
+
 # Production (DEBUG=False): nginx + HTTPS orqasida ishlaganda xavfsizlik sozlamalari.
 # Dev rejimida (DEBUG=True) bu blok ishlamaydi — mahalliy ish o'zgarmaydi.
 if not DEBUG:

@@ -200,6 +200,10 @@
 .tg-ustunlar b { grid-area: son; text-align: right; font-variant-numeric: tabular-nums; }
 .tg-qadamlar { margin: 12px 0 14px; padding-left: 20px; color: #D4D7DE; font-size: 14px; display: grid; gap: 4px; }
 
+.tg input.tg-matn-maydon { resize: none; }
+.tg .tg-xavfli { color: var(--tg-qizil); }
+.tg .tg-asosiy + .tg-royxat, .tg > .tg-ichi > .tg-asosiy { margin-top: 0; }
+
 /* Qisqa xabar (saqlandi / xato) */
 .tg .tg-xabar { position: fixed; left: 16px; right: 16px; bottom: calc(16px + env(safe-area-inset-bottom)); z-index: 4; padding: 12px 16px;
   border-radius: 14px; text-align: center; font-weight: 700; font-size: 14px; color: #171717; background: var(--tg-yashil);

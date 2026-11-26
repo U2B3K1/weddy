@@ -200,6 +200,7 @@ const BELGILAR = {
   umumiy: 'M3 10.5 12 3l9 7.5V21h-6v-6H9v6H3z',
   salonlar: 'M3 9l1.5-5h15L21 9M4 9v11h16V9M3 9h18M9 20v-6h6v6',
   yordam: 'M21 12a8 8 0 0 1-11.6 7.1L3 21l1.9-6.4A8 8 0 1 1 21 12z',
+  bilim: 'M4 4h6a2 2 0 0 1 2 2v14a2 2 0 0 0-2-2H4zM20 4h-6a2 2 0 0 0-2 2v14a2 2 0 0 1 2-2h6z',
 }
 
 export default function TgIlova() {
@@ -317,6 +318,7 @@ export default function TgIlova() {
   // Sarlavha va izoh — mobil ilovadagi kabi: katta sarlavha, ostida kichik izoh
   const [sarlavha, izoh] = egami
     ? { umumiy: ['Platforma', `${p.salonlar.length} ta salon`], salonlar: ['Salonlar', 'Obuna va to\'lov kiritish'],
+      bilim: ['Bilim bazasi', 'Agent javoblari'],
       tolov: ["To'lov ma'lumoti", 'Rahbarlar ko\'radigan matn'] }[joriy]
     : !x ? ['Libosa', '']
       : joriy === 'bugun' ? ['Bugun', rahbar ? sana(x.bugun.d) : x.salon]

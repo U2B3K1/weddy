@@ -18,7 +18,8 @@ from rest_framework.response import Response
 from apps.tenants.models import Xodim, platforma_sozlama
 from apps.tenants.views import OchiqView
 
-from . import bot_menyu, telegram
+from . import agent, bot_menyu, telegram
+from .models import BilimMaqola
 from .services import som
 
 INITDATA_MUDDATI = 24 * 3600  # soniya: ilova ochilgandan keyin imzo shuncha vaqt yaroqli
@@ -230,6 +231,9 @@ def platforma_holati():
         'arizalar_soni': Ariza.objects.filter(korilgan=False).count(),
         'javobsiz': javobsizlar(),
         'tolov_malumoti': platforma_sozlama().tolov_malumoti,
+        'bilim': [{'id': m.id, 'savol': m.savol, 'javob': m.javob, 'faol': m.faol, 'manba': m.manba}
+                  for m in BilimMaqola.objects.order_by('faol', 'savol')],
+        'agent': {'yoqilgan': platforma_sozlama().agent_yoqilgan, 'kalit': agent.sozlangan()},
     }
 
 
@@ -263,6 +267,21 @@ class TgEgaView(OchiqView):
                 s.tolov_malumoti = ''
                 s.save(update_fields=['tolov_malumoti'])
                 javob = "To'lov ma'lumoti o'chirildi."
+        elif amal == 'bilim_saqla':  # bilim bazasi: yangi yoki tahrir; `faol` — agent ishlatadimi
+            savol, matn = str(d.get('savol') or '').strip(), str(d.get('javob') or '').strip()
+            if not savol or not matn or len(savol) > 300 or len(matn) > 2000:
+                raise PermissionDenied("Savol (300 belgigacha) va javob (2000 belgigacha) to'ldirilishi kerak.")
+            mid = d.get('id')
+            m = BilimMaqola.objects.filter(id=mid).first() if str(mid or '').isdigit() else None
+            if mid and not m:
+                raise NotFound()
+            m = m or BilimMaqola(manba=BilimMaqola.Manba.QOLDA)
+            m.savol, m.javob, m.faol = savol, matn, bool(d.get('faol'))
+            m.save()
+            javob = 'Saqlandi'
+        elif amal == 'bilim_ochir':
+            n = BilimMaqola.objects.filter(id=d.get('id') if str(d.get('id') or '').isdigit() else 0).delete()[0]
+            javob = "O'chirildi" if n else 'Topilmadi'
         else:
             raise PermissionDenied("Noma'lum amal.")
         return Response({'javob': javob, 'platforma': platforma_holati()})

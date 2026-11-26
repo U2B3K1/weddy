@@ -126,6 +126,72 @@ function TizimHolati({ h }) {
   )
 }
 
+// Bilim bazasi: agent savolga shu maqolalardan birini tanlaydi va javobini so'zma-so'z yuboradi (o'zi yozmaydi).
+// Faqat «yoqilgan» maqolalar ishlatiladi; dasturchi tayyorlagan qoralamalarni tekshirib yoqasiz.
+const MANBA = { qoralama: 'qoralama — tekshiring', ega: 'sizning javobingizdan', qolda: "qo'lda yozilgan" }
+
+function MaqolaShakli({ m, saqla, bekor, ochir, band }) {
+  const [savol, setSavol] = useState(m?.savol || '')
+  const [javob, setJavob] = useState(m?.javob || '')
+  const [faol, setFaol] = useState(m ? m.faol : true)
+  return (
+    <section className="tg-karta">
+      <h2>{m ? 'Maqolani tahrirlash' : 'Yangi maqola'}</h2>
+      <label className="tg-yorliq" htmlFor="tg-bilim-savol">Savol (xodim qanday so'raydi)</label>
+      <input id="tg-bilim-savol" className="tg-matn-maydon" maxLength={300} value={savol}
+        placeholder="Masalan: PIN kodim esimdan chiqdi" onChange={(e) => setSavol(e.target.value)} />
+      <label className="tg-yorliq" htmlFor="tg-bilim-javob">Javob (xodimga aynan shu matn boradi)</label>
+      <textarea id="tg-bilim-javob" className="tg-matn-maydon" rows={6} maxLength={2000} value={javob}
+        onChange={(e) => setJavob(e.target.value)} />
+      <button type="button" className="tg-kalit" role="switch" aria-checked={faol} onClick={() => setFaol(!faol)}>
+        <span>Yoqilgan<small>Yoqilgan maqoladan agent javob taklif qiladi</small></span>
+        <span className={`tg-sw${faol ? ' on' : ''}`}><i /></span>
+      </button>
+      <div className="tg-amallar tg-ost">
+        <button type="button" className="tg-asosiy" disabled={band || !savol.trim() || !javob.trim()}
+          onClick={() => saqla({ id: m?.id, savol, javob, faol })}>Saqlash</button>
+        <button type="button" className="tg-tugma" disabled={band} onClick={bekor}>Bekor qilish</button>
+        {m && <button type="button" className="tg-havola tg-xavfli" disabled={band} onClick={() => ochir(m.id)}>Maqolani o'chirish</button>}
+      </div>
+    </section>
+  )
+}
+
+function Bilim({ p, amal, band }) {
+  const [tahrir, setTahrir] = useState(null)   // null — ro'yxat, 'yangi' — yangi maqola, aks holda maqola
+  const faol = p.bilim.filter((m) => m.faol).length
+  if (tahrir) {
+    return (
+      <MaqolaShakli key={tahrir === 'yangi' ? 'yangi' : tahrir.id} m={tahrir === 'yangi' ? null : tahrir} band={band}
+        bekor={() => setTahrir(null)}
+        saqla={(d) => amal({ amal: 'bilim_saqla', ...d }, () => setTahrir(null))}
+        ochir={(id) => amal({ amal: 'bilim_ochir', id }, () => setTahrir(null))} />
+    )
+  }
+  return (
+    <>
+      <section className="tg-karta">
+        <p className={`tg-holat ${p.agent.yoqilgan ? 'ok' : ''}`}>
+          Agent: {p.agent.yoqilgan ? 'yoqilgan (tasdiq rejimi)' : "o'chiq"}{!p.agent.kalit && ' · OpenAI kaliti kiritilmagan'}
+        </p>
+        <p className="tg-holat">{faol} ta yoqilgan, {p.bilim.length - faol} ta o'chiq maqola</p>
+        <p className="tg-izoh tg-ost">Agent savolga shu ro'yxatdan mos javobni tanlaydi va matnini o'zgartirmay yuboradi.
+          Mos javob bo'lmasa, savol sizga o'tadi. Yoqish va sinash — botda /agent.</p>
+      </section>
+      <button type="button" className="tg-asosiy" onClick={() => setTahrir('yangi')}>Yangi maqola</button>
+      <section className="tg-karta tg-royxat">
+        {p.bilim.length === 0 && <p className="tg-izoh">Hali maqola yo'q.</p>}
+        {p.bilim.map((m) => (
+          <button type="button" key={m.id} className="tg-qator-tugma" onClick={() => setTahrir(m)}>
+            <span>{m.savol}<small>{MANBA[m.manba] || m.manba}</small></span>
+            <span className={`tg-kun${m.faol ? '' : ' kut'}`}>{m.faol ? 'yoqilgan' : "o'chiq"}</span>
+          </button>
+        ))}
+      </section>
+    </>
+  )
+}
+
 function SalonKartasi({ s, orqaga, amal, band }) {
   const [tanlov, setTanlov] = useState(null)
   return (
@@ -222,7 +288,7 @@ function TolovMalumoti({ p, amal, band }) {
   )
 }
 
-export const PLATFORMA_BOLIMLARI = [['umumiy', 'Umumiy'], ['salonlar', 'Salonlar'], ['tolov', "To'lov"]]
+export const PLATFORMA_BOLIMLARI = [['umumiy', 'Umumiy'], ['salonlar', 'Salonlar'], ['bilim', 'Bilim'], ['tolov', "To'lov"]]
 
 export default function Platforma({ p, bolim, setBolim, amal, band }) {
   const [filtr, setFiltr] = useState('hammasi')
@@ -232,6 +298,7 @@ export default function Platforma({ p, bolim, setBolim, amal, band }) {
   if (bolim === 'salonlar') {
     return <Salonlar p={p} filtr={filtr} setFiltr={setFiltr} salonId={salonId} setSalonId={setSalonId} amal={amal} band={band} />
   }
+  if (bolim === 'bilim') return <Bilim p={p} amal={amal} band={band} />
   if (bolim === 'tolov') return <TolovMalumoti p={p} amal={amal} band={band} />
   return <Umumiy p={p} ochSalon={ochSalon} ochRoyxat={ochRoyxat} amal={amal} band={band} />
 }

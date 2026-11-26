@@ -78,6 +78,8 @@ class Command(BaseCommand):
             kuzatuv()  # Telegram vidjetni qayta ochganmi — kuniga bir marta, ochilsa egaga xabar
         except Exception:  # noqa: BLE001 — kuzatuv xatosi eslatmalarni to'xtatmasin
             pass
+        from apps.notify.agent import tozala
+        tozala()  # agent takliflari (yashirilgan savol matni) 30 kundan keyin o'chiriladi
         self.stdout.write(f'Yozilgan eslatmalar: {eslatmalarni_yoz(soat=timezone.localtime().hour)}; '
                           f'nazorat: {nazorat_eslatmalari()}; '
                           f'yuborilgan: {kutayotganlarni_yubor()}')

@@ -83,6 +83,9 @@ class PlatformaSozlama(models.Model):
     # ochilgan kuni egaga xabar boradi va kuzatuv to'xtaydi (`vidjet_ochiq`). notify/vidjet.py `kuzatuv`.
     vidjet_sinov_sana = models.DateField(null=True, blank=True)
     vidjet_ochiq = models.BooleanField(default=False)
+    # Qo'llab-quvvatlash agenti (OpenAI): yoqilgan bo'lsa murojaatga bilim bazasidan javob taklif qiladi — tasdiq rejimi:
+    # javob faqat ega «✅ Yuborish» ni bosgandan keyin ketadi. Ega `/agent` bilan yoqadi (`/agent_sinov` o'tgach).
+    agent_yoqilgan = models.BooleanField(default=False)
 
 
 def platforma_sozlama():

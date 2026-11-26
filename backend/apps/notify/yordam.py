@@ -213,8 +213,11 @@ def murojaat_qabul(chat_id, m, token=None):
             ega_id, sarlavha_id = _uzat(chat_id, m, tur, sarlavha, tugma, kw)
     except (telegram.TelegramXatosi, KeyError, TypeError):
         return [("Xabar yetib bormadi — birozdan keyin qayta yuboring.", None)]
-    Murojaat.objects.create(chat_id=chat_id, foydalanuvchi_xabar_id=m['message_id'], ega_chat_id=ega_chat,
-                            ega_xabar_id=ega_id, ega_sarlavha_id=sarlavha_id, xodim=xodim, salon=salon)
+    q = Murojaat.objects.create(chat_id=chat_id, foydalanuvchi_xabar_id=m['message_id'], ega_chat_id=ega_chat,
+                                ega_xabar_id=ega_id, ega_sarlavha_id=sarlavha_id, xodim=xodim, salon=salon)
+    if tur == 'matn':  # agent (yoqilgan bo'lsa): bilim bazasidan javob taklifi — bot jarayonida, navbat bilan
+        from . import agent
+        agent.navbatga(q, m['text'])
     YordamRejimi.objects.filter(chat_id=chat_id).update(tugaydi=hozir + REJIM_MUDDATI)  # jimlik muddati qaytadan
     # Har xabarga matnli tasdiq: foydalanuvchi qo'llab-quvvatlash rejimida ekanini doim ko'rib tursin
     # (aks holda zakaz qidiruvi uchun yozgani ham egaga ketayotganini sezmay qolardi)
@@ -256,6 +259,9 @@ def ega_javobi(ega_chat_id, m, token=None):
         return True
     Murojaat.objects.filter(chat_id=q.chat_id, id__lte=q.id, javob_berildi__isnull=True).update(javob_berildi=timezone.now())
     _reaksiya(ega_chat_id, m['message_id'], token)
+    if tur == 'matn':
+        from . import agent
+        agent.ega_javobi(q.chat_id, ega_chat_id, m['text'], None, token)
     return True
 
 
@@ -321,6 +327,9 @@ def guruh_ishla(m, token=None):
         return xato
     Murojaat.objects.filter(chat_id=q.chat_id, javob_berildi__isnull=True).update(javob_berildi=timezone.now())
     _reaksiya(chat['id'], m['message_id'], token)
+    if tur == 'matn':  # «📚 Bazaga qo'shish» taklifi (agent bu savolni ko'rgan bo'lsa)
+        from . import agent
+        agent.ega_javobi(q.chat_id, chat['id'], m['text'], m['message_thread_id'], token)
     return 'yordam:guruh_javob'
 
 
