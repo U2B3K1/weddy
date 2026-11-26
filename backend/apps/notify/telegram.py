@@ -4,10 +4,13 @@ Bitta bot butun platformaga xizmat qiladi (FT-4.14): token `PlatformaSozlama` da
 (`settings.TELEGRAM_BOT_TOKEN`). Salonlar o'z botini yuritmaydi — shu sababli `salon` argumenti saqlanib qoldi
 (chaqiruv joylari o'zgarmasin), lekin **e'tiborga olinmaydi**.
 
-Eslatma: TZ 7.1 da aiogram tavsiya etilgan. Bitta bot uchun `getUpdates` (25 s long poll) yetarli —
+Eslatma: TZ 7.1 da aiogram tavsiya etilgan. Bitta bot uchun `getUpdates` (long poll) yetarli —
 `telegram_bot` buyrug'i shu asosda ishlaydi.
 """
+import http.client
 import json
+import socket
+import ssl
 import urllib.error
 import urllib.request
 import uuid
@@ -15,6 +18,58 @@ import uuid
 from django.conf import settings
 
 TIMEOUT = 5
+ULANISH_TIMEOUT = 2  # soniya: bitta manzilga TCP ulanish uchun; osilsa — keyingi manzil (IPv4 → IPv6)
+# Tugma javobi va xabarni tahrirlash: takrorlansa zarar yo'q (ikkinchi marta — «message is not modified» yoki
+# «query is too old», bular jimgina o'tkaziladi). Telegram odatda 0,1 s da javob beradi — osilgan so'rov qisqa
+# kutiladi va bir marta qayta yuboriladi. `sendMessage` takrorlanmaydi: xabar ikki marta borib qolishi mumkin.
+TAKRORLANADIGAN = {'answerCallbackQuery', 'editMessageText', 'editMessageCaption', 'editMessageReplyMarkup'}
+TEZ_TIMEOUT = 3
+
+
+def _ulan(address, timeout=None, source_address=None):
+    """TCP ulanish (`socket.create_connection` o'rnida): avval IPv4, har manzilga `ULANISH_TIMEOUT` soniya.
+
+    2026-11-26: serverdan api.telegram.org ga ulanish ba'zan osilib qolardi (bir urinish 12 s, keyingisi 0,1 s;
+    bot tugmasi 5,1 s kutgan). Oddiy `urlopen` manzillarni tartib bilan, har biriga to'liq muddat berib sinaydi —
+    osilgan manzil butun so'rovni ushlab turardi va bot o'sha paytda boshqa tugmalarga javob bermasdi.
+    `timeout` berilmagan so'rovda (urllib maxsus belgi uzatadi) — ulanishdan keyin cheklovsiz.
+    """
+    host, port = address
+    timeout = timeout if isinstance(timeout, (int, float)) else None
+    manzillar = socket.getaddrinfo(host, port, type=socket.SOCK_STREAM)
+    manzillar.sort(key=lambda m: m[0] != socket.AF_INET)  # barqaror saralash: IPv4 lar birinchi, tartibi saqlanadi
+    xato = None
+    for oila, tur, proto, _, manzil in manzillar:
+        s = socket.socket(oila, tur, proto)
+        s.settimeout(min(ULANISH_TIMEOUT, timeout) if timeout else ULANISH_TIMEOUT)
+        try:
+            if source_address:
+                s.bind(source_address)
+            s.connect(manzil)
+        except OSError as e:
+            s.close()
+            xato = e
+            continue
+        s.settimeout(timeout)
+        return s
+    raise xato or OSError(f'{host}: manzil topilmadi')
+
+
+class _Ulanish(http.client.HTTPSConnection):
+    """Faqat TCP ulanish usuli almashtiriladi: TLS, TCP_NODELAY va proksi tunneli — standart kodda qoladi."""
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._create_connection = _ulan
+
+
+class _Ishlovchi(urllib.request.HTTPSHandler):
+    def https_open(self, req):
+        return self.do_open(_Ulanish, req, context=self._context)
+
+
+# `urllib.request.urlopen` shu ochuvchidan foydalanadi (testlar `urlopen` ni almashtirib qo'yadi — tarmoqqa chiqilmaydi).
+# Loyihadagi boshqa HTTPS so'rovlariga (SMS) ham ta'siri faqat shu: IPv4 birinchi, osilgan manzil qisqa kutiladi.
+urllib.request.install_opener(urllib.request.build_opener(_Ishlovchi(context=ssl.create_default_context())))
 
 
 class TelegramXatosi(Exception):
@@ -72,8 +127,17 @@ def api(metod, _token=None, **params):
         raise TelegramXatosi('Telegram bot sozlanmagan.')
     url = f'https://api.telegram.org/bot{token}/{metod}'
     req = urllib.request.Request(url, data=json.dumps(params).encode(), headers={'Content-Type': 'application/json'})
+    if metod not in TAKRORLANADIGAN:
+        return _chaqir(req, params.get('timeout', 0) + TIMEOUT)
     try:
-        with urllib.request.urlopen(req, timeout=params.get('timeout', 0) + TIMEOUT) as r:
+        return _chaqir(req, TEZ_TIMEOUT)
+    except TelegramTarmoqXatosi:  # osilgan yoki uzilgan ulanish — yangisi bilan bir marta
+        return _chaqir(req, TEZ_TIMEOUT)
+
+
+def _chaqir(req, timeout):
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as r:
             javob = json.loads(r.read())
     except urllib.error.HTTPError as e:
         try:

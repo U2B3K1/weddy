@@ -151,3 +151,73 @@ class NavbatQulfTests(TransactionTestCase):
             self.assertIs(services._yubor(x.id), True)                         # qulf bo'shagach — bir marta ketadi
             self.assertIs(services._yubor(x.id), None)
             yubor.assert_called_once()
+
+
+class _SoxtaRozetka:
+    """`socket.socket` o'rnida: `osiladi` dagi oila uchun connect TimeoutError beradi."""
+    def __init__(self, oila, osiladi, sinalgan):
+        self.oila, self.osiladi, self.sinalgan, self.timeoutlar = oila, osiladi, sinalgan, []
+
+    def settimeout(self, t):
+        self.timeoutlar.append(t)
+
+    def connect(self, manzil):
+        self.sinalgan.append(self.oila)
+        if self.oila in self.osiladi:
+            raise TimeoutError()
+
+    def close(self):
+        pass
+
+
+class TelegramUlanishTests(TestCase):
+    """2026-11-26: serverdan api.telegram.org ga ulanish ba'zan osilardi — bot tugmalari «qotardi»."""
+    MANZILLAR = [(telegram.socket.AF_INET6, 1, 6, '', ('2001:db8::1', 443, 0, 0)),
+                 (telegram.socket.AF_INET, 1, 6, '', ('192.0.2.1', 443))]
+
+    timeout = 30
+
+    def ulan(self, osiladi=()):
+        sinalgan, rozetkalar = [], []
+
+        def yasa(oila, *_):
+            rozetkalar.append(_SoxtaRozetka(oila, osiladi, sinalgan))
+            return rozetkalar[-1]
+        with mock.patch.object(telegram.socket, 'getaddrinfo', return_value=list(self.MANZILLAR)), \
+                mock.patch.object(telegram.socket, 'socket', side_effect=yasa):
+            try:
+                return telegram._ulan(('api.telegram.org', 443), self.timeout), sinalgan
+            except OSError:
+                return None, sinalgan
+
+    def test_ipv4_birinchi_osilgan_manzil_qisqa_kutiladi(self):
+        s, sinalgan = self.ulan()
+        self.assertEqual(sinalgan, [telegram.socket.AF_INET])                  # IPv6 birinchi kelsa ham — IPv4
+        self.assertEqual(s.timeoutlar, [telegram.ULANISH_TIMEOUT, 30])          # ulanish qisqa, so'rov — to'liq muddat
+        s, sinalgan = self.ulan(osiladi={telegram.socket.AF_INET})
+        self.assertEqual(sinalgan, [telegram.socket.AF_INET, telegram.socket.AF_INET6])  # osilsa — keyingi manzil
+        self.assertEqual(s.oila, telegram.socket.AF_INET6)
+        s, sinalgan = self.ulan(osiladi={telegram.socket.AF_INET, telegram.socket.AF_INET6})
+        self.assertIsNone(s)
+        self.timeout = object()                                                # urlopen(timeout berilmagan) — maxsus belgi
+        s, _ = self.ulan()
+        self.assertEqual(s.timeoutlar, [telegram.ULANISH_TIMEOUT, None])
+
+    def test_urlopen_shu_ulanishdan_foydalanadi(self):
+        self.assertTrue(any(isinstance(h, telegram._Ishlovchi) for h in telegram.urllib.request._opener.handlers))
+
+    def test_tahrirlash_osilsa_bir_marta_qayta_yuboriladi_xabar_yuborish_yoq(self):
+        javob = mock.MagicMock()
+        javob.__enter__.return_value.read.return_value = json.dumps({'ok': True, 'result': True}).encode()
+        with mock.patch.object(telegram.urllib.request, 'urlopen', side_effect=[TimeoutError(), javob]) as u:
+            self.assertIs(telegram.api('editMessageText', _token='1:T', chat_id=1, message_id=2, text='x'), True)
+        self.assertEqual(u.call_count, 2)
+        self.assertEqual([c.kwargs['timeout'] for c in u.call_args_list], [telegram.TEZ_TIMEOUT] * 2)
+        with mock.patch.object(telegram.urllib.request, 'urlopen', side_effect=[TimeoutError(), javob]) as u:
+            with self.assertRaises(telegram.TelegramTarmoqXatosi):
+                telegram.api('sendMessage', _token='1:T', chat_id=1, text='x')
+        self.assertEqual(u.call_count, 1)                                       # xabar ikki marta borib qolmasin
+        with mock.patch.object(telegram.urllib.request, 'urlopen', side_effect=_http_xato(400, 'message is not modified')) as u:
+            with self.assertRaises(telegram.TelegramXatosi):
+                telegram.api('editMessageText', _token='1:T', chat_id=1, message_id=2, text='x')
+        self.assertEqual(u.call_count, 1)                                       # doimiy xato takrorlanmaydi

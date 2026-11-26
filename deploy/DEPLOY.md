@@ -361,7 +361,7 @@ Birinchi marta yoqish (bir martalik):
    sudo systemctl reload nginx
    ```
 
-6. **Cron.** `deploy/crontab.txt` ga `oquv_tozalash` qatori qo'shilgan — `crontab /var/www/libosa/deploy/crontab.txt`.
+6. **Cron.** `deploy/crontab.txt` ga `oquv_tozalash` qatori qo'shilgan — `sudo -u libosa crontab /var/www/libosa/deploy/crontab.txt`.
 
 Tekshirish:
 
@@ -408,10 +408,11 @@ Cloudflare manzillari ro'yxati: https://www.cloudflare.com/ips/ — yiliga bir-i
 
 ### 19.2 Cloudflare paneli (bepul tarif)
 
-1. cloudflare.com da hisob oching → **Domains → Overview → Add domain** → `libosa.uz`, «Quick scan for DNS records» →
+1. cloudflare.com da hisob oching → **Domains → Overview → Add domain → Connect a domain** (Transfer emas) → `libosa.uz`,
+   «Quick scan for DNS records» →
    tarif **Free**. AI botlarni to'sish haqida so'rasa — to'smang (saytda `llms.txt` bor: AI qidiruvlarida ko'rinish uchun).
 2. **DNS yozuvlarini tekshiring.** Cloudflare hozirgi yozuvlarni o'zi ko'chiradi, lekin hammasini topmasligi mumkin.
-   2026-11-26 dagi holat (DNS hozir webspace.uz da: `dns1`–`dns4.webspace.uz`) — shu ro'yxat bilan solishtiring:
+   2026-11-26 dagi holat (DNS hozir sayt.uz ning bepul serverlarida: `dns1`–`dns4.webspace.uz`) — shu ro'yxat bilan solishtiring:
 
    | Tur | Nom | Qiymat | Proxy (hozircha) |
    |---|---|---|---|
@@ -421,8 +422,10 @@ Cloudflare manzillari ro'yxati: https://www.cloudflare.com/ips/ — yiliga bir-i
    | TXT | `libosa.uz` (@) | `google-site-verification=…` (Google Search Console, o'zgarishsiz) | — |
    | MX | `libosa.uz` (@) | `libosa.uz` | — |
 
-   MX — webspace.uz shablonidan qolgan yozuv: serverda pochta yo'q, `@libosa.uz` pochtasi hozir ham ishlamaydi.
+   MX — sayt.uz shablonidan qolgan yozuv: serverda pochta yo'q, `@libosa.uz` pochtasi hozir ham ishlamaydi.
    Cloudflare «pochta ishlamasligi mumkin» deb ogohlantirsa — e'tibor bermang (yoki MX ni o'chiring), hech narsa o'zgarmaydi.
+   Skaner `academy` ni topmasligi mumkin (2026-11-26 da topmadi) — yo'q bo'lsa «Add record» bilan qo'shing. `ftp` va `mail`
+   (CNAME → `libosa.uz`) — sayt.uz shablonidan qolgan, serverda FTP ham, pochta ham yo'q: o'chiring.
 
    **Uchala sayt yozuvi hozircha DNS only bo'lsin** (Cloudflare ularni o'zi Proxied qilib qo'ygan bo'lsa — bulutchani bosib
    kulrang qiling). Cloudflare o'z HTTPS sertifikatini domen faollashgandan keyin 15 daqiqa–24 soat ichida beradi; undan
@@ -440,15 +443,16 @@ Cloudflare manzillari ro'yxati: https://www.cloudflare.com/ips/ — yiliga bir-i
    tekshiruvi (`/.well-known/acme-challenge/`, 80-port) serverga oddiy HTTP da yetib boradi.
 6. **Rocket Loader — o'chiq** (Speed bo'limi). Sahifaning xavfsizlik siyosati (CSP) begona skriptni to'sadi.
 
-### 19.3 Domen paneli (webspace.uz)
+### 19.3 Domen paneli (sayt.uz — domen shu yerdan olingan; uning bepul DNS serverlari `dns1`–`dns4.webspace.uz`)
 
 1. DNSSEC yoqilmagan (2026-11-26 da tekshirildi: `.uz` zonasida DS yozuvi yo'q) — bu qadam kerak emas.
-2. webspace.uz panelida `libosa.uz` domenining NS (nameserver) sozlamasi: hozirgi to'rttasi (`dns1`–`dns4.webspace.uz`)
-   o'rniga Cloudflare bergan ikkitasini yozing (Cloudflare panelida ko'rsatiladi, `….ns.cloudflare.com` ko'rinishida).
+2. sayt.uz kabinetida `libosa.uz` → «DNS serverlar» → «O'z DNS serverlaringiz» (hozir «Bepul DNS serverlar»): hozirgi to'rttasi (`dns1`–`dns4.webspace.uz`)
+   o'rniga Cloudflare bergan ikkitasini yozing — `libosa.uz` uchun: `dawn.ns.cloudflare.com`, `koa.ns.cloudflare.com`.
+   Panel nameserver yonida IP so'rasa — bo'sh qoldiring (u faqat `ns1.libosa.uz` kabi o'z nomli serverlar uchun).
 3. Kutish: odatda bir necha daqiqa–soat, ko'pi bilan 24 soat. Cloudflare panelida domen «Active» bo'ladi.
    Bu vaqtda sayt avvalgidek ishlaydi — yozuvlar kulrang, eski va yangi DNS ikkalasi ham to'g'ridan-to'g'ri serverga
    olib boradi (bloklangan tarmoqdan esa hali ochilmaydi).
-4. Bundan keyin DNS yozuvlari (yangi subdomen va h.k.) faqat Cloudflare panelida o'zgartiriladi — webspace.uz dagi
+4. Bundan keyin DNS yozuvlari (yangi subdomen va h.k.) faqat Cloudflare panelida o'zgartiriladi — sayt.uz dagi
    yozuvlar endi ishlatilmaydi.
 
 ### 19.4 Proxy'ni yoqish
@@ -456,6 +460,10 @@ Cloudflare manzillari ro'yxati: https://www.cloudflare.com/ips/ — yiliga bir-i
 Ikki shart bajarilganda: **Domains** sahifasida `libosa.uz` — «Active», **SSL/TLS → Edge Certificates** da Universal
 sertifikat — «Active». Shunda **DNS** bo'limida `libosa.uz`, `www`, `academy` bulutchasini bosib **Proxied** (to'q sariq)
 qiling. Shu daqiqadan bloklangan tarmoqlardan ham sayt ochiladi.
+
+Universal sertifikat bir muddat **«Pending Validation (Error)»** («Kutilayotgan tasdiqlash (Xato)») ko'rsatishi mumkin —
+NS almashgandan keyin ba'zi DNS xizmatlari (masalan, 8.8.8.8) eski NS ni bir necha soat keshda ushlaydi. Cloudflare o'zi
+qayta urinadi; 2026-11-26 da bir necha soatda «Active» bo'ldi. Shu payt bulutchalar kulrang qoladi, hech narsa bosilmaydi.
 
 ### 19.5 Tekshirish
 
@@ -478,3 +486,7 @@ sudo certbot renew --dry-run                              # sertifikat yangilani
 
 Muammo chiqsa, Cloudflare **DNS** bo'limida `libosa.uz`, `www`, `academy` yozuvlarining bulutchasini bosib
 **DNS only** (kulrang) qiling — trafik darhol to'g'ridan-to'g'ri serverga boradi, nameserver'ni qaytarish shart emas.
+
+Cloudflare tavsiyasi «serverga faqat Cloudflare manzillaridan kirishga ruxsat bering» (firewall) — ataylab hozircha
+qilinmagan: u bu orqaga qaytarish yo'lini yopadi (kulrang bulutda sayt ochilmay qoladi). Cloudflare bir-ikki hafta
+barqaror ishlagach ko'rib chiqiladi; qilinsa ham 22-port (SSH) ochiq qoladi.

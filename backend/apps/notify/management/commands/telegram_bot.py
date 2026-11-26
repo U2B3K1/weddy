@@ -16,6 +16,10 @@ BUYRUQLAR = [{'command': 'menyu', 'description': 'Menyuni ochish'},
              {'command': 'yordam', 'description': "Qo'llab-quvvatlash: savol yoki muammo yozish"}]
 NAVBAT_MUDDATI = 8  # soniya: navbatdagi xabarlarni yuborish bir aylanishda shundan oshmaydi (tugmalar kutib qolmasin)
 SEKIN = 3  # soniya: bundan uzoq ishlagan yangilanish jurnalga yoziladi
+# getUpdates kutish muddati (long poll). 25 s edi: javobi yo'qolgan so'rov (serverdan Telegramga ulanish ba'zan
+# osilib qoladi — jurnalda «Telegram xatosi: TimeoutError») botni 30 s «kar» qilardi, shu payt bosilgan tugma
+# javobsiz qolardi. 10 s da eng yomon holat — 15 s; so'rovlar soni daqiqasiga 6 ta (Telegram uchun arzimas).
+UZUN_SOROV = 10
 
 
 def _javob_yubor(chat_id, javob, tugmalar, tk):
@@ -205,6 +209,7 @@ class Command(BaseCommand):
                     buyruqlar_qoyildi = token
                     if not _tinchgina('setMyCommands', _token=token, commands=BUYRUQLAR):
                         self.stderr.write('Telegram menyusiga buyruqlarni qo\'yib bo\'lmadi')
+                oraliq = time.monotonic()  # eslatma va navbat ishi: shu payt tugmalar kutib turadi
                 if time.monotonic() - tekshirilgan >= 60:
                     tekshirilgan = time.monotonic()
                     try:
@@ -221,12 +226,14 @@ class Command(BaseCommand):
                     kutayotganlarni_yubor(muddat=NAVBAT_MUDDATI)
                 except Exception as e:  # noqa: BLE001 — navbatdagi xato tinglashni to'xtatmasin
                     self.stderr.write(f'Navbatni yuborishda xato: {type(e).__name__}: {str(e)[:150]}')
+                if (sarf := time.monotonic() - oraliq) >= SEKIN:
+                    self.stderr.write(f'Sekin aylanish (eslatma/navbat): {sarf:.1f} s')
                 # Vidjet so'rovlari faqat vidjet yoqilganda so'raladi: yangi tur tufayli getUpdates rad etilsa,
                 # bot butunlay to'xtab qolmasligi uchun bir soat usiz ishlaydi
                 turlar = ['message', 'callback_query']
                 vidjetli = platforma_sozlama().bot_vidjet and time.monotonic() >= vidjetsiz_gacha
                 try:
-                    yangilanishlar = telegram.api('getUpdates', _token=token, offset=offset, timeout=25,
+                    yangilanishlar = telegram.api('getUpdates', _token=token, offset=offset, timeout=UZUN_SOROV,
                                                   allowed_updates=turlar + (['widget_query'] if vidjetli else []))
                 except telegram.TelegramXatosi as e:
                     self.stderr.write(f'Telegram xatosi: {e}')
