@@ -27,7 +27,10 @@ def _javob_yubor(chat_id, javob, tugmalar, tk):
     if isinstance(tugmalar, dict) and 'vidjet' in tugmalar:
         try:
             vidjet.yubor(chat_id, javob, tugmalar['vidjet'], tk.get('token'))
-        except telegram.TelegramXatosi:  # server vidjetni qabul qilmadi — matn o'zining oddiy tugmalari bilan ketadi
+        except telegram.TelegramXatosi as e:  # server vidjetni qabul qilmadi — matn o'zining oddiy tugmalari bilan ketadi
+            log.warning('Vidjet rad etildi: %s', e)  # Telegram javobi (tokensiz) — sababni jurnaldan ko'rish uchun
+            if tugmalar.get('sabab'):  # `/vidjet_sinov` — ega Telegram javobini xabarning o'zida ko'radi
+                javob = f"{javob}\n\n⚠️ Telegram javobi: {str(e)[:300]}"
             _javob_yubor(chat_id, javob, tugmalar.get('zaxira'), tk)
         return
     if isinstance(tugmalar, dict):

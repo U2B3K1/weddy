@@ -795,7 +795,8 @@ def _vidjet_sinov():
     rad = [[{'text': '⚠️ Telegram vidjetni rad etdi', 'callback_data': 'e:vs_rad'}]]
     return ([("Vidjet sinovi: quyida 3 ta xabar keladi. Har biri chizilgan oyna bo'lib ko'rinsa — vidjet ishlaydi. "
               "Faqat «Sinov …» yozuvi ko'rinsa — Telegram ilovasi uni chizmadi. Qaysi raqamgacha chizilganini ayting.", None)]
-            + [(f'Sinov {izoh}', {'vidjet': {'html': html, 'chat_data': '{}', 'allow_queries': False}, 'zaxira': rad})
+            + [(f'Sinov {izoh}', {'vidjet': {'html': html, 'chat_data': '{}', 'allow_queries': False}, 'zaxira': rad,
+                                  'sabab': True})
                for izoh, html in VIDJET_SINOVLARI])
 
 

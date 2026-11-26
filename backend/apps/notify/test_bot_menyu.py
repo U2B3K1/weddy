@@ -683,6 +683,14 @@ class VidjetTests(Base):
         self.yoz(RAHBAR_CHAT, '/vidjet_sinov')  # rahbarda — oddiy matn (zakaz qidiruvi), vidjet yo'q
         self.assertEqual(self.vidjetlar(), [])
         self.assertIn('dasturchiga', self.bos(EGA_CHAT, 'e:vs_rad'))
+        # server rad etsa — sinov xabarida Telegram javobi ko'rinadi
+        def rad(metod, **kw):
+            if metod == 'sendWidget':
+                raise telegram.TelegramXatosi('HTTP 404 Not Found')
+            return {'message_id': 1}
+        self.api.side_effect = rad
+        self.yoz(EGA_CHAT, '/vidjet_sinov')
+        self.assertIn('Telegram javobi: HTTP 404 Not Found', self.matnlar())
 
     def test_standart_ochiq_emas_matn_keladi(self):
         self.yoz(RAHBAR_CHAT, '📊 Bugun')
