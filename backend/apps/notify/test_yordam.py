@@ -314,6 +314,8 @@ class YordamGuruhTests(YordamTests):
         foydalanuvchi_xabari = self.mid
         self.xabar(SOTUVCHI_CHAT, 'Yana bir savol')                               # o'sha mavzu, yangisi ochilmaydi
         self.assertEqual([m for m, _ in self.chaqiruvlar if m == 'createForumTopic'], [])
+        (ochildi,) = [kw for m, kw in self.chaqiruvlar if m == 'reopenForumTopic']  # ega yopgan bo'lsa — qayta ochiladi
+        self.assertEqual((ochildi['chat_id'], ochildi['message_thread_id']), (GURUH, 40))
         self.xabar(RAHBAR_CHAT, '/yordam')
         self.xabar(RAHBAR_CHAT, 'Obuna haqida')
         self.assertEqual([kw['message_thread_id'] for m, kw in self.chaqiruvlar if m == 'sendMessage' and kw.get('chat_id') == GURUH], [41])

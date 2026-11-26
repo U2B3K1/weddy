@@ -198,6 +198,11 @@ def murojaat_qabul(chat_id, m, token=None):
     tugma = {'reply_markup': {'inline_keyboard': [[
         {'text': f'🏪 {salon.nomi[:40]}', 'callback_data': f'e:s:{salon.id}'} if salon else
         {'text': '🏪 Salonlar', 'callback_data': 'e:sl'}]]}}
+    if 'message_thread_id' in kw:  # ega «hal bo'ldi» deb yopgan mavzu — yangi xabar kelsa qayta ochiladi
+        try:
+            telegram.api('reopenForumTopic', _token=ega_token, chat_id=ega_chat, message_thread_id=kw['message_thread_id'])
+        except telegram.TelegramXatosi:  # yopilmagan (TOPIC_NOT_MODIFIED) yoki o'chirilgan — yuborishda aniqlanadi
+            pass
     try:
         try:
             ega_id, sarlavha_id = _uzat(chat_id, m, tur, sarlavha, tugma, kw)
