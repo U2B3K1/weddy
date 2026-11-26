@@ -754,9 +754,9 @@ def ega_tugma(chat_id, data):
         s = platforma_sozlama()
         s.bot_vidjet = data == 'e:vidjet_yoq'
         s.save(update_fields=['bot_vidjet'])
-        return [("Vidjet yoqildi: «📊 Bugun» (rahbar), «⚙️ Sozlamalar» (hamma xodim) va «💳 To'lov» (rahbar) "
-                 "vidjet bo'lib ochiladi." if s.bot_vidjet else
-                 "Vidjet o'chirildi: «📊 Bugun», «⚙️ Sozlamalar» va «💳 To'lov» yana oddiy matn bo'lib keladi.", None)]
+        return [("Vidjet yoqildi: «📊 Bugun» (rahbar), «⚙️ Sozlamalar» (hamma xodim), «💳 To'lov» (rahbar) va kunlik "
+                 "hisobot vidjet bo'lib keladi. Telegram vidjetni ko'rsatmasa — xabar oddiy matn bo'lib boradi." if s.bot_vidjet else
+                 "Vidjet o'chirildi: «📊 Bugun», «⚙️ Sozlamalar», «💳 To'lov» va kunlik hisobot yana oddiy matn bo'lib keladi.", None)]
     if data == 'e:tolov_och':
         s = platforma_sozlama()
         s.tolov_malumoti = ''

@@ -257,3 +257,32 @@ class MiniIlovaTests(TestCase):
                                                           'web_app': {'url': f'https://libosa.uz/tg?salon={self.salon.id}'}}]])
         with override_settings(CORS_ALLOWED_ORIGINS=['http://localhost:5173']):
             self.assertIsNone(ilova_tugmasi(self.salon))  # lokalda https yo'q — tugma qo'yilmaydi
+
+    def test_kunlik_hisobot_vidjet_bilan_rad_etilsa_matn(self):
+        from . import services
+        x = services.xabar_yoz(self.rahbar, 'kunlik_hisobot', 'Kunlik hisobot · bugun', darhol=False)
+        services._yubor(x.id)  # vidjet o'chiq — oddiy matn
+        self.assertEqual(self.api.call_args[0][0], 'sendMessage')
+        s = platforma_sozlama()
+        s.bot_vidjet = True
+        s.save()
+        self.api.reset_mock()
+        x = services.xabar_yoz(self.rahbar, 'kunlik_hisobot', 'Kunlik hisobot · ertaga', kalit='2', darhol=False)
+        services._yubor(x.id)
+        metod, kw = self.api.call_args[0][0], self.api.call_args[1]
+        self.assertEqual((metod, kw['chat_id'], kw['caption']), ('sendWidget', RAHBAR, 'Kunlik hisobot · ertaga'))
+        self.assertIn(self.salon.nomi, kw['chat_data'])
+        x.refresh_from_db()
+        self.assertEqual(x.holat, x.Holat.YUBORILDI)
+
+        def rad(metod, **kw):
+            if metod == 'sendWidget':
+                raise telegram.TelegramXatosi('Bad Request: unknown method')
+            return {'message_id': 1}
+        self.api.side_effect = rad
+        self.api.reset_mock()
+        x = services.xabar_yoz(self.rahbar, 'kunlik_hisobot', 'Kunlik hisobot · indin', kalit='3', darhol=False)
+        services._yubor(x.id)
+        self.assertEqual([c[0][0] for c in self.api.call_args_list], ['sendWidget', 'sendMessage'])
+        x.refresh_from_db()
+        self.assertEqual(x.holat, x.Holat.YUBORILDI)

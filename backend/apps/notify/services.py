@@ -110,6 +110,31 @@ def som(n):
 
 # ---------- yuborish ----------
 
+# Vidjet bo'lib boradigan xabarlar (ega «/vidjet» → «Xodimlar uchun yoqish» bilan yoqadi). Izoh (caption) — xabarning
+# to'liq matni: Telegram ilovasi vidjetni ko'rsatmasa ham mazmun ko'rinadi; server rad etsa — oddiy matn.
+VIDJET_TURLAR = {'kunlik_hisobot'}
+
+
+def _vidjet_bilan(xabar, tugmalar):
+    """Xabarni vidjet qilib yuboradi. Yuborilsa True; vidjet o'chiq yoki Telegram rad etsa False (matn ketadi)."""
+    from apps.tenants.models import platforma_sozlama
+
+    from . import vidjet
+    if not platforma_sozlama().bot_vidjet:
+        return False
+    v = {'html': vidjet.BUGUN_HTML, 'chat_data': vidjet.bugun_malumot(xabar.xodim.salon, xabar.xodim.id),
+         'allow_queries': True}
+    if tugmalar:
+        v['reply_markup'] = {'inline_keyboard': tugmalar}
+    try:
+        vidjet.yubor(xabar.xodim.telegram_id, xabar.matn, v)
+        return True
+    except (telegram.TelegramLimitXatosi, telegram.TelegramTarmoqXatosi):
+        raise  # vaqtinchalik — xabar navbatda qoladi
+    except telegram.TelegramXatosi:
+        return False
+
+
 def _yubor(xabar_id):
     """Bitta xabarni yuboradi. Vaqtinchalik xatoda (429, tarmoq, Telegram 5xx) xabar navbatda qoladi va `False` qaytadi.
 
@@ -127,8 +152,9 @@ def _yubor(xabar_id):
             matn = f"🔔 {xabar.xodim.salon.nomi}: yangi xabar"
             tugmalar = [[{'text': "👁 Ko'rsatish", 'callback_data': f'k:{xabar.id}'}]]
         try:
-            telegram.xabar_yubor(xabar.xodim.telegram_id, matn, tugmalar,
-                                 **({'jim': True} if xabar.tur in JIM_TURLAR else {}))
+            if not (xabar.tur in VIDJET_TURLAR and matn == xabar.matn and _vidjet_bilan(xabar, tugmalar)):
+                telegram.xabar_yubor(xabar.xodim.telegram_id, matn, tugmalar,
+                                     **({'jim': True} if xabar.tur in JIM_TURLAR else {}))
             xabar.holat, xabar.yuborilgan = Xabar.Holat.YUBORILDI, timezone.now()
         except (telegram.TelegramLimitXatosi, telegram.TelegramTarmoqXatosi):
             # Vaqtinchalik: XATO deb belgilansa xabar butunlay yo'qolar edi (XATO qayta yuborilmaydi).
