@@ -234,8 +234,9 @@ ESKIZ_FROM = env('ESKIZ_FROM', default='4546')
 # Qo'llab-quvvatlash agenti (OpenAI yoki DeepSeek): savolga bilim bazasidan mos maqolani tanlaydi (javobni o'zi yozmaydi).
 # Kalit bo'sh bo'lsa agent ishlamaydi. Model — OpenAI ning joriy arzon modeli (2026-11: gpt-6-luna).
 OPENAI_API_KEY = env('OPENAI_API_KEY', default='')
-OPENAI_MODEL = env('OPENAI_MODEL', default='gpt-6-luna')
-# DeepSeek: kalit kiritilsa agent OpenAI o'rniga shu xizmatdan foydalanadi (2026-11: deepseek-flash — arzon, oddiy ish uchun).
+OPENAI_MODEL = env('OPENAI_MODEL', default='gpt-6-luna')  # rasmni ham qabul qiladi (skrinshot)
+OPENAI_STT_MODEL = env('OPENAI_STT_MODEL', default='gpt-transcribe')  # ovozli xabar → matn (2026-07 dan Whisper o'rniga)
+# DeepSeek: OpenAI kaliti bo'lmasa agent shu xizmatdan foydalanadi (faqat matn; ovoz va rasm — OpenAI bilan) (2026-11: deepseek-flash — arzon, oddiy ish uchun).
 DEEPSEEK_API_KEY = env('DEEPSEEK_API_KEY', default='')
 DEEPSEEK_MODEL = env('DEEPSEEK_MODEL', default='deepseek-flash')
 

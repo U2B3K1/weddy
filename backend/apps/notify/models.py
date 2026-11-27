@@ -162,6 +162,11 @@ class AgentTaklif(models.Model):
     ega_javobi = models.TextField(blank=True)                          # «📚 Bazaga qo'shish» uchun
     bazada = models.BooleanField(default=False)
     xato = models.CharField(max_length=300, blank=True)
+    # Ovozli xabar yoki rasm (OpenAI): Telegram fayl raqami va turi ('ovoz' | 'rasm'). Ovoz matnga aylangach `savol` ga
+    # yoziladi; fayl o'zi saqlanmaydi. `baho` — foydalanuvchi bahosi avtomatik javobga: 'ha' (👍) yoki 'yoq' (👎)
+    fayl_id = models.CharField(max_length=200, blank=True)
+    fayl_turi = models.CharField(max_length=5, blank=True)
+    baho = models.CharField(max_length=3, blank=True)
     yaratilgan = models.DateTimeField(auto_now_add=True)
 
 

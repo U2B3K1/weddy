@@ -11,7 +11,7 @@ from apps.tenants.models import platforma_sozlama
 
 from . import agent, telegram
 from .models import AgentTaklif, BilimMaqola, Murojaat, YordamMavzu
-from .test_bot_menyu import EGA_CHAT, SOTUVCHI_CHAT, Base
+from .test_bot_menyu import EGA_CHAT, RAHBAR_CHAT, SOTUVCHI_CHAT, Base
 from .test_miniilova import imzola
 
 KALIT = override_settings(OPENAI_API_KEY='sk-test-KALIT', OPENAI_MODEL='gpt-6-luna', DEEPSEEK_API_KEY='')
@@ -31,12 +31,11 @@ def openai_javobi(mazmun):
     return javob
 
 
-@KALIT
-class AgentTests(Base):
+class AgentAsos(Base):
     def setUp(self):
         super().setUp()
         s = platforma_sozlama()
-        s.telegram_chat_id, s.yordam_guruh_id, s.agent_yoqilgan = EGA_CHAT, GURUH, True
+        s.telegram_chat_id, s.yordam_guruh_id, s.agent_yoqilgan, s.agent_avto = EGA_CHAT, GURUH, True, False
         s.save()
         self.pin = BilimMaqola.objects.create(savol='PIN kodni ko\'p marta xato kiritdim', javob='15 daqiqa kuting.', faol=True)
         self.tolov = BilimMaqola.objects.create(savol='Obunani qanday to\'layman?', javob='Chek yuboring.', faol=True)
@@ -66,6 +65,9 @@ class AgentTests(Base):
             c['message'] = xabar
         return yangilanishni_ishla({'callback_query': c})
 
+
+@KALIT
+class AgentTests(AgentAsos):
     # ---------- tanlov: faqat bazadan ----------
 
     def test_yashirish(self):
@@ -99,7 +101,7 @@ class AgentTests(Base):
         self.urlopen.side_effect = TimeoutError()
         self.assertIn('❌ OpenAI xatosi', agent.sinov('PIN'))
 
-    @override_settings(DEEPSEEK_API_KEY='sk-ds-KALIT', DEEPSEEK_MODEL='deepseek-flash')
+    @override_settings(OPENAI_API_KEY='', DEEPSEEK_API_KEY='sk-ds-KALIT', DEEPSEEK_MODEL='deepseek-flash')
     def test_deepseek(self):
         self.urlopen.return_value = openai_javobi(jav('Rahbarga yozing.', [self.pin.id]))
         self.assertEqual(agent.tanla('PIN esimdan chiqdi').manbalar, [self.pin])
@@ -291,7 +293,7 @@ class AgentTests(Base):
         self.yoz(EGA_CHAT, '/agent_sinov PIN esimdan chiqdi')
         self.assertIn('✅ Javob taklifi:\n\nRahbarga yozing.', self.matnlar())
         self.yoz(EGA_CHAT, '/agent')
-        self.assertIn('yoqilgan (tasdiq rejimi)', self.matnlar())
+        self.assertIn('yoqilgan — tasdiq rejimi', self.matnlar())
         self.assertIn('faqat platforma egasiga', self.bos(SOTUVCHI_CHAT, 'e:ag_off'))  # egadan boshqa — rad
         self.assertTrue(platforma_sozlama().agent_yoqilgan)
         self.bos(EGA_CHAT, 'e:ag_off')
@@ -336,3 +338,131 @@ class AgentTests(Base):
         self.assertFalse(BilimMaqola.objects.filter(faol=True).exists())  # qoralama — o'chiq
         call_command('bilim_qoralama', stdout=io.StringIO())
         self.assertEqual(BilimMaqola.objects.count(), n)  # qayta ishlatilsa ikkilanmaydi
+
+
+@KALIT
+class AvtoRejimTests(AgentAsos):
+    """Avtomatik rejim: bot o'zi javob beradi; topmasa «mutaxassisga yo'naltirdim» (chatga 30 daqiqada bir marta)."""
+    def setUp(self):
+        super().setUp()
+        platforma_sozlama().__class__.objects.filter(id=1).update(agent_avto=True)
+
+    def foyd(self, metod='editMessageText'):
+        return [kw for kw in self.chaqiruvlar(metod) if kw['chat_id'] == SOTUVCHI_CHAT]
+
+    def javob_berilgan(self):
+        q = self.murojaat('PIN esimdan chiqdi')
+        t = AgentTaklif.objects.get(murojaat=q)
+        self.assertEqual(self.foyd('sendMessage'), [])  # «tayyorlanmoqda» xabari yo'q — faqat «yozmoqda…»
+        self.assertEqual(self.foyd('sendChatAction')[-1]['action'], 'typing')
+        self.assertNotIn('yuborildi', ' '.join(m for chat, m, _, _ in self.yuborilgan if chat == SOTUVCHI_CHAT))
+        self.urlopen.return_value = openai_javobi(jav('15 daqiqa kuting yoki rahbarga yozing.', [self.pin.id]))
+        self.api.reset_mock()
+        agent.navbatni_ishla()
+        t.refresh_from_db()
+        self.assertEqual((t.holat, t.javob, t.maqola), (AgentTaklif.Holat.YUBORILDI, '15 daqiqa kuting yoki rahbarga yozing.', self.pin))
+        (javob,) = self.foyd('sendMessage')
+        self.assertEqual(javob['reply_parameters']['message_id'], q.foydalanuvchi_xabar_id)
+        self.assertIn('15 daqiqa kuting', javob['text'])
+        self.assertEqual([b['callback_data'] for b in javob['reply_markup']['inline_keyboard'][0]], [f'ag:h:{t.id}', f'ag:x:{t.id}'])
+        (egaga,) = [kw for kw in self.chaqiruvlar('sendMessage') if kw['chat_id'] == GURUH]
+        self.assertTrue(egaga['text'].startswith(agent.AVTO_SARLAVHA))
+        q.refresh_from_db()
+        self.assertIsNotNone(q.javob_berildi)
+        return t, q
+
+    def test_javob_tayyorlanmoqda_xabari_orniga_yoziladi(self):
+        self.javob_berilgan()
+
+    def test_baho(self):
+        t, q = self.javob_berilgan()
+        xabar = {'message_id': 1234, 'chat': {'id': SOTUVCHI_CHAT}, 'text': f'Javob\n\n{agent.BAHO_SAVOLI}'}
+        self.assertIn('tegishli emas', self.bos(RAHBAR_CHAT, f'ag:x:{t.id}', xabar))
+        self.api.reset_mock()
+        self.assertEqual(self.bos(SOTUVCHI_CHAT, f'ag:x:{t.id}', xabar), agent.YONALTIRILDI_QISQA)
+        (tahrir,) = self.foyd()
+        self.assertEqual(tahrir['text'], f'Javob\n\n{agent.YONALTIRILDI_QISQA}')
+        self.assertIn('qoniqmadi', [kw for kw in self.chaqiruvlar('sendMessage') if kw['chat_id'] == GURUH][0]['text'])
+        q.refresh_from_db()
+        self.assertIsNone(q.javob_berildi)  # yana «javobsiz» — egaga eslatmaga tushadi
+        self.assertIn('allaqachon', self.bos(SOTUVCHI_CHAT, f'ag:h:{t.id}', xabar))
+        self.assertEqual(AgentTaklif.objects.get(id=t.id).baho, 'yoq')
+        self.assertIn('👎 1', agent.holat_matni())
+
+    def test_topilmasa_yonaltiradi_toliq_gap_bir_marta(self):
+        self.murojaat('Salom')
+        self.murojaat('Yana bir savol')
+        self.urlopen.return_value = openai_javobi(jav(None, []))
+        self.api.reset_mock()
+        agent.navbatni_ishla()
+        self.assertEqual([kw['text'] for kw in self.foyd('sendMessage')], [agent.YONALTIRDIM])  # ikki xabar — bir marta
+        self.assertEqual(set(AgentTaklif.objects.values_list('holat', flat=True)), {AgentTaklif.Holat.TOPILMADI})
+        self.assertIn("mutaxassisga o'tdi: 2", agent.holat_matni())
+
+    def test_ai_xatosida_ham_yonaltiradi(self):
+        self.murojaat('PIN esimdan chiqdi')
+        self.urlopen.side_effect = urllib.error.URLError('ulanmadi')
+        self.api.reset_mock()
+        agent.navbatni_ishla()
+        self.assertEqual([kw['text'] for kw in self.foyd('sendMessage')], [agent.YONALTIRDIM])
+
+    def yubor(self, **xabar):
+        from .management.commands.telegram_bot import yangilanishni_ishla
+        self.mid = getattr(self, 'mid', 500) + 1
+        yangilanishni_ishla({'message': {'message_id': self.mid, 'chat': {'id': SOTUVCHI_CHAT, 'type': 'private'},
+                                         'from': {'id': SOTUVCHI_CHAT, 'first_name': 'Malika'}, **xabar}})
+
+    def test_ovozli_xabar_matnga_aylanib_javob_oladi(self):
+        self.murojaat('Salom')
+        AgentTaklif.objects.all().delete()
+        self.yubor(voice={'file_id': 'OVOZ1', 'file_size': 9000})
+        t = AgentTaklif.objects.get()
+        self.assertEqual((t.fayl_turi, t.fayl_id, t.savol), ('ovoz', 'OVOZ1', ''))
+        stt = mock.MagicMock()
+        stt.__enter__.return_value.read.return_value = json.dumps({'text': 'PIN esimdan chiqdi, tel 998901234567'}).encode()
+        self.urlopen.side_effect = [stt, openai_javobi(jav('15 daqiqa kuting.', [self.pin.id]))]
+        self.api.reset_mock()
+        with mock.patch.object(telegram, 'fayl_ol', return_value=b'OGG') as fayl_ol:
+            agent.navbatni_ishla()
+        self.assertEqual(fayl_ol.call_args[0][0], 'OVOZ1')
+        so_rov = self.urlopen.call_args_list[0][0][0]
+        self.assertEqual(so_rov.full_url, agent.STT_URL)
+        self.assertIn(b'gpt-transcribe', so_rov.data)
+        self.assertIn(b'OGG', so_rov.data)
+        t.refresh_from_db()
+        self.assertEqual((t.savol, t.holat), ('PIN esimdan chiqdi, tel [raqam]', AgentTaklif.Holat.YUBORILDI))
+        model = json.loads(self.urlopen.call_args_list[1][0][0].data)['messages'][1]['content']
+        self.assertIn('PIN esimdan chiqdi, tel [raqam]', model)
+        self.assertIn('15 daqiqa kuting', self.foyd('sendMessage')[0]['text'])
+        (egaga,) = [kw for kw in self.chaqiruvlar('sendMessage') if kw['chat_id'] == GURUH]
+        self.assertTrue(egaga['text'].startswith('🎤 Ovozli xabar matni: «PIN esimdan chiqdi'))
+
+    def test_skrinshot_modelga_rasm_bolib_boradi(self):
+        self.murojaat('Salom')
+        AgentTaklif.objects.all().delete()
+        self.yubor(photo=[{'file_id': 'kichik', 'file_size': 100}, {'file_id': 'KATTA', 'file_size': 90000}], caption='shu chiqdi')
+        t = AgentTaklif.objects.get()
+        self.assertEqual((t.fayl_turi, t.fayl_id, t.savol), ('rasm', 'KATTA', 'shu chiqdi'))
+        self.urlopen.return_value = openai_javobi(jav('Avval qoldiqni qabul qiling.', [self.pin.id]))
+        with mock.patch.object(telegram, 'fayl_ol', return_value=b'JPG'):
+            agent.navbatni_ishla()
+        mazmun = json.loads(self.urlopen.call_args[0][0].data)['messages'][1]['content']
+        self.assertEqual([q['type'] for q in mazmun], ['text', 'image_url'])
+        self.assertIn('shu chiqdi', mazmun[0]['text'])
+        self.assertEqual(mazmun[1]['image_url']['url'], 'data:image/jpeg;base64,SlBH')
+        self.assertEqual(AgentTaklif.objects.get().holat, AgentTaklif.Holat.YUBORILDI)
+
+    @override_settings(OPENAI_API_KEY='', DEEPSEEK_API_KEY='sk-ds-KALIT')
+    def test_deepseekda_ovoz_mutaxassisga(self):
+        self.murojaat('Salom')
+        AgentTaklif.objects.all().delete()
+        self.yuborilgan.clear()
+        self.yubor(voice={'file_id': 'v', 'file_size': 900})
+        self.assertFalse(AgentTaklif.objects.exists())
+        self.assertIn('Ovozli xabar mutaxassisga yuborildi', self.yuborilgan[-1][1])
+
+    def test_rejimni_almashtirish(self):
+        self.assertIn("bot o'zi javob beradi", agent.holat_matni())
+        self.bos(EGA_CHAT, 'e:ag_tasdiq')
+        self.assertFalse(platforma_sozlama().agent_avto)
+        self.assertIn('tasdiq rejimi', agent.holat_matni())

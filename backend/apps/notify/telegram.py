@@ -183,6 +183,23 @@ FAYL_MAKS_BAYT = 49 * 1024 * 1024  # Bot API fayl chegarasi 50 MB — biroz zaxi
 FAYL_TIMEOUT = 120
 
 
+def fayl_ol(file_id, maks, token=None):
+    """Foydalanuvchi yuborgan fayl (ovozli xabar, rasm) baytlari: `getFile` + yuklab olish. `maks` dan katta — xato."""
+    token = token or token_ol()
+    f = api('getFile', _token=token, file_id=file_id) or {}
+    if not f.get('file_path') or (f.get('file_size') or 0) > maks:
+        raise TelegramXatosi('Fayl topilmadi yoki juda katta.')
+    req = urllib.request.Request(f"https://api.telegram.org/file/bot{token}/{f['file_path']}")
+    try:
+        with urllib.request.urlopen(req, timeout=FAYL_TIMEOUT) as r:
+            mazmun = r.read(maks + 1)
+    except (urllib.error.URLError, TimeoutError, OSError, ValueError) as e:
+        raise TelegramXatosi(type(e).__name__)  # token URL ichida — xato matniga chiqarilmaydi
+    if len(mazmun) > maks:
+        raise TelegramXatosi('Fayl juda katta.')
+    return mazmun
+
+
 def fayl_yubor(chat_id, nom, mazmun, izoh='', token=None):
     """Chatga fayl yuboradi (`sendDocument`, multipart). `mazmun` — bayt; `FAYL_MAKS_BAYT` dan oshmasligi kerak."""
     token = token or token_ol()

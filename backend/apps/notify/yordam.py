@@ -23,7 +23,7 @@ from django.conf import settings
 from django.db.models import Q
 from django.utils import timezone
 
-from apps.tenants.models import Salon, Xodim
+from apps.tenants.models import Salon, Xodim, platforma_sozlama
 
 from . import telegram
 from .models import Murojaat, YordamMavzu, YordamRejimi
@@ -215,12 +215,19 @@ def murojaat_qabul(chat_id, m, token=None):
         return [("Xabar yetib bormadi — birozdan keyin qayta yuboring.", None)]
     q = Murojaat.objects.create(chat_id=chat_id, foydalanuvchi_xabar_id=m['message_id'], ega_chat_id=ega_chat,
                                 ega_xabar_id=ega_id, ega_sarlavha_id=sarlavha_id, xodim=xodim, salon=salon)
-    if tur == 'matn':  # agent (yoqilgan bo'lsa): bilim bazasidan javob taklifi — bot jarayonida, navbat bilan
-        from . import agent
-        agent.navbatga(q, m['text'])
+    from . import agent  # yoqilgan bo'lsa bilim bazasidan javob — bot jarayonida, navbat bilan
+    navbatda = agent.navbatga(q, m.get('text') or m.get('caption') or '', agent.xabar_fayli(m))
     YordamRejimi.objects.filter(chat_id=chat_id).update(tugaydi=hozir + REJIM_MUDDATI)  # jimlik muddati qaytadan
     # Har xabarga matnli tasdiq: foydalanuvchi qo'llab-quvvatlash rejimida ekanini doim ko'rib tursin
     # (aks holda zakaz qidiruvi uchun yozgani ham egaga ketayotganini sezmay qolardi)
+    if navbatda and platforma_sozlama().agent_avto:  # bot o'zi javob beradi yoki «mutaxassisga yo'naltirdim» deydi
+        try:  # ortiqcha xabar o'rniga chat tepasida «yozmoqda…» (javob bir necha soniyada keladi)
+            telegram.api('sendChatAction', chat_id=chat_id, action='typing', **({'_token': token} if token else {}))
+        except telegram.TelegramXatosi:
+            pass
+        return []
+    if tur != 'matn':
+        return [(f"✅ {TURLAR[tur].capitalize()} mutaxassisga yuborildi — javob shu chatga keladi. Tugatish: /bekor.", None)]
     return [("✅ Qo'llab-quvvatlashga yuborildi — javob shu chatga keladi. Tugatish: /bekor.", None)]
 
 

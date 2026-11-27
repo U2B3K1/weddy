@@ -757,6 +757,11 @@ def ega_tugma(chat_id, data):
         return _ega_amali('tolov_ega')
     if data in ('e:ob_yaqin', 'e:ob_tugagan', 'e:ob_tekshir'):
         return _ega_obunalar(timezone.localdate(), data[5:])
+    if data in ('e:ag_avto', 'e:ag_tasdiq'):
+        s = platforma_sozlama()
+        s.agent_avto = data == 'e:ag_avto'
+        s.save(update_fields=['agent_avto'])
+        return [_agent_sozlamasi()]
     if data in ('e:ag_on', 'e:ag_off'):
         from . import agent
         from .models import BilimMaqola
@@ -767,9 +772,11 @@ def ega_tugma(chat_id, data):
             return [("Bilim bazasida faol maqola yo'q. «Libosa» ilovasi → Platforma → Bilim bo'limida maqolalarni yoqing.", None)]
         s.agent_yoqilgan = data == 'e:ag_on'
         s.save(update_fields=['agent_yoqilgan'])
-        return [("🤖 Agent yoqildi (tasdiq rejimi): murojaatga bazadan mos javob topilsa, mavzuda «✅ Yuborish» tugmasi "
-                 "bilan taklif chiqadi — javob faqat siz bosgandan keyin ketadi." if s.agent_yoqilgan else
-                 "🤖 Agent o'chirildi: murojaatlar avvalgidek faqat sizga keladi.", None)]
+        if not s.agent_yoqilgan:
+            return [("🤖 Agent o'chirildi: murojaatlar avvalgidek faqat sizga keladi.", None)]
+        return [("🤖 Agent yoqildi. " + ("Bot savolga o'zi javob beradi, nusxasi sizga chiqadi; javob topmasa foydalanuvchiga "
+                 "«mutaxassisga yo'naltirdim» deydi." if s.agent_avto else "Tasdiq rejimi: mavzuda «✅ Yuborish» tugmasi "
+                 "bilan taklif chiqadi — javob faqat siz bosgandan keyin ketadi."), None)]
     if data == 'e:vs_rad':
         return [("Telegram serveri bu vidjetni qabul qilmadi, shuning uchun oddiy matn keldi. Sabab — bot tomonida "
                  "(vidjet tuzilishi yoki bot API versiyasi), telefoningizda emas. Shu xabarni dasturchiga yuboring.", None)]
@@ -810,9 +817,11 @@ VIDJET_SINOVLARI = (
 
 def _agent_sozlamasi():
     from . import agent
-    yoqilgan = platforma_sozlama().agent_yoqilgan
-    return (agent.holat_matni(), [[{'text': "O'chirish", 'callback_data': 'e:ag_off'}] if yoqilgan else
-                                  [{'text': 'Yoqish (tasdiq rejimi)', 'callback_data': 'e:ag_on'}]])
+    ps = platforma_sozlama()
+    rejim = ({'text': "Tasdiq rejimiga o'tish", 'callback_data': 'e:ag_tasdiq'} if ps.agent_avto else
+             {'text': "Bot o'zi javob bersin", 'callback_data': 'e:ag_avto'})
+    return (agent.holat_matni(), [[{'text': "O'chirish", 'callback_data': 'e:ag_off'}] if ps.agent_yoqilgan else
+                                  [{'text': 'Yoqish', 'callback_data': 'e:ag_on'}], [rejim]])
 
 
 def _vidjet_sinov():

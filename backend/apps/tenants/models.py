@@ -86,6 +86,9 @@ class PlatformaSozlama(models.Model):
     # Qo'llab-quvvatlash agenti (DeepSeek yoki OpenAI): yoqilgan bo'lsa murojaatga bilim bazasidan javob taklif qiladi — tasdiq rejimi:
     # javob faqat ega «✅ Yuborish» ni bosgandan keyin ketadi. Ega `/agent` bilan yoqadi (`/agent_sinov` o'tgach).
     agent_yoqilgan = models.BooleanField(default=False)
+    # Avtomatik rejim (egasi, 2026-11-27): bot javobni o'zi yuboradi, egaga nusxasi chiqadi; javob topilmasa foydalanuvchiga
+    # «mutaxassisga yo'naltirdim» deydi. O'chiq — tasdiq rejimi (taklif «✅ Yuborish» bilan egaga).
+    agent_avto = models.BooleanField(default=True)
 
 
 def platforma_sozlama():
