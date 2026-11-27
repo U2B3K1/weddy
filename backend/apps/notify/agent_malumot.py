@@ -99,6 +99,10 @@ def jonli_malumot(murojaat, savol):
     salon, xodim = murojaat.salon, murojaat.xodim
     if not salon or not xodim or xodim.salon_id != salon.id:
         return '', ''
+    # Faqat botga o'zi ulangan, hozir ham faol xodim: ilova havolasi orqali «tanilgan» (Telegrami ulanmagan) yoki
+    # ishdan bo'shatilgan (o'chirilgan) xodim salon bazasidagi holatni ko'rmaydi
+    if not xodim.faol or xodim.telegram_id != murojaat.chat_id:
+        return '', ''
     raqamlar = zakaz_raqamlari(savol)
     bloklar = [_xodim_matni(salon, xodim)] + [_zakaz_matni(salon, r) for r in raqamlar]
     izoh = ', '.join([f'zakaz #{r}' for r in raqamlar] + ['kassa holati'])

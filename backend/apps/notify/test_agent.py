@@ -433,6 +433,77 @@ class AvtoRejimTests(AgentAsos):
         self.assertIsNotNone(q.javob_berildi)
         self.assertIn("mutaxassisga o'tdi: 0", agent.holat_matni())
 
+    def model(self, **kw):
+        """Model javobi: to'liq sxema, berilgan maydonlar bilan."""
+        return openai_javobi(json.dumps({'javob': None, 'manbalar': [], 'darslar': [], 'malumot': False, 'tushunarsiz': False,
+                                         'aniqlashtirish': False, 'shoshilinch': False, 'xulosa': '', **kw}))
+
+    def test_shoshilinch_egaga_qizil_bilan_va_javobsiz_qoladi(self):
+        q = self.murojaat('Terminaldan pul yechildi, zakazda korinmayapti')
+        self.urlopen.return_value = self.model(javob="To'lovni takrorlamang.", shoshilinch=True,
+                                               xulosa='Terminalda pul yechilgan, zakazda yozuv yoq; tel 998901234567')
+        self.api.reset_mock()
+        agent.navbatni_ishla()
+        (foyd,) = self.foyd('sendMessage')
+        self.assertIn("To'lovni takrorlamang.", foyd['text'])
+        self.assertIn(agent.SHOSHILINCH_ILOVA, foyd['text'])
+        (egaga,) = [kw['text'] for kw in self.chaqiruvlar('sendMessage') if kw['chat_id'] == GURUH]
+        self.assertTrue(egaga.startswith(agent.SHOSHILINCH_SARLAVHA))
+        self.assertIn('📝 Terminalda pul yechilgan, zakazda yozuv yoq; tel [raqam]', egaga)
+        self.assertIn('📊 Salon bazasidan:', egaga)  # shoshilinchda kassa holati ham ko'rsatiladi
+        q.refresh_from_db()
+        self.assertIsNone(q.javob_berildi)  # ega tekshirishi kerak — «javobsiz» qoladi
+        # javobsiz shoshilinch: 30 daqiqa ichida bo'lsa ham to'liq xabar (belgi bilan cheklanmaydi)
+        for _ in range(2):
+            self.murojaat('Garov puli yoq')
+            self.urlopen.return_value = self.model(shoshilinch=True, xulosa='Garov topilmayapti')
+            self.api.reset_mock()
+            agent.navbatni_ishla()
+            self.assertEqual([kw['text'] for kw in self.foyd('sendMessage')], [agent.YONALTIRDIM_SHOSHILINCH])
+            self.assertFalse(self.chaqiruvlar('setMessageReaction'))
+
+    def test_aniqlashtiruvchi_savol_bir_marta(self):
+        q = self.murojaat('Zakazni bera olmayapman')
+        self.urlopen.return_value = self.model(javob='Qaysi zakaz — raqamini yozing?', aniqlashtirish=True)
+        self.api.reset_mock()
+        agent.navbatni_ishla()
+        self.assertEqual([kw['text'] for kw in self.foyd('sendMessage')], ['🤖 Qaysi zakaz — raqamini yozing?'])
+        self.assertFalse([kw for kw in self.chaqiruvlar('sendMessage') if kw['chat_id'] == GURUH])
+        t = AgentTaklif.objects.get(murojaat=q)
+        self.assertEqual((t.holat, t.xato), (AgentTaklif.Holat.YUBORILDI, agent.ANIQ_BELGI))
+        self.assertIn('aniqlashtiruvchi savol berdi: 1', agent.holat_matni())
+        self.assertIn('bot javob berdi: 0', agent.holat_matni())
+        self.murojaat('bilmadim')  # yana savol bermoqchi — endi mutaxassisga
+        self.urlopen.return_value = self.model(javob='Qaysi zakaz?', aniqlashtirish=True, xulosa='Zakaz raqami aytilmagan')
+        self.api.reset_mock()
+        agent.navbatni_ishla()
+        self.assertEqual([kw['text'] for kw in self.foyd('sendMessage')], [agent.YONALTIRDIM])
+        matn = json.loads(self.urlopen.call_args[0][0].data)['messages'][1]['content']
+        self.assertIn("Qo'llab-quvvatlash: Qaysi zakaz — raqamini yozing?", matn)  # model oldingi savolini ko'radi
+
+    def test_ega_javob_bergan_bolsa_bot_aralashmaydi(self):
+        q = self.murojaat('PIN esimdan chiqdi')
+        Murojaat.objects.filter(id=q.id).update(javob_berildi=q.yaratilgan)  # ega mavzuda o'zi yozdi
+        self.api.reset_mock()
+        agent.navbatni_ishla()
+        self.assertFalse(self.urlopen.called)  # AI ga ham yuborilmadi
+        self.assertFalse(self.chaqiruvlar('sendMessage'))
+        t = AgentTaklif.objects.get(murojaat=q)
+        self.assertEqual((t.holat, t.xato), (AgentTaklif.Holat.RAD, agent.EGA_JAVOB_BERDI))
+
+    def test_nofaol_yoki_ulanmagan_xodim_salon_bazasini_kormaydi(self):
+        from .agent_malumot import jonli_malumot
+        q = self.murojaat('15-zakaz qani')
+        self.assertTrue(jonli_malumot(q, '15-zakaz')[0])
+        self.malika.faol = False
+        self.malika.save(update_fields=['faol'])
+        q.refresh_from_db()
+        self.assertEqual(jonli_malumot(q, '15-zakaz'), ('', ''))
+        self.malika.faol, self.malika.telegram_id = True, 12345  # boshqa Telegram — ilova havolasi orqali «tanilgan»
+        self.malika.save(update_fields=['faol', 'telegram_id'])
+        q.refresh_from_db()
+        self.assertEqual(jonli_malumot(q, '15-zakaz'), ('', ''))
+
     def test_ai_xatosida_ham_yonaltiradi(self):
         self.murojaat('PIN esimdan chiqdi')
         self.urlopen.side_effect = urllib.error.URLError('ulanmadi')
