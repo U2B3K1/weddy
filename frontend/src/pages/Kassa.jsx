@@ -14,6 +14,7 @@ import {
   guruhla, sanaMatni,
 } from '../api'
 import SummaInput from '../components/SummaInput'
+import { ChekKorish, ChekMaydoni } from '../components/TolovTanlov'
 import { OYLAR } from '../components/kalendar/sana'
 import Sahifali from '../components/Sahifalash'
 import KpiFiltr from '../components/KpiFiltr'
@@ -354,9 +355,11 @@ function KunYakuni({ s, onBolim, onChiq, onYop }) {
 // «Kelmadi» qaytarib bo'lmaydi: to'lov hisobdan chiqadi va mijozdan qayta olinadi — avval Tasdiq (C-03)
 function Otkazmalar({ royxat, onTasdiq }) {
   const [kelmadi, setKelmadi] = useState(null)
+  const [chekId, setChekId] = useState(null)
   if (!royxat?.length) return null
   return (
     <section className="blok jadval-panel">
+      {chekId && <ChekKorish id={chekId} onYop={() => setChekId(null)} />}
       {kelmadi && (
         <Tasdiq sarlavha="O'tkazma kelmadimi?" tugma="Ha, kelmadi"
           matn={`${kelmadi.zakaz ? `Zakaz #${kelmadi.zakaz} bo'yicha` : "Bu"} ${som(kelmadi.summa)} hisobdan chiqadi — mijozdan qayta olinadi `
@@ -372,6 +375,7 @@ function Otkazmalar({ royxat, onTasdiq }) {
             <small>{t.tur_nomi}{t.mijoz && ` · ${t.mijoz}`} · qabul qildi: {t.xodim} · {mahalliyVaqt(t.vaqt)}</small>
           </div>
           <div className="tasdiq-tugmalar">
+            {t.chek && <button className="ikkinchi kichik" onClick={() => setChekId(t.id)}>Chek</button>}
             <button className="ikkinchi kichik" onClick={() => setKelmadi(t)}>Kelmadi</button>
             <button className="kichik" onClick={() => onTasdiq(t, true)}>Keldi</button>
           </div>
@@ -594,6 +598,7 @@ function TolovPOS({ boshZakaz, onTolandi, onSmenaOchish, onZakaz }) {
   const [tanlangan, setTanlangan] = useState(boshZakaz || null)
   const [summa, setSumma] = useState('')
   const [usul, setUsul] = useState('naqd')
+  const [otkazmaCheki, setOtkazmaCheki] = useState(null)  // o'tkazmada majburiy
   const [xato, setXato] = useState('')
   const [xatoKod, setXatoKod] = useState('')  // serverdan: smena_qoshilish | smena_yoq — xato yonida mos tugma
   const [qoshildi, setQoshildi] = useState(false)
@@ -629,7 +634,7 @@ function TolovPOS({ boshZakaz, onTolandi, onSmenaOchish, onZakaz }) {
   const [avto, setAvto] = useState(true)
   const kiritilgan = avto ? (qoldiq > 0 ? String(qoldiq) : '') : summa
   const yoz = (v) => { setAvto(false); setSumma(v) }
-  const tanla = (id) => { setTanlangan(id); setSumma(''); setAvto(true); setXato(''); setXatoKod(''); setQoshildi(false); setTolandi(null) }
+  const tanla = (id) => { setTanlangan(id); setSumma(''); setAvto(true); setXato(''); setXatoKod(''); setQoshildi(false); setTolandi(null); setOtkazmaCheki(null) }
   // Bir ustunli ekranda (telefon, planshet) chek ro'yxat ostida: zakaz tanlansa yoki to'lov o'tsa ro'yxat yig'iladi
   // (faqat tanlangan qator qoladi) va chek ko'rinadigan joyga suriladi
   const yigilgan = Boolean(z || tolandi)
@@ -641,13 +646,14 @@ function TolovPOS({ boshZakaz, onTolandi, onSmenaOchish, onZakaz }) {
   const qabul = async () => {
     setXato(''); setXatoKod(''); setQoshildi(false); setBand(true)
     try {
-      await tolovQabul({ zakaz: z.id, tur: avans ? 'avans' : 'qoldiq', summa: Number(kiritilgan), usul })
+      await tolovQabul({ zakaz: z.id, tur: avans ? 'avans' : 'qoldiq', summa: Number(kiritilgan), usul,
+        chek: usul === 'otkazma' ? otkazmaCheki : undefined })
       // To'liq to'landi va olib ketish kuni keldi — zakaz endi bron, keyingi qadam libosni berish
       // QA-16: faqat hali berilmagan zakaz (to'lovdan keyin «Bron»: vaqtinchalik avans bilan bronga o'tadi);
       // berilgan/qaytarilgan zakazning qoldig'i («kelmadi» o'tkazma) to'langanda berish yo'q
       setTolandi({ zakaz: z, summa: Number(kiritilgan), usul,
         berish: ['vaqtinchalik', 'bron'].includes(z.holat) && qoldiq - Number(kiritilgan) === 0 && String(z.olib_ketish) <= bugunIso() })
-      setTanlangan(null); setSumma(''); setAvto(true)
+      setTanlangan(null); setSumma(''); setAvto(true); setOtkazmaCheki(null)
       await Promise.all([yukla(), onTolandi?.()])
     } catch (e) { setXato(xatoMatni(e)); setXatoKod(e.response?.data?.kod || '') } finally { setBand(false) }
   }
@@ -773,6 +779,7 @@ function TolovPOS({ boshZakaz, onTolandi, onSmenaOchish, onZakaz }) {
                 </button>
               ))}
             </div>
+            {usul === 'otkazma' && <ChekMaydoni chek={otkazmaCheki} onChek={setOtkazmaCheki} />}
             {xato && (
               <p className="xato">
                 {xato}{' '}
@@ -781,7 +788,7 @@ function TolovPOS({ boshZakaz, onTolandi, onSmenaOchish, onZakaz }) {
               </p>
             )}
             {qoshildi && <p className="malumot">Smenaga qo'shildingiz — «Qabul qilish» ni qayta bosing.</p>}
-            <button className="pos-tugma" disabled={band || !(Number(kiritilgan) > 0) || Number(kiritilgan) > qoldiq} onClick={qabul}>
+            <button className="pos-tugma" disabled={band || !(Number(kiritilgan) > 0) || Number(kiritilgan) > qoldiq || (usul === 'otkazma' && !otkazmaCheki)} onClick={qabul}>
               {!band && Number(kiritilgan) > 0 && <svg className="tugma-ikon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5" /></svg>}
               {band ? 'Qabul qilinmoqda…' : Number(kiritilgan) > 0 ? `${som(Number(kiritilgan))} qabul qilish` : 'Qabul qilish'}
             </button>

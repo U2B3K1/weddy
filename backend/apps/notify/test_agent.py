@@ -203,6 +203,22 @@ class AgentTests(AgentAsos):
         (taklif,) = [kw['text'] for kw in self.chaqiruvlar('sendMessage') if kw['text'].startswith(agent.TAKLIF_SARLAVHASI)]
         self.assertIn(f'📊 Salon bazasi: zakaz #{z.raqam}, kassa holati', taklif)
 
+    def test_akademiya_darsi_manba_va_havola(self):
+        self.urlopen.return_value = openai_javobi(json.dumps(
+            {'javob': 'Avval kunlarni tanlang.', 'manbalar': [], 'darslar': ['s1', 'S1', 'P2', 'K1'], 'malumot': False}))
+        t = agent.tanla("Mijoz shanbaga libos so'rayapti, qanday tekshiraman?")
+        self.assertEqual([d.kod for d in t.darslar], ['S1', 'P2'])  # takrorsiz, ko'pi bilan 2
+        self.assertIn('Avval kunlarni tanlang.', t.matn)
+        self.assertIn('🎓 Akademiyada', t.matn)
+        self.assertIn('https://academy.libosa.uz/?dars=S1', t.matn)
+        matn = json.loads(self.urlopen.call_args[0][0].data)['messages'][1]['content']
+        self.assertIn("[S1] Libos bo'shmi?", matn)
+        self.assertLess(matn.index('Akademiya darslari:'), matn.index('Foydalanuvchi savoli:'))
+        self.assertIn('🎓 S1', agent.taklif_matni(t))
+        self.urlopen.return_value = openai_javobi(json.dumps(
+            {'javob': 'Taxmin.', 'manbalar': [], 'darslar': ['Z99'], 'malumot': False}))
+        self.assertIsNone(agent.tanla('savol'))  # yo'q dars — ishonchsiz
+
     def test_maqolasiz_javob_faqat_jonli_malumot_bilan(self):
         javob = json.dumps({'javob': "Qoldiq 2 mln so'm.", 'manbalar': [], 'malumot': True})
         self.urlopen.return_value = openai_javobi(javob)

@@ -1,3 +1,8 @@
+import os
+import uuid
+
+from django.conf import settings
+from django.core.files.storage import FileSystemStorage
 from django.db import models
 from django.db.models import Q
 
@@ -51,6 +56,30 @@ class SmenaIshtirokchi(SalonModel):
     farq = models.BigIntegerField(null=True, blank=True)
 
 
+class MaxfiyOmbor(FileSystemStorage):
+    """O'tkazma cheklari — ochiq `/media/` da emas (apps/cash/chek.py). Joy har safar sozlamadan o'qiladi
+    (FileSystemStorage uni bir marta eslab qoladi — testda vaqtinchalik papka berib bo'lmasdi)."""
+    @property
+    def base_location(self):
+        return settings.MAXFIY_ROOT
+
+    @property
+    def location(self):
+        return os.path.abspath(self.base_location)
+
+    @property
+    def base_url(self):
+        return None
+
+
+def chek_ombori():
+    return MaxfiyOmbor()
+
+
+def chek_yoli(instance, filename):
+    return f'cheklar/{instance.salon_id}/{uuid.uuid4().hex}.jpg'
+
+
 class Tolov(SalonModel):
     class Tur(models.TextChoices):
         AVANS = 'avans', 'Avans'
@@ -88,6 +117,8 @@ class Tolov(SalonModel):
     tasdiq = models.CharField(max_length=10, choices=Tasdiq.choices, blank=True, default='')
     tasdiqlagan = models.ForeignKey('tenants.Xodim', null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
     tasdiq_vaqti = models.DateTimeField(null=True, blank=True)
+    # O'tkazma cheki (skrinshot): o'tkazma bilan to'lovda majburiy (TolovView); rahbar «Keldi/Kelmadi» dan oldin ko'radi
+    chek = models.FileField(upload_to=chek_yoli, storage=chek_ombori, blank=True)
 
     KIRIM = ('avans', 'qoldiq', 'jarima', 'zalog')
     CHIQIM = ('zalog_qaytarish', 'vozvrat', 'xarajat', 'inkassatsiya')

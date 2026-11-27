@@ -196,6 +196,8 @@ def yangilanishni_ishla(u, token=None):
             return javob or matn
         javob = tugma_ishla(c['from']['id'], data)
         _tinchgina('answerCallbackQuery', callback_query_id=c['id'], text=javob[:190], **kw)
+        if data.startswith('ot:') and data.endswith(':c'):  # chek rasmi alohida keldi — tugmalar joyida qoladi
+            return javob
         if c.get('message'):  # tugmalarni olib tashlab, natijani yozib qo'yadi (ikki marta bosilmasligi uchun)
             xabar = c['message']
             manzil = {'chat_id': xabar['chat']['id'], 'message_id': xabar['message_id']}

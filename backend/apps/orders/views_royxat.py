@@ -309,7 +309,8 @@ class ZakazTafsilotView(APIView):
             # xronologik tartib (A-30)
             'tolovlar': [{'id': t.id, 'tur': t.tur, 'tur_nomi': t.get_tur_display(), 'summa': t.summa, 'usul': t.usul,
                           'usul_nomi': t.get_usul_display(), 'xodim': t.xodim.ism, 'tasdiq': t.tasdiq,
-                          'vaqt': t.vaqt, 'tuzatsa_boladi': _tuzatsa_boladimi(t)}
+                          'vaqt': t.vaqt, 'tuzatsa_boladi': _tuzatsa_boladimi(t),
+                          'chek': bool(t.chek), 'xodim_id': t.xodim_id}  # o'tkazma cheki: rahbar va yozgan xodim ko'radi
                          for t in z.tolovlar.select_related('xodim', 'smena').order_by('vaqt', 'id')],
             'zaloglar': [{'id': g.id, 'turi': g.turi, 'turi_nomi': g.get_turi_display(), 'holat': g.holat,
                           'holat_nomi': g.get_holat_display(), 'summa': g.summa,

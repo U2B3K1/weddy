@@ -42,7 +42,9 @@ sudo -u postgres pg_dump -Fc "$BAZA" > "$PAPKA/baza-$SANA.dump.yarim"
 mv "$PAPKA/baza-$SANA.dump.yarim" "$PAPKA/baza-$SANA.dump"
 
 if [ "$(date +%u)" = 7 ] && [ -d "$MEDIA" ]; then
-  tar -czf "$PAPKA/media-$SANA.tar.gz.yarim" -C "$(dirname "$MEDIA")" media
+  # maxfiy/ — o'tkazma cheklari (ochiq media emas, lekin to'lov isboti — yo'qolmasin)
+  QISMLAR="media"; [ -d "$(dirname "$MEDIA")/maxfiy" ] && QISMLAR="media maxfiy"
+  tar -czf "$PAPKA/media-$SANA.tar.gz.yarim" -C "$(dirname "$MEDIA")" $QISMLAR
   mv "$PAPKA/media-$SANA.tar.gz.yarim" "$PAPKA/media-$SANA.tar.gz"
 fi
 

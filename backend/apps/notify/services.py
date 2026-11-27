@@ -434,6 +434,8 @@ def tugma_ishla(chat_id, data):
         return kirish_tugma_ishla(chat_id, int(qismlar[1]), qismlar[2])
     if len(qismlar) == 3 and qismlar[0] == 'kt' and qismlar[1].isdigit() and qismlar[2] in ('q', 'b'):
         return kassa_tugma_ishla(chat_id, int(qismlar[1]), qismlar[2])
+    if len(qismlar) == 3 and qismlar[0] == 'ot' and qismlar[1].isdigit() and qismlar[2] == 'c':
+        return otkazma_cheki(chat_id, int(qismlar[1]))
     if len(qismlar) == 3 and qismlar[0] == 'ot' and qismlar[1].isdigit() and qismlar[2] in ('k', 'y'):
         return otkazma_tugma_ishla(chat_id, int(qismlar[1]), qismlar[2] == 'k')
     if len(qismlar) == 3 and qismlar[0] == 'xr' and qismlar[1].isdigit() and qismlar[2] in ('t', 'r'):
@@ -552,6 +554,24 @@ def kassa_tugma_ishla(chat_id, tid, amal):
     except KassaXatosi as e:
         return str(e)
     return f'Qabul qilindi: {som(t.qabul_summa)}.'
+
+
+def otkazma_cheki(chat_id, tid):
+    """«🧾 Chekni ko'rish»: o'tkazma cheki rasmi salon rahbariga shu chatga yuboriladi (xabar va tugmalar o'zgarmaydi)."""
+    from apps.cash.models import Tolov
+    t = Tolov.objects.filter(id=tid).select_related('zakaz').first()
+    if not t or not t.chek:
+        return "Chek topilmadi."
+    if not _salon_rahbari(t.salon_id, chat_id):
+        return 'Bu amal faqat shu salon rahbariga ruxsat etilgan.'
+    z = f' · zakaz #{t.zakaz.raqam}' if t.zakaz_id else ''
+    try:
+        with t.chek.open('rb') as f:
+            telegram.fayl_yubor(chat_id, 'chek.jpg', f.read(), izoh=f"🧾 {t.get_usul_display()} cheki: {som(t.summa)}{z}",
+                                metod='sendPhoto', maydon='photo')
+    except (telegram.TelegramXatosi, OSError):
+        return "Chekni yuborib bo'lmadi — ilovada Kassa → O'tkazmalar dan ko'ring."
+    return 'Chek yuborildi.'
 
 
 def otkazma_tugma_ishla(chat_id, tid, keldi):

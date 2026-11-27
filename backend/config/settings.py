@@ -216,6 +216,8 @@ LIBOS_QULF_DAQIQA = 15  # FT-2.7
 # Rasmlar (7.3). Hozir lokal papka; ishlab chiqarishda O'zbekistondagi S3-mos saqlash (7.1)
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
+# Ochiq bo'lmagan fayllar (o'tkazma cheklari): nginx bermaydi, faqat ruxsatli API orqali (apps/cash/chek.py)
+MAXFIY_ROOT = Path(env('MAXFIY_ROOT', default=str(BASE_DIR / 'maxfiy')))
 RASM_MAKS_BAYT = 10 * 1024 * 1024   # yuklanadigan fayl chegarasi
 RASM_MAKS_PIKSEL = 50_000_000       # «decompression bomb»dan himoya
 LIBOS_MAKS_RASM = 10

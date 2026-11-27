@@ -7,7 +7,7 @@ import SmenaTugma from '../components/SmenaTugma'
 import LibosSiluet from '../components/LibosSiluet'
 import NavIkona from '../components/NavIkona'
 import Tasma from '../components/Tasma'
-import TolovTanlov, { UsulTanlov } from '../components/TolovTanlov'
+import TolovTanlov, { ChekKorish, ChekMaydoni, UsulTanlov } from '../components/TolovTanlov'
 import { IjaraSana, Muhr } from '../components/Varaq'
 import {
   bekorHisobi, bekorQilish, berish, chegirmaMiqdori, chegirmaOlibTashla, chegirmaSora, mijozOzgartir, primerkaBelgila, primerkaOzgartir, promokodOlibTashla, promokodQolla, qarzTolash, qaytarish, sanaKochirish, som, sozlamalar, tayyorChegirmalar,
@@ -427,6 +427,7 @@ function Karta({ id, amal, onOrqaga, onKassa }) {
   // «Alohida kassir» rejimida sotuvchi pul qabul qilmaydi — to'lov tugmalari o'rniga eslatma
   const kassirda = soz?.kassa_rejimi === 'kassir' && saqlangan.xodim()?.rol === 'sotuvchi'
   const rahbar = saqlangan.xodim()?.rol === 'rahbar'
+  const [chekId, setChekId] = useState(null)  // ochiq o'tkazma cheki (to'lov id)
 
   const yukla = useCallback(() => zakazTafsilot(id).then((d) => { setZ(d); return d }), [id])
   useEffect(() => { yukla() }, [yukla])
@@ -669,15 +670,15 @@ function Karta({ id, amal, onOrqaga, onKassa }) {
       )}
       {!kassirda && (h === 'vaqtinchalik' || h === 'bron') && z.qoldiq > 0 && (
         <TolovForma key={`tolov-${z.qoldiq}`} sarlavha={h === 'bron' ? "Qoldiq to'lov" : 'Avans qabul qilish'} maks={z.qoldiq} foizlar={h !== 'bron'}
-          onYuborish={(summa, usul) => bajar(
-            () => tolovQabul({ zakaz: z.id, tur: h === 'bron' ? 'qoldiq' : 'avans', summa, usul }),
+          onYuborish={(summa, usul, chek) => bajar(
+            () => tolovQabul({ zakaz: z.id, tur: h === 'bron' ? 'qoldiq' : 'avans', summa, usul, chek }),
             `To'lov qabul qilindi.${soz?.fiskal_eslatma ? ` ${soz.fiskal_izoh || 'Fiskal chekni urishni unutmang.'}` : ''}`)} />
       )}
       {!kassirda && (h === 'berildi' || h === 'qaytarildi') && z.qoldiq > 0 && (
         <TolovForma key={`qoldiq-${z.qoldiq}`} sarlavha="Qoldiq to'lov (o'tkazma kelmagan)" maks={z.qoldiq}
           id={h === 'qaytarildi' && !(z.qarz > 0) ? 'asosiy-amal' : null}
           izoh={`To'lov hisobdan chiqqani uchun ${som(z.qoldiq)} mijozdan qayta olinadi.`}
-          onYuborish={(summa, usul) => bajar(() => tolovQabul({ zakaz: z.id, tur: 'qoldiq', summa, usul }), "To'lov qabul qilindi.")} />
+          onYuborish={(summa, usul, chek) => bajar(() => tolovQabul({ zakaz: z.id, tur: 'qoldiq', summa, usul, chek }), "To'lov qabul qilindi.")} />
       )}
       {!kassirda && h === 'vaqtinchalik' && z.jami === 0 && (
         <button onClick={() => bajar(() => tolovQabul({ zakaz: z.id, tur: 'avans', summa: 0, usul: 'naqd' }), 'Bron tasdiqlandi.')}>
@@ -704,6 +705,7 @@ function Karta({ id, amal, onOrqaga, onKassa }) {
       )}
       </div>
       <section className="blok karta-tolovlar">
+        {chekId && <ChekKorish id={chekId} onYop={() => setChekId(null)} />}
         <h3>To'lovlar</h3>
         {tolovlar.length === 0 && z.zaloglar.length === 0 && <p className="malumot">Hali to'lov yo'q.</p>}
         {tolovlar.map((t) => (
@@ -716,6 +718,9 @@ function Karta({ id, amal, onOrqaga, onKassa }) {
               {t.tasdiq === 'kelmadi' && <small className="qizil">Kelmadi — hisobga olinmagan</small>}
             </span>
             <b className="tolov-summa">{['vozvrat'].includes(t.tur) ? '−' : ''}{som(t.summa)}</b>
+            {t.chek && (rahbar || t.xodim_id === saqlangan.xodim()?.id) && (
+              <button type="button" className="ikkinchi kichik" onClick={() => setChekId(t.id)}>Chek</button>
+            )}
             {rahbar && t.tuzatsa_boladi && <TolovTuzatish t={t} onYuborish={(tana) => bajar(() => tolovTuzat(t.id, tana), "To'lov tuzatildi.")} />}
           </div>
         ))}
@@ -883,12 +888,15 @@ function Amal({ sarlavha, children, id }) {
 function TolovForma({ sarlavha, maks, onYuborish, usulsiz, foizlar, id = 'asosiy-amal', izoh }) {
   const [summa, setSumma] = useState(String(maks))
   const [usul, setUsul] = useState('naqd')
+  const [chek, setChek] = useState(null)
   const n = Number(summa)
+  const chekKerak = usul === 'otkazma' && !chek
   return (
     <Amal sarlavha={sarlavha} id={id || undefined}>
       {izoh && <p className="ogohlantirish">{izoh}</p>}
       <TolovTanlov maks={maks} summa={summa} onSumma={setSumma} usul={usul} onUsul={setUsul} usulsiz={usulsiz} foizlar={foizlar} />
-      <button disabled={!(n > 0) || n > maks} onClick={() => onYuborish(n, usul)}>
+      {usul === 'otkazma' && <ChekMaydoni chek={chek} onChek={setChek} />}
+      <button disabled={!(n > 0) || n > maks || chekKerak} onClick={() => onYuborish(n, usul, usul === 'otkazma' ? chek : undefined)}>
         Qabul qilish
       </button>
     </Amal>

@@ -200,8 +200,9 @@ def fayl_ol(file_id, maks, token=None):
     return mazmun
 
 
-def fayl_yubor(chat_id, nom, mazmun, izoh='', token=None):
-    """Chatga fayl yuboradi (`sendDocument`, multipart). `mazmun` — bayt; `FAYL_MAKS_BAYT` dan oshmasligi kerak."""
+def fayl_yubor(chat_id, nom, mazmun, izoh='', token=None, metod='sendDocument', maydon='document'):
+    """Chatga fayl yuboradi (`sendDocument`, multipart). `mazmun` — bayt; `FAYL_MAKS_BAYT` dan oshmasligi kerak.
+    Rasm sifatida: `metod='sendPhoto', maydon='photo'`."""
     token = token or token_ol()
     if not token:
         raise TelegramXatosi('Telegram bot sozlanmagan.')
@@ -213,10 +214,10 @@ def fayl_yubor(chat_id, nom, mazmun, izoh='', token=None):
     for kalit, qiymat in (('chat_id', str(chat_id)), ('caption', izoh[:1000])):
         if qiymat:
             qismlar.append(f'--{chegara}\r\nContent-Disposition: form-data; name="{kalit}"\r\n\r\n{qiymat}\r\n'.encode())
-    qismlar.append((f'--{chegara}\r\nContent-Disposition: form-data; name="document"; filename="{xavfsiz_nom}"\r\n'
+    qismlar.append((f'--{chegara}\r\nContent-Disposition: form-data; name="{maydon}"; filename="{xavfsiz_nom}"\r\n'
                     'Content-Type: application/octet-stream\r\n\r\n').encode())
     tana = b''.join(qismlar) + mazmun + f'\r\n--{chegara}--\r\n'.encode()
-    req = urllib.request.Request(f'https://api.telegram.org/bot{token}/sendDocument', data=tana,
+    req = urllib.request.Request(f'https://api.telegram.org/bot{token}/{metod}', data=tana,
                                  headers={'Content-Type': f'multipart/form-data; boundary={chegara}'})
     try:
         with urllib.request.urlopen(req, timeout=FAYL_TIMEOUT) as r:

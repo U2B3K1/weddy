@@ -163,12 +163,15 @@ def _sorov(xabarlar, sxema):
         return None  # tushunarsiz javob — «topilmadi»
 
 
-SXEMA = {'type': 'object', 'additionalProperties': False, 'required': ['javob', 'manbalar', 'malumot'],
+SXEMA = {'type': 'object', 'additionalProperties': False, 'required': ['javob', 'manbalar', 'darslar', 'malumot'],
          'properties': {'javob': {'type': ['string', 'null']}, 'manbalar': {'type': 'array', 'items': {'type': 'integer'}},
-                        'malumot': {'type': 'boolean'}}}
+                        'darslar': {'type': 'array', 'items': {'type': 'string'}}, 'malumot': {'type': 'boolean'}}}
+DARS_MAKS = 2  # javob ostidagi Akademiya havolalari
 KORSATMA = ("Siz Libosa (kelin liboslari salonlari uchun dastur) qo'llab-quvvatlash xodimisiz. Sizga bilim bazasi "
-            "maqolalari (raqam, savol, javob) va foydalanuvchi savoli beriladi. Savolga FAQAT maqolalardagi ma'lumot "
-            "asosida, o'zbek tilida (lotin), xushmuomala va qisqa (1–4 gap) javob yozing; kerak bo'lsa qadamlarni "
+            "maqolalari (raqam, savol, javob), Libosa Akademiyasi darslari (kod, haqiqiy vaziyat, ilovadagi joy, natija, "
+            "maslahat) va foydalanuvchi savoli beriladi. Savollar ko'pincha mujmal vaziyatdan keladi: avval vaziyatni "
+            "tushuning (qaysi bosqich, kim, nima xato ketdi), so'ng maqolalar va darslarni bog'lab javob bering. "
+            "Savolga FAQAT maqolalar va darslardagi ma'lumot asosida, o'zbek tilida (lotin), xushmuomala va qisqa (1–4 gap) javob yozing; kerak bo'lsa qadamlarni "
             "ketma-ket ayting. Maqolalarda yo'q narsani — tugma, bo'lim nomi, muddat, narx, imkoniyatni — qo'shmang "
             "va taxmin qilmang. Maqolalar savolga javob bermasa, savol boshqa mavzuda bo'lsa, faqat salom-alik, "
             "shikoyat yoki shaxsiy masala bo'lsa — javob null. «manbalar» — javobda foydalangan maqolalar raqamlari. "
@@ -179,10 +182,34 @@ KORSATMA = ("Siz Libosa (kelin liboslari salonlari uchun dastur) qo'llab-quvvatl
             "aniq sababni shu faktlardan ayting va nima qilish kerakligini maqolalardan qo'shing; faktlarni o'zgartirmang "
             "va berilmagan faktni o'ylab topmang. Jonli ma'lumotdan foydalansangiz «malumot»: true. Rasm (skrinshot) "
             "berilgan bo'lsa — undagi xato matni yoki ekran savolning bir qismi; rasmdagi shaxsiy ma'lumotni (ism, "
-            "telefon) javobda takrorlamang. Oldingi suhbat — faqat savolni tushunish uchun. Javob faqat JSON: {\"javob\": \"...\", \"manbalar\": [3], \"malumot\": false} "
-            "yoki {\"javob\": null, \"manbalar\": [], \"malumot\": false}.")
+            "telefon) javobda takrorlamang. Oldingi suhbat — faqat savolni tushunish uchun. Mos Akademiya darsi bo'lsa, kodini «darslar» ga yozing (ko'pi bilan 2, savol beruvchining roliga mos: "
+            "sotuvchi va kassirga «Salonni boshqarish» darslari emas) — foydalanuvchiga qadamma-qadam mashq havolasi qo'shiladi. "
+            "«manbalar» — foydalangan maqolalar; dars ham manba hisoblanadi. "
+            "Javob faqat JSON: {\"javob\": \"...\", \"manbalar\": [3], \"darslar\": [\"S1\"], \"malumot\": false} "
+            "yoki {\"javob\": null, \"manbalar\": [], \"darslar\": [], \"malumot\": false}.")
 JAVOB_MAKS = 1500       # model javobi bundan uzun bo'lsa — rad (tushunarsiz yoki keraksiz uzun)
 BAZA_MAKS = 60000       # modelga yuboriladigan maqolalar matni (belgi)
+
+
+def akademiya_konteksti():
+    """Akademiya darslari — haqiqiy ish vaziyatlari va ilovadagi joylar (matnlar interfeys bilan solishtirilgan).
+    O'zgarmas qism: maqolalardan keyin turadi (kesh). Darslar yo'q bo'lsa — bo'sh."""
+    try:
+        from apps.akademiya.darslar import DARSLAR, YONALISHLAR
+    except Exception:  # noqa: BLE001 — akademiya o'chirilgan bo'lsa agent baribir ishlaydi
+        return '', {}
+    yonalish = dict(YONALISHLAR)
+    bloklar = [f"[{d.kod}] {d.nomi} (bo'lim: {yonalish.get(d.yonalish, d.yonalish)}; ilovada: {d.sahifa})\n"
+               f"Vaziyat: {d.vaziyat}\nNatija: {d.natija}" + (f"\nMaslahat: {d.ishora}" if d.ishora else '')
+               for d in DARSLAR]
+    return "Akademiya darslari:\n" + '\n\n'.join(bloklar) + '\n\n', {d.kod: d for d in DARSLAR}
+
+
+def dars_havolalari(darslar):
+    if not darslar:
+        return ''
+    return "\n\n🎓 Akademiyada qadamma-qadam mashq:\n" + '\n'.join(
+        f"«{d.nomi}» — {settings.AKADEMIYA_URL}/?dars={d.kod}" for d in darslar)
 
 
 def _qoida_matni(qoida):
@@ -244,9 +271,10 @@ def suhbat_konteksti(t):
 
 class Taklif:
     """Model javobi (tekshirilgan): `matn` — foydalanuvchiga boradigan matn, `manbalar` — foydalanilgan maqolalar,
-    `malumot` — salonning jonli ma'lumoti ishlatilgani (egaga nima ko'rilgani yoziladi)."""
-    def __init__(self, matn, manbalar, malumot=''):
-        self.matn, self.manbalar, self.malumot = matn, manbalar, malumot
+    `malumot` — salonning jonli ma'lumoti ishlatilgani (egaga nima ko'rilgani yoziladi), `darslar` — Akademiya darslari
+    (havolasi `matn` oxiriga qo'shilgan)."""
+    def __init__(self, matn, manbalar, malumot='', darslar=()):
+        self.matn, self.manbalar, self.malumot, self.darslar = matn, manbalar, malumot, list(darslar)
 
 
 def tanla(savol, kontekst='', jonli='', jonli_izoh='', rasm=None):
@@ -259,10 +287,11 @@ def tanla(savol, kontekst='', jonli='', jonli_izoh='', rasm=None):
         if hajm > BAZA_MAKS:
             break
         maqolalar.append(m)
-    if not maqolalar and not jonli:
+    akademiya, dars_royxati = akademiya_konteksti()
+    if not maqolalar and not jonli and not dars_royxati:
         return None
     baza = '\n\n'.join(f'#{m.id}. Savol: {m.savol}\nJavob: {m.javob}' for m in maqolalar)
-    matn = (f'Maqolalar:\n{baza}\n\n{kontekst}{jonli}Foydalanuvchi savoli:\n'
+    matn = (f'Maqolalar:\n{baza}\n\n{akademiya}{kontekst}{jonli}Foydalanuvchi savoli:\n'
             f'{yashir(savol)[:2000] or "(foydalanuvchi faqat rasm yubordi — savol rasmda)"}')
     mazmun = matn if rasm is None else [
         {'type': 'text', 'text': matn},
@@ -272,16 +301,21 @@ def tanla(savol, kontekst='', jonli='', jonli_izoh='', rasm=None):
         return None
     matn, raqamlar = natija.get('javob'), natija.get('manbalar')
     malumot = bool(jonli) and natija.get('malumot') is True
+    kodlar = natija.get('darslar') or []
     if not isinstance(matn, str) or not matn.strip() or len(matn) > JAVOB_MAKS or not isinstance(raqamlar, list):
         return None
-    if not raqamlar and not malumot:
-        return None  # na maqolaga, na salon ma'lumotiga tayangan — o'ylab topilgan bo'lishi mumkin
+    if not isinstance(kodlar, list) or any(not isinstance(k, str) or k.upper() not in dars_royxati for k in kodlar):
+        return None  # mavjud bo'lmagan dars — ishonchsiz
+    darslar = [dars_royxati[k] for k in dict.fromkeys(k.upper() for k in kodlar)][:DARS_MAKS]
+    if not raqamlar and not malumot and not darslar:
+        return None  # na maqolaga, na darsga, na salon ma'lumotiga tayangan — o'ylab topilgan bo'lishi mumkin
     if any(not isinstance(r, int) or isinstance(r, bool) for r in raqamlar):
         return None
     yuborilgan = {m.id: m for m in maqolalar}
     if any(r not in yuborilgan for r in raqamlar):
         return None  # yuborilmagan (yoki o'chiq) maqolaga tayangan — ishonchsiz
-    return Taklif(matn.strip(), [yuborilgan[r] for r in dict.fromkeys(raqamlar)], jonli_izoh if malumot else '')
+    return Taklif(matn.strip() + dars_havolalari(darslar), [yuborilgan[r] for r in dict.fromkeys(raqamlar)],
+                  jonli_izoh if malumot else '', darslar)
 
 
 # ---------- navbat (bot jarayoni) ----------
@@ -423,6 +457,7 @@ def navbatni_ishla(soni=2):
 def taklif_matni(taklif, sarlavha=TAKLIF_SARLAVHASI):
     oldin = f"🎤 Ovozli xabar matni: «{taklif.ovoz[:500]}»\n\n" if getattr(taklif, 'ovoz', '') else ''
     manba = [f"#{m.id} «{m.savol}»" for m in taklif.manbalar]
+    manba += [f"🎓 {d.kod} «{d.nomi}»" for d in getattr(taklif, 'darslar', [])]
     if taklif.malumot:
         manba.append(f"📊 Salon bazasi: {taklif.malumot} — yuborishdan oldin ilovada tekshiring")
     return f"{oldin}{sarlavha}:\n\n{taklif.matn}\n\n📚 Manba:\n" + '\n'.join(manba)
@@ -581,7 +616,7 @@ def sinov(savol):
         return f"❌ {xizmat()[0]} xatosi: {e}"
     if not t:
         return f"🤷 Bilim bazasida javob yo'q ({soni} ta faol maqola ichida). Bunday savol sizga o'tadi."
-    manba = '\n'.join(f"#{m.id} «{m.savol}»" for m in t.manbalar)
+    manba = '\n'.join([f"#{m.id} «{m.savol}»" for m in t.manbalar] + [f"🎓 {d.kod} «{d.nomi}»" for d in t.darslar])
     return f"✅ Javob taklifi:\n\n{t.matn}\n\n📚 Manba:\n{manba}"
 
 

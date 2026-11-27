@@ -7,6 +7,16 @@ import './akademiya.css'
 const KALIT = '#akademiya='
 const REJIM = 'weddy.akademiya_rejim'
 
+// Bot javobidagi havola (`?dars=S1`): shu dars tanlangan holda ochiladi — kirish yoki mehmon bo'lib kirishdan keyin ham
+// (tanlov sessionStorage da, DarsPaneli o'sha kalitdan o'qiydi). Manzildan olib tashlanadi.
+try {
+  const d = new URLSearchParams(window.location.search).get('dars')
+  if (d && /^[A-Za-z0-9]{1,6}$/.test(d)) {
+    sessionStorage.setItem('weddy.akademiya_dars', d.toUpperCase())
+    window.history.replaceState(null, '', window.location.pathname + window.location.hash)
+  }
+} catch { /* sessionStorage yopiq — xarita ochiladi */ }
+
 // Havoladagi kod bir marta ishlaydi: StrictMode effektni ikki marta chaqirsa ham so'rov bitta bo'lsin
 let kirishSorovi = null
 function koddanKirish() {

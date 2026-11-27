@@ -163,7 +163,16 @@ export const zakazlarRoyxat = (params) => get('/zakazlar/royxat/', params)
 export const zakazSonlari = (params) => get('/zakazlar/sonlar/', params)
 export const zakazTafsilot = (id) => get(`/zakazlar/${id}/`)
 export const zakazTarixi = (id) => get(`/zakazlar/${id}/tarix/`)
-export const tolovQabul = (body) => post('/kassa/tolovlar/', body)
+// O'tkazmada chek (rasm fayli) majburiy: chek bo'lsa so'rov multipart (FormData) bo'lib ketadi
+export const tolovQabul = (body) => {
+  if (!body.chek) return post('/kassa/tolovlar/', body)
+  const f = new FormData()
+  Object.entries(body).forEach(([k, v]) => { if (v !== undefined && v !== null) f.append(k, v) })
+  return post('/kassa/tolovlar/', f)
+}
+// O'tkazma cheki (maxfiy fayl, token bilan olinadi) — rasm uchun vaqtinchalik blob manzil
+export const tolovCheki = (id) => api.get(`/kassa/tolovlar/${id}/chek/`, { responseType: 'blob' })
+  .then((r) => URL.createObjectURL(r.data))
 export const berish = (id, zaloglar, erta = false) => post(`/zakazlar/${id}/berish/`, { zaloglar, erta })
 export const qaytarish = (id, body) => post(`/zakazlar/${id}/qaytarish/`, body)
 export const qarzTolash = (id, summa, usul) => post(`/zakazlar/${id}/qarz-tolash/`, { summa, ...(usul ? { usul } : {}) })  // C-20: usul ixtiyoriy

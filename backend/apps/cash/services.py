@@ -141,11 +141,11 @@ def tolangan_summa(zakaz):
 
 
 @transaction.atomic
-def tolov_qabul(*, salon, xodim, tur, summa, usul=Tolov.Usul.NAQD, zakaz=None, izoh=''):
+def tolov_qabul(*, salon, xodim, tur, summa, usul=Tolov.Usul.NAQD, zakaz=None, izoh='', chek=None):
     """To'lov, garov yoki chiqim yozadi. Ochiq smena va smenadagi xodim shart (FT-12.7, FT-12.8).
 
     Avans zakazni mustahkam bronga o'tkazadi; avans + qoldiq jamiga yetsa, zakaz to'liq to'langan
-    kuni belgilanadi — daromad shu kuni tan olinadi (6.1).
+    kuni belgilanadi — daromad shu kuni tan olinadi (6.1). `chek` — o'tkazma cheki (JPEG baytlari, chek.tayyorla).
     """
     if tur in (Tolov.Tur.AVANS, Tolov.Tur.QOLDIQ):
         if zakaz is None:
@@ -188,6 +188,9 @@ def tolov_qabul(*, salon, xodim, tur, summa, usul=Tolov.Usul.NAQD, zakaz=None, i
     tolov = Tolov.objects.create(salon=salon, smena=smena, zakaz=zakaz, tur=tur, usul=usul,
                                  summa=summa, xodim=xodim, izoh=izoh,
                                  tasdiq=Tolov.Tasdiq.KUTILMOQDA if otkazma else Tolov.Tasdiq.KERAK_EMAS)
+    if chek:
+        from django.core.files.base import ContentFile
+        tolov.chek.save('chek.jpg', ContentFile(chek), save=True)
     if otkazma:
         _otkazma_xabari(tolov)
     if zakaz is not None:
@@ -235,8 +238,11 @@ def _otkazma_xabari(tolov):
 
 
 def otkazma_tugmalari(tolov):
-    return [[{'text': '✅ Keldi', 'callback_data': f'ot:{tolov.id}:k'},
-             {'text': '❌ Kelmadi', 'callback_data': f'ot:{tolov.id}:y'}]]
+    tugmalar = [[{'text': '✅ Keldi', 'callback_data': f'ot:{tolov.id}:k'},
+                 {'text': '❌ Kelmadi', 'callback_data': f'ot:{tolov.id}:y'}]]
+    if tolov.chek:  # rahbar bank SMS i bilan birga chekni ham ko'radi
+        tugmalar.append([{'text': "🧾 Chekni ko'rish", 'callback_data': f'ot:{tolov.id}:c'}])
+    return tugmalar
 
 
 @transaction.atomic

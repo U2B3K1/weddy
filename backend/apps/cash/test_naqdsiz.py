@@ -257,3 +257,72 @@ class StandartHolatTests(TestCase):
                            zaloglar=[{'turi': 'hujjat', 'hujjat_turi': 'pasport', 'hujjat_raqami': 'AA1'}])
         self.assertEqual(z.holat, 'berildi')
         self.assertTrue(rahbar.id)
+
+
+class OtkazmaChekiTests(Base):
+    """Egasi (2026-11-27): o'tkazma bilan to'lovda chek majburiy; chek ochiq /media/ da emas, faqat ruxsat bilan."""
+    def setUp(self):
+        super().setUp()
+        import shutil
+        import tempfile
+
+        from django.test import override_settings
+        papka = tempfile.mkdtemp()
+        self.addCleanup(shutil.rmtree, papka, True)
+        o = override_settings(MAXFIY_ROOT=papka)
+        o.enable()
+        self.addCleanup(o.disable)
+        self.papka = papka
+
+    def rasm(self, nom='chek.png'):
+        import io
+
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from PIL import Image
+        buf = io.BytesIO()
+        Image.new('RGBA', (40, 60), (10, 200, 30, 255)).save(buf, 'PNG')
+        return SimpleUploadedFile(nom, buf.getvalue(), content_type='image/png')
+
+    def yubor(self, xodim=None, **qosh):
+        return api(xodim or self.malika).post('/api/kassa/tolovlar/', {'zakaz': self.z.id, 'tur': 'avans', 'summa': 500_000,
+                                                                        'usul': 'otkazma', **qosh}, format='multipart')
+
+    def test_cheksiz_otkazma_qabul_qilinmaydi(self):
+        r = self.yubor()
+        self.assertEqual((r.status_code, r.data['kod']), (400, 'chek_yoq'))
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        r = self.yubor(chek=SimpleUploadedFile('a.txt', b'salom', content_type='text/plain'))
+        self.assertEqual(r.status_code, 400)
+        self.assertIn('rasm emas', r.data['chek'])
+        self.assertFalse(Tolov.objects.exists())
+        r = api(self.malika).post('/api/kassa/tolovlar/', {'zakaz': self.z.id, 'tur': 'avans', 'summa': 500_000, 'usul': 'naqd'},
+                                  format='json')
+        self.assertEqual(r.status_code, 201)  # naqd — cheksiz
+
+    def test_chek_saqlanadi_va_faqat_ruxsat_bilan_korinadi(self):
+        from unittest import mock
+
+        from apps.notify import telegram
+        r = self.yubor(chek=self.rasm())
+        self.assertEqual(r.status_code, 201, r.data)
+        t = Tolov.objects.get(id=r.data['id'])
+        self.assertTrue(t.chek.name.startswith(f'cheklar/{self.salon.id}/'))
+        self.assertTrue(t.chek.path.startswith(self.papka))  # ochiq media papkasida emas
+        x = Xabar.objects.get(xodim=self.rahbar, tur='otkazma_tasdiq')
+        self.assertEqual(x.tugmalar[1][0]['callback_data'], f'ot:{t.id}:c')
+        # ilovada: rahbar va yozgan xodim ko'radi, boshqa sotuvchi — yo'q
+        g = api(self.rahbar).get(f'/api/kassa/tolovlar/{t.id}/chek/')
+        self.assertEqual((g.status_code, g['Content-Type']), (200, 'image/jpeg'))
+        self.assertTrue(b''.join(g.streaming_content).startswith(b'\xff\xd8'))  # JPEG ga o'girilgan
+        self.assertEqual(api(self.malika).get(f'/api/kassa/tolovlar/{t.id}/chek/').status_code, 200)
+        boshqa = Xodim.objects.create(salon=self.salon, ism='Boshqa', rol=Xodim.Rol.SOTUVCHI)
+        self.assertEqual(api(boshqa).get(f'/api/kassa/tolovlar/{t.id}/chek/').status_code, 403)
+        smena = api(self.rahbar).get('/api/kassa/smena/').data
+        self.assertTrue(next(o for o in smena['otkazmalar'] if o['id'] == t.id)['chek'])
+        # Telegram: «🧾 Chekni ko'rish» — faqat salon rahbariga rasm boradi
+        with mock.patch.object(telegram, 'fayl_yubor') as fy:
+            self.assertIn('faqat shu salon rahbariga', tugma_ishla(999, f'ot:{t.id}:c'))
+            self.assertEqual(tugma_ishla(111, f'ot:{t.id}:c'), 'Chek yuborildi.')
+        self.assertEqual((fy.call_args[0][0], fy.call_args[1]['metod'], fy.call_args[1]['maydon']), (111, 'sendPhoto', 'photo'))
+        t.refresh_from_db()
+        self.assertEqual(t.tasdiq, Tolov.Tasdiq.KUTILMOQDA)  # chekni ko'rish tasdiqlamaydi

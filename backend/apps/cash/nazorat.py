@@ -53,8 +53,8 @@ def _otkazmalar(hozir):
     for t in royxat:
         if f'ot_eslatma:{t.id}' in bor:
             continue
-        tugmalar = [[{'text': '✅ Keldi', 'callback_data': f'ot:{t.id}:k'},
-                     {'text': '❌ Kelmadi', 'callback_data': f'ot:{t.id}:y'}]]
+        from .services import otkazma_tugmalari
+        tugmalar = otkazma_tugmalari(t)
         z = f' (zakaz #{t.zakaz.raqam})' if t.zakaz_id else ''
         soni += len([x for x in rahbarlarga(t.salon, 'otkazma_tasdiq',
                                             f"⏰ Eslatma: {t.get_usul_display()} {som(t.summa)}{z}, qabul qildi {t.xodim.ism} — "

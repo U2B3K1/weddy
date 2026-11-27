@@ -2075,3 +2075,11 @@ label > .info .info-matn, th .info .info-matn { left: auto; right: 0; }
 .sozlama-matn small { font-size: 12.5px; line-height: 1.35; color: var(--matn-3); }
 .sozlama-ong { flex: none; color: var(--matn-3); }
 
+
+/* O'tkazma cheki: to'lov formasida majburiy maydon va rahbar ko'radigan rasm */
+.chek-maydoni { display: grid; gap: var(--o-2); margin-block: var(--o-2); }
+.chek-majburiy { color: var(--matn-2, inherit); font-weight: 400; }
+.chek-tanlangan { display: flex; align-items: center; gap: var(--o-2); flex-wrap: wrap; }
+.chek-tanlangan img { width: 56px; height: 56px; object-fit: cover; border-radius: 8px; }
+.chek-tanlangan span { flex: 1 1 120px; min-width: 0; overflow-wrap: anywhere; font-size: 0.875rem; }
+.chek-rasm { display: block; max-width: 100%; max-height: 75vh; margin-inline: auto; border-radius: 8px; }

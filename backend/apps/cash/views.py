@@ -160,7 +160,7 @@ class SmenaYopishView(APIView):
 def otkazma_json(t):
     return {'id': t.id, 'summa': t.summa, 'usul': t.usul, 'usul_nomi': t.get_usul_display(), 'tur_nomi': t.get_tur_display(),
             'xodim': t.xodim.ism, 'vaqt': t.vaqt, 'zakaz': t.zakaz.raqam if t.zakaz_id else None,
-            'mijoz': (t.zakaz.mijoz.fio or t.zakaz.mijoz.telefon) if t.zakaz_id else None}
+            'mijoz': (t.zakaz.mijoz.fio or t.zakaz.mijoz.telefon) if t.zakaz_id else None, 'chek': bool(t.chek)}
 
 
 class OtkazmaTasdiqView(APIView):
@@ -259,6 +259,7 @@ class TolovSerializer(serializers.Serializer):
     usul = serializers.ChoiceField(choices=Tolov.Usul.choices, default=Tolov.Usul.NAQD)
     zakaz = serializers.IntegerField(required=False)
     izoh = serializers.CharField(required=False, allow_blank=True, default='', max_length=300)
+    chek = serializers.FileField(required=False)  # o'tkazma cheki — o'tkazmada majburiy
 
 
 class TolovView(APIView):
@@ -274,12 +275,37 @@ class TolovView(APIView):
             zakaz = Zakaz.objects.filter(salon=request.salon, id=d['zakaz']).first()
             if not zakaz:
                 return Response({'zakaz': 'Topilmadi.'}, status=400)
+        from .chek import CHEK_KERAK, ChekXatosi, tayyorla
+        chek = None
+        if d['usul'] in Tolov.OTKAZMA_USULLARI and d['summa'] > 0:  # egasi: o'tkazmada chek majburiy
+            if not d.get('chek'):
+                return Response({'chek': CHEK_KERAK, 'detail': CHEK_KERAK, 'kod': 'chek_yoq'}, status=400)
+            try:
+                chek = tayyorla(d['chek'])
+            except ChekXatosi as e:
+                return Response({'chek': str(e), 'detail': str(e)}, status=400)
         try:
             t = services.tolov_qabul(salon=request.salon, xodim=request.user, tur=d['tur'],
-                                     summa=d['summa'], usul=d['usul'], zakaz=zakaz, izoh=d['izoh'])
+                                     summa=d['summa'], usul=d['usul'], zakaz=zakaz, izoh=d['izoh'], chek=chek)
         except KassaXatosi as e:
             return xato(e)
         return Response({'id': t.id}, status=201)
+
+
+class TolovChekView(APIView):
+    """GET — o'tkazma cheki rasmi: faqat rahbar yoki to'lovni yozgan xodim (fayl ochiq papkada emas)."""
+    faqat_korishda_ruxsat = True
+
+    def get(self, request, pk):
+        from django.http import FileResponse
+        t = Tolov.objects.filter(salon=request.salon, id=pk).first()
+        if not t or not t.chek:
+            return Response({'detail': 'Chek topilmadi.'}, status=404)
+        if request.user.rol != Xodim.Rol.RAHBAR and t.xodim_id != request.user.id:
+            return Response({'detail': "Chekni faqat rahbar yoki to'lovni yozgan xodim ko'radi."}, status=403)
+        javob = FileResponse(t.chek.open('rb'), content_type='image/jpeg')
+        javob['Cache-Control'] = 'private, no-store'
+        return javob
 
 
 class ZaloglarView(APIView):
