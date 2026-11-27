@@ -25,7 +25,7 @@ from .models import KirishKodi, TelegramUlash, Xabar
 log = logging.getLogger(__name__)
 
 SALON_BLOKLANGAN = "Salon bloklangan: amal bajarilmaydi."
-ULASH_MUDDATI = timedelta(minutes=15)
+ULASH_MUDDATI = timedelta(minutes=5)
 KIRISH_KODI_MUDDATI = timedelta(minutes=5)
 KIRISH_KODI_URINISH = 5
 # Zakaz arxivi (egasi, 2026-11-19): yangi zakaz va zakaz o'zgarishi Telegram chatida arxiv bo'lib qoladi — ilova yoki
@@ -307,7 +307,7 @@ def uzish(xodim):
 # ---------- platforma egasini botga ulash va ariza xabari (FT-4.14) ----------
 
 def platforma_ulash_kodi():
-    """Platforma egasini botga ulash uchun bir martalik kod yaratadi (15 daqiqa amal qiladi)."""
+    """Platforma egasini botga ulash uchun bir martalik kod yaratadi (5 daqiqa amal qiladi)."""
     s = platforma_sozlama()
     s.telegram_ulash_kod = secrets.token_hex(4)
     s.telegram_ulash_tugaydi = timezone.now() + ULASH_MUDDATI

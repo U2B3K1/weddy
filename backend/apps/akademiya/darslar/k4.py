@@ -1,6 +1,6 @@
 """K4 — Telegramni ulash. O'quv salonida Telegram ulanmaydi (tashqariga xabar chiqmasin — host.py), shuning uchun
 vaziyatlar orqali. Matnlar kod bilan solishtirilgan: ulash — qo'ng'iroqcha menyusidagi blok (TelegramBlok.jsx: «/start <kod>»,
-kod 15 daqiqa, «Telegramni uzish»); botdagi «⚙️ Sozlamalar» va «🌙 Tinch vaqt» — notify/bot_menyu.py (_sozlama_sahifasi)."""
+kod 5 daqiqa, «Telegramni uzish»); botdagi «⚙️ Sozlamalar» va «🌙 Tinch vaqt» — notify/bot_menyu.py (_sozlama_sahifasi)."""
 from .asos import Dars, savollarni_tekshir
 
 SAVOLLAR = [
@@ -12,7 +12,7 @@ SAVOLLAR = [
          ('rahbar', "Kodni rahbarga yuboraman — u ulab beradi", False,
           "Kod sizning Telegramingizni sizning hisobingizga bog'laydi. Uni boshqa odam yuborsa, sizning xabarlaringiz unga boradi."),
          ('kutaman', "Hech narsa — o'zi ulanadi", False,
-          "O'zi ulanmaydi: kodni botga aynan siz yuborishingiz kerak. Kod 15 daqiqa amal qiladi."),
+          "O'zi ulanmaydi: kodni botga aynan siz yuborishingiz kerak. Kod 5 daqiqa amal qiladi."),
      ]},
     {'matn': "Telegramni ulamasangiz nima bo'ladi?",
      'variantlar': [
@@ -55,7 +55,7 @@ def topshiriq(h):
 def sahna(h):
     return [{'tur': 'ekran', 'sarlavha': "Ilova · qo'ng'iroqcha (🔔) menyusining pastki qismi",
              'matn': "Eslatmalarni Telegramda ham olish\nTelegramda botni oching va shu xabarni yuboring:\n/start 8f3k2a\n"
-                     "Kod 15 daqiqa amal qiladi. Ulangach bu oyna o'zi yangilanadi.", 'tugmalar': ['Botni ochish']},
+                     "Kod 5 daqiqa amal qiladi. Ulangach bu oyna o'zi yangilanadi.", 'tugmalar': ['Botni ochish']},
             {'tur': 'bot', 'sarlavha': 'Libosa bot · ⚙️ Sozlamalar',
              'matn': "🌙 Tinch vaqt\nShu oraliqda odatiy xabarlar yig'ilib turadi va tinch vaqt tugagach bitta xabar bo'lib keladi.",
              'tugmalar': ["O'chiq", '22:00–08:00', '21:00–09:00', '23:00–07:00']}]

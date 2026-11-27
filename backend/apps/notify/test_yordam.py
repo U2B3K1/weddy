@@ -135,15 +135,31 @@ class YordamTests(Base):
 
     def test_chegaralar(self):
         self.xabar(BEGONA_CHAT, '/yordam')
-        with mock.patch.object(yordam, 'CHAT_KUNLIK_MAKS', 1):
+        with mock.patch.object(yordam, 'TASDIQSIZ_KUNLIK_MAKS', 1):
             self.xabar(BEGONA_CHAT, 'Bir')
             self.xabar(BEGONA_CHAT, 'Ikki')
         self.assertIn("juda ko'p", self.matnlar())
+        self.assertIn('«Telegramni ulash»', self.matnlar())  # tasdiqlanmagan chatga — chegarani kengaytirish yo'li
         self.assertEqual(Murojaat.objects.count(), 1)
-        with mock.patch.object(yordam, 'JAMI_KUNLIK_MAKS', 1):
-            self.xabar(SOTUVCHI_CHAT, '/yordam')
+        # begonalar o'z hovuzini to'ldirgan (1/1) — Telegrami ulangan salon xodimi baribir yoza oladi
+        self.xabar(SOTUVCHI_CHAT, '/yordam')
+        with mock.patch.object(yordam, 'TASDIQSIZ_JAMI_MAKS', 1), mock.patch.object(yordam, 'JAMI_KUNLIK_MAKS', 1):
+            self.yuborilgan.clear()
             self.xabar(SOTUVCHI_CHAT, 'Uch')
-        self.assertIn("juda ko'p", self.matnlar())
+            self.assertNotIn("juda ko'p", self.matnlar())
+            self.assertEqual(Murojaat.objects.count(), 2)
+            self.xabar(BEGONA_CHAT, '/yordam')
+            self.xabar(BEGONA_CHAT, 'Yana')  # begonalar hovuzi to'lgan
+            self.assertIn("juda ko'p", self.matnlar())
+            self.yuborilgan.clear()
+            self.xabar(SOTUVCHI_CHAT, "To'rt")  # ulanganlar hovuzi ham to'ldi (1/1)
+            self.assertIn("juda ko'p", self.matnlar())
+            self.assertNotIn('«Telegramni ulash»', self.matnlar())
+        with mock.patch.object(yordam, 'CHAT_KUNLIK_MAKS', 1):
+            self.yuborilgan.clear()
+            self.xabar(SOTUVCHI_CHAT, 'Besh')  # xodimning o'z kunlik chegarasi
+            self.assertIn("juda ko'p", self.matnlar())
+        self.assertEqual(Murojaat.objects.count(), 2)
 
     # ---------- kim yozayotgani ----------
 

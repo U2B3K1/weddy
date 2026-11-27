@@ -20,7 +20,7 @@ import hmac
 from datetime import timedelta
 
 from django.conf import settings
-from django.db.models import Q
+from django.db.models import F, Q
 from django.utils import timezone
 
 from apps.tenants.models import Salon, Xodim, platforma_sozlama
@@ -29,8 +29,13 @@ from . import telegram
 from .models import Murojaat, YordamMavzu, YordamRejimi
 
 REJIM_MUDDATI = timedelta(minutes=30)
-CHAT_KUNLIK_MAKS = 30
-JAMI_KUNLIK_MAKS = 300
+# Kunlik chegaralar (har murojaat — egaga xabar va AI so'rovi, ya'ni pul). Ikki alohida hovuz: Telegrami ulangan
+# salon xodimlari va tasdiqlanmagan chatlar (begona yoki faqat ilova havolasidan kirgan). Begonalar o'z hovuzini
+# to'ldirib qo'ysa ham, salon xodimlari yoza oladi — bir necha soxta akkaunt bilan qo'llab-quvvatlashni o'chirib bo'lmaydi.
+CHAT_KUNLIK_MAKS = 30         # ulangan xodim: bitta chatdan
+JAMI_KUNLIK_MAKS = 300        # ulangan xodimlar: jami
+TASDIQSIZ_KUNLIK_MAKS = 15    # tasdiqlanmagan chat: bitta chatdan
+TASDIQSIZ_JAMI_MAKS = 100     # tasdiqlanmagan chatlar: jami
 # Message.caption faqat shu turlarda bo'ladi (Bot API) — boshqalariga izoh berilmaydi, sarlavha alohida xabar
 IZOHLI_TURLAR = ('photo', 'animation', 'video', 'document', 'audio', 'voice')
 TURLAR = {'matn': 'matn', 'photo': 'rasm', 'animation': 'GIF', 'video': 'video', 'document': 'fayl', 'audio': 'audio',
@@ -177,10 +182,19 @@ def murojaat_qabul(chat_id, m, token=None):
     manzil = ega_manzili()
     if not manzil:
         return [(ISHLAMAYDI, None)]
-    sutka = hozir - timedelta(days=1)
-    if (Murojaat.objects.filter(chat_id=chat_id, yaratilgan__gt=sutka).count() >= CHAT_KUNLIK_MAKS
-            or Murojaat.objects.filter(yaratilgan__gt=sutka).count() >= JAMI_KUNLIK_MAKS):
-        return [("Bugun juda ko'p xabar yuborildi. Ertaga yozing yoki javobni kuting.", None)]
+    bugungi = Murojaat.objects.filter(yaratilgan__gt=hozir - timedelta(days=1))
+    ozi = bugungi.filter(chat_id=chat_id).count()
+    # «ulangan» — salon ma'lumotini ko'rishdagi kabi: faol xodim, Telegrami aynan shu chat (ilova havolasi hisobga kirmaydi:
+    # uni boshqaga uzatish mumkin)
+    ulanganlar = bugungi.filter(xodim__telegram_id=F('chat_id'), xodim__faol=True).count()
+    if Xodim.objects.filter(telegram_id=chat_id, faol=True, salon__oquv=False).exists():
+        tolgan = ozi >= CHAT_KUNLIK_MAKS or ulanganlar >= JAMI_KUNLIK_MAKS
+        maslahat = ''
+    else:
+        tolgan = ozi >= TASDIQSIZ_KUNLIK_MAKS or bugungi.count() - ulanganlar >= TASDIQSIZ_JAMI_MAKS
+        maslahat = " Salon xodimi bo'lsangiz, ilovada «Telegramni ulash» ni bosing — chegara kengayadi."
+    if tolgan:
+        return [("Bugun juda ko'p xabar yuborildi. Ertaga yozing yoki javobni kuting." + maslahat, None)]
     tur = xabar_turi(m)
     if not tur:
         return [("Bu turdagi xabarni yuborib bo'lmaydi. Matn, rasm, fayl yoki ovozli xabar yuboring.", None)]

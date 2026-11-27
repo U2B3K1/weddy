@@ -450,7 +450,7 @@ class PlatformaSozlamaView(PlatformaView):
 
 
 class PlatformaTelegramUlashView(PlatformaView):
-    """Platforma egasini botga ulash: bir martalik kod (`/start <kod>`, 15 daqiqa) yoki ulanishni uzish (FT-4.14)."""
+    """Platforma egasini botga ulash: bir martalik kod (`/start <kod>`, 5 daqiqa) yoki ulanishni uzish (FT-4.14)."""
 
     def post(self, request):
         from apps.notify import telegram

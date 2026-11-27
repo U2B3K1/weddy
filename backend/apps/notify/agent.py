@@ -8,10 +8,10 @@ Egasi: «aqlli javob bersin, lekin o'ylab topmasin». Shuning uchun:
 - Kafolat — tasdiq: taklif javob matni va manba maqolalar bilan egaga chiqadi, foydalanuvchiga faqat ega
   «✅ Yuborish» ni bosganda ketadi. «✏️ Tahrirlash» — matn nusxalash uchun chiqadi; ega tuzatib yozgan javob
   foydalanuvchiga boradi va bazaga o'zi qo'shiladi. Noto'g'ri bo'lsa — «❌ Kerak emas».
-- Kontekst: shu foydalanuvchining oxirgi soatlardagi savol-javoblari (yashirilgan matn), uning saloni
-  sozlamalari hamda roli va salon bazasidagi jonli holat — savoldagi zakazlar va uning kassa holati
-  (`agent_malumot.py`; mijoz ismi, telefoni, salon nomi yuborilmaydi). Faqat jonli ma'lumotga tayangan javob
-  (`malumot: true`, maqolasiz) ham qabul qilinadi; egaga taklif ostida qaysi ma'lumot ko'rilgani chiqadi.
+- Kontekst: shu foydalanuvchining oxirgi soatlardagi savol-javoblari (yashirilgan matn), uning roli va saloni
+  sozlamalari (bron muddati, garov turlari kabi qoidalar). Salon bazasi — zakazlar, to'lovlar, kassa, mijozlar —
+  o'qilmaydi (egasi qarori, 2026-11-28: «bot salon ma'lumotini o'qiy olmasin, kerakli joyni ko'rishni tushuntirsin»):
+  bot ularni ilovaning qaysi bo'limida ko'rishni aytadi.
 
 Tasdiq rejimi: taklif guruhdagi murojaatchi mavzusiga «✅ Yuborish / ❌ Kerak emas» tugmalari bilan chiqadi; javob
 faqat ega bosgandan keyin ketadi. Modelga faqat savol matni boradi (telefon, karta, email yashirilgan) — kim yozgani,
@@ -104,10 +104,34 @@ SALOM_JAVOBI = "Assalomu alaykum! Savolingiz yoki muammoingizni yozing — darho
 RAHMAT_JAVOBI = "Arzimaydi! Yana savol bo'lsa, shu yerga yozing."
 
 
+# «Nima qila olasan?» — botning o'zi haqidagi savol (faqat ikkinchi shaxs: «kassir nima qila oladi?» — oddiy savol, AI ga boradi)
+_IMKONIYAT = re.compile(
+    r"nima(?:lar)?(?:ni)?(?: ish(?:lar)?(?:ni)?)? qila ol(?:asan|asiz)|nima(?:lar)? ish qil(?:asan|asiz)|nimaga yara(?:ysan|ysiz)"
+    r"|(?:nima|qanday|nimada) yordam ber(?:a ol)?(?:asan|asiz)|nima(?:lar)?(?:ni)? bil(?:asan|asiz)"
+    r"|что (?:ты |вы )?уме(?:ешь|ете)|чем (?:ты |вы )?може(?:шь|те) помочь|нима(?:лар)? қила ола(?:сан|сиз)")
+_IMKONIYAT_QOSHIMCHA = {'bot', 'sen', 'siz', 'san', "o'zing", "o'zingiz", 'ozing', 'ozingiz', 'ayt', 'ayting', 'aytchi', 'menga',
+                        'bizga', 'qani', "xo'sh", 'xosh', 'umuman', 'yana', 'ты', 'вы', 'а', 'ну', 'скажи', 'бот'}
+
+
+def imkoniyat_matni():
+    """«Nima qila olasan?» ga tayyor javob: bot nimani tushuntiradi va nimani QILMAYDI. AI ga qoldirilmaydi — u
+    «zakaz ochish, to'lovni rasmiylashtirish…» deb sanab, bot shularni o'zi bajaradigandek taassurot qoldirgan."""
+    media = " Skrinshot va ovozli xabarni ham tushunaman." if media_mumkin() else ''
+    return ("🤖 Men Libosa dasturidan qanday foydalanishni tushuntiraman: zakaz, to'lov va garov, libosni berish-qaytarish, "
+            "kassa, sozlamalar. Kerakli ma'lumotni ilovaning qaysi bo'limidan ko'rishni ham "
+            f"aytaman.{media}\n\n"
+            "Salon ma'lumotini (zakazlar, to'lovlar, kassa) o'zim ko'rmayman va ilovada hech narsa bajarmayman: zakaz "
+            "ochmayman, to'lov qabul qilmayman, hech narsani o'zgartirmayman — bularni ilovada o'zingiz qilasiz. "
+            "Bilmagan savolimni mutaxassisga yo'naltiraman.")
+
+
 def salomlashuv(matn):
-    """Matn faqat salom yoki «rahmat/ok» bo'lsa — tayyor javob, aks holda None (savol AI ga boradi)."""
+    """Matn faqat salom, «rahmat/ok» yoki «nima qila olasan?» bo'lsa — tayyor javob, aks holda None (savol AI ga boradi)."""
     sozlar = re.findall(r"[^\W\d_]+(?:['ʻʼ’‘`][^\W\d_]+)?", (matn or '').lower())
     sozlar = [re.sub("[ʻʼ’‘`]", "'", s) for s in sozlar]
+    if sozlar and len(sozlar) <= 8 and not re.search(r'\d', matn or ''):
+        if _IMKONIYAT.fullmatch(' '.join(s for s in sozlar if s not in _IMKONIYAT_QOSHIMCHA)):
+            return imkoniyat_matni()
     if not sozlar or len(sozlar) > 5 or re.search(r'\d|\?', matn or ''):
         return None
     if all(s in _SALOM for s in sozlar) and set(sozlar) & {'salom', 'assalomu', 'assalom', 'asalomu', 'salomlar', 'hello',
@@ -199,10 +223,12 @@ def _sorov(xabarlar, sxema):
 
 
 SXEMA = {'type': 'object', 'additionalProperties': False,
-         'required': ['javob', 'manbalar', 'darslar', 'malumot', 'tushunarsiz', 'aniqlashtirish', 'shoshilinch', 'xulosa'],
+         'required': ['javob', 'manbalar', 'darslar', 'tushunarsiz', 'mavzudan_tashqari', 'aniqlashtirish',
+                      'shoshilinch', 'xulosa'],
          'properties': {'javob': {'type': ['string', 'null']}, 'manbalar': {'type': 'array', 'items': {'type': 'integer'}},
-                        'darslar': {'type': 'array', 'items': {'type': 'string'}}, 'malumot': {'type': 'boolean'},
-                        'tushunarsiz': {'type': 'boolean'}, 'aniqlashtirish': {'type': 'boolean'},
+                        'darslar': {'type': 'array', 'items': {'type': 'string'}},
+                        'tushunarsiz': {'type': 'boolean'}, 'mavzudan_tashqari': {'type': 'boolean'},
+                        'aniqlashtirish': {'type': 'boolean'},
                         'shoshilinch': {'type': 'boolean'}, 'xulosa': {'type': 'string'}}}
 ANIQ_SAVOL_MAKS = 300   # aniqlashtiruvchi savol uzunligi
 XULOSA_MAKS = 300       # mutaxassis uchun xulosa
@@ -217,6 +243,8 @@ SHOSHILINCH_ILOVA = "🔴 Bu holatni mutaxassis ham tekshiradi — javob shu cha
 TUSHUNARSIZ = 'tushunarsiz'  # `tanla` natijasi: xabar ma'nosiz — foydalanuvchidan aniqroq yozish so'raladi
 ANIQLASHTIR = ("🤔 Savolingizni tushunmadim. Nima qilmoqchi bo'lganingizni va qaysi bo'limda ekaningizni yozing — masalan: "
                "«Kassada o'tkazma qabul qilmayapti» yoki «Zakazni boshqa sanaga qanday ko'chiraman?»")
+MAVZUDAN_TASHQARI = ("🤖 Men faqat Libosa dasturi va salon ishi bo'yicha yordam beraman — bu savolga javob bera olmayman. "
+                     "Dastur bo'yicha savolingiz bo'lsa, shu yerga yozing.")
 DARS_MAKS = 2  # javob ostidagi Akademiya havolalari
 KORSATMA = ("Siz Libosa (kelin liboslari salonlari uchun dastur) qo'llab-quvvatlash xodimisiz. Sizga bilim bazasi "
             "maqolalari (raqam, savol, javob), Libosa Akademiyasi darslari (kod, haqiqiy vaziyat, ilovadagi joy, natija, "
@@ -225,14 +253,15 @@ KORSATMA = ("Siz Libosa (kelin liboslari salonlari uchun dastur) qo'llab-quvvatl
             "Savolga FAQAT maqolalar va darslardagi ma'lumot asosida, foydalanuvchi yozgan tilda (o'zbekcha lotin yoki kirill, "
             "ruscha — ruscha; tugma va bo'lim nomlarini ilovadagidek o'zbekcha qoldiring), xushmuomala va qisqa (1–4 gap) javob yozing; kerak bo'lsa qadamlarni "
             "ketma-ket ayting. Maqolalarda yo'q narsani — tugma, bo'lim nomi, muddat, narx, imkoniyatni — qo'shmang "
-            "va taxmin qilmang. Maqolalar savolga javob bermasa, savol boshqa mavzuda bo'lsa, faqat salom-alik, "
+            "va taxmin qilmang. Maqolalar savolga javob bermasa, faqat salom-alik, "
             "shikoyat yoki shaxsiy masala bo'lsa — javob null. «manbalar» — javobda foydalangan maqolalar raqamlari. "
             "Salon ma'lumoti berilgan bo'lsa, maqoladagi standart qiymat o'rniga shu salonnikini ayting (masalan, bron "
             "muddati). Savol beruvchining roliga mos javob bering: sotuvchi yoki kassir salon sozlamasini o'zgartira "
-            "olmaydi — bunday ishni rahbar qilishini ayting. «Salon bazasidagi jonli ma'lumot» berilgan bo'lsa — bu "
-            "shu salonning hozirgi haqiqiy holati (zakaz holati, qoldiq, garov, kassa): savol shunga tegishli bo'lsa, "
-            "aniq sababni shu faktlardan ayting va nima qilish kerakligini maqolalardan qo'shing; faktlarni o'zgartirmang "
-            "va berilmagan faktni o'ylab topmang. Jonli ma'lumotdan foydalansangiz «malumot»: true. Rasm (skrinshot) "
+            "olmaydi — bunday ishni rahbar qilishini ayting. Siz salon bazasini ko'rmaysiz: zakaz holati, qoldiq, to'lov, "
+            "garov, kassa kabi aniq ma'lumotni bilmaysiz. Savol shunga bog'liq bo'lsa («nega bera olmayapman», «qancha "
+            "qoldi», «to'lov tushdimi») — ko'rgandek javob bermang va taxmin qilmang: buni ilovaning qaysi bo'limida, "
+            "qayerdan ko'rishni va u yerda nimaga qarashni maqolalar asosida tushuntiring. Zakaz raqamini so'ramang — "
+            "u sizga hech narsa bermaydi. Rasm (skrinshot) "
             "berilgan bo'lsa — undagi xato matni yoki ekran savolning bir qismi; rasmdagi shaxsiy ma'lumotni (ism, "
             "telefon) javobda takrorlamang. Oldingi suhbat — faqat savolni tushunish uchun. Mos Akademiya darsi bo'lsa, kodini «darslar» ga yozing (ko'pi bilan 2, savol beruvchining roliga mos: "
             "sotuvchi va kassirga «Salonni boshqarish» darslari emas) — foydalanuvchiga qadamma-qadam mashq havolasi qo'shiladi. "
@@ -240,8 +269,17 @@ KORSATMA = ("Siz Libosa (kelin liboslari salonlari uchun dastur) qo'llab-quvvatl
             "Xabar ma'nosiz bo'lsa (tasodifiy so'zlar, harflar, qo'shiq, sinov uchun yozilgan matn — Libosa ishiga oid savol "
             "yoki muammo umuman ko'rinmasa) — «tushunarsiz»: true, javob null; qisqa yoki xato yozilgan bo'lsa ham ma'noli "
             "savolni tushunarsiz demang. "
+            "Savol tushunarli, lekin Libosa dasturiga ham, salon ishiga ham umuman aloqasi bo'lmasa (matematika, ob-havo, "
+            "umumiy bilim, tarjima, hazil, boshqa dastur haqida) — «mavzudan_tashqari»: true, javob null; bunday savolga "
+            "o'zingiz javob bermang. Salon ishi, mijoz, pul, obuna, shikoyat, shu bot haqidagi savol, oldingi suhbatning "
+            "davomi yoki shubhali holat — mavzudan tashqari EMAS (false). "
+            "Siz ilovada hech qanday amal bajarmaysiz: zakaz ochmaysiz, to'lov qabul qilmaysiz, hech narsani o'zgartirmaysiz — "
+            "faqat tushuntirasiz. Foydalanuvchi amalni sizdan so'rasa («zakaz och», «to'lovni o'chir», «sanani o'zgartir») — "
+            "javobni «Buni men bajara olmayman — ilovada o'zingiz qilasiz:» mazmunidagi gap bilan boshlang, so'ng qadamlarni "
+            "ayting. O'zingiz haqingizda gapirganda bajaradigandek ko'rinadigan gap yozmang («zakaz ocha olaman» emas — "
+            "«zakaz ochishni tushuntiraman»). "
             "Javobning birinchi gapida savolga javob yoki hozir nima qilish kerakligi tursin, keyin kerak bo'lsa 1–3 qadam. "
-            "Javob berish uchun bitta hal qiluvchi ma'lumot yetishmasa (masalan, qaysi zakaz yoki ekranda qanday xato matni "
+            "Javob berish uchun bitta hal qiluvchi ma'lumot yetishmasa (masalan, qaysi bo'limda yoki ekranda qanday xato matni "
             "chiqqani) — «aniqlashtirish»: true va «javob» ga shu BITTA qisqa savolni yozing (manbasiz); oldingi suhbatda "
             "allaqachon savol bergan bo'lsangiz yoki odam uni aytgan bo'lsa, qayta so'ramang. "
             "Hech qachon parol, PIN, SMS-kod, karta raqami yoki hujjat suratini so'ramang; o'tkazma cheki chatga emas, "
@@ -254,8 +292,10 @@ KORSATMA = ("Siz Libosa (kelin liboslari salonlari uchun dastur) qo'llab-quvvatl
             "qadam (masalan, «to'lovni takrorlamang»); mos maqola bo'lmasa — javob null. "
             "«xulosa» — mutaxassis uchun bir gap: nima so'raldi va nima ma'lum (javob null yoki shoshilinch bo'lsa to'ldiring, "
             "aks holda bo'sh satr). Javob faqat JSON: {\"javob\": \"...\", \"manbalar\": [3], \"darslar\": [\"S1\"], "
-            "\"malumot\": false, \"tushunarsiz\": false, \"aniqlashtirish\": false, \"shoshilinch\": false, \"xulosa\": \"\"} "
-            "yoki {\"javob\": null, \"manbalar\": [], \"darslar\": [], \"malumot\": false, \"tushunarsiz\": false, "
+            "\"tushunarsiz\": false, \"mavzudan_tashqari\": false, \"aniqlashtirish\": false, "
+            "\"shoshilinch\": false, \"xulosa\": \"\"} "
+            "yoki {\"javob\": null, \"manbalar\": [], \"darslar\": [], \"tushunarsiz\": false, "
+            "\"mavzudan_tashqari\": false, "
             "\"aniqlashtirish\": false, \"shoshilinch\": false, \"xulosa\": \"...\"}.")
 JAVOB_MAKS = 1500       # model javobi bundan uzun bo'lsa — rad (tushunarsiz yoki keraksiz uzun)
 BAZA_MAKS = 60000       # modelga yuboriladigan maqolalar matni (belgi)
@@ -341,29 +381,29 @@ def suhbat_konteksti(t):
 
 class Taklif:
     """Model javobi (tekshirilgan): `matn` — foydalanuvchiga boradigan matn, `manbalar` — foydalanilgan maqolalar,
-    `malumot` — salonning jonli ma'lumoti ishlatilgani (egaga nima ko'rilgani yoziladi), `darslar` — Akademiya darslari
-    (havolasi `matn` oxiriga qo'shilgan)."""
-    def __init__(self, matn, manbalar, malumot='', darslar=()):
-        self.matn, self.manbalar, self.malumot, self.darslar = matn, manbalar, malumot, list(darslar)
+    `darslar` — Akademiya darslari (havolasi `matn` oxiriga qo'shilgan)."""
+    def __init__(self, matn, manbalar, darslar=()):
+        self.matn, self.manbalar, self.darslar = matn, manbalar, list(darslar)
 
 
 class Natija:
     """`tahlil` natijasi. `taklif` — tekshirilgan javob (`Taklif`) yoki None; `tushunarsiz` — xabar ma'nosiz;
+    `tashqari` — savol tushunarli, lekin Libosa ishiga aloqasi yo'q (bot rad etadi, mutaxassisga o'tmaydi);
     `savol` — javob o'rniga bitta aniqlashtiruvchi savol; `shoshilinch` — pul/garov nizosi yoki ma'lumot oshkor bo'lishi
     (egaga 🔴 bilan boradi); `xulosa` — mutaxassis uchun bir gap."""
-    def __init__(self, taklif=None, tushunarsiz=False, savol='', shoshilinch=False, xulosa=''):
+    def __init__(self, taklif=None, tushunarsiz=False, savol='', shoshilinch=False, xulosa='', tashqari=False):
         self.taklif, self.tushunarsiz, self.savol, self.shoshilinch, self.xulosa = taklif, tushunarsiz, savol, shoshilinch, xulosa
+        self.tashqari = tashqari
 
 
-def tanla(savol, kontekst='', jonli='', jonli_izoh='', rasm=None):
+def tanla(savol, kontekst='', rasm=None):
     """`tahlil` ning qisqa ko'rinishi: `Taklif`, None (javob yo'q) yoki `TUSHUNARSIZ`."""
-    r = tahlil(savol, kontekst, jonli, jonli_izoh, rasm)
+    r = tahlil(savol, kontekst, rasm)
     return TUSHUNARSIZ if r.tushunarsiz else r.taklif
 
 
-def tahlil(savol, kontekst='', jonli='', jonli_izoh='', rasm=None):
-    """Savolga bilim bazasi (va berilgan bo'lsa salonning jonli ma'lumoti) asosidagi javob — `Natija`.
-    `kontekst` — salon sozlamalari va oldingi suhbat, `jonli` — `agent_malumot.jonli_malumot` bloki, `rasm` — rasm
+def tahlil(savol, kontekst='', rasm=None):
+    """Savolga bilim bazasi asosidagi javob — `Natija`. `kontekst` — salon sozlamalari va oldingi suhbat, `rasm` — rasm
     baytlari (faqat OpenAI). Xatoda AgentXatosi."""
     maqolalar, hajm = [], 0
     for m in BilimMaqola.objects.filter(faol=True).order_by('id')[:MAQOLA_MAKS]:
@@ -372,10 +412,10 @@ def tahlil(savol, kontekst='', jonli='', jonli_izoh='', rasm=None):
             break
         maqolalar.append(m)
     akademiya, dars_royxati = akademiya_konteksti()
-    if not maqolalar and not jonli and not dars_royxati:
+    if not maqolalar and not dars_royxati:
         return Natija()
     baza = '\n\n'.join(f'#{m.id}. Savol: {m.savol}\nJavob: {m.javob}' for m in maqolalar)
-    matn = (f'Maqolalar:\n{baza}\n\n{akademiya}{kontekst}{jonli}Foydalanuvchi savoli:\n'
+    matn = (f'Maqolalar:\n{baza}\n\n{akademiya}{kontekst}Foydalanuvchi savoli:\n'
             f'{yashir(savol)[:2000] or "(foydalanuvchi faqat rasm yubordi — savol rasmda)"}')
     mazmun = matn if rasm is None else [
         {'type': 'text', 'text': matn},
@@ -386,10 +426,12 @@ def tahlil(savol, kontekst='', jonli='', jonli_izoh='', rasm=None):
     matn, raqamlar = natija.get('javob'), natija.get('manbalar')
     if natija.get('tushunarsiz') is True and not (isinstance(matn, str) and matn.strip()):
         return Natija(tushunarsiz=True)
+    if (natija.get('mavzudan_tashqari') is True and not (isinstance(matn, str) and matn.strip())
+            and natija.get('shoshilinch') is not True and natija.get('aniqlashtirish') is not True):
+        return Natija(tashqari=True)  # javob, shoshilinch yoki aniqlashtirish bo'lsa — ular ustun
     xulosa = natija.get('xulosa')
     r = Natija(shoshilinch=natija.get('shoshilinch') is True,
                xulosa=yashir(' '.join(xulosa.split()))[:XULOSA_MAKS] if isinstance(xulosa, str) else '')
-    malumot = bool(jonli) and natija.get('malumot') is True
     kodlar = natija.get('darslar') or []
     if not isinstance(matn, str) or not matn.strip() or len(matn) > JAVOB_MAKS or not isinstance(raqamlar, list):
         return r
@@ -400,15 +442,14 @@ def tahlil(savol, kontekst='', jonli='', jonli_izoh='', rasm=None):
     if not isinstance(kodlar, list) or any(not isinstance(k, str) or k.upper() not in dars_royxati for k in kodlar):
         return r  # mavjud bo'lmagan dars — ishonchsiz
     darslar = [dars_royxati[k] for k in dict.fromkeys(k.upper() for k in kodlar)][:DARS_MAKS]
-    if not raqamlar and not malumot and not darslar:
-        return r  # na maqolaga, na darsga, na salon ma'lumotiga tayangan — o'ylab topilgan bo'lishi mumkin
+    if not raqamlar and not darslar:
+        return r  # na maqolaga, na darsga tayangan — o'ylab topilgan bo'lishi mumkin
     if any(not isinstance(x, int) or isinstance(x, bool) for x in raqamlar):
         return r
     yuborilgan = {m.id: m for m in maqolalar}
     if any(x not in yuborilgan for x in raqamlar):
         return r  # yuborilmagan (yoki o'chiq) maqolaga tayangan — ishonchsiz
-    r.taklif = Taklif(matn.strip() + dars_havolalari(darslar), [yuborilgan[x] for x in dict.fromkeys(raqamlar)],
-                      jonli_izoh if malumot else '', darslar)
+    r.taklif = Taklif(matn.strip() + dars_havolalari(darslar), [yuborilgan[x] for x in dict.fromkeys(raqamlar)], darslar)
     return r
 
 
@@ -469,10 +510,11 @@ def _reaksiya(chat_id, xabar_id, belgi):
         pass
 
 
-def _aniqlashtir(t):
-    """Avtomatik rejim, xabar ma'nosiz: foydalanuvchidan aniqroq yozish so'raladi; egaga «javob bering» tushmaydi."""
+def _aniqlashtir(t, matn=ANIQLASHTIR):
+    """Avtomatik rejim, xabar ma'nosiz (yoki `MAVZUDAN_TASHQARI` — Libosa ishiga aloqasiz): foydalanuvchiga tayyor matn;
+    egaga «javob bering» tushmaydi."""
     try:
-        _foydalanuvchiga(t, ANIQLASHTIR)
+        _foydalanuvchiga(t, matn)
     except telegram.TelegramXatosi as e:
         log.warning('Agent: aniqlashtirish yuborilmadi: %s', e)
         return
@@ -494,32 +536,6 @@ def raqam_kutilmoqda(chat_id, matn):
     return bool(oxirgi and (oxirgi.xato == ANIQ_BELGI or oxirgi.holat in (AgentTaklif.Holat.TOPILMADI, AgentTaklif.Holat.XATO)))
 
 
-def suhbat_zakazlari(t):
-    """Joriy savoldan tashqari suhbatda aytilgan zakaz raqamlari: yalang'och raqam (oldingi qadam bot savoli yoki
-    yo'naltirish bo'lsa) va oxirgi `SUHBAT_SOAT` soatdagi oldingi savollardagi raqamlar."""
-    from .agent_malumot import zakaz_raqamlari
-    oldingi = list(AgentTaklif.objects.filter(
-        murojaat__chat_id=t.murojaat.chat_id, id__lt=t.id,
-        yaratilgan__gt=timezone.now() - timedelta(hours=SUHBAT_SOAT)).order_by('-id')[:SUHBAT_MAKS])
-    soragan = lambda o: o.xato == ANIQ_BELGI or o.holat in (AgentTaklif.Holat.TOPILMADI, AgentTaklif.Holat.XATO)  # noqa: E731
-    raqamlar = []
-    qator = [t, *oldingi]  # yangidan eskiga; har xabarning «oldingisi» — ro'yxatdagi keyingi element
-    for i, o in enumerate(qator):
-        m = _YALANGOCH_RAQAM.fullmatch(o.savol or '')
-        if m and i + 1 < len(qator) and soragan(qator[i + 1]):
-            raqamlar.append(int(m.group(1)))  # bot raqam so'ragandan keyin yozilgan yalang'och raqam
-        elif o is not t:
-            raqamlar += zakaz_raqamlari(o.savol)
-    return [r for r in dict.fromkeys(raqamlar) if r]
-
-
-def _ega_korishi_mumkin(murojaat):
-    """Salon rahbari «Texnik yordam» ruxsatini berganmi (Sozlama → «Texnik yordam», 2 yoki 24 soat): platforma egasi
-    salon ma'lumotini faqat shu ruxsat amal qilayotganda ko'radi — bot ko'rgan holat ham egaga faqat shunda chiqadi."""
-    from apps.tenants.models import YordamRuxsati
-    return bool(murojaat.salon_id and YordamRuxsati.amaldagi(murojaat.salon))
-
-
 def _ai_xatosi_haqida(t, xato):
     """AI ishlamayapti (kalit, balans, ulanish): egaga soatiga bir marta shaxsiy xabar — aks holda hamma savol jimgina
     «mutaxassisga» o'tib, sabab ko'rinmay qolardi."""
@@ -537,18 +553,10 @@ def _ai_xatosi_haqida(t, xato):
         pass
 
 
-def _egaga_ilova(r, jonli, jonli_izoh, ruxsat=True):
-    """Egaga boradigan xabar oxiri: mutaxassis uchun xulosa va (zakaz so'ralgan yoki shoshilinch bo'lsa) salon bazasidan
-    ko'rilgan holat — ega hammasini qaytadan so'rab o'tirmaydi."""
-    qism = ''
-    if not ruxsat and jonli:  # xulosada ham salon holati bo'lishi mumkin — ruxsatsiz ko'rsatilmaydi
-        return ("\n\n📊 Salon holati ko'rsatilmadi: salon rahbari «Texnik yordam» ruxsatini bermagan "
-                "(Sozlama → «Texnik yordam»).") if (r and r.shoshilinch or 'zakaz #' in jonli_izoh) else ''
-    if r and r.xulosa:
-        qism += f"\n\n📝 {r.xulosa}"
-    if jonli and (r and r.shoshilinch or 'zakaz #' in jonli_izoh):
-        qism += "\n\n📊 Salon bazasidan:\n" + jonli.split('\n', 1)[-1].strip()[:1200]
-    return qism
+def _egaga_ilova(r):
+    """Egaga boradigan xabar oxiri: mutaxassis uchun bir gaplik xulosa (foydalanuvchining o'z so'zlaridan — bot salon
+    bazasini ko'rmaydi)."""
+    return f"\n\n📝 {r.xulosa}" if r and r.xulosa else ''
 
 
 def _ega_javob_berdimi(t):
@@ -557,6 +565,16 @@ def _ega_javob_berdimi(t):
         return False
     AgentTaklif.objects.filter(id=t.id).update(holat=AgentTaklif.Holat.RAD, xato=EGA_JAVOB_BERDI)
     return True
+
+
+def _suhbat_davomi(t):
+    """Shu odamning oldingi xabariga bot savol bergan yoki uni mutaxassisga yo'naltirgan (yaqinda): keyingi qisqa
+    xabar — o'sha suhbatning davomi, uni «mavzudan tashqari» deb rad etib bo'lmaydi."""
+    oldingi = (AgentTaklif.objects.filter(murojaat__chat_id=t.murojaat.chat_id, id__lt=t.id,
+                                          yaratilgan__gt=timezone.now() - timedelta(minutes=YONALTIRISH_DAQIQA))
+               .order_by('-id').first())
+    return bool(oldingi and (oldingi.xato == ANIQ_BELGI
+                             or oldingi.holat in (AgentTaklif.Holat.TOPILMADI, AgentTaklif.Holat.XATO)))
 
 
 def _savol_ber(t, savol):
@@ -576,10 +594,10 @@ def _savol_ber(t, savol):
     return True
 
 
-def _yonaltir(t, r=None, jonli='', jonli_izoh=''):
+def _yonaltir(t, r=None):
     """Avtomatik rejim, javob topilmadi (yoki AI xatosi): foydalanuvchiga «mutaxassisga yo'naltirdim» (chatga
     `YONALTIRISH_DAQIQA` da bir marta — ketma-ket bir nechta xabar yozsa takrorlanmaydi), egaga — «javob bering»
-    (xulosa va salon bazasidagi holat bilan). Shoshilinch holat har doim to'liq xabar bilan boradi."""
+    (xulosa bilan). Shoshilinch holat har doim to'liq xabar bilan boradi."""
     shosh = bool(r and r.shoshilinch)
     yaqinda = AgentTaklif.objects.filter(
         murojaat__chat_id=t.murojaat.chat_id, id__lt=t.id, holat__in=[AgentTaklif.Holat.TOPILMADI, AgentTaklif.Holat.XATO],
@@ -596,13 +614,13 @@ def _yonaltir(t, r=None, jonli='', jonli_izoh=''):
                 "🤖 Bot javob topa olmadi — foydalanuvchiga «mutaxassisga yo'naltirildi» deyildi. Javobingizni shu yerga yozing.")
         if t.fayl_turi == 'ovoz' and t.savol:
             bosh += f"\n\n🎤 Ovozli xabar matni: «{t.savol[:500]}»"
-        telegram.api('sendMessage', text=(bosh + _egaga_ilova(r, jonli, jonli_izoh, _ega_korishi_mumkin(t.murojaat)))[:4096],
+        telegram.api('sendMessage', text=(bosh + _egaga_ilova(r))[:4096],
                      **_mavzu_kw(t.murojaat))
     except telegram.TelegramXatosi as e:
         log.warning("Agent: yo'naltirish xabari yuborilmadi: %s", e)
 
 
-def _avto_yubor(t, taklif, r=None, jonli='', jonli_izoh=''):
+def _avto_yubor(t, taklif, r=None):
     """Avtomatik rejim: javob foydalanuvchiga darhol, egaga nusxasi (manbasi bilan). Yetkazilmasa — False.
     Shoshilinch holatda bot faqat birinchi xavfsiz qadamni aytadi: murojaat «javobsiz» qoladi, egaga 🔴 bilan boradi."""
     from .yordam import JAVOB_SARLAVHASI
@@ -623,13 +641,9 @@ def _avto_yubor(t, taklif, r=None, jonli='', jonli_izoh=''):
     AgentTaklif.objects.filter(id=t.id).update(holat=AgentTaklif.Holat.YUBORILDI, javob=taklif.matn,
                                                maqola=taklif.manbalar[0] if taklif.manbalar else None)
     try:
-        ruxsat = _ega_korishi_mumkin(q)
-        if taklif.malumot and not ruxsat:  # javobda salon holati bor — ega uni faqat rahbar ruxsati bilan ko'radi
-            matn = ((f"{SHOSHILINCH_SARLAVHA} — " if shosh else '') + "🤖 Bot salon bazasidagi holat asosida javob berdi. Javob matni "
-                    "ko'rsatilmaydi: salon rahbari «Texnik yordam» ruxsatini bermagan (Sozlama → «Texnik yordam»).")
-        elif shosh:
+        if shosh:
             matn = (taklif_matni(taklif, f"{SHOSHILINCH_SARLAVHA} — bot faqat birinchi qadamni aytdi, tekshirib javob bering")[:2400]
-                    + _egaga_ilova(r, jonli, jonli_izoh, ruxsat))
+                    + _egaga_ilova(r))
         else:
             matn = (taklif_matni(taklif, AVTO_SARLAVHA)[:3900]
                     + "\n\nNoto'g'ri bo'lsa — to'g'ri javobni shu yerga yozing, foydalanuvchiga boradi.")
@@ -730,14 +744,9 @@ def navbatni_ishla(soni=2):
             continue  # boshqa jarayon oldi
         if _ega_javob_berdimi(t):  # ega yozishmani o'zi olgan — bot javobi ham, taklifi ham kerak emas
             continue
-        jonli, jonli_izoh = '', ''
         try:
-            from .agent_malumot import jonli_malumot
             rasm = _faylni_oqi(t)
-            jonli, jonli_izoh = jonli_malumot(t.murojaat, t.savol, suhbat_zakazlari(t))
-            if not avto and not _ega_korishi_mumkin(t.murojaat):
-                jonli, jonli_izoh = '', ''  # tasdiq rejimida javobni ega ko'radi — salon holati faqat rahbar ruxsati bilan
-            r = (tahlil(t.savol, salon_konteksti(t.murojaat) + suhbat_konteksti(t), jonli, jonli_izoh, rasm=rasm)
+            r = (tahlil(t.savol, salon_konteksti(t.murojaat) + suhbat_konteksti(t), rasm=rasm)
                  if (t.savol.strip() or rasm) else Natija())
             taklif = r.taklif
         except AgentXatosi as e:
@@ -751,17 +760,21 @@ def navbatni_ishla(soni=2):
             AgentTaklif.objects.filter(id=t.id).update(holat=AgentTaklif.Holat.RAD, xato="tushunarsiz xabar")
             _aniqlashtir(t)
             continue
+        if r.tashqari and avto and not _suhbat_davomi(t):
+            AgentTaklif.objects.filter(id=t.id).update(holat=AgentTaklif.Holat.RAD, xato="mavzudan tashqari")
+            _aniqlashtir(t, MAVZUDAN_TASHQARI)
+            continue
         if r.savol and avto and _savol_ber(t, r.savol):
             ishlandi += 1
             continue
         if not taklif:
             AgentTaklif.objects.filter(id=t.id).update(holat=AgentTaklif.Holat.TOPILMADI)
             if avto:
-                _yonaltir(t, r, jonli, jonli_izoh)
+                _yonaltir(t, r)
             continue
         taklif.ovoz = t.savol if t.fayl_turi == 'ovoz' else ''
         if avto:
-            ishlandi += _avto_yubor(t, taklif, r, jonli, jonli_izoh)
+            ishlandi += _avto_yubor(t, taklif, r)
             continue
         q = t.murojaat
         kw = _mavzu_kw(q)
@@ -786,8 +799,6 @@ def taklif_matni(taklif, sarlavha=TAKLIF_SARLAVHASI):
     oldin = f"🎤 Ovozli xabar matni: «{taklif.ovoz[:500]}»\n\n" if getattr(taklif, 'ovoz', '') else ''
     manba = [f"#{m.id} «{m.savol}»" for m in taklif.manbalar]
     manba += [f"🎓 {d.kod} «{d.nomi}»" for d in getattr(taklif, 'darslar', [])]
-    if taklif.malumot:
-        manba.append(f"📊 Salon bazasi: {taklif.malumot} — yuborishdan oldin ilovada tekshiring")
     return f"{oldin}{sarlavha}:\n\n{taklif.matn}\n\n📚 Manba:\n" + '\n'.join(manba)
 
 
@@ -949,6 +960,8 @@ def sinov(savol):
         return f"{SHOSHILINCH_SARLAVHA}: bot javob bermaydi, sizga 🔴 bilan o'tadi.\n📝 {r.xulosa or '—'}"
     if t == TUSHUNARSIZ:
         return f"🤔 Tushunarsiz xabar — avtomatik rejimda foydalanuvchiga yoziladi:\n\n{ANIQLASHTIR}"
+    if r.tashqari:
+        return f"🚫 Mavzudan tashqari savol — sizga o'tmaydi, avtomatik rejimda foydalanuvchiga yoziladi:\n\n{MAVZUDAN_TASHQARI}"
     if not t:
         return f"🤷 Bilim bazasida javob yo'q ({soni} ta faol maqola ichida). Bunday savol sizga o'tadi."
     manba = '\n'.join([f"#{m.id} «{m.savol}»" for m in t.manbalar] + [f"🎓 {d.kod} «{d.nomi}»" for d in t.darslar])

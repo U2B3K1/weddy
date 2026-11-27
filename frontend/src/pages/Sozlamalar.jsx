@@ -834,7 +834,7 @@ function XodimTelegram({ x }) {
                 <p>Telegramda botni oching{ulash.bot ? <> (<b>@{ulash.bot}</b>)</> : ''} va shu xabarni yuboring:</p>
                 <p className="kod">/start {ulash.kod}</p>
                 {ulash.havola && <a className="tugma-havola" href={ulash.havola} target="_blank" rel="noreferrer">Botni ochish</a>}
-                <p className="malumot">Kod 15 daqiqa amal qiladi. Xodim ulangach bu oyna o'zi yangilanadi.</p>
+                <p className="malumot">Kod 5 daqiqa amal qiladi. Xodim ulangach bu oyna o'zi yangilanadi.</p>
               </>
             ) : (
               <button className="ikkinchi" onClick={async () => setUlash(await xodimTelegramUlash(x.id))}>Kod olish</button>
