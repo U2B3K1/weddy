@@ -414,6 +414,24 @@ class AvtoRejimTests(AgentAsos):
         self.assertEqual([kw['text'] for kw in self.foyd('sendMessage')], [agent.YONALTIRDIM])  # ikki xabar — bir marta
         self.assertEqual(set(AgentTaklif.objects.values_list('holat', flat=True)), {AgentTaklif.Holat.TOPILMADI})
         self.assertIn("mutaxassisga o'tdi: 2", agent.holat_matni())
+        # ikkinchisiga xabar o'rniga belgi: foydalanuvchiga 👀, egadagi nusxaga ✍ (hech kim javobsiz qolmaydi)
+        ikkinchi = AgentTaklif.objects.order_by('id').last().murojaat
+        belgilar = {(kw['chat_id'], kw['message_id'], kw['reaction'][0]['emoji']) for kw in self.chaqiruvlar('setMessageReaction')}
+        self.assertEqual(belgilar, {(SOTUVCHI_CHAT, ikkinchi.foydalanuvchi_xabar_id, '👀'),
+                                    (ikkinchi.ega_chat_id, ikkinchi.ega_xabar_id, '✍')})
+
+    def test_manosiz_xabarga_aniqlashtirish(self):
+        q = self.murojaat('Bum bay bum digi bay bay')
+        self.urlopen.return_value = openai_javobi(json.dumps(
+            {'javob': None, 'manbalar': [], 'darslar': [], 'malumot': False, 'tushunarsiz': True}))
+        self.api.reset_mock()
+        agent.navbatni_ishla()
+        self.assertEqual([kw['text'] for kw in self.foyd('sendMessage')], [agent.ANIQLASHTIR])
+        self.assertFalse([kw for kw in self.chaqiruvlar('sendMessage') if kw['chat_id'] == GURUH])  # egaga «javob bering» yo'q
+        self.assertEqual(AgentTaklif.objects.get().holat, AgentTaklif.Holat.RAD)
+        q.refresh_from_db()
+        self.assertIsNotNone(q.javob_berildi)
+        self.assertIn("mutaxassisga o'tdi: 0", agent.holat_matni())
 
     def test_ai_xatosida_ham_yonaltiradi(self):
         self.murojaat('PIN esimdan chiqdi')

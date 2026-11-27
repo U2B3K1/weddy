@@ -196,9 +196,14 @@ def _sorov(xabarlar, sxema):
         return None  # tushunarsiz javob — «topilmadi»
 
 
-SXEMA = {'type': 'object', 'additionalProperties': False, 'required': ['javob', 'manbalar', 'darslar', 'malumot'],
+SXEMA = {'type': 'object', 'additionalProperties': False,
+         'required': ['javob', 'manbalar', 'darslar', 'malumot', 'tushunarsiz'],
          'properties': {'javob': {'type': ['string', 'null']}, 'manbalar': {'type': 'array', 'items': {'type': 'integer'}},
-                        'darslar': {'type': 'array', 'items': {'type': 'string'}}, 'malumot': {'type': 'boolean'}}}
+                        'darslar': {'type': 'array', 'items': {'type': 'string'}}, 'malumot': {'type': 'boolean'},
+                        'tushunarsiz': {'type': 'boolean'}}}
+TUSHUNARSIZ = 'tushunarsiz'  # `tanla` natijasi: xabar ma'nosiz — foydalanuvchidan aniqroq yozish so'raladi
+ANIQLASHTIR = ("🤔 Savolingizni tushunmadim. Nima qilmoqchi bo'lganingizni va qaysi bo'limda ekaningizni yozing — masalan: "
+               "«Kassada o'tkazma qabul qilmayapti» yoki «Zakazni boshqa sanaga qanday ko'chiraman?»")
 DARS_MAKS = 2  # javob ostidagi Akademiya havolalari
 KORSATMA = ("Siz Libosa (kelin liboslari salonlari uchun dastur) qo'llab-quvvatlash xodimisiz. Sizga bilim bazasi "
             "maqolalari (raqam, savol, javob), Libosa Akademiyasi darslari (kod, haqiqiy vaziyat, ilovadagi joy, natija, "
@@ -218,8 +223,11 @@ KORSATMA = ("Siz Libosa (kelin liboslari salonlari uchun dastur) qo'llab-quvvatl
             "telefon) javobda takrorlamang. Oldingi suhbat — faqat savolni tushunish uchun. Mos Akademiya darsi bo'lsa, kodini «darslar» ga yozing (ko'pi bilan 2, savol beruvchining roliga mos: "
             "sotuvchi va kassirga «Salonni boshqarish» darslari emas) — foydalanuvchiga qadamma-qadam mashq havolasi qo'shiladi. "
             "«manbalar» — foydalangan maqolalar; dars ham manba hisoblanadi. "
-            "Javob faqat JSON: {\"javob\": \"...\", \"manbalar\": [3], \"darslar\": [\"S1\"], \"malumot\": false} "
-            "yoki {\"javob\": null, \"manbalar\": [], \"darslar\": [], \"malumot\": false}.")
+            "Xabar ma'nosiz bo'lsa (tasodifiy so'zlar, harflar, qo'shiq, sinov uchun yozilgan matn — Libosa ishiga oid savol "
+            "yoki muammo umuman ko'rinmasa) — «tushunarsiz»: true, javob null; qisqa yoki xato yozilgan bo'lsa ham ma'noli "
+            "savolni tushunarsiz demang. Javob faqat JSON: {\"javob\": \"...\", \"manbalar\": [3], \"darslar\": [\"S1\"], "
+            "\"malumot\": false, \"tushunarsiz\": false} yoki {\"javob\": null, \"manbalar\": [], \"darslar\": [], "
+            "\"malumot\": false, \"tushunarsiz\": false}.")
 JAVOB_MAKS = 1500       # model javobi bundan uzun bo'lsa — rad (tushunarsiz yoki keraksiz uzun)
 BAZA_MAKS = 60000       # modelga yuboriladigan maqolalar matni (belgi)
 
@@ -333,6 +341,8 @@ def tanla(savol, kontekst='', jonli='', jonli_izoh='', rasm=None):
     if not isinstance(natija, dict):
         return None
     matn, raqamlar = natija.get('javob'), natija.get('manbalar')
+    if natija.get('tushunarsiz') is True and not (isinstance(matn, str) and matn.strip()):
+        return TUSHUNARSIZ
     malumot = bool(jonli) and natija.get('malumot') is True
     kodlar = natija.get('darslar') or []
     if not isinstance(matn, str) or not matn.strip() or len(matn) > JAVOB_MAKS or not isinstance(raqamlar, list):
@@ -400,6 +410,24 @@ def _foydalanuvchiga(t, matn, tugmalar=None):
                         reply_parameters={'message_id': q.foydalanuvchi_xabar_id, 'allow_sending_without_reply': True})
 
 
+def _reaksiya(chat_id, xabar_id, belgi):
+    try:
+        telegram.api('setMessageReaction', chat_id=chat_id, message_id=xabar_id,
+                     reaction=[{'type': 'emoji', 'emoji': belgi}])
+    except telegram.TelegramXatosi:
+        pass
+
+
+def _aniqlashtir(t):
+    """Avtomatik rejim, xabar ma'nosiz: foydalanuvchidan aniqroq yozish so'raladi; egaga «javob bering» tushmaydi."""
+    try:
+        _foydalanuvchiga(t, ANIQLASHTIR)
+    except telegram.TelegramXatosi as e:
+        log.warning('Agent: aniqlashtirish yuborilmadi: %s', e)
+        return
+    Murojaat.objects.filter(id=t.murojaat_id, javob_berildi__isnull=True).update(javob_berildi=timezone.now())
+
+
 def _yonaltir(t):
     """Avtomatik rejim, javob topilmadi (yoki AI xatosi): foydalanuvchiga «mutaxassisga yo'naltirdim» (chatga
     `YONALTIRISH_DAQIQA` da bir marta — ketma-ket bir nechta xabar yozsa takrorlanmaydi), egaga — «javob bering»."""
@@ -407,7 +435,10 @@ def _yonaltir(t):
         murojaat__chat_id=t.murojaat.chat_id, id__lt=t.id, holat__in=[AgentTaklif.Holat.TOPILMADI, AgentTaklif.Holat.XATO],
         yaratilgan__gt=timezone.now() - timedelta(minutes=YONALTIRISH_DAQIQA)).exists()
     try:
-        if yaqinda:  # yaqinda aytilgan — ketma-ket xabarlarga takrorlanmaydi
+        if yaqinda:  # to'liq gap yaqinda aytilgan — xabar o'rniga belgi: foydalanuvchiga 👀, egadagi nusxaga ✍ (javob bering)
+            q = t.murojaat
+            _reaksiya(q.chat_id, q.foydalanuvchi_xabar_id, '👀')
+            _reaksiya(q.ega_chat_id, q.ega_xabar_id, '✍')
             return
         _foydalanuvchiga(t, YONALTIRDIM)
         telegram.api('sendMessage', text="🤖 Bot javob topa olmadi — foydalanuvchiga «mutaxassisga yo'naltirildi» deyildi. "
@@ -460,7 +491,11 @@ def navbatni_ishla(soni=2):
             if avto:
                 _yonaltir(t)
             continue
-        if not taklif:
+        if taklif == TUSHUNARSIZ and avto:
+            AgentTaklif.objects.filter(id=t.id).update(holat=AgentTaklif.Holat.RAD, xato="tushunarsiz xabar")
+            _aniqlashtir(t)
+            continue
+        if not taklif or taklif == TUSHUNARSIZ:
             AgentTaklif.objects.filter(id=t.id).update(holat=AgentTaklif.Holat.TOPILMADI)
             if avto:
                 _yonaltir(t)
@@ -647,6 +682,8 @@ def sinov(savol):
         t = tanla(savol)
     except AgentXatosi as e:
         return f"❌ {xizmat()[0]} xatosi: {e}"
+    if t == TUSHUNARSIZ:
+        return f"🤔 Tushunarsiz xabar — avtomatik rejimda foydalanuvchiga yoziladi:\n\n{ANIQLASHTIR}"
     if not t:
         return f"🤷 Bilim bazasida javob yo'q ({soni} ta faol maqola ichida). Bunday savol sizga o'tadi."
     manba = '\n'.join([f"#{m.id} «{m.savol}»" for m in t.manbalar] + [f"🎓 {d.kod} «{d.nomi}»" for d in t.darslar])
