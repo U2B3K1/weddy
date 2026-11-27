@@ -120,7 +120,7 @@ def matn_ishla(chat_id, matn, javobga=''):
         return _vidjet_sozlamasi()
     if ega and matn == '/vidjet_sinov':
         return _vidjet_sinov()
-    if ega and matn.split()[0:1] == ['/agent_sinov']:  # OpenAI ishlayaptimi va qaysi maqolani tanlaydi
+    if ega and matn.split()[0:1] == ['/agent_sinov']:  # AI ishlayaptimi va qaysi maqolani tanlaydi
         from . import agent
         return [(agent.sinov(matn[len('/agent_sinov'):]), None)]
     if ega and matn == '/agent':
@@ -762,7 +762,7 @@ def ega_tugma(chat_id, data):
         from .models import BilimMaqola
         s = platforma_sozlama()
         if data == 'e:ag_on' and not agent.sozlangan():
-            return [("Avval serverdagi .env fayliga OPENAI_API_KEY ni yozing va /agent_sinov bilan tekshiring.", None)]
+            return [("Avval serverdagi .env fayliga DEEPSEEK_API_KEY (yoki OPENAI_API_KEY) ni yozing va /agent_sinov bilan tekshiring.", None)]
         if data == 'e:ag_on' and not BilimMaqola.objects.filter(faol=True).exists():
             return [("Bilim bazasida faol maqola yo'q. «Libosa» ilovasi → Platforma → Bilim bo'limida maqolalarni yoqing.", None)]
         s.agent_yoqilgan = data == 'e:ag_on'

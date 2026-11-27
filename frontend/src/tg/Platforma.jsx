@@ -172,7 +172,7 @@ function Bilim({ p, amal, band }) {
     <>
       <section className="tg-karta">
         <p className={`tg-holat ${p.agent.yoqilgan ? 'ok' : ''}`}>
-          Agent: {p.agent.yoqilgan ? 'yoqilgan (tasdiq rejimi)' : "o'chiq"}{!p.agent.kalit && ' · OpenAI kaliti kiritilmagan'}
+          Agent: {p.agent.yoqilgan ? 'yoqilgan (tasdiq rejimi)' : "o'chiq"}{!p.agent.kalit && ' · AI kaliti kiritilmagan'}
         </p>
         <p className="tg-holat">{faol} ta yoqilgan, {p.bilim.length - faol} ta o'chiq maqola</p>
         <p className="tg-izoh tg-ost">Agent savolga shu ro'yxatdan mos javobni tanlaydi va matnini o'zgartirmay yuboradi.

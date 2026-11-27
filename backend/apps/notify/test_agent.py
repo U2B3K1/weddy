@@ -13,7 +13,7 @@ from .models import AgentTaklif, BilimMaqola, Murojaat, YordamMavzu
 from .test_bot_menyu import EGA_CHAT, SOTUVCHI_CHAT, Base
 from .test_miniilova import imzola
 
-KALIT = override_settings(OPENAI_API_KEY='sk-test-KALIT', OPENAI_MODEL='gpt-6-luna')
+KALIT = override_settings(OPENAI_API_KEY='sk-test-KALIT', OPENAI_MODEL='gpt-6-luna', DEEPSEEK_API_KEY='')
 GURUH = -100777
 
 
@@ -81,13 +81,31 @@ class AgentTests(Base):
 
     def test_xato_matnida_kalit_yoq(self):
         self.urlopen.side_effect = urllib.error.HTTPError(agent.URL, 401, 'x', {}, io.BytesIO(
-            json.dumps({'error': {'message': 'Incorrect API key provided'}}).encode()))
+            json.dumps({'error': {'message': 'Incorrect API key provided: sk-test-****ALIT.'}}).encode()))
         with self.assertRaises(agent.AgentXatosi) as x:
             agent.tanla('PIN')
         self.assertIn('401', str(x.exception))
         self.assertNotIn('sk-test-KALIT', str(x.exception))
+        self.assertNotIn('sk-', str(x.exception))  # xizmat qaytargan kalit bo'lagi ham chiqmaydi
         self.urlopen.side_effect = TimeoutError()
         self.assertIn('❌ OpenAI xatosi', agent.sinov('PIN'))
+
+    @override_settings(DEEPSEEK_API_KEY='sk-ds-KALIT', DEEPSEEK_MODEL='deepseek-flash')
+    def test_deepseek(self):
+        self.urlopen.return_value = openai_javobi(json.dumps({'id': self.pin.id}))
+        self.assertEqual(agent.tanla('PIN esimdan chiqdi'), self.pin)
+        req = self.urlopen.call_args[0][0]
+        so_rov = json.loads(req.data)
+        self.assertEqual(req.full_url, agent.DEEPSEEK_URL)
+        self.assertEqual(req.get_header('Authorization'), 'Bearer sk-ds-KALIT')
+        self.assertEqual(so_rov['model'], 'deepseek-flash')
+        self.assertEqual(so_rov['response_format'], {'type': 'json_object'})
+        self.assertEqual(so_rov['thinking'], {'type': 'disabled'})
+        self.assertIn('JSON', so_rov['messages'][0]['content'])  # JSON rejimi sharti
+        for mazmun in ('   ', json.dumps({'id': True}), json.dumps({'id': self.qoralama.id})):  # bo'sh javob ham — topilmadi
+            self.urlopen.return_value = openai_javobi(mazmun)
+            self.assertIsNone(agent.tanla('PIN'), mazmun)
+        self.assertIn('DeepSeek', agent.holat_matni())
 
     # ---------- navbat va tasdiq ----------
 

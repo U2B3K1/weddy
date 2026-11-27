@@ -1,4 +1,4 @@
-"""Qo'llab-quvvatlash agenti: murojaatga bilim bazasidan mos javobni tanlaydi (OpenAI) — **javobni o'zi yozmaydi**.
+"""Qo'llab-quvvatlash agenti: murojaatga bilim bazasidan mos javobni tanlaydi (DeepSeek yoki OpenAI) — **javobni o'zi yozmaydi**.
 
 O'ylab topmaslik kodda kafolatlanadi, so'rov matniga ishonib emas:
 - Modelga faqat faol maqolalarning raqami va savoli beriladi; u faqat bitta raqam yoki `null` qaytaradi (JSON sxema).
@@ -9,8 +9,9 @@ Tasdiq rejimi: taklif guruhdagi murojaatchi mavzusiga «✅ Yuborish / ❌ Kerak
 faqat ega bosgandan keyin ketadi. Modelga faqat savol matni boradi (telefon, karta, email yashirilgan) — kim yozgani,
 salon nomi yuborilmaydi. Ismlarni ishonchli yashirib bo'lmaydi: matnda ism bo'lsa, u ham boradi.
 
-OpenAI so'rovi bot jarayonida navbat bilan bajariladi (`navbatni_ishla`), foydalanuvchi xabarini qabul qilish uni
-kutmaydi; xato jim (savol egada baribir bor), jurnalga yoziladi. Kalit faqat `.env` da (`OPENAI_API_KEY`).
+AI so'rovi bot jarayonida navbat bilan bajariladi (`navbatni_ishla`), foydalanuvchi xabarini qabul qilish uni
+kutmaydi; xato jim (savol egada baribir bor), jurnalga yoziladi. Kalit faqat `.env` da: `DEEPSEEK_API_KEY` bo'lsa
+DeepSeek, aks holda `OPENAI_API_KEY` (OpenAI).
 """
 import json
 import logging
@@ -28,13 +29,15 @@ from .models import AgentTaklif, BilimMaqola, Murojaat
 
 log = logging.getLogger(__name__)
 URL = 'https://api.openai.com/v1/chat/completions'
-TIMEOUT = 15            # soniya: OpenAI javobini kutish (bot jarayoni shu payt boshqa ishni kutadi — navbat kichik)
+DEEPSEEK_URL = 'https://api.deepseek.com/chat/completions'
+TIMEOUT = 15            # soniya: AI javobini kutish (bot jarayoni shu payt boshqa ishni kutadi — navbat kichik)
 MAQOLA_MAKS = 150       # modelga yuboriladigan maqolalar
 SAQLASH_KUN = 30        # taklif qatori (yashirilgan savol matni) shuncha kun saqlanadi
 TAKLIF_SARLAVHASI = "🤖 Bilim bazasidan javob taklifi"
 
 _TELEFON = re.compile(r'(?:\+?\d[\d\s\-()]{7,}\d)')
 _EMAIL = re.compile(r'[\w.+-]+@[\w-]+\.[\w.]+')
+_KALIT = re.compile(r'sk-[\w*.-]+')  # xizmat xato matnida kalitning bir qismini qaytarishi mumkin — chatga chiqmaydi
 
 
 class AgentXatosi(Exception):
@@ -47,19 +50,32 @@ def yashir(matn):
     return _TELEFON.sub(lambda m: '[raqam]' if len(re.sub(r'\D', '', m.group())) >= 8 else m.group(), matn)
 
 
+def xizmat():
+    """(nomi, manzil, kalit, model): DeepSeek kaliti bo'lsa DeepSeek, aks holda OpenAI."""
+    if settings.DEEPSEEK_API_KEY:
+        return 'DeepSeek', DEEPSEEK_URL, settings.DEEPSEEK_API_KEY, settings.DEEPSEEK_MODEL
+    return 'OpenAI', URL, settings.OPENAI_API_KEY, settings.OPENAI_MODEL
+
+
 def sozlangan():
-    return bool(settings.OPENAI_API_KEY)
+    return bool(xizmat()[2])
 
 
 def _sorov(xabarlar, sxema):
-    """OpenAI Chat Completions — Structured Outputs bilan. Javob lug'ati yoki AgentXatosi (kalit matnga chiqmaydi)."""
-    if not sozlangan():
-        raise AgentXatosi("OpenAI kaliti (.env dagi OPENAI_API_KEY) kiritilmagan.")
-    tana = {'model': settings.OPENAI_MODEL, 'messages': xabarlar,
-            'response_format': {'type': 'json_schema', 'json_schema': {'name': 'tanlov', 'strict': True, 'schema': sxema}}}
-    req = urllib.request.Request(URL, data=json.dumps(tana).encode(),
-                                 headers={'Content-Type': 'application/json',
-                                          'Authorization': f'Bearer {settings.OPENAI_API_KEY}'})
+    """Chat Completions (OpenAI formati). Javob lug'ati, tushunarsiz bo'lsa None, xatoda AgentXatosi (kalit matnga chiqmaydi).
+
+    OpenAI — Structured Outputs (qat'iy sxema). DeepSeek sxemani qo'llamaydi: JSON rejimi (`json_object`, ko'rsatmada
+    «JSON» so'zi va namuna bor), fikrlash rejimi o'chiq. Qaytgan raqam baribir `tanla` da yuborilganlar bilan tekshiriladi."""
+    nomi, manzil, kalit, model = xizmat()
+    if not kalit:
+        raise AgentXatosi("AI kaliti (.env dagi DEEPSEEK_API_KEY yoki OPENAI_API_KEY) kiritilmagan.")
+    tana = {'model': model, 'messages': xabarlar}
+    if nomi == 'DeepSeek':
+        tana.update(response_format={'type': 'json_object'}, thinking={'type': 'disabled'}, max_tokens=50)
+    else:
+        tana['response_format'] = {'type': 'json_schema', 'json_schema': {'name': 'tanlov', 'strict': True, 'schema': sxema}}
+    req = urllib.request.Request(manzil, data=json.dumps(tana).encode(),
+                                 headers={'Content-Type': 'application/json', 'Authorization': f'Bearer {kalit}'})
     try:
         with urllib.request.urlopen(req, timeout=TIMEOUT) as r:
             javob = json.loads(r.read())
@@ -68,13 +84,13 @@ def _sorov(xabarlar, sxema):
             tavsif = str((json.loads(e.read()).get('error') or {}).get('message', ''))[:200]
         except Exception:  # noqa: BLE001 — javob JSON bo'lmasligi mumkin
             tavsif = ''
-        raise AgentXatosi(f'HTTP {e.code} {tavsif}'.strip())
+        raise AgentXatosi(f'HTTP {e.code} {_KALIT.sub("[kalit]", tavsif)}'.strip())
     except (urllib.error.URLError, TimeoutError, OSError, ValueError) as e:
         raise AgentXatosi(f'Ulanib bo\'lmadi: {type(e).__name__}')
     try:
         mazmun = javob['choices'][0]['message']['content']
     except (KeyError, IndexError, TypeError):
-        raise AgentXatosi('OpenAI javobi tushunarsiz')
+        raise AgentXatosi(f'{nomi} javobi tushunarsiz')
     try:
         return json.loads(mazmun)
     except (TypeError, ValueError):
@@ -87,7 +103,7 @@ KORSATMA = ("Siz Libosa (kelin liboslari saloni dasturi) qo'llab-quvvatlash xizm
             "savoli va tayyor maqolalar ro'yxati beriladi (raqam va savol). Savolga TO'LIQ javob beradigan bitta "
             "maqolaning raqamini qaytaring. Mos maqola bo'lmasa, savol boshqa narsa haqida bo'lsa, faqat salom-alik, "
             "shikoyat yoki shaxsiy masala bo'lsa, yoki ikkilansangiz — null qaytaring. Taxmin qilmang: noto'g'ri "
-            "javobdan ko'ra null yaxshiroq.")
+            "javobdan ko'ra null yaxshiroq. Javob faqat JSON: {\"id\": 12} yoki {\"id\": null}.")
 
 
 def tanla(savol):
@@ -100,13 +116,15 @@ def tanla(savol):
                      {'role': 'user', 'content': f'Maqolalar:\n{royxat}\n\nFoydalanuvchi savoli:\n{yashir(savol)[:2000]}'}],
                     SXEMA)
     raqam = natija.get('id') if isinstance(natija, dict) else None
-    return next((m for m in maqolalar if isinstance(raqam, int) and m.id == raqam), None)  # faqat yuborilganlardan
+    if not isinstance(raqam, int) or isinstance(raqam, bool):
+        return None
+    return next((m for m in maqolalar if m.id == raqam), None)  # faqat yuborilganlardan
 
 
 # ---------- navbat (bot jarayoni) ----------
 
 def navbatga(murojaat, savol):
-    """`murojaat_qabul` dan: agent yoqilgan va savol matn bo'lsa — navbatga (OpenAI keyin, bot aylanishida)."""
+    """`murojaat_qabul` dan: agent yoqilgan va savol matn bo'lsa — navbatga (AI keyin, bot aylanishida)."""
     from apps.tenants.models import platforma_sozlama
     if not (savol or '').strip() or not sozlangan() or not platforma_sozlama().agent_yoqilgan:
         return None
@@ -231,7 +249,7 @@ def tozala():
 # ---------- ega buyruqlari ----------
 
 def sinov(savol):
-    """`/agent_sinov <savol>` — OpenAI ishlayaptimi va qaysi maqola tanlanadi: egaga ko'rinadigan matn."""
+    """`/agent_sinov <savol>` — AI ishlayaptimi va qaysi maqola tanlanadi: egaga ko'rinadigan matn."""
     if not savol.strip():
         return "Foydalanish: /agent_sinov savol matni\nMasalan: /agent_sinov PIN kodim esimdan chiqdi"
     soni = BilimMaqola.objects.filter(faol=True).count()
@@ -240,7 +258,7 @@ def sinov(savol):
     try:
         m = tanla(savol)
     except AgentXatosi as e:
-        return f"❌ OpenAI xatosi: {e}"
+        return f"❌ {xizmat()[0]} xatosi: {e}"
     if not m:
         return f"🤷 Mos maqola topilmadi ({soni} ta faol maqola ichida). Bunday savol sizga o'tadi."
     return f"✅ Tanlandi: #{m.id} «{m.savol}»\n\nYuboriladigan javob:\n{m.javob}"
@@ -253,8 +271,9 @@ def holat_matni():
     qoralama = BilimMaqola.objects.filter(faol=False).count()
     qatorlar = ["🤖 Qo'llab-quvvatlash agenti",
                 "Holat: " + ('yoqilgan (tasdiq rejimi)' if ps.agent_yoqilgan else "o'chiq"),
-                f"OpenAI kaliti: {'kiritilgan' if sozlangan() else 'kiritilmagan (.env → OPENAI_API_KEY)'}",
-                f"Model: {settings.OPENAI_MODEL}",
+                f"AI xizmati: {xizmat()[0]}",
+                f"Kalit: {'kiritilgan' if sozlangan() else 'kiritilmagan (.env → DEEPSEEK_API_KEY yoki OPENAI_API_KEY)'}",
+                f"Model: {xizmat()[3]}",
                 f"Bilim bazasi: {faol} ta faol, {qoralama} ta tekshirilmagan qoralama",
                 '', "Sinash: /agent_sinov savol matni"]
     return '\n'.join(qatorlar)
