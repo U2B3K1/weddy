@@ -129,7 +129,8 @@ class AgentTests(Base):
         self.assertEqual((taklif['chat_id'], taklif['message_thread_id']), (GURUH, 40))
         self.assertIn('PIN ni rahbar tiklaydi, 15 daqiqa kuting.', taklif['text'])
         self.assertIn(f'#{self.pin.id}', taklif['text'])  # manba ko'rinadi
-        self.assertEqual([b['callback_data'] for b in taklif['reply_markup']['inline_keyboard'][0]], [f'ag:y:{t.id}', f'ag:n:{t.id}'])
+        self.assertEqual([b['callback_data'] for b in taklif['reply_markup']['inline_keyboard'][0]],
+                         [f'ag:y:{t.id}', f'ag:t:{t.id}', f'ag:n:{t.id}'])
         self.api.reset_mock()
         self.assertIn('faqat platforma egasi', self.bos(SOTUVCHI_CHAT, f'ag:y:{t.id}'))  # begona bosa olmaydi
         self.assertEqual(self.chaqiruvlar('sendMessage'), [])
@@ -144,6 +145,56 @@ class AgentTests(Base):
         self.api.reset_mock()
         self.assertIn('allaqachon', self.bos(EGA_CHAT, f'ag:y:{t.id}'))  # ikkinchi bosish — ikkinchi marta ketmaydi
         self.assertEqual(self.chaqiruvlar('sendMessage'), [])
+
+    def test_salon_sozlamalari_va_suhbat_modelga_boradi(self):
+        from apps.tenants.models import sozlama
+        so = sozlama(self.salon)
+        so.vaqtinchalik_bron_soat, so.kassa_rejimi, so.kechikish_jarimasi, so.kechikish_kunlik_summa = 12, 'kassir', True, 50_000
+        so.save()
+        self.murojaat('Salom')
+        self.urlopen.return_value = openai_javobi(jav(None, []))
+        agent.navbatni_ishla()
+        birinchi = AgentTaklif.objects.get()
+        AgentTaklif.objects.filter(id=birinchi.id).update(ega_javobi='Assalomu alaykum, tel 998901234567')
+        self.murojaat('avanssiz bron qancha turadi?')
+        self.urlopen.return_value = openai_javobi(jav('12 soat turadi.', [self.pin.id]))
+        agent.navbatni_ishla()
+        matn = json.loads(self.urlopen.call_args[0][0].data)['messages'][1]['content']
+        for kerak in ('roli: sotuvchi', 'Alohida kassir', 'bron muddati: 12 soat', "kuniga 50 000 so'm",
+                      "30 kun va undan ko'p — 100%; 7–29 kun — 50%; 7 kundan kam — 0%",
+                      'Foydalanuvchi: Salom', "Qo'llab-quvvatlash: Assalomu alaykum, tel [raqam]", 'avanssiz bron qancha turadi?'):
+            self.assertIn(kerak, matn)
+        self.assertNotIn(self.salon.nomi, matn)  # salon nomi va ism yuborilmaydi
+        self.assertNotIn('Malika', matn)
+        self.assertLess(matn.index('Maqolalar:'), matn.index("Salon ma'lumoti"))  # o'zgarmas qism boshida (kesh)
+
+    def test_tahrir_bazaga_ozi_qoshiladi(self):
+        q = self.murojaat('PIN unutdim')
+        self.urlopen.return_value = openai_javobi(jav('Rahbarga <yozing>.', [self.pin.id]))
+        agent.navbatni_ishla()
+        t = AgentTaklif.objects.get(murojaat=q)
+        mavzu = YordamMavzu.objects.get(chat_id=SOTUVCHI_CHAT).mavzu_id
+        self.api.reset_mock()
+        self.assertIn('faqat platforma egasi', self.bos(SOTUVCHI_CHAT, f'ag:t:{t.id}'))
+        xabar = {'message_id': 5, 'chat': {'id': GURUH}, 'text': 'taklif', 'message_thread_id': mavzu}
+        self.assertEqual(self.bos(EGA_CHAT, f'ag:t:{t.id}', xabar), '✏️ Tahrirlanmoqda')
+        (nusxa,) = [kw for kw in self.chaqiruvlar('sendMessage')]
+        self.assertIn('<pre>Rahbarga &lt;yozing&gt;.</pre>', nusxa['text'])
+        self.assertEqual((nusxa['chat_id'], nusxa['message_thread_id'], nusxa['parse_mode']), (GURUH, mavzu, 'HTML'))
+        self.assertIn('allaqachon', self.bos(EGA_CHAT, f'ag:y:{t.id}'))  # tahrirdagi taklif endi «Yuborish» bilan ketmaydi
+        from .management.commands.telegram_bot import yangilanishni_ishla
+        self.api.reset_mock()
+        yangilanishni_ishla({'message': {'message_id': 78, 'chat': {'id': GURUH, 'type': 'supergroup', 'is_forum': True},
+                                         'from': {'id': EGA_CHAT}, 'text': 'PIN ni rahbaringiz Sozlama → Xodimlar da yangilaydi.',
+                                         'message_thread_id': mavzu, 'is_topic_message': True}})
+        m = BilimMaqola.objects.get(manba=BilimMaqola.Manba.EGA)
+        self.assertEqual((m.savol, m.javob, m.faol), ('PIN unutdim', 'PIN ni rahbaringiz Sozlama → Xodimlar da yangilaydi.', True))
+        t.refresh_from_db()
+        self.assertEqual((t.holat, t.bazada), (AgentTaklif.Holat.YUBORILDI, True))
+        guruhga = [kw['text'] for kw in self.chaqiruvlar('sendMessage') if kw['chat_id'] == GURUH]
+        self.assertTrue(any("bazasiga qo'shildi" in x for x in guruhga))
+        self.assertFalse(any("qo'shaymi" in x for x in guruhga))  # so'ralmaydi — o'zi qo'shildi
+        self.assertTrue(self.chaqiruvlar('copyMessage') or [kw for kw in self.chaqiruvlar('sendMessage') if kw['chat_id'] == SOTUVCHI_CHAT])
 
     def test_topilmasa_jim_kerak_emas(self):
         self.murojaat('Salom')

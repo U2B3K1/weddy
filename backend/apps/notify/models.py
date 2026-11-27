@@ -150,6 +150,7 @@ class AgentTaklif(models.Model):
         TOPILMADI = 'topilmadi', "Bazada yo'q"
         YUBORILDI = 'yuborildi', 'Yuborildi'
         RAD = 'rad', 'Kerak emas'
+        TAHRIR = 'tahrir', 'Ega tahrirlamoqda'
         XATO = 'xato', 'Xato'
 
     murojaat = models.ForeignKey(Murojaat, on_delete=models.CASCADE, related_name='+')

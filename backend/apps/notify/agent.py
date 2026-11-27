@@ -6,7 +6,10 @@ Egasi: «aqlli javob bersin, lekin o'ylab topmasin». Shuning uchun:
 - Kod tekshiradi: javob bo'sh emas, uzun emas, manbalar bo'sh emas va hammasi yuborilgan faol maqolalardan.
   Aks holda — «topilmadi» (savol egaga o'tadi).
 - Kafolat — tasdiq: taklif javob matni va manba maqolalar bilan egaga chiqadi, foydalanuvchiga faqat ega
-  «✅ Yuborish» ni bosganda ketadi. Noto'g'ri bo'lsa — «❌ Kerak emas» va o'zi yozadi.
+  «✅ Yuborish» ni bosganda ketadi. «✏️ Tahrirlash» — matn nusxalash uchun chiqadi; ega tuzatib yozgan javob
+  foydalanuvchiga boradi va bazaga o'zi qo'shiladi. Noto'g'ri bo'lsa — «❌ Kerak emas».
+- Kontekst: shu foydalanuvchining oxirgi soatlardagi savol-javoblari (yashirilgan matn) va uning saloni
+  sozlamalari hamda roli (ism, telefon, salon nomi yuborilmaydi) — javob shu salonga mos bo'lsin.
 
 Tasdiq rejimi: taklif guruhdagi murojaatchi mavzusiga «✅ Yuborish / ❌ Kerak emas» tugmalari bilan chiqadi; javob
 faqat ega bosgandan keyin ketadi. Modelga faqat savol matni boradi (telefon, karta, email yashirilgan) — kim yozgani,
@@ -16,6 +19,7 @@ AI so'rovi bot jarayonida navbat bilan bajariladi (`navbatni_ishla`), foydalanuv
 kutmaydi; xato jim (savol egada baribir bor), jurnalga yoziladi. Kalit faqat `.env` da: `DEEPSEEK_API_KEY` bo'lsa
 DeepSeek, aks holda `OPENAI_API_KEY` (OpenAI).
 """
+import html
 import json
 import logging
 import re
@@ -37,6 +41,8 @@ TIMEOUT = 30            # soniya: AI javobini kutish (bot jarayoni shu payt bosh
 MAQOLA_MAKS = 150       # modelga yuboriladigan maqolalar
 SAQLASH_KUN = 30        # taklif qatori (yashirilgan savol matni) shuncha kun saqlanadi
 TAKLIF_SARLAVHASI = "🤖 Bilim bazasidan javob taklifi"
+SUHBAT_SOAT = 3         # shu vaqt ichidagi oldingi savol-javoblar kontekst sifatida beriladi
+SUHBAT_MAKS = 6         # ko'pi bilan shuncha oldingi savol
 
 _TELEFON = re.compile(r'(?:\+?\d[\d\s\-()]{7,}\d)')
 _EMAIL = re.compile(r'[\w.+-]+@[\w-]+\.[\w.]+')
@@ -108,9 +114,69 @@ KORSATMA = ("Siz Libosa (kelin liboslari salonlari uchun dastur) qo'llab-quvvatl
             "ketma-ket ayting. Maqolalarda yo'q narsani — tugma, bo'lim nomi, muddat, narx, imkoniyatni — qo'shmang "
             "va taxmin qilmang. Maqolalar savolga javob bermasa, savol boshqa mavzuda bo'lsa, faqat salom-alik, "
             "shikoyat yoki shaxsiy masala bo'lsa — javob null. «manbalar» — javobda foydalangan maqolalar raqamlari. "
+            "Salon ma'lumoti berilgan bo'lsa, maqoladagi standart qiymat o'rniga shu salonnikini ayting (masalan, bron "
+            "muddati). Savol beruvchining roliga mos javob bering: sotuvchi yoki kassir salon sozlamasini o'zgartira "
+            "olmaydi — bunday ishni rahbar qilishini ayting. Oldingi suhbat — faqat savolni tushunish uchun. "
             "Javob faqat JSON: {\"javob\": \"...\", \"manbalar\": [3]} yoki {\"javob\": null, \"manbalar\": []}.")
 JAVOB_MAKS = 1500       # model javobi bundan uzun bo'lsa — rad (tushunarsiz yoki keraksiz uzun)
 BAZA_MAKS = 60000       # modelga yuboriladigan maqolalar matni (belgi)
+
+
+def _qoida_matni(qoida):
+    """[[30, 100], [7, 50], [0, 0]] → «30 kun va undan ko'p — 100%; 7–29 kun — 50%; 7 kundan kam — 0%»."""
+    qismlar, oldingi = [], None
+    for kun, foiz in qoida or []:
+        if oldingi is None:
+            oraliq = f"{kun} kun va undan ko'p"
+        elif kun == 0:
+            oraliq = f'{oldingi} kundan kam'
+        else:
+            oraliq = f'{kun}–{oldingi - 1} kun'
+        qismlar.append(f'{oraliq} — {foiz}%')
+        oldingi = kun
+    return '; '.join(qismlar)
+
+
+def salon_konteksti(murojaat):
+    """Savol beruvchining roli va saloni qoidalari (shaxsiy ma'lumotsiz). Salon noma'lum bo'lsa — bo'sh."""
+    from apps.tenants.models import sozlama
+    s = murojaat.salon
+    if not s:
+        return ''
+    so = sozlama(s)
+    garov = {'pul': 'pul', 'hujjat': 'hujjat', 'tillo': 'tillo buyum'}
+    ha = lambda b: 'ha' if b else "yo'q"  # noqa: E731
+    qatorlar = [
+        "Salon ma'lumoti (savol beruvchining saloni):",
+        f"- savol beruvchining roli: {murojaat.xodim.get_rol_display().lower() if murojaat.xodim else 'aniqlanmagan'}",
+        f"- kassa tartibi: {so.get_kassa_rejimi_display()}",
+        f"- avanssiz (vaqtinchalik) bron muddati: {so.vaqtinchalik_bron_soat} soat",
+        f"- tozalash buferi: {so.bufer_kun} kun",
+        f"- garov turlari: {', '.join(garov[t] for t in so.zalog_turlari()) or 'yoqilmagan'}",
+        ('- kechikish jarimasi: kuniga ' + f'{so.kechikish_kunlik_summa:,}'.replace(',', ' ') + " so'm")
+        if so.kechikish_jarimasi else "- kechikish jarimasi: o'chiq",
+        f"- avans qaytarish qoidasi: {_qoida_matni(so.qaytarish_qoidasi)}",
+        f"- sotuvchi libos qo'sha oladi: {ha(so.sotuvchi_libos_qoshadi)}",
+        f"- promokod va chegirma birga: {ha(so.promokod_chegirma_birga)}",
+        f"- mavsumiy narx: {ha(so.mavsumiy_narx)}; sotuvchi bonusi: {ha(so.sotuvchi_bonusi)}; SMS eslatma: {ha(so.sms_eslatma)}",
+        f"- obuna holati: {s.get_holat_display()}",
+    ]
+    return '\n'.join(qatorlar) + '\n\n'
+
+
+def suhbat_konteksti(t):
+    """Shu foydalanuvchining oxirgi `SUHBAT_SOAT` soatdagi oldingi savollari va unga ketgan javoblar (yashirilgan)."""
+    oldingi = list(AgentTaklif.objects.filter(
+        murojaat__chat_id=t.murojaat.chat_id, id__lt=t.id,
+        yaratilgan__gt=timezone.now() - timedelta(hours=SUHBAT_SOAT)).order_by('-id')[:SUHBAT_MAKS])
+    qatorlar = []
+    for o in reversed(oldingi):
+        qatorlar.append(f'Foydalanuvchi: {o.savol[:500]}')
+        if o.ega_javobi:
+            qatorlar.append(f"Qo'llab-quvvatlash: {yashir(o.ega_javobi)[:500]}")
+        elif o.holat == AgentTaklif.Holat.YUBORILDI and o.javob:
+            qatorlar.append(f"Qo'llab-quvvatlash: {o.javob[:500]}")
+    return ('Oldingi suhbat (eskidan yangiga):\n' + '\n'.join(qatorlar) + '\n\n') if qatorlar else ''
 
 
 class Taklif:
@@ -119,8 +185,9 @@ class Taklif:
         self.matn, self.manbalar = matn, manbalar
 
 
-def tanla(savol):
-    """Savolga bilim bazasi asosidagi javob (`Taklif`) yoki None. Xatoda AgentXatosi."""
+def tanla(savol, kontekst=''):
+    """Savolga bilim bazasi asosidagi javob (`Taklif`) yoki None. `kontekst` — salon ma'lumoti va oldingi suhbat.
+    Xatoda AgentXatosi."""
     maqolalar, hajm = [], 0
     for m in BilimMaqola.objects.filter(faol=True).order_by('id')[:MAQOLA_MAKS]:
         hajm += len(m.savol) + len(m.javob)
@@ -131,7 +198,7 @@ def tanla(savol):
         return None
     baza = '\n\n'.join(f'#{m.id}. Savol: {m.savol}\nJavob: {m.javob}' for m in maqolalar)
     natija = _sorov([{'role': 'system', 'content': KORSATMA},
-                     {'role': 'user', 'content': f'Maqolalar:\n{baza}\n\nFoydalanuvchi savoli:\n{yashir(savol)[:2000]}'}],
+                     {'role': 'user', 'content': f'Maqolalar:\n{baza}\n\n{kontekst}Foydalanuvchi savoli:\n{yashir(savol)[:2000]}'}],
                     SXEMA)
     if not isinstance(natija, dict):
         return None
@@ -159,11 +226,12 @@ def navbatga(murojaat, savol):
 def navbatni_ishla(soni=2):
     """Navbatdagi takliflar (bir aylanishda ko'pi bilan `soni` ta): bazadan javob chiqsa — mavzuga taklif."""
     ishlandi = 0
-    for t in AgentTaklif.objects.filter(holat=AgentTaklif.Holat.NAVBATDA).select_related('murojaat').order_by('id')[:soni]:
+    for t in (AgentTaklif.objects.filter(holat=AgentTaklif.Holat.NAVBATDA)
+              .select_related('murojaat__salon', 'murojaat__xodim').order_by('id')[:soni]):
         if AgentTaklif.objects.filter(id=t.id, holat=AgentTaklif.Holat.NAVBATDA).update(holat=AgentTaklif.Holat.XATO) == 0:
             continue  # boshqa jarayon oldi
         try:
-            taklif = tanla(t.savol)
+            taklif = tanla(t.savol, salon_konteksti(t.murojaat) + suhbat_konteksti(t))
         except AgentXatosi as e:
             log.warning('Agent: %s', e)
             AgentTaklif.objects.filter(id=t.id).update(xato=str(e)[:300])
@@ -182,6 +250,7 @@ def navbatni_ishla(soni=2):
         try:
             xabar = telegram.api('sendMessage', text=taklif_matni(taklif)[:4096], reply_markup={'inline_keyboard': [[
                 {'text': '✅ Yuborish', 'callback_data': f'ag:y:{t.id}'},
+                {'text': '✏️ Tahrirlash', 'callback_data': f'ag:t:{t.id}'},
                 {'text': '❌ Kerak emas', 'callback_data': f'ag:n:{t.id}'}]]}, **kw)
         except telegram.TelegramXatosi as e:
             log.warning('Agent taklifi yuborilmadi: %s', e)
@@ -199,7 +268,8 @@ def taklif_matni(taklif):
 
 
 def tugma(c, token=None):
-    """`ag:y:<id>` — yuborish, `ag:n:<id>` — kerak emas, `ag:b:<id>` — bazaga qo'shish. Faqat platforma egasi.
+    """`ag:y:<id>` — yuborish, `ag:t:<id>` — tahrirlash, `ag:n:<id>` — kerak emas, `ag:b:<id>` — bazaga qo'shish.
+    Faqat platforma egasi.
 
     Holat bir marta o'zgaradi (atomik): ikki marta bosilsa ikkinchisi hech narsa qilmaydi."""
     from apps.tenants.models import platforma_sozlama
@@ -229,6 +299,23 @@ def tugma(c, token=None):
                     AgentTaklif.objects.filter(id=tid).update(holat=AgentTaklif.Holat.TAKLIF, xato=str(e)[:300])
                     javob = '❌ Yetkazilmadi: ' + ("foydalanuvchi botni bloklagan" if '403' in str(e) else 'qayta bosing')
                     return javob
+        elif q[1] == 't':  # matn nusxalash uchun chiqadi; ega tuzatib yozgan javob bazaga o'zi qo'shiladi (ega_javobi)
+            ozgardi = AgentTaklif.objects.filter(id=tid, holat=AgentTaklif.Holat.TAKLIF).update(holat=AgentTaklif.Holat.TAHRIR)
+            t = AgentTaklif.objects.filter(id=tid).first()
+            if not ozgardi or not t:
+                javob = "Bu taklif allaqachon ko'rib chiqilgan."
+            else:
+                m = c.get('message') or {}
+                mavzu = m.get('message_thread_id')
+                qayerga = "shu mavzuga yozing" if mavzu else "murojaat xabariga «reply» qilib yozing"
+                try:
+                    telegram.api('sendMessage', chat_id=(m.get('chat') or {}).get('id', platforma_sozlama().telegram_chat_id),
+                                 text=f"<pre>{html.escape(t.javob[:3500])}</pre>\nMatnni bosib nusxalang, tuzating va {qayerga} — "
+                                      "foydalanuvchiga boradi va bilim bazasiga o'zi qo'shiladi.",
+                                 parse_mode='HTML', **({'message_thread_id': mavzu} if mavzu else {}), **kw)
+                except telegram.TelegramXatosi:
+                    pass
+                javob = "✏️ Tahrirlanmoqda"
         elif q[1] == 'n':
             ozgardi = AgentTaklif.objects.filter(id=tid, holat=AgentTaklif.Holat.TAKLIF).update(holat=AgentTaklif.Holat.RAD)
             javob = '❌ Yuborilmadi' if ozgardi else "Bu taklif allaqachon ko'rib chiqilgan."
@@ -253,10 +340,26 @@ def tugma(c, token=None):
 
 def ega_javobi(chat_id, guruh_id, matn, mavzu, token=None):
     """Ega mavzuda matn bilan javob berdi: shu murojaatchining oxirgi (3 kun ichidagi) agent qatoriga javob yoziladi
-    va «📚 Bazaga qo'shish» taklif qilinadi — keyingi shunday savolga agent o'zi javob topadi."""
-    t = (AgentTaklif.objects.filter(murojaat__chat_id=chat_id, bazada=False, yaratilgan__gt=timezone.now() - timedelta(days=3))
-         .exclude(holat__in=[AgentTaklif.Holat.YUBORILDI]).order_by('-id').first())
-    if not t or not (matn or '').strip():
+    va «📚 Bazaga qo'shish» taklif qilinadi — keyingi shunday savolga agent o'zi javob topadi.
+    Ega «✏️ Tahrirlash» ni bosgan bo'lsa — tuzatilgan javob bazaga so'ramasdan qo'shiladi."""
+    if not (matn or '').strip():
+        return None
+    yaqin = AgentTaklif.objects.filter(murojaat__chat_id=chat_id, bazada=False,
+                                       yaratilgan__gt=timezone.now() - timedelta(days=3))
+    tahrir = yaqin.filter(holat=AgentTaklif.Holat.TAHRIR).order_by('-id').first()
+    if tahrir and AgentTaklif.objects.filter(id=tahrir.id, holat=AgentTaklif.Holat.TAHRIR, bazada=False).update(
+            holat=AgentTaklif.Holat.YUBORILDI, ega_javobi=matn[:2000], bazada=True):
+        m = BilimMaqola.objects.create(savol=tahrir.savol[:300], javob=matn[:2000], faol=True, manba=BilimMaqola.Manba.EGA)
+        try:
+            telegram.api('sendMessage', chat_id=guruh_id,
+                         text=f"📚 Tuzatilgan javob bilim bazasiga qo'shildi (#{m.id}). «Libosa» ilovasida (Platforma → Bilim) "
+                              "tahrirlash yoki o'chirish mumkin.",
+                         **({'message_thread_id': mavzu} if mavzu else {}), **({'_token': token} if token else {}))
+        except telegram.TelegramXatosi:
+            pass
+        return tahrir
+    t = yaqin.exclude(holat__in=[AgentTaklif.Holat.YUBORILDI]).order_by('-id').first()
+    if not t:
         return None
     AgentTaklif.objects.filter(id=t.id).update(ega_javobi=matn[:2000])
     try:
