@@ -17,6 +17,11 @@ KALIT = override_settings(OPENAI_API_KEY='sk-test-KALIT', OPENAI_MODEL='gpt-6-lu
 GURUH = -100777
 
 
+def jav(matn, manbalar):
+    """Model javobi (JSON matni): bilim bazasi asosidagi javob va foydalanilgan maqolalar."""
+    return json.dumps({'javob': matn, 'manbalar': manbalar})
+
+
 def openai_javobi(mazmun):
     """urlopen o'rnida: OpenAI Chat Completions javobi (`mazmun` — modelning matni)."""
     tana = json.dumps({'choices': [{'message': {'content': mazmun}}]}).encode()
@@ -66,16 +71,19 @@ class AgentTests(Base):
         self.assertEqual(agent.yashir('Tel: +998 90 123-45-67, karta 8600 1234 5678 9012, a@b.uz, zakaz 125'),
                          'Tel: [raqam], karta [raqam], [email], zakaz 125')
 
-    def test_faqat_yuborilgan_faol_maqola_qabul_qilinadi(self):
-        self.urlopen.return_value = openai_javobi(json.dumps({'id': self.pin.id}))
-        self.assertEqual(agent.tanla('PIN esimdan chiqdi'), self.pin)
+    def test_faqat_faol_maqolaga_tayangan_javob_qabul_qilinadi(self):
+        self.urlopen.return_value = openai_javobi(jav(' Rahbarga yozing. ', [self.pin.id, self.pin.id]))
+        t = agent.tanla('PIN esimdan chiqdi')
+        self.assertEqual((t.matn, t.manbalar), ('Rahbarga yozing.', [self.pin]))
         so_rov = json.loads(self.urlopen.call_args[0][0].data)
         self.assertEqual(so_rov['model'], 'gpt-6-luna')
         matn = so_rov['messages'][1]['content']
         self.assertIn(self.pin.savol, matn)
+        self.assertIn(self.pin.javob, matn)  # model javobni maqola matnidan yozadi
         self.assertNotIn('Tekshirilmagan', matn)  # qoralama modelga ham bormaydi
-        for mazmun in (json.dumps({'id': self.qoralama.id}), json.dumps({'id': 99999}), json.dumps({'id': None}),
-                       'Javob: 15 daqiqa', json.dumps({'id': str(self.pin.id)}), '[]'):
+        for mazmun in (jav('x', [self.qoralama.id]), jav('x', [self.pin.id, 99999]), jav(None, []), jav('x', []),
+                       jav('  ', [self.pin.id]), jav('x' * 2000, [self.pin.id]), jav('x', [str(self.pin.id)]),
+                       jav('x', [True]), 'Javob: 15 daqiqa', '[]'):
             self.urlopen.return_value = openai_javobi(mazmun)
             self.assertIsNone(agent.tanla('PIN'), mazmun)
 
@@ -92,8 +100,8 @@ class AgentTests(Base):
 
     @override_settings(DEEPSEEK_API_KEY='sk-ds-KALIT', DEEPSEEK_MODEL='deepseek-flash')
     def test_deepseek(self):
-        self.urlopen.return_value = openai_javobi(json.dumps({'id': self.pin.id}))
-        self.assertEqual(agent.tanla('PIN esimdan chiqdi'), self.pin)
+        self.urlopen.return_value = openai_javobi(jav('Rahbarga yozing.', [self.pin.id]))
+        self.assertEqual(agent.tanla('PIN esimdan chiqdi').manbalar, [self.pin])
         req = self.urlopen.call_args[0][0]
         so_rov = json.loads(req.data)
         self.assertEqual(req.full_url, agent.DEEPSEEK_URL)
@@ -102,7 +110,7 @@ class AgentTests(Base):
         self.assertEqual(so_rov['response_format'], {'type': 'json_object'})
         self.assertEqual(so_rov['thinking'], {'type': 'disabled'})
         self.assertIn('JSON', so_rov['messages'][0]['content'])  # JSON rejimi sharti
-        for mazmun in ('   ', json.dumps({'id': True}), json.dumps({'id': self.qoralama.id})):  # bo'sh javob ham — topilmadi
+        for mazmun in ('   ', jav('x', [True]), jav('x', [self.qoralama.id])):  # bo'sh javob ham — topilmadi
             self.urlopen.return_value = openai_javobi(mazmun)
             self.assertIsNone(agent.tanla('PIN'), mazmun)
         self.assertIn('DeepSeek', agent.holat_matni())
@@ -114,12 +122,13 @@ class AgentTests(Base):
         t = AgentTaklif.objects.get(murojaat=q)
         self.assertNotIn('123 45 67', t.savol)  # telefon yashirilgan
         self.urlopen.assert_not_called()  # xabarni qabul qilish OpenAI ni kutmaydi
-        self.urlopen.return_value = openai_javobi(json.dumps({'id': self.pin.id}))
+        self.urlopen.return_value = openai_javobi(jav('PIN ni rahbar tiklaydi, 15 daqiqa kuting.', [self.pin.id]))
         self.api.reset_mock()
         self.assertEqual(agent.navbatni_ishla(), 1)
         (taklif,) = self.chaqiruvlar('sendMessage')
         self.assertEqual((taklif['chat_id'], taklif['message_thread_id']), (GURUH, 40))
-        self.assertIn('15 daqiqa kuting.', taklif['text'])
+        self.assertIn('PIN ni rahbar tiklaydi, 15 daqiqa kuting.', taklif['text'])
+        self.assertIn(f'#{self.pin.id}', taklif['text'])  # manba ko'rinadi
         self.assertEqual([b['callback_data'] for b in taklif['reply_markup']['inline_keyboard'][0]], [f'ag:y:{t.id}', f'ag:n:{t.id}'])
         self.api.reset_mock()
         self.assertIn('faqat platforma egasi', self.bos(SOTUVCHI_CHAT, f'ag:y:{t.id}'))  # begona bosa olmaydi
@@ -128,7 +137,8 @@ class AgentTests(Base):
         self.assertEqual(self.bos(EGA_CHAT, f'ag:y:{t.id}', xabar), '✅ Yuborildi')
         (javob,) = self.chaqiruvlar('sendMessage')
         self.assertEqual(javob['chat_id'], SOTUVCHI_CHAT)
-        self.assertTrue(javob['text'].endswith('15 daqiqa kuting.'))  # bazadagi matn, so'zma-so'z
+        self.assertTrue(javob['text'].endswith('PIN ni rahbar tiklaydi, 15 daqiqa kuting.'))  # ega tasdiqlagan matn
+        self.assertNotIn('Manba', javob['text'])
         self.assertEqual(javob['reply_parameters']['message_id'], q.foydalanuvchi_xabar_id)
         self.assertIn('✅ Yuborildi', self.chaqiruvlar('editMessageText')[0]['text'])
         self.api.reset_mock()
@@ -137,13 +147,13 @@ class AgentTests(Base):
 
     def test_topilmasa_jim_kerak_emas(self):
         self.murojaat('Salom')
-        self.urlopen.return_value = openai_javobi(json.dumps({'id': None}))
+        self.urlopen.return_value = openai_javobi(jav(None, []))
         self.api.reset_mock()
         agent.navbatni_ishla()
         self.assertEqual(self.chaqiruvlar('sendMessage'), [])
         self.assertEqual(AgentTaklif.objects.get().holat, AgentTaklif.Holat.TOPILMADI)
         q = self.murojaat('Obuna haqida')
-        self.urlopen.return_value = openai_javobi(json.dumps({'id': self.tolov.id}))
+        self.urlopen.return_value = openai_javobi(jav('Chek yuboring.', [self.tolov.id]))
         agent.navbatni_ishla()
         t = AgentTaklif.objects.get(murojaat=q)
         self.assertEqual(self.bos(EGA_CHAT, f'ag:n:{t.id}'), '❌ Yuborilmadi')
@@ -163,7 +173,7 @@ class AgentTests(Base):
 
     def test_ega_javobi_bazaga_qoshiladi(self):
         q = self.murojaat('Chek qayerga yuboriladi?')
-        self.urlopen.return_value = openai_javobi(json.dumps({'id': None}))
+        self.urlopen.return_value = openai_javobi(jav(None, []))
         agent.navbatni_ishla()
         mavzu = YordamMavzu.objects.get(chat_id=SOTUVCHI_CHAT).mavzu_id
         from .management.commands.telegram_bot import yangilanishni_ishla
@@ -183,9 +193,9 @@ class AgentTests(Base):
     # ---------- ega buyruqlari va ilova ----------
 
     def test_ega_buyruqlari(self):
-        self.urlopen.return_value = openai_javobi(json.dumps({'id': self.pin.id}))
+        self.urlopen.return_value = openai_javobi(jav('Rahbarga yozing.', [self.pin.id]))
         self.yoz(EGA_CHAT, '/agent_sinov PIN esimdan chiqdi')
-        self.assertIn(f'✅ Tanlandi: #{self.pin.id}', self.matnlar())
+        self.assertIn('✅ Javob taklifi:\n\nRahbarga yozing.', self.matnlar())
         self.yoz(EGA_CHAT, '/agent')
         self.assertIn('yoqilgan (tasdiq rejimi)', self.matnlar())
         self.assertIn('faqat platforma egasiga', self.bos(SOTUVCHI_CHAT, 'e:ag_off'))  # egadan boshqa — rad
@@ -212,6 +222,12 @@ class AgentTests(Base):
             self.qoralama.refresh_from_db()
             self.assertEqual((self.qoralama.savol, self.qoralama.faol), ('Tekshirildi', True))
             self.assertEqual(c.post('/api/tg/ega/', {'amal': 'bilim_saqla', 'savol': '', 'javob': 'x'}, format='json').status_code, 403)
+            BilimMaqola.objects.create(savol='Q1', javob='J1', manba=BilimMaqola.Manba.QORALAMA)
+            qolda = BilimMaqola.objects.create(savol='Q2', javob='J2', manba=BilimMaqola.Manba.QOLDA)
+            r = c.post('/api/tg/ega/', {'amal': 'bilim_qoralamalar'}, format='json')
+            self.assertEqual(r.data['javob'], '1 ta qoralama yoqildi')
+            self.assertTrue(BilimMaqola.objects.get(savol='Q1').faol)
+            self.assertFalse(BilimMaqola.objects.get(id=qolda.id).faol)  # faqat dasturchi qoralamalari
             c.post('/api/tg/ega/', {'amal': 'bilim_ochir', 'id': self.qoralama.id}, format='json')
             self.assertFalse(BilimMaqola.objects.filter(id=self.qoralama.id).exists())
             c.credentials(HTTP_AUTHORIZATION='tma ' + imzola(SOTUVCHI_CHAT))

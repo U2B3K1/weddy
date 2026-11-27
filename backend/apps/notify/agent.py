@@ -1,9 +1,12 @@
-"""Qo'llab-quvvatlash agenti: murojaatga bilim bazasidan mos javobni tanlaydi (DeepSeek yoki OpenAI) — **javobni o'zi yozmaydi**.
+"""Qo'llab-quvvatlash agenti: murojaatga **faqat bilim bazasi asosida** javob yozadi (DeepSeek yoki OpenAI).
 
-O'ylab topmaslik kodda kafolatlanadi, so'rov matniga ishonib emas:
-- Modelga faqat faol maqolalarning raqami va savoli beriladi; u faqat bitta raqam yoki `null` qaytaradi (JSON sxema).
-- Raqam yuborilganlar orasida bo'lmasa, javob tushunarsiz bo'lsa yoki xato bo'lsa — «topilmadi».
-- Foydalanuvchiga borgan matn — bazadagi maqolaning o'zi (so'zma-so'z); modelning hech qanday matni ishlatilmaydi.
+Egasi: «aqlli javob bersin, lekin o'ylab topmasin». Shuning uchun:
+- Modelga faqat faol maqolalar (raqam, savol, javob) beriladi; ko'rsatma — faqat shu ma'lumotdan, qisqa javob yozish,
+  bazada yo'q bo'lsa `null`. Model qaysi maqolalardan foydalanganini (`manbalar`) qaytaradi.
+- Kod tekshiradi: javob bo'sh emas, uzun emas, manbalar bo'sh emas va hammasi yuborilgan faol maqolalardan.
+  Aks holda — «topilmadi» (savol egaga o'tadi).
+- Kafolat — tasdiq: taklif javob matni va manba maqolalar bilan egaga chiqadi, foydalanuvchiga faqat ega
+  «✅ Yuborish» ni bosganda ketadi. Noto'g'ri bo'lsa — «❌ Kerak emas» va o'zi yozadi.
 
 Tasdiq rejimi: taklif guruhdagi murojaatchi mavzusiga «✅ Yuborish / ❌ Kerak emas» tugmalari bilan chiqadi; javob
 faqat ega bosgandan keyin ketadi. Modelga faqat savol matni boradi (telefon, karta, email yashirilgan) — kim yozgani,
@@ -30,7 +33,7 @@ from .models import AgentTaklif, BilimMaqola, Murojaat
 log = logging.getLogger(__name__)
 URL = 'https://api.openai.com/v1/chat/completions'
 DEEPSEEK_URL = 'https://api.deepseek.com/chat/completions'
-TIMEOUT = 15            # soniya: AI javobini kutish (bot jarayoni shu payt boshqa ishni kutadi — navbat kichik)
+TIMEOUT = 30            # soniya: AI javobini kutish (bot jarayoni shu payt boshqa ishni kutadi — navbat kichik)
 MAQOLA_MAKS = 150       # modelga yuboriladigan maqolalar
 SAQLASH_KUN = 30        # taklif qatori (yashirilgan savol matni) shuncha kun saqlanadi
 TAKLIF_SARLAVHASI = "🤖 Bilim bazasidan javob taklifi"
@@ -65,13 +68,13 @@ def _sorov(xabarlar, sxema):
     """Chat Completions (OpenAI formati). Javob lug'ati, tushunarsiz bo'lsa None, xatoda AgentXatosi (kalit matnga chiqmaydi).
 
     OpenAI — Structured Outputs (qat'iy sxema). DeepSeek sxemani qo'llamaydi: JSON rejimi (`json_object`, ko'rsatmada
-    «JSON» so'zi va namuna bor), fikrlash rejimi o'chiq. Qaytgan raqam baribir `tanla` da yuborilganlar bilan tekshiriladi."""
+    «JSON» so'zi va namuna bor), fikrlash rejimi o'chiq. Natija baribir `tanla` da tekshiriladi."""
     nomi, manzil, kalit, model = xizmat()
     if not kalit:
         raise AgentXatosi("AI kaliti (.env dagi DEEPSEEK_API_KEY yoki OPENAI_API_KEY) kiritilmagan.")
     tana = {'model': model, 'messages': xabarlar}
     if nomi == 'DeepSeek':
-        tana.update(response_format={'type': 'json_object'}, thinking={'type': 'disabled'}, max_tokens=50)
+        tana.update(response_format={'type': 'json_object'}, thinking={'type': 'disabled'}, max_tokens=800)
     else:
         tana['response_format'] = {'type': 'json_schema', 'json_schema': {'name': 'tanlov', 'strict': True, 'schema': sxema}}
     req = urllib.request.Request(manzil, data=json.dumps(tana).encode(),
@@ -94,31 +97,53 @@ def _sorov(xabarlar, sxema):
     try:
         return json.loads(mazmun)
     except (TypeError, ValueError):
-        return None  # tushunarsiz javob — «topilmadi» (modelning matni hech qachon ishlatilmaydi)
+        return None  # tushunarsiz javob — «topilmadi»
 
 
-SXEMA = {'type': 'object', 'additionalProperties': False, 'required': ['id'],
-         'properties': {'id': {'type': ['integer', 'null']}}}
-KORSATMA = ("Siz Libosa (kelin liboslari saloni dasturi) qo'llab-quvvatlash xizmatidagi saralovchisiz. Foydalanuvchi "
-            "savoli va tayyor maqolalar ro'yxati beriladi (raqam va savol). Savolga TO'LIQ javob beradigan bitta "
-            "maqolaning raqamini qaytaring. Mos maqola bo'lmasa, savol boshqa narsa haqida bo'lsa, faqat salom-alik, "
-            "shikoyat yoki shaxsiy masala bo'lsa, yoki ikkilansangiz — null qaytaring. Taxmin qilmang: noto'g'ri "
-            "javobdan ko'ra null yaxshiroq. Javob faqat JSON: {\"id\": 12} yoki {\"id\": null}.")
+SXEMA = {'type': 'object', 'additionalProperties': False, 'required': ['javob', 'manbalar'],
+         'properties': {'javob': {'type': ['string', 'null']}, 'manbalar': {'type': 'array', 'items': {'type': 'integer'}}}}
+KORSATMA = ("Siz Libosa (kelin liboslari salonlari uchun dastur) qo'llab-quvvatlash xodimisiz. Sizga bilim bazasi "
+            "maqolalari (raqam, savol, javob) va foydalanuvchi savoli beriladi. Savolga FAQAT maqolalardagi ma'lumot "
+            "asosida, o'zbek tilida (lotin), xushmuomala va qisqa (1–4 gap) javob yozing; kerak bo'lsa qadamlarni "
+            "ketma-ket ayting. Maqolalarda yo'q narsani — tugma, bo'lim nomi, muddat, narx, imkoniyatni — qo'shmang "
+            "va taxmin qilmang. Maqolalar savolga javob bermasa, savol boshqa mavzuda bo'lsa, faqat salom-alik, "
+            "shikoyat yoki shaxsiy masala bo'lsa — javob null. «manbalar» — javobda foydalangan maqolalar raqamlari. "
+            "Javob faqat JSON: {\"javob\": \"...\", \"manbalar\": [3]} yoki {\"javob\": null, \"manbalar\": []}.")
+JAVOB_MAKS = 1500       # model javobi bundan uzun bo'lsa — rad (tushunarsiz yoki keraksiz uzun)
+BAZA_MAKS = 60000       # modelga yuboriladigan maqolalar matni (belgi)
+
+
+class Taklif:
+    """Model javobi (tekshirilgan): `matn` — foydalanuvchiga boradigan matn, `manbalar` — foydalanilgan maqolalar."""
+    def __init__(self, matn, manbalar):
+        self.matn, self.manbalar = matn, manbalar
 
 
 def tanla(savol):
-    """Savolga mos faol maqola yoki None. Xatoda AgentXatosi."""
-    maqolalar = list(BilimMaqola.objects.filter(faol=True).order_by('id')[:MAQOLA_MAKS])
+    """Savolga bilim bazasi asosidagi javob (`Taklif`) yoki None. Xatoda AgentXatosi."""
+    maqolalar, hajm = [], 0
+    for m in BilimMaqola.objects.filter(faol=True).order_by('id')[:MAQOLA_MAKS]:
+        hajm += len(m.savol) + len(m.javob)
+        if hajm > BAZA_MAKS:
+            break
+        maqolalar.append(m)
     if not maqolalar:
         return None
-    royxat = '\n'.join(f'{m.id}. {m.savol}' for m in maqolalar)
+    baza = '\n\n'.join(f'#{m.id}. Savol: {m.savol}\nJavob: {m.javob}' for m in maqolalar)
     natija = _sorov([{'role': 'system', 'content': KORSATMA},
-                     {'role': 'user', 'content': f'Maqolalar:\n{royxat}\n\nFoydalanuvchi savoli:\n{yashir(savol)[:2000]}'}],
+                     {'role': 'user', 'content': f'Maqolalar:\n{baza}\n\nFoydalanuvchi savoli:\n{yashir(savol)[:2000]}'}],
                     SXEMA)
-    raqam = natija.get('id') if isinstance(natija, dict) else None
-    if not isinstance(raqam, int) or isinstance(raqam, bool):
+    if not isinstance(natija, dict):
         return None
-    return next((m for m in maqolalar if m.id == raqam), None)  # faqat yuborilganlardan
+    matn, raqamlar = natija.get('javob'), natija.get('manbalar')
+    if not isinstance(matn, str) or not matn.strip() or len(matn) > JAVOB_MAKS or not isinstance(raqamlar, list) or not raqamlar:
+        return None
+    if any(not isinstance(r, int) or isinstance(r, bool) for r in raqamlar):
+        return None
+    yuborilgan = {m.id: m for m in maqolalar}
+    if any(r not in yuborilgan for r in raqamlar):
+        return None  # yuborilmagan (yoki o'chiq) maqolaga tayangan — ishonchsiz
+    return Taklif(matn.strip(), [yuborilgan[r] for r in dict.fromkeys(raqamlar)])
 
 
 # ---------- navbat (bot jarayoni) ----------
@@ -132,18 +157,18 @@ def navbatga(murojaat, savol):
 
 
 def navbatni_ishla(soni=2):
-    """Navbatdagi takliflar (bir aylanishda ko'pi bilan `soni` ta): mos maqola topilsa — mavzuga taklif."""
+    """Navbatdagi takliflar (bir aylanishda ko'pi bilan `soni` ta): bazadan javob chiqsa — mavzuga taklif."""
     ishlandi = 0
     for t in AgentTaklif.objects.filter(holat=AgentTaklif.Holat.NAVBATDA).select_related('murojaat').order_by('id')[:soni]:
         if AgentTaklif.objects.filter(id=t.id, holat=AgentTaklif.Holat.NAVBATDA).update(holat=AgentTaklif.Holat.XATO) == 0:
             continue  # boshqa jarayon oldi
         try:
-            maqola = tanla(t.savol)
+            taklif = tanla(t.savol)
         except AgentXatosi as e:
             log.warning('Agent: %s', e)
             AgentTaklif.objects.filter(id=t.id).update(xato=str(e)[:300])
             continue
-        if not maqola:
+        if not taklif:
             AgentTaklif.objects.filter(id=t.id).update(holat=AgentTaklif.Holat.TOPILMADI)
             continue
         q = t.murojaat
@@ -155,21 +180,22 @@ def navbatni_ishla(soni=2):
         else:  # shaxsiy chat — qaysi murojaatga ekani ko'rinsin
             kw['reply_parameters'] = {'message_id': q.ega_xabar_id, 'allow_sending_without_reply': True}
         try:
-            xabar = telegram.api('sendMessage', text=taklif_matni(maqola)[:4096], reply_markup={'inline_keyboard': [[
+            xabar = telegram.api('sendMessage', text=taklif_matni(taklif)[:4096], reply_markup={'inline_keyboard': [[
                 {'text': '✅ Yuborish', 'callback_data': f'ag:y:{t.id}'},
                 {'text': '❌ Kerak emas', 'callback_data': f'ag:n:{t.id}'}]]}, **kw)
         except telegram.TelegramXatosi as e:
             log.warning('Agent taklifi yuborilmadi: %s', e)
             AgentTaklif.objects.filter(id=t.id).update(xato=str(e)[:300])
             continue
-        AgentTaklif.objects.filter(id=t.id).update(holat=AgentTaklif.Holat.TAKLIF, maqola=maqola,
-                                                   taklif_xabar_id=xabar.get('message_id'))
+        AgentTaklif.objects.filter(id=t.id).update(holat=AgentTaklif.Holat.TAKLIF, maqola=taklif.manbalar[0],
+                                                   javob=taklif.matn, taklif_xabar_id=xabar.get('message_id'))
         ishlandi += 1
     return ishlandi
 
 
-def taklif_matni(maqola):
-    return f"{TAKLIF_SARLAVHASI} (#{maqola.id} «{maqola.savol}»):\n\n{maqola.javob}"
+def taklif_matni(taklif):
+    manba = '\n'.join(f"#{m.id} «{m.savol}»" for m in taklif.manbalar)
+    return f"{TAKLIF_SARLAVHASI}:\n\n{taklif.matn}\n\n📚 Manba:\n{manba}"
 
 
 def tugma(c, token=None):
@@ -188,12 +214,13 @@ def tugma(c, token=None):
             with transaction.atomic():
                 ozgardi = AgentTaklif.objects.filter(id=tid, holat=AgentTaklif.Holat.TAKLIF).update(holat=AgentTaklif.Holat.YUBORILDI)
             t = AgentTaklif.objects.select_related('murojaat', 'maqola').filter(id=tid).first()
-            if not ozgardi or not t or not t.maqola:
+            matn = t and (t.javob or (t.maqola.javob if t.maqola else ''))
+            if not ozgardi or not matn:
                 javob = "Bu taklif allaqachon ko'rib chiqilgan."
             else:
                 try:
                     telegram.api('sendMessage', chat_id=t.murojaat.chat_id,
-                                 text=f"{JAVOB_SARLAVHASI}:\n\n{t.maqola.javob}"[:4096],
+                                 text=f"{JAVOB_SARLAVHASI}:\n\n{matn}"[:4096],
                                  reply_parameters={'message_id': t.murojaat.foydalanuvchi_xabar_id,
                                                    'allow_sending_without_reply': True}, **kw)
                     Murojaat.objects.filter(chat_id=t.murojaat.chat_id, javob_berildi__isnull=True).update(javob_berildi=timezone.now())
@@ -249,19 +276,20 @@ def tozala():
 # ---------- ega buyruqlari ----------
 
 def sinov(savol):
-    """`/agent_sinov <savol>` — AI ishlayaptimi va qaysi maqola tanlanadi: egaga ko'rinadigan matn."""
+    """`/agent_sinov <savol>` — AI ishlayaptimi va qanday javob yozadi: egaga ko'rinadigan matn (hech kimga yuborilmaydi)."""
     if not savol.strip():
         return "Foydalanish: /agent_sinov savol matni\nMasalan: /agent_sinov PIN kodim esimdan chiqdi"
     soni = BilimMaqola.objects.filter(faol=True).count()
     if not soni:
         return "Bilim bazasida faol maqola yo'q. «Libosa» ilovasi → Platforma → Bilim bo'limida maqolalarni tekshirib yoqing."
     try:
-        m = tanla(savol)
+        t = tanla(savol)
     except AgentXatosi as e:
         return f"❌ {xizmat()[0]} xatosi: {e}"
-    if not m:
-        return f"🤷 Mos maqola topilmadi ({soni} ta faol maqola ichida). Bunday savol sizga o'tadi."
-    return f"✅ Tanlandi: #{m.id} «{m.savol}»\n\nYuboriladigan javob:\n{m.javob}"
+    if not t:
+        return f"🤷 Bilim bazasida javob yo'q ({soni} ta faol maqola ichida). Bunday savol sizga o'tadi."
+    manba = '\n'.join(f"#{m.id} «{m.savol}»" for m in t.manbalar)
+    return f"✅ Javob taklifi:\n\n{t.matn}\n\n📚 Manba:\n{manba}"
 
 
 def holat_matni():

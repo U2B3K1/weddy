@@ -126,7 +126,7 @@ function TizimHolati({ h }) {
   )
 }
 
-// Bilim bazasi: agent savolga shu maqolalardan birini tanlaydi va javobini so'zma-so'z yuboradi (o'zi yozmaydi).
+// Bilim bazasi: agent savolga faqat shu maqolalar asosida javob yozadi; javob ega «Yuborish» ni bosgandagina ketadi.
 // Faqat «yoqilgan» maqolalar ishlatiladi; dasturchi tayyorlagan qoralamalarni tekshirib yoqasiz.
 const MANBA = { qoralama: 'qoralama — tekshiring', ega: 'sizning javobingizdan', qolda: "qo'lda yozilgan" }
 
@@ -140,7 +140,7 @@ function MaqolaShakli({ m, saqla, bekor, ochir, band }) {
       <label className="tg-yorliq" htmlFor="tg-bilim-savol">Savol (xodim qanday so'raydi)</label>
       <input id="tg-bilim-savol" className="tg-matn-maydon" maxLength={300} value={savol}
         placeholder="Masalan: PIN kodim esimdan chiqdi" onChange={(e) => setSavol(e.target.value)} />
-      <label className="tg-yorliq" htmlFor="tg-bilim-javob">Javob (xodimga aynan shu matn boradi)</label>
+      <label className="tg-yorliq" htmlFor="tg-bilim-javob">Javob (agent shu ma'lumotdan foydalanadi)</label>
       <textarea id="tg-bilim-javob" className="tg-matn-maydon" rows={6} maxLength={2000} value={javob}
         onChange={(e) => setJavob(e.target.value)} />
       <button type="button" className="tg-kalit" role="switch" aria-checked={faol} onClick={() => setFaol(!faol)}>
@@ -160,6 +160,7 @@ function MaqolaShakli({ m, saqla, bekor, ochir, band }) {
 function Bilim({ p, amal, band }) {
   const [tahrir, setTahrir] = useState(null)   // null — ro'yxat, 'yangi' — yangi maqola, aks holda maqola
   const faol = p.bilim.filter((m) => m.faol).length
+  const qoralama = p.bilim.filter((m) => !m.faol && m.manba === 'qoralama').length
   if (tahrir) {
     return (
       <MaqolaShakli key={tahrir === 'yangi' ? 'yangi' : tahrir.id} m={tahrir === 'yangi' ? null : tahrir} band={band}
@@ -175,10 +176,15 @@ function Bilim({ p, amal, band }) {
           Agent: {p.agent.yoqilgan ? 'yoqilgan (tasdiq rejimi)' : "o'chiq"}{!p.agent.kalit && ' · AI kaliti kiritilmagan'}
         </p>
         <p className="tg-holat">{faol} ta yoqilgan, {p.bilim.length - faol} ta o'chiq maqola</p>
-        <p className="tg-izoh tg-ost">Agent savolga shu ro'yxatdan mos javobni tanlaydi va matnini o'zgartirmay yuboradi.
-          Mos javob bo'lmasa, savol sizga o'tadi. Yoqish va sinash — botda /agent.</p>
+        <p className="tg-izoh tg-ost">Agent savolga faqat yoqilgan maqolalar asosida javob yozadi va sizga taklif qiladi — «Yuborish» ni bossangizgina ketadi.
+          Bazada javob bo'lmasa, savol sizga o'tadi. Yoqish va sinash — botda /agent.</p>
       </section>
       <button type="button" className="tg-asosiy" onClick={() => setTahrir('yangi')}>Yangi maqola</button>
+      {qoralama > 0 && (
+        <button type="button" className="tg-tugma" disabled={band} onClick={() => amal({ amal: 'bilim_qoralamalar' })}>
+          {qoralama} ta qoralamani yoqish
+        </button>
+      )}
       <section className="tg-karta tg-royxat">
         {p.bilim.length === 0 && <p className="tg-izoh">Hali maqola yo'q.</p>}
         {p.bilim.map((m) => (

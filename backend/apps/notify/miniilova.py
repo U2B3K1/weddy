@@ -279,6 +279,9 @@ class TgEgaView(OchiqView):
             m.savol, m.javob, m.faol = savol, matn, bool(d.get('faol'))
             m.save()
             javob = 'Saqlandi'
+        elif amal == 'bilim_qoralamalar':  # tekshirilmagan qoralamalarni birdan yoqish (tasdiq rejimida har javobni ega ko'radi)
+            n = BilimMaqola.objects.filter(faol=False, manba=BilimMaqola.Manba.QORALAMA).update(faol=True)
+            javob = f'{n} ta qoralama yoqildi'
         elif amal == 'bilim_ochir':
             n = BilimMaqola.objects.filter(id=d.get('id') if str(d.get('id') or '').isdigit() else 0).delete()[0]
             javob = "O'chirildi" if n else 'Topilmadi'

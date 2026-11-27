@@ -157,6 +157,7 @@ class AgentTaklif(models.Model):
     maqola = models.ForeignKey(BilimMaqola, null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
     holat = models.CharField(max_length=10, choices=Holat.choices, default=Holat.NAVBATDA)
     taklif_xabar_id = models.BigIntegerField(null=True, blank=True)   # mavzudagi taklif xabari (tugmalari bilan)
+    javob = models.TextField(blank=True)  # agent yozgan javob (bilim bazasi asosida) — ega tasdiqlasa shu ketadi
     ega_javobi = models.TextField(blank=True)                          # «📚 Bazaga qo'shish» uchun
     bazada = models.BooleanField(default=False)
     xato = models.CharField(max_length=300, blank=True)
