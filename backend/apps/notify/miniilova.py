@@ -140,7 +140,7 @@ class TgYordamView(OchiqView):
         xid = request.data.get('xodim')
         x = _xodim(uid, xid) if xid else None
         ((matn, _),) = yordam.boshlash(uid, x)
-        if matn != yordam.SAVOL_MATNI:  # ega manzili yo'q va h.k.
+        if matn not in (yordam.SAVOL_MATNI, yordam.SAVOL_MATNI_BOT):  # ega manzili yo'q va h.k.
             return Response({'detail': matn}, status=503)
         if not _chatga(uid, matn):
             yordam.tugat(uid)

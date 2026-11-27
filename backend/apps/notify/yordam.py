@@ -40,6 +40,8 @@ SARLAVHA = "💬 Murojaat"
 JAVOB_SARLAVHASI = "💬 Libosa qo'llab-quvvatlash"
 SAVOL_MATNI = ("💬 Qo'llab-quvvatlash\nSavolingiz yoki muammoingizni yozing — matn, skrinshot yoki ovozli xabar. "
                "Platforma egasi shu chatda javob beradi.\n\nTugatish: /bekor yoki menyudagi istalgan tugma.")
+SAVOL_MATNI_BOT = ("💬 Qo'llab-quvvatlash\nSavolingizni yozing — matn, skrinshot yoki ovozli xabar. Bot darhol javob beradi; "
+                   "bot bilmasa — mutaxassis shu chatda javob beradi.\n\nTugatish: /bekor yoki menyudagi istalgan tugma.")
 ISHLAMAYDI = "Qo'llab-quvvatlash hozircha ishlamayapti. Birozdan keyin urinib ko'ring."
 
 
@@ -89,7 +91,8 @@ def boshlash(chat_id, xodim=None):
         if xodim:  # oddiy /yordam ilova havolasidan kelgan «kim»ni o'chirmaydi
             rejim.xodim = xodim
         rejim.save(update_fields=['tugaydi', 'xodim'])
-    return [(SAVOL_MATNI, None)]
+    from .agent import avto_faol
+    return [(SAVOL_MATNI_BOT if avto_faol() else SAVOL_MATNI, None)]
 
 
 def rejim(chat_id):
@@ -180,6 +183,12 @@ def murojaat_qabul(chat_id, m, token=None):
     tur = xabar_turi(m)
     if not tur:
         return [("Bu turdagi xabarni yuborib bo'lmaydi. Matn, rasm, fayl yoki ovozli xabar yuboring.", None)]
+    if tur == 'matn':  # faqat salom yoki «rahmat» — bot o'zi javob beradi, egaga uzatilmaydi
+        from .agent import avto_faol, salomlashuv
+        tayyor = salomlashuv(m['text'])
+        if tayyor and avto_faol():
+            YordamRejimi.objects.filter(chat_id=chat_id).update(tugaydi=hozir + REJIM_MUDDATI)
+            return [(tayyor, None)]
     r = rejim(chat_id)
     kim, xodim, salon = _kim(chat_id, m.get('from') or {}, r)
     ega_chat, ega_token = manzil

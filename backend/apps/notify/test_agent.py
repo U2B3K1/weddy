@@ -406,7 +406,7 @@ class AvtoRejimTests(AgentAsos):
         self.assertIn('👎 1', agent.holat_matni())
 
     def test_topilmasa_yonaltiradi_toliq_gap_bir_marta(self):
-        self.murojaat('Salom')
+        self.murojaat('Savolim bor')
         self.murojaat('Yana bir savol')
         self.urlopen.return_value = openai_javobi(jav(None, []))
         self.api.reset_mock()
@@ -429,7 +429,7 @@ class AvtoRejimTests(AgentAsos):
                                          'from': {'id': SOTUVCHI_CHAT, 'first_name': 'Malika'}, **xabar}})
 
     def test_ovozli_xabar_matnga_aylanib_javob_oladi(self):
-        self.murojaat('Salom')
+        self.murojaat('Savolim bor')
         AgentTaklif.objects.all().delete()
         self.yubor(voice={'file_id': 'OVOZ1', 'file_size': 9000})
         t = AgentTaklif.objects.get()
@@ -454,7 +454,7 @@ class AvtoRejimTests(AgentAsos):
         self.assertTrue(egaga['text'].startswith('🎤 Ovozli xabar matni: «PIN esimdan chiqdi'))
 
     def test_skrinshot_modelga_rasm_bolib_boradi(self):
-        self.murojaat('Salom')
+        self.murojaat('Savolim bor')
         AgentTaklif.objects.all().delete()
         self.yubor(photo=[{'file_id': 'kichik', 'file_size': 100}, {'file_id': 'KATTA', 'file_size': 90000}], caption='shu chiqdi')
         t = AgentTaklif.objects.get()
@@ -470,7 +470,7 @@ class AvtoRejimTests(AgentAsos):
 
     @override_settings(OPENAI_API_KEY='', DEEPSEEK_API_KEY='sk-ds-KALIT')
     def test_deepseekda_ovoz_mutaxassisga(self):
-        self.murojaat('Salom')
+        self.murojaat('Savolim bor')
         AgentTaklif.objects.all().delete()
         self.yuborilgan.clear()
         self.yubor(voice={'file_id': 'v', 'file_size': 900})
@@ -482,3 +482,34 @@ class AvtoRejimTests(AgentAsos):
         self.bos(EGA_CHAT, 'e:ag_tasdiq')
         self.assertFalse(platforma_sozlama().agent_avto)
         self.assertIn('tasdiq rejimi', agent.holat_matni())
+
+
+@KALIT
+class SalomlashuvTests(AgentAsos):
+    """«salom» / «rahmat» — savol emas: bot o'zi javob beradi, AI ga va egaga bormaydi (avtomatik rejimda)."""
+    def setUp(self):
+        super().setUp()
+        platforma_sozlama().__class__.objects.filter(id=1).update(agent_avto=True)
+
+    def test_salom_va_rahmat(self):
+        for matn, kutilgan in (('Assalomu alaykum!', agent.SALOM_JAVOBI), ('Katta rahmat aka', agent.RAHMAT_JAVOBI),
+                               ("Xo‘p", agent.RAHMAT_JAVOBI)):
+            self.assertEqual(agent.salomlashuv(matn), kutilgan)
+        for savol in ('salom, PIN esimdan chiqdi', 'salom?', 'zakaz 15', 'sizga ham'):
+            self.assertIsNone(agent.salomlashuv(savol))
+        from .management.commands.telegram_bot import yangilanishni_ishla
+        for t in ('/yordam', 'Salom'):
+            yangilanishni_ishla({'message': {'message_id': 600 + len(t), 'text': t, 'chat': {'id': SOTUVCHI_CHAT, 'type': 'private'},
+                                             'from': {'id': SOTUVCHI_CHAT, 'first_name': 'Malika'}}})
+        self.assertEqual([m for chat, m, _, _ in self.yuborilgan if chat == SOTUVCHI_CHAT][-1], agent.SALOM_JAVOBI)
+        self.assertFalse(Murojaat.objects.exists())  # egaga uzatilmadi
+        self.assertFalse(AgentTaklif.objects.exists())
+        self.assertFalse(self.chaqiruvlar('copyMessage'))
+        self.murojaat('salom, PIN esimdan chiqdi')  # savol bilan — odatdagidek
+        self.assertEqual(AgentTaklif.objects.count(), 1)
+
+    def test_kirish_matni_bot_javob_berishini_aytadi(self):
+        from . import yordam
+        self.assertEqual(yordam.boshlash(SOTUVCHI_CHAT)[0][0], yordam.SAVOL_MATNI_BOT)
+        platforma_sozlama().__class__.objects.filter(id=1).update(agent_avto=False)
+        self.assertEqual(yordam.boshlash(SOTUVCHI_CHAT)[0][0], yordam.SAVOL_MATNI)

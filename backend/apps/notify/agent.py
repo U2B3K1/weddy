@@ -84,6 +84,39 @@ def sozlangan():
     return bool(xizmat()[2])
 
 
+def avto_faol():
+    """Bot savolga o'zi javob beradimi: kalit bor, agent yoqilgan va avtomatik rejim."""
+    from apps.tenants.models import platforma_sozlama
+    ps = platforma_sozlama()
+    return sozlangan() and ps.agent_yoqilgan and ps.agent_avto
+
+
+# Faqat salom-alik yoki minnatdorchilik — savol emas: AI ga yuborilmaydi, egaga ham uzatilmaydi (egasi, 2026-11-27:
+# «salom» ga «javobim yo'q, mutaxassisga yo'naltirdim» chiqqan edi). So'zlar kichik harf, tinish belgilarisiz.
+_SALOM = {'salom', 'assalomu', 'assalom', 'asalomu', 'alaykum', 'aleykum', 'alekum', 'salomlar', 'hayrli', 'xayrli', 'kun',
+          'tong', 'kech', 'qalesiz', 'qalaysiz', 'yaxshimisiz', 'hello', 'hi', 'привет', 'здравствуйте', 'добрый', 'день',
+          'утро', 'вечер', 'салом', 'ассалому', 'алейкум', 'va', 'sizga', 'ham', 'aka', 'opa', 'ustoz'}
+_RAHMAT = {'rahmat', 'raxmat', 'rahmatt', 'katta', 'tashakkur', 'ok', 'okay', 'xop', 'xo\'p', 'hop', 'tushundim', 'tushunarli',
+           'yaxshi', 'zor', "zo'r", 'boldi', "bo'ldi", 'спасибо', 'ок', 'понял', 'понятно', 'хорошо', 'sizga', 'ham', 'aka', 'opa'}
+SALOM_JAVOBI = "Assalomu alaykum! Savolingiz yoki muammoingizni yozing — darhol javob beraman."
+RAHMAT_JAVOBI = "Arzimaydi! Yana savol bo'lsa, shu yerga yozing."
+
+
+def salomlashuv(matn):
+    """Matn faqat salom yoki «rahmat/ok» bo'lsa — tayyor javob, aks holda None (savol AI ga boradi)."""
+    sozlar = re.findall(r"[^\W\d_]+(?:['ʻʼ’‘`][^\W\d_]+)?", (matn or '').lower())
+    sozlar = [re.sub("[ʻʼ’‘`]", "'", s) for s in sozlar]
+    if not sozlar or len(sozlar) > 5 or re.search(r'\d|\?', matn or ''):
+        return None
+    if all(s in _SALOM for s in sozlar) and set(sozlar) & {'salom', 'assalomu', 'assalom', 'asalomu', 'salomlar', 'hello',
+                                                          'hi', 'привет', 'здравствуйте', 'салом', 'ассалому', 'hayrli',
+                                                          'xayrli', 'добрый', 'qalesiz', 'qalaysiz'}:
+        return SALOM_JAVOBI
+    if all(s in _RAHMAT for s in sozlar) and not set(sozlar) <= {'sizga', 'ham', 'aka', 'opa', 'katta'}:
+        return RAHMAT_JAVOBI
+    return None
+
+
 def media_mumkin():
     """Ovozli xabar va rasmni o'qish — faqat OpenAI bilan (DeepSeek faqat matn)."""
     return bool(settings.OPENAI_API_KEY)
