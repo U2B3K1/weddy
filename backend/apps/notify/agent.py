@@ -8,8 +8,10 @@ Egasi: «aqlli javob bersin, lekin o'ylab topmasin». Shuning uchun:
 - Kafolat — tasdiq: taklif javob matni va manba maqolalar bilan egaga chiqadi, foydalanuvchiga faqat ega
   «✅ Yuborish» ni bosganda ketadi. «✏️ Tahrirlash» — matn nusxalash uchun chiqadi; ega tuzatib yozgan javob
   foydalanuvchiga boradi va bazaga o'zi qo'shiladi. Noto'g'ri bo'lsa — «❌ Kerak emas».
-- Kontekst: shu foydalanuvchining oxirgi soatlardagi savol-javoblari (yashirilgan matn) va uning saloni
-  sozlamalari hamda roli (ism, telefon, salon nomi yuborilmaydi) — javob shu salonga mos bo'lsin.
+- Kontekst: shu foydalanuvchining oxirgi soatlardagi savol-javoblari (yashirilgan matn), uning saloni
+  sozlamalari hamda roli va salon bazasidagi jonli holat — savoldagi zakazlar va uning kassa holati
+  (`agent_malumot.py`; mijoz ismi, telefoni, salon nomi yuborilmaydi). Faqat jonli ma'lumotga tayangan javob
+  (`malumot: true`, maqolasiz) ham qabul qilinadi; egaga taklif ostida qaysi ma'lumot ko'rilgani chiqadi.
 
 Tasdiq rejimi: taklif guruhdagi murojaatchi mavzusiga «✅ Yuborish / ❌ Kerak emas» tugmalari bilan chiqadi; javob
 faqat ega bosgandan keyin ketadi. Modelga faqat savol matni boradi (telefon, karta, email yashirilgan) — kim yozgani,
@@ -106,8 +108,9 @@ def _sorov(xabarlar, sxema):
         return None  # tushunarsiz javob — «topilmadi»
 
 
-SXEMA = {'type': 'object', 'additionalProperties': False, 'required': ['javob', 'manbalar'],
-         'properties': {'javob': {'type': ['string', 'null']}, 'manbalar': {'type': 'array', 'items': {'type': 'integer'}}}}
+SXEMA = {'type': 'object', 'additionalProperties': False, 'required': ['javob', 'manbalar', 'malumot'],
+         'properties': {'javob': {'type': ['string', 'null']}, 'manbalar': {'type': 'array', 'items': {'type': 'integer'}},
+                        'malumot': {'type': 'boolean'}}}
 KORSATMA = ("Siz Libosa (kelin liboslari salonlari uchun dastur) qo'llab-quvvatlash xodimisiz. Sizga bilim bazasi "
             "maqolalari (raqam, savol, javob) va foydalanuvchi savoli beriladi. Savolga FAQAT maqolalardagi ma'lumot "
             "asosida, o'zbek tilida (lotin), xushmuomala va qisqa (1–4 gap) javob yozing; kerak bo'lsa qadamlarni "
@@ -116,8 +119,12 @@ KORSATMA = ("Siz Libosa (kelin liboslari salonlari uchun dastur) qo'llab-quvvatl
             "shikoyat yoki shaxsiy masala bo'lsa — javob null. «manbalar» — javobda foydalangan maqolalar raqamlari. "
             "Salon ma'lumoti berilgan bo'lsa, maqoladagi standart qiymat o'rniga shu salonnikini ayting (masalan, bron "
             "muddati). Savol beruvchining roliga mos javob bering: sotuvchi yoki kassir salon sozlamasini o'zgartira "
-            "olmaydi — bunday ishni rahbar qilishini ayting. Oldingi suhbat — faqat savolni tushunish uchun. "
-            "Javob faqat JSON: {\"javob\": \"...\", \"manbalar\": [3]} yoki {\"javob\": null, \"manbalar\": []}.")
+            "olmaydi — bunday ishni rahbar qilishini ayting. «Salon bazasidagi jonli ma'lumot» berilgan bo'lsa — bu "
+            "shu salonning hozirgi haqiqiy holati (zakaz holati, qoldiq, garov, kassa): savol shunga tegishli bo'lsa, "
+            "aniq sababni shu faktlardan ayting va nima qilish kerakligini maqolalardan qo'shing; faktlarni o'zgartirmang "
+            "va berilmagan faktni o'ylab topmang. Jonli ma'lumotdan foydalansangiz «malumot»: true. Oldingi suhbat — "
+            "faqat savolni tushunish uchun. Javob faqat JSON: {\"javob\": \"...\", \"manbalar\": [3], \"malumot\": false} "
+            "yoki {\"javob\": null, \"manbalar\": [], \"malumot\": false}.")
 JAVOB_MAKS = 1500       # model javobi bundan uzun bo'lsa — rad (tushunarsiz yoki keraksiz uzun)
 BAZA_MAKS = 60000       # modelga yuboriladigan maqolalar matni (belgi)
 
@@ -180,37 +187,41 @@ def suhbat_konteksti(t):
 
 
 class Taklif:
-    """Model javobi (tekshirilgan): `matn` — foydalanuvchiga boradigan matn, `manbalar` — foydalanilgan maqolalar."""
-    def __init__(self, matn, manbalar):
-        self.matn, self.manbalar = matn, manbalar
+    """Model javobi (tekshirilgan): `matn` — foydalanuvchiga boradigan matn, `manbalar` — foydalanilgan maqolalar,
+    `malumot` — salonning jonli ma'lumoti ishlatilgani (egaga nima ko'rilgani yoziladi)."""
+    def __init__(self, matn, manbalar, malumot=''):
+        self.matn, self.manbalar, self.malumot = matn, manbalar, malumot
 
 
-def tanla(savol, kontekst=''):
-    """Savolga bilim bazasi asosidagi javob (`Taklif`) yoki None. `kontekst` — salon ma'lumoti va oldingi suhbat.
-    Xatoda AgentXatosi."""
+def tanla(savol, kontekst='', jonli='', jonli_izoh=''):
+    """Savolga bilim bazasi (va berilgan bo'lsa salonning jonli ma'lumoti) asosidagi javob (`Taklif`) yoki None.
+    `kontekst` — salon sozlamalari va oldingi suhbat, `jonli` — `agent_malumot.jonli_malumot` bloki. Xatoda AgentXatosi."""
     maqolalar, hajm = [], 0
     for m in BilimMaqola.objects.filter(faol=True).order_by('id')[:MAQOLA_MAKS]:
         hajm += len(m.savol) + len(m.javob)
         if hajm > BAZA_MAKS:
             break
         maqolalar.append(m)
-    if not maqolalar:
+    if not maqolalar and not jonli:
         return None
     baza = '\n\n'.join(f'#{m.id}. Savol: {m.savol}\nJavob: {m.javob}' for m in maqolalar)
     natija = _sorov([{'role': 'system', 'content': KORSATMA},
-                     {'role': 'user', 'content': f'Maqolalar:\n{baza}\n\n{kontekst}Foydalanuvchi savoli:\n{yashir(savol)[:2000]}'}],
+                     {'role': 'user', 'content': f'Maqolalar:\n{baza}\n\n{kontekst}{jonli}Foydalanuvchi savoli:\n{yashir(savol)[:2000]}'}],
                     SXEMA)
     if not isinstance(natija, dict):
         return None
     matn, raqamlar = natija.get('javob'), natija.get('manbalar')
-    if not isinstance(matn, str) or not matn.strip() or len(matn) > JAVOB_MAKS or not isinstance(raqamlar, list) or not raqamlar:
+    malumot = bool(jonli) and natija.get('malumot') is True
+    if not isinstance(matn, str) or not matn.strip() or len(matn) > JAVOB_MAKS or not isinstance(raqamlar, list):
         return None
+    if not raqamlar and not malumot:
+        return None  # na maqolaga, na salon ma'lumotiga tayangan — o'ylab topilgan bo'lishi mumkin
     if any(not isinstance(r, int) or isinstance(r, bool) for r in raqamlar):
         return None
     yuborilgan = {m.id: m for m in maqolalar}
     if any(r not in yuborilgan for r in raqamlar):
         return None  # yuborilmagan (yoki o'chiq) maqolaga tayangan — ishonchsiz
-    return Taklif(matn.strip(), [yuborilgan[r] for r in dict.fromkeys(raqamlar)])
+    return Taklif(matn.strip(), [yuborilgan[r] for r in dict.fromkeys(raqamlar)], jonli_izoh if malumot else '')
 
 
 # ---------- navbat (bot jarayoni) ----------
@@ -231,7 +242,8 @@ def navbatni_ishla(soni=2):
         if AgentTaklif.objects.filter(id=t.id, holat=AgentTaklif.Holat.NAVBATDA).update(holat=AgentTaklif.Holat.XATO) == 0:
             continue  # boshqa jarayon oldi
         try:
-            taklif = tanla(t.savol, salon_konteksti(t.murojaat) + suhbat_konteksti(t))
+            from .agent_malumot import jonli_malumot
+            taklif = tanla(t.savol, salon_konteksti(t.murojaat) + suhbat_konteksti(t), *jonli_malumot(t.murojaat, t.savol))
         except AgentXatosi as e:
             log.warning('Agent: %s', e)
             AgentTaklif.objects.filter(id=t.id).update(xato=str(e)[:300])
@@ -256,15 +268,18 @@ def navbatni_ishla(soni=2):
             log.warning('Agent taklifi yuborilmadi: %s', e)
             AgentTaklif.objects.filter(id=t.id).update(xato=str(e)[:300])
             continue
-        AgentTaklif.objects.filter(id=t.id).update(holat=AgentTaklif.Holat.TAKLIF, maqola=taklif.manbalar[0],
+        AgentTaklif.objects.filter(id=t.id).update(holat=AgentTaklif.Holat.TAKLIF,
+                                                   maqola=taklif.manbalar[0] if taklif.manbalar else None,
                                                    javob=taklif.matn, taklif_xabar_id=xabar.get('message_id'))
         ishlandi += 1
     return ishlandi
 
 
 def taklif_matni(taklif):
-    manba = '\n'.join(f"#{m.id} «{m.savol}»" for m in taklif.manbalar)
-    return f"{TAKLIF_SARLAVHASI}:\n\n{taklif.matn}\n\n📚 Manba:\n{manba}"
+    manba = [f"#{m.id} «{m.savol}»" for m in taklif.manbalar]
+    if taklif.malumot:
+        manba.append(f"📊 Salon bazasi: {taklif.malumot} — yuborishdan oldin ilovada tekshiring")
+    return f"{TAKLIF_SARLAVHASI}:\n\n{taklif.matn}\n\n📚 Manba:\n" + '\n'.join(manba)
 
 
 def tugma(c, token=None):

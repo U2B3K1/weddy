@@ -1407,3 +1407,50 @@ class UchinchiVariantTests(Base):
         z = self.zakaz()
         ZakazTarixi.objects.create(salon=self.salon, zakaz=z, xodim=self.malika, harakat='bekor_qilindi')
         self.assertIn('Bekor qilingan zakazlar: 1', kunlik_matn(self.salon, timezone.localdate()))
+
+
+class EkranTozalashTests(Base):
+    """Tugma bosilganda oldingi menyu javobi va tugma xabari o'chadi; avtomatik xabarlar qoladi."""
+    def setUp(self):
+        super().setUp()
+        self.raqam = iter(range(700, 800))
+        telegram.xabar_yubor.side_effect = lambda chat, matn, tugmalar=None, **kw: (
+            self.yuborilgan.append((chat, matn, tugmalar, kw)) or {'message_id': next(self.raqam)})
+
+    def tugma(self, matn, mid):
+        self.yuborilgan.clear()
+        self.api.reset_mock()
+        return yangilanishni_ishla({'message': {'message_id': mid, 'text': matn, 'chat': {'id': RAHBAR_CHAT, 'type': 'private'}}})
+
+    def ochirilgan(self):
+        return [kw['message_ids'] for metod, kw in ((c[0][0], c[1]) for c in self.api.call_args_list) if metod == 'deleteMessages']
+
+    def test_oldingi_menyu_javobi_va_tugma_xabari_ochadi(self):
+        from .models import MenyuXabari
+        self.tugma('✅ Qarorlar', 50)
+        (birinchi,) = MenyuXabari.objects.filter(chat_id=RAHBAR_CHAT).values_list('xabar_id', flat=True)
+        self.assertEqual(self.ochirilgan(), [[50]])  # birinchi marta — faqat tugma xabari
+        self.assertIsNone(self.yuborilgan[0][3].get('klaviatura'))  # menyu javobiga pastki menyu qayta qo'shilmaydi
+        telegram.xabar_yubor(RAHBAR_CHAT, 'Avtomatik eslatma')  # ro'yxatga kirmaydi
+        self.tugma('✅ Qarorlar', 51)
+        self.assertEqual(self.ochirilgan(), [[birinchi, 51]])
+        self.assertEqual(MenyuXabari.objects.filter(chat_id=RAHBAR_CHAT).count(), 1)
+        # erkin matn (zakaz qidiruvi) — o'chirilmaydi
+        self.tugma('125', 52)
+        self.assertEqual(self.ochirilgan(), [])
+
+    def test_xabar_ostidagi_tugma_ham_ekranni_almashtiradi(self):
+        from .models import MenyuXabari
+        self.tugma('✅ Qarorlar', 60)
+        eski = MenyuXabari.objects.get(chat_id=RAHBAR_CHAT).xabar_id
+        self.api.reset_mock()
+        yangilanishni_ishla({'callback_query': {'id': '1', 'from': {'id': RAHBAR_CHAT}, 'data': f'm:{self.rahbar.id}:ertaga'}})
+        self.assertEqual(self.ochirilgan(), [[eski]])
+        self.assertNotEqual(MenyuXabari.objects.get(chat_id=RAHBAR_CHAT).xabar_id, eski)
+
+    def test_48_soatdan_eski_xabar_ochirilmaydi(self):
+        from .models import MenyuXabari
+        self.tugma('✅ Qarorlar', 70)
+        MenyuXabari.objects.update(yaratilgan=timezone.now() - timedelta(hours=50))
+        self.tugma('✅ Qarorlar', 71)
+        self.assertEqual(self.ochirilgan(), [[71]])

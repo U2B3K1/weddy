@@ -190,3 +190,17 @@ class YordamRejimi(models.Model):
     chat_id = models.BigIntegerField(unique=True)
     xodim = models.ForeignKey('tenants.Xodim', null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
     tugaydi = models.DateTimeField()
+
+
+class MenyuXabari(models.Model):
+    """Tugma bilan chaqirilgan bot javobi («📊 Bugun», «✅ Qarorlar», xabar ostidagi tugmalar). Keyingi tugma
+    bosilganda bu xabarlar va foydalanuvchining tugma xabari o'chiriladi — chatda faqat oxirgi ekran va avtomatik
+    xabarlar (eslatma, hisobot, so'rovlar) qoladi (egasi so'rovi, 2026-11-27). Telegram faqat 48 soatgacha bo'lgan
+    xabarni o'chirishga ruxsat beradi; eskisi qatordan o'chiriladi, xabar chatda qoladi."""
+    chat_id = models.BigIntegerField()
+    bot = models.CharField(max_length=20, blank=True)  # salonning o'z boti bo'lsa token raqam qismi; '' — asosiy bot
+    xabar_id = models.BigIntegerField()
+    yaratilgan = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        indexes = [models.Index(fields=['chat_id', 'bot'], name='menyu_xabari_chat')]

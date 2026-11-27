@@ -2,6 +2,7 @@
 import io
 import json
 import urllib.error
+from datetime import timedelta
 from unittest import mock
 
 from django.test import override_settings
@@ -167,6 +168,48 @@ class AgentTests(Base):
         self.assertNotIn(self.salon.nomi, matn)  # salon nomi va ism yuborilmaydi
         self.assertNotIn('Malika', matn)
         self.assertLess(matn.index('Maqolalar:'), matn.index("Salon ma'lumoti"))  # o'zgarmas qism boshida (kesh)
+
+    def test_zakaz_raqamlari(self):
+        from .agent_malumot import zakaz_raqamlari
+        self.assertEqual(zakaz_raqamlari('15-zakazni bera olmayapman, #7 va zakaz 15, buyurtma №3, 2 kun'), [15, 7, 3])
+        self.assertEqual(zakaz_raqamlari('PIN esimdan chiqdi'), [])
+
+    def test_salon_jonli_malumoti_faqat_oz_salonidan(self):
+        from apps.bookings.tests import libos_yarat, salon_yarat
+        from apps.orders.services import zakaz_yaratish
+        z = self.zakaz(fio='Dilnoza Karimova')
+        boshqa, bx, bk = salon_yarat('boshqa')
+        bl = libos_yarat(boshqa, bk, 'B77')
+        with self.captureOnCommitCallbacks(execute=True):
+            bz = zakaz_yaratish(salon=boshqa, xodim=bx, telefon='+998911112233', fio='Begona', olib_ketish=self.dan,
+                                qaytarish=self.dan + timedelta(days=2), libos_idlari=[bl.id])
+        self.assertEqual(bz.raqam, z.raqam)  # raqam salon ichida noyob — boshqa salonda ham shunday raqam bor
+        self.murojaat(f'{z.raqam}-zakazni nega bera olmayapman?')
+        self.urlopen.return_value = openai_javobi(json.dumps(
+            {'javob': 'Zakaz hali vaqtinchalik bron: avval avans qabul qiling.', 'manbalar': [], 'malumot': True}))
+        agent.navbatni_ishla()
+        matn = json.loads(self.urlopen.call_args[0][0].data)['messages'][1]['content']
+        self.assertIn(f'Zakaz #{z.raqam}:', matn)
+        self.assertIn('A12 «Libos A12»', matn)
+        self.assertIn("qoldiq: 2 000 000 so'm", matn)
+        self.assertIn('ochiq smenada emas', matn)
+        for yoq in ('B77', 'Dilnoza', 'Karimova', '901234567', self.salon.nomi):
+            self.assertNotIn(yoq, matn)
+        t = AgentTaklif.objects.get()
+        self.assertEqual((t.holat, t.maqola, t.javob), (AgentTaklif.Holat.TAKLIF, None,
+                                                        'Zakaz hali vaqtinchalik bron: avval avans qabul qiling.'))
+        (taklif,) = [kw['text'] for kw in self.chaqiruvlar('sendMessage') if kw['text'].startswith(agent.TAKLIF_SARLAVHASI)]
+        self.assertIn(f'📊 Salon bazasi: zakaz #{z.raqam}, kassa holati', taklif)
+
+    def test_maqolasiz_javob_faqat_jonli_malumot_bilan(self):
+        javob = json.dumps({'javob': "Qoldiq 2 mln so'm.", 'manbalar': [], 'malumot': True})
+        self.urlopen.return_value = openai_javobi(javob)
+        self.assertIsNone(agent.tanla('15-zakaz'))  # jonli ma'lumot berilmagan — tayanchsiz javob rad
+        self.urlopen.return_value = openai_javobi(javob)
+        t = agent.tanla('15-zakaz', jonli="Salon bazasidagi jonli ma'lumot:\nZakaz #15: ...\n\n", jonli_izoh='zakaz #15')
+        self.assertEqual((t.matn, t.manbalar, t.malumot), ("Qoldiq 2 mln so'm.", [], 'zakaz #15'))
+        self.urlopen.return_value = openai_javobi(json.dumps({'javob': 'Taxmin.', 'manbalar': [], 'malumot': False}))
+        self.assertIsNone(agent.tanla('15-zakaz', jonli='...', jonli_izoh='zakaz #15'))
 
     def test_tahrir_bazaga_ozi_qoshiladi(self):
         q = self.murojaat('PIN unutdim')

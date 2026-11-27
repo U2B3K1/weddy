@@ -1,6 +1,8 @@
 import logging
 import time
 
+from datetime import timedelta
+
 from django.core.management.base import BaseCommand, CommandError
 from django.db import close_old_connections
 from django.utils import timezone
@@ -20,30 +22,54 @@ SEKIN = 3  # soniya: bundan uzoq ishlagan yangilanish jurnalga yoziladi
 # osilib qoladi — jurnalda «Telegram xatosi: TimeoutError») botni 30 s «kar» qilardi, shu payt bosilgan tugma
 # javobsiz qolardi. 10 s da eng yomon holat — 15 s; so'rovlar soni daqiqasiga 6 ta (Telegram uchun arzimas).
 UZUN_SOROV = 10
+OCHIRISH_MUDDATI = timedelta(hours=47)  # Telegram bot xabarini 48 soatgacha o'chira oladi
+
+
+def _raqam(natija):
+    return natija.get('message_id') if isinstance(natija, dict) else None
 
 
 def _javob_yubor(chat_id, javob, tugmalar, tk):
-    """`tugmalar` ro'yxat bo'lsa — inline tugmalar; lug'at bo'lsa — tayyor reply_markup (masalan, force_reply)."""
+    """`tugmalar` ro'yxat bo'lsa — inline tugmalar; lug'at bo'lsa — tayyor reply_markup (masalan, force_reply).
+
+    Keyin o'chirsa bo'ladigan yuborilgan xabarlar raqamlarini qaytaradi. Pastki menyu (klaviatura) yoki javob kutayotgan
+    so'rov bilan ketgan xabar ro'yxatga kirmaydi: uni o'chirish klaviaturani yoki so'rovni ham yo'qotishi mumkin."""
     if isinstance(tugmalar, dict) and 'vidjet' in tugmalar:
         try:
-            vidjet.yubor(chat_id, javob, tugmalar['vidjet'], tk.get('token'))
+            return [_raqam(vidjet.yubor(chat_id, javob, tugmalar['vidjet'], tk.get('token')))]
         except telegram.TelegramXatosi as e:  # server vidjetni qabul qilmadi — matn o'zining oddiy tugmalari bilan ketadi
             log.warning('Vidjet rad etildi: %s', e)  # Telegram javobi (tokensiz) — sababni jurnaldan ko'rish uchun
             if tugmalar.get('sabab'):  # `/vidjet_sinov` — ega Telegram javobini xabarning o'zida ko'radi
                 javob = f"{javob}\n\n⚠️ Telegram javobi: {str(e)[:300]}"
-            _javob_yubor(chat_id, javob, tugmalar.get('zaxira'), tk)
-        return
+            return _javob_yubor(chat_id, javob, tugmalar.get('zaxira'), tk)
     if isinstance(tugmalar, dict):
         telegram.xabar_yubor(chat_id, javob, klaviatura=tugmalar, **tk)
-        return
+        return []
     try:
-        telegram.xabar_yubor(chat_id, javob, tugmalar, **tk)
+        return [_raqam(telegram.xabar_yubor(chat_id, javob, tugmalar, **tk))]
     except telegram.TelegramXatosi:
         # «nusxa olish» tugmasini eski Telegram serveri/ilovasi tanimasa — xabar usiz baribir yetib borsin
         oddiy = [q for q in ([t for t in qator if 'copy_text' not in t] for qator in (tugmalar or [])) if q]
         if oddiy == (tugmalar or []):
             raise
-        telegram.xabar_yubor(chat_id, javob, oddiy or None, **tk)
+        return [_raqam(telegram.xabar_yubor(chat_id, javob, oddiy or None, **tk))]
+
+
+def _ekranni_almashtir(chat_id, yangilar, tk, foydalanuvchi_xabari=None):
+    """Tugma bilan chaqirilgan yangi javob chiqdi: oldingi shunday javoblar va foydalanuvchining tugma xabari
+    o'chiriladi, yangilari eslab qolinadi. Avtomatik xabarlar (eslatma, hisobot, so'rovlar) bu ro'yxatda yo'q — qoladi."""
+    from apps.notify.models import MenyuXabari
+    bot = (tk.get('token') or '').split(':')[0]
+    eski = MenyuXabari.objects.filter(chat_id=chat_id, bot=bot)
+    chegara = timezone.now() - OCHIRISH_MUDDATI
+    raqamlar = [r for r, vaqt in eski.values_list('xabar_id', 'yaratilgan') if vaqt > chegara]
+    eski.delete()
+    MenyuXabari.objects.bulk_create([MenyuXabari(chat_id=chat_id, bot=bot, xabar_id=r) for r in yangilar if r])
+    if foydalanuvchi_xabari:
+        raqamlar.append(foydalanuvchi_xabari)
+    if raqamlar:
+        _tinchgina('deleteMessages', chat_id=chat_id, message_ids=raqamlar[:100],
+                   **({'_token': tk['token']} if tk.get('token') else {}))
 
 
 def yangilanishni_ishla(u, token=None):
@@ -123,9 +149,15 @@ def yangilanishni_ishla(u, token=None):
             telegram.xabar_yubor(chat_id, javob, klaviatura=kl, **tk)
             return javob
         javob = None
+        # Menyu tugmasi: javob oldingi menyu javobi o'rniga chiqadi (eskisi va «📊 Bugun» kabi tugma xabari o'chadi).
+        # Bunda pastki menyu xabarga qo'shilmaydi — u allaqachon ekranda (eski menyu bo'lsa, yangisi alohida keladi)
+        menyu = bot_menyu.menyu_tugmasimi(matn)
         kl = bot_menyu.klaviatura(chat_id)  # tugmasiz javob bilan joriy menyu ham ketadi: telefondagi eski menyu yangilanadi
+        yangilar = []
         for javob, tugmalar in bot_menyu.matn_ishla(chat_id, matn, javobga):
-            _javob_yubor(chat_id, javob, tugmalar if tugmalar is not None else kl, tk)
+            yangilar += _javob_yubor(chat_id, javob, tugmalar if tugmalar is not None or menyu else kl, tk)
+        if menyu:
+            _ekranni_almashtir(chat_id, yangilar, tk, m.get('message_id'))
         return javob
     if 'widget_query' in u:  # vidjetdagi «Yangilash»
         return vidjet.sorov_ishla(u['widget_query'], token)
@@ -136,10 +168,14 @@ def yangilanishni_ishla(u, token=None):
         if data.startswith(('m:', 'e:', 'tc:', 'yd:')):  # menyu, ega tugmasi, chek, qo'llab-quvvatlash — yangi xabar
             _tinchgina('answerCallbackQuery', callback_query_id=c['id'], **kw)
             javob = None
+            tur = data.split(':')[0]
             ishlovchi = {'m': bot_menyu.tugma_ishla, 'e': bot_menyu.ega_tugma, 'tc': bot_menyu.chek_tugma,
-                         'yd': lambda chat, _data: yordam.boshlash(chat)}[data.split(':')[0]]
+                         'yd': lambda chat, _data: yordam.boshlash(chat)}[tur]
+            yangilar = []
             for javob, tugmalar in ishlovchi(c['from']['id'], data):
-                _javob_yubor(c['from']['id'], javob, tugmalar, tk)
+                yangilar += _javob_yubor(c['from']['id'], javob, tugmalar, tk)
+            if tur != 'yd':  # qo'llab-quvvatlash yozishmasi o'chirilmaydi
+                _ekranni_almashtir(c['from']['id'], yangilar, tk)
             return javob
         if data.startswith('ag:'):  # agent taklifi: yuborish / kerak emas / bazaga qo'shish (faqat ega)
             from apps.notify import agent
