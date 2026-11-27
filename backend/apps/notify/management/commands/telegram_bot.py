@@ -280,9 +280,9 @@ class Command(BaseCommand):
                     kutayotganlarni_yubor(muddat=NAVBAT_MUDDATI)
                 except Exception as e:  # noqa: BLE001 — navbatdagi xato tinglashni to'xtatmasin
                     self.stderr.write(f'Navbatni yuborishda xato: {type(e).__name__}: {str(e)[:150]}')
-                try:  # qo'llab-quvvatlash agenti: navbatdagi savollar (AI) — bir aylanishda ko'pi bilan 2 ta
+                try:  # qo'llab-quvvatlash agenti: navbatdagi savollar (AI) alohida oqimda — tugmalar kutib qolmaydi
                     from apps.notify import agent
-                    agent.navbatni_ishla()
+                    agent.navbatni_fonda_ishla()
                 except Exception as e:  # noqa: BLE001 — agent xatosi botni to'xtatmasin
                     self.stderr.write(f'Agent navbatida xato: {type(e).__name__}')
                 if (sarf := time.monotonic() - oraliq) >= SEKIN:

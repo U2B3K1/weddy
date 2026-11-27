@@ -233,7 +233,9 @@ def platforma_holati():
         'tolov_malumoti': platforma_sozlama().tolov_malumoti,
         'bilim': [{'id': m.id, 'savol': m.savol, 'javob': m.javob, 'faol': m.faol, 'manba': m.manba}
                   for m in BilimMaqola.objects.order_by('faol', 'savol')],
-        'agent': {'yoqilgan': platforma_sozlama().agent_yoqilgan, 'kalit': agent.sozlangan()},
+        'agent': {'yoqilgan': platforma_sozlama().agent_yoqilgan, 'kalit': agent.sozlangan(),
+                  'avto': platforma_sozlama().agent_avto, 'hafta': agent.hafta_statistikasi()},
+        'javobsiz_savollar': agent.javobsiz_savollar(),
     }
 
 
@@ -278,7 +280,12 @@ class TgEgaView(OchiqView):
             m = m or BilimMaqola(manba=BilimMaqola.Manba.QOLDA)
             m.savol, m.javob, m.faol = savol, matn, bool(d.get('faol'))
             m.save()
+            if str(d.get('taklif') or '').isdigit():  # «javob bera olmagan savol» dan yozilgan maqola — savol ro'yxatdan chiqadi
+                agent.savolni_yop(int(d['taklif']))
             javob = 'Saqlandi'
+        elif amal == 'savol_yop':  # «bot javob bera olmagan savollar»: bu savol uchun maqola kerak emas
+            n = agent.savolni_yop(int(d['id'])) if str(d.get('id') or '').isdigit() else 0
+            javob = "Ro'yxatdan olib tashlandi" if n else 'Topilmadi'
         elif amal == 'bilim_qoralamalar':  # tekshirilmagan qoralamalarni birdan yoqish (tasdiq rejimida har javobni ega ko'radi)
             n = BilimMaqola.objects.filter(faol=False, manba=BilimMaqola.Manba.QORALAMA).update(faol=True)
             javob = f'{n} ta qoralama yoqildi'

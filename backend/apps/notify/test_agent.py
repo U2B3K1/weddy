@@ -335,7 +335,9 @@ class AgentTests(AgentAsos):
             c.credentials(HTTP_AUTHORIZATION='tma ' + imzola(EGA_CHAT))
             p = c.get('/api/tg/').data['platforma']
             self.assertEqual(len(p['bilim']), 3)
-            self.assertEqual(p['agent'], {'yoqilgan': True, 'kalit': True})
+            self.assertEqual((p['agent']['yoqilgan'], p['agent']['kalit'], p['agent']['avto']), (True, True, False))
+            self.assertEqual(p['agent']['hafta'], {'javob': 0, 'otdi': 0, 'xato': 0, 'yoqdi': 0, 'yoqmadi': 0})
+            self.assertEqual(p['javobsiz_savollar'], [])
             r = c.post('/api/tg/ega/', {'amal': 'bilim_saqla', 'savol': 'Yangi savol', 'javob': 'Yangi javob', 'faol': True}, format='json')
             self.assertEqual(r.data['javob'], 'Saqlandi')
             r = c.post('/api/tg/ega/', {'amal': 'bilim_saqla', 'id': self.qoralama.id, 'savol': 'Tekshirildi', 'javob': 'Rost', 'faol': True}, format='json')
@@ -529,6 +531,38 @@ class AvtoRejimTests(AgentAsos):
         self.assertEqual(AgentTaklif.objects.count(), soni)
         self.assertEqual(Murojaat.objects.count(), 3)
         self.assertNotIn(agent.RAHMAT_JAVOBI, [m for chat, m, _, _ in self.yuborilgan if chat == SOTUVCHI_CHAT])
+
+    def test_javobsiz_savollar_royxati_va_maqola(self):
+        from rest_framework.test import APIClient
+        for matn in ('SMS narxi qancha?', 'sms narxi  qancha?', 'Boshqa savol'):  # ikkitasi bir xil savol
+            self.murojaat(matn)
+            self.urlopen.return_value = self.model()
+            agent.navbatni_ishla()
+        royxat = agent.javobsiz_savollar()
+        self.assertEqual([(q['savol'], q['sabab']) for q in royxat], [('Boshqa savol', 'topilmadi'), ('sms narxi  qancha?', 'topilmadi')])
+        c = APIClient()
+        with override_settings(TELEGRAM_BOT_TOKEN='123:TEST'):
+            c.credentials(HTTP_AUTHORIZATION='tma ' + imzola(EGA_CHAT))
+            p = c.get('/api/tg/').data['platforma']
+            self.assertEqual(len(p['javobsiz_savollar']), 2)
+            self.assertEqual(p['agent']['hafta']['otdi'], 3)
+            r = c.post('/api/tg/ega/', {'amal': 'bilim_saqla', 'savol': 'SMS narxi qancha?', 'javob': 'Eskiz tarifi boyicha.',
+                                        'faol': True, 'taklif': royxat[1]['id']}, format='json')
+            self.assertEqual(r.data['javob'], 'Saqlandi')
+            self.assertEqual([q['savol'] for q in r.data['platforma']['javobsiz_savollar']], ['Boshqa savol'])  # ikkala nusxa ham chiqdi
+            r = c.post('/api/tg/ega/', {'amal': 'savol_yop', 'id': royxat[0]['id']}, format='json')
+            self.assertEqual(r.data['platforma']['javobsiz_savollar'], [])
+        self.assertIn(self.bos(SOTUVCHI_CHAT, 'ag:h:1'), ('Bu tugma sizga tegishli emas.',))  # mavjud bo'lmagan qator — xatosiz
+
+    def test_navbat_fonda_ishlaydi(self):
+        self.assertFalse(agent.navbatni_fonda_ishla())  # navbat bo'sh — oqim ochilmaydi
+        self.murojaat('PIN esimdan chiqdi')
+        chaqirildi = []
+        with mock.patch.object(agent, 'navbatni_ishla', side_effect=lambda: chaqirildi.append(1)),                 mock.patch.object(agent, '_navbat_bormi', side_effect=[True, True, False]),                 mock.patch.object(agent.connections, 'close_all'):
+            self.assertTrue(agent.navbatni_fonda_ishla())
+            agent._fon_ishi.join(5)
+        self.assertEqual(chaqirildi, [1])
+        self.assertFalse(agent._fon_ishi.is_alive())
 
     def test_ai_xatosi_egaga_bir_marta_aytiladi(self):
         for matn in ('PIN esimdan chiqdi', 'Yana savol'):

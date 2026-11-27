@@ -167,6 +167,8 @@ class AgentTaklif(models.Model):
     fayl_id = models.CharField(max_length=200, blank=True)
     fayl_turi = models.CharField(max_length=5, blank=True)
     baho = models.CharField(max_length=3, blank=True)
+    # «Bot javob bera olmagan savollar» ro'yxatida ega ko'rib chiqdi (maqola yozdi yoki «kerak emas» dedi)
+    korildi = models.BooleanField(default=False)
     yaratilgan = models.DateTimeField(auto_now_add=True)
 
 

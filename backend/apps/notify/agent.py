@@ -24,6 +24,7 @@ DeepSeek, aks holda `OPENAI_API_KEY` (OpenAI).
 import base64
 import html
 import json
+import threading
 import uuid
 import logging
 import re
@@ -32,7 +33,8 @@ import urllib.request
 from datetime import timedelta
 
 from django.conf import settings
-from django.db import transaction
+from django.db import connections, transaction
+from django.db.models import Q
 from django.utils import timezone
 
 from . import telegram  # noqa: F401 — IPv4-birinchi ulanish (urllib ochuvchisi) shu modulda o'rnatiladi
@@ -636,6 +638,84 @@ def _avto_yubor(t, taklif, r=None, jonli='', jonli_izoh=''):
     except telegram.TelegramXatosi:
         pass
     return True
+
+
+_fon_ishi = None
+FON_AYLANISH = 10  # bitta fon ishida ko'pi bilan shuncha marta navbat olinadi (har birida `soni` ta savol)
+
+
+def _navbat_bormi():
+    return AgentTaklif.objects.filter(holat=AgentTaklif.Holat.NAVBATDA).exists()
+
+
+def navbatni_fonda_ishla():
+    """Bot aylanishidan chaqiriladi: navbatda savol bo'lsa, AI so'rovlari alohida oqimda bajariladi — javob kutilayotgan
+    soniyalarda (rasm va ovozda undan ham ko'p) botning tugmalari va boshqa salonlar xabarlari to'xtab qolmaydi.
+    Bir vaqtda bitta oqim; u ishlab turgan bo'lsa yangisi ochilmaydi (navbat keyingi aylanishda olinadi)."""
+    global _fon_ishi
+    if _fon_ishi is not None and _fon_ishi.is_alive():
+        return False
+    if not _navbat_bormi():
+        return False
+
+    def ish():
+        try:
+            for _ in range(FON_AYLANISH):
+                if not _navbat_bormi():
+                    break
+                navbatni_ishla()
+        except Exception as e:  # noqa: BLE001 — fon xatosi botni to'xtatmasin
+            log.warning('Agent navbatida xato: %s: %s', type(e).__name__, str(e)[:200])
+        finally:
+            connections.close_all()  # oqimning o'z baza ulanishi yopiladi
+
+    _fon_ishi = threading.Thread(target=ish, name='agent-navbat', daemon=True)
+    _fon_ishi.start()
+    return True
+
+
+def javobsiz_savollar(soni=30):
+    """Ilovadagi «Bot javob bera olmagan savollar»: bazada javob topilmagan, AI xatosi bilan qolgan yoki foydalanuvchi
+    👎 bosgan savollar (takrorsiz, yangisi tepada) — ega shulardan maqola yozib bazani to'ldiradi. Qatorlar
+    `SAQLASH_KUN` dan keyin o'zi o'chadi."""
+    H = AgentTaklif.Holat
+    qs = (AgentTaklif.objects.filter(korildi=False, bazada=False)
+          .filter(Q(holat=H.TOPILMADI) | Q(baho='yoq') | (Q(holat=H.XATO) & ~Q(xato='')))
+          .exclude(savol='').order_by('-id')[:300])
+    natija, bor = [], set()
+    for t in qs:
+        kalit = ' '.join(t.savol.lower().split())
+        if kalit in bor:
+            continue
+        bor.add(kalit)
+        natija.append({'id': t.id, 'savol': t.savol[:300], 'sana': f'{timezone.localtime(t.yaratilgan):%d.%m %H:%M}',
+                       'sabab': 'yoqmadi' if t.baho == 'yoq' else 'xato' if t.holat == H.XATO else 'topilmadi',
+                       # ega shu savolga yozgan javob (bo'lsa) — maqola shakliga tayyor tushadi; 👎 da — botning javobi
+                       'javob': (t.ega_javobi or (t.javob if t.baho == 'yoq' else ''))[:2000]})
+        if len(natija) >= soni:
+            break
+    return natija
+
+
+def savolni_yop(tid):
+    """Ega savolni ko'rib chiqdi: shu matndagi hamma qatorlar ro'yxatdan chiqadi."""
+    t = AgentTaklif.objects.filter(id=tid).first()
+    if not t:
+        return 0
+    kalit = ' '.join(t.savol.lower().split())  # ro'yxatdagi kabi: katta-kichik harf va bo'sh joylar farq qilmaydi
+    idlar = [i for i, savol in AgentTaklif.objects.filter(korildi=False).values_list('id', 'savol')
+             if ' '.join(savol.lower().split()) == kalit]
+    return AgentTaklif.objects.filter(id__in=idlar).update(korildi=True)
+
+
+def hafta_statistikasi():
+    """Oxirgi 7 kun (ilova uchun): bot javob berdi, mutaxassisga o'tdi, AI xatosi, 👍, 👎."""
+    H = AgentTaklif.Holat
+    hafta = AgentTaklif.objects.filter(yaratilgan__gt=timezone.now() - timedelta(days=7))
+    return {'javob': hafta.filter(holat=H.YUBORILDI).exclude(javob='').exclude(xato=ANIQ_BELGI).count(),
+            'otdi': hafta.filter(holat=H.TOPILMADI).count(),
+            'xato': hafta.filter(holat=H.XATO).exclude(xato='').count(),
+            'yoqdi': hafta.filter(baho='ha').count(), 'yoqmadi': hafta.filter(baho='yoq').count()}
 
 
 def navbatni_ishla(soni=2):
