@@ -8,11 +8,19 @@ import { bolimga, QURILMA_HOLATI, kirish, xatolarniKuzat } from './yordam.js'
 const iso = (kun) => { const t = new Date(); t.setDate(t.getDate() + kun); return t.toLocaleDateString('sv-SE') }
 const som = (n) => `${String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ' ')} so'm`
 const apiSorov = (page, usul, yol, tana) => page.evaluate(async ([usul, yol, tana]) => {
-  const r = await fetch(`http://127.0.0.1:8001/api${yol}`, {
-    method: usul, body: tana ? JSON.stringify(tana) : undefined,
-    headers: { 'Content-Type': 'application/json', 'X-Device-Token': localStorage.getItem('weddy.qurilma_token'),
-               Authorization: `Bearer ${sessionStorage.getItem('weddy.token')}` },
-  })
+  const sarlavha = { 'X-Device-Token': localStorage.getItem('weddy.qurilma_token'),
+                     Authorization: `Bearer ${sessionStorage.getItem('weddy.token')}` }
+  let body = tana ? JSON.stringify(tana) : undefined
+  if (yol === '/kassa/tolovlar/' && tana?.usul === 'otkazma') {
+    // O'tkazmada chek majburiy (2026-11-27): so'rov multipart, chek — kichik sinov rasmi
+    const kanvas = Object.assign(document.createElement('canvas'), { width: 8, height: 8 })
+    kanvas.getContext('2d').fillRect(0, 0, 8, 8)
+    const rasm = await new Promise((ok) => kanvas.toBlob(ok, 'image/png'))
+    body = new FormData()
+    Object.entries(tana).forEach(([k, v]) => body.append(k, v))
+    body.append('chek', rasm, 'chek.png')
+  } else sarlavha['Content-Type'] = 'application/json'
+  const r = await fetch(`http://127.0.0.1:8001/api${yol}`, { method: usul, body, headers: sarlavha })
   return r.json()
 }, [usul, yol, tana])
 
@@ -207,6 +215,37 @@ test("o'tkazma tasdiqlanmaguncha libos berilmaydi; kelmadi — sotuvchiga bildir
     expect(b.holat, JSON.stringify(b)).toBe('berildi')
   })
   await apiSorov(rahbar, 'PATCH', '/sozlamalar/', { otkazma_tasdigi: false })
+  await ctx.close()
+  expect(xatolar).toEqual([])
+})
+
+// 2026-11-27 (egasi): o'tkazma bilan to'lovda chek majburiy — zakaz kartasidagi to'lov formasi va chekni ko'rish
+test("o'tkazmada chek majburiy: cheksiz tugma o'chiq, chek to'lovlar ro'yxatida ochiladi", async ({ page, browser }) => {
+  const xatolar = xatolarniKuzat(page)
+  await page.setViewportSize({ width: 1280, height: 860 })
+  const { ctx, rahbar } = await rahbarOch(browser)
+  const libos = await libosYarat(rahbar, 'R3-CHEK', 1_000_000)
+  await kirish(page, 'Sotuvchi', '2222')
+  await smenada(page)
+  const z = await apiSorov(page, 'POST', '/zakazlar/', { telefon: '+998907770101', fio: 'Chek Sinov', dan: iso(40), gacha: iso(41), liboslar: [libos.id] })
+  await kartaOch(page, z.raqam)
+  const forma = page.locator('#asosiy-amal')
+  const qabul = forma.getByRole('button', { name: 'Qabul qilish', exact: true })
+  await expect(qabul).toBeEnabled()  // naqd — chek so'ralmaydi
+  await forma.getByRole('radio', { name: "O'tkazma" }).click()
+  await expect(forma.locator('.chek-maydoni')).toContainText("O'tkazma cheki")
+  await expect(qabul).toBeDisabled()  // chek qo'shilmaguncha
+  await forma.locator('.chek-maydoni input[type=file]:not([capture])').setInputFiles('public/kelinlar/1.jpg')
+  await expect(forma.locator('.chek-tanlangan img')).toBeVisible()
+  await expect(qabul).toBeEnabled()
+  await qabul.click()
+  await expect(page.getByText("To'lov qabul qilindi.")).toBeVisible()
+  // to'lovni yozgan xodim chekni to'lovlar ro'yxatidan ochadi (fayl yopiq — token bilan olinadi)
+  const tolovlar = page.locator('.karta-tolovlar')
+  await tolovlar.getByRole('button', { name: 'Chek', exact: true }).click()
+  const oyna = page.getByRole('dialog', { name: "O'tkazma cheki" })
+  await expect(oyna.locator('img.chek-rasm')).toBeVisible()
+  expect(await oyna.locator('img.chek-rasm').evaluate((i) => i.naturalWidth)).toBeGreaterThan(0)
   await ctx.close()
   expect(xatolar).toEqual([])
 })

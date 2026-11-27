@@ -195,6 +195,8 @@ class YordamRejimi(models.Model):
     chat_id = models.BigIntegerField(unique=True)
     xodim = models.ForeignKey('tenants.Xodim', null=True, blank=True, on_delete=models.SET_NULL, related_name='+')
     tugaydi = models.DateTimeField()
+    # Ega shu odamga oxirgi marta o'zi javob yozgan vaqt: shundan keyin bir muddat bot aralashmaydi (jonli suhbat)
+    ega_yozdi = models.DateTimeField(null=True, blank=True)
 
 
 class MenyuXabari(models.Model):

@@ -42,6 +42,7 @@ SAVOL_MATNI = ("💬 Qo'llab-quvvatlash\nSavolingiz yoki muammoingizni yozing �
                "Platforma egasi shu chatda javob beradi.\n\nTugatish: /bekor yoki menyudagi istalgan tugma.")
 SAVOL_MATNI_BOT = ("💬 Qo'llab-quvvatlash\nSavolingizni yozing — matn, skrinshot yoki ovozli xabar. Bot darhol javob beradi; "
                    "bot bilmasa — mutaxassis shu chatda javob beradi.\n\nTugatish: /bekor yoki menyudagi istalgan tugma.")
+EGA_SUHBAT = timedelta(minutes=30)  # ega javob yozgandan keyin shuncha vaqt bot shu odamga o'zi javob bermaydi
 ISHLAMAYDI = "Qo'llab-quvvatlash hozircha ishlamayapti. Birozdan keyin urinib ko'ring."
 
 
@@ -183,13 +184,16 @@ def murojaat_qabul(chat_id, m, token=None):
     tur = xabar_turi(m)
     if not tur:
         return [("Bu turdagi xabarni yuborib bo'lmaydi. Matn, rasm, fayl yoki ovozli xabar yuboring.", None)]
-    if tur == 'matn':  # faqat salom yoki «rahmat» — bot o'zi javob beradi, egaga uzatilmaydi
+    r = rejim(chat_id)
+    # Ega shu odam bilan hozirgina yozishgan (jonli suhbat): bot aralashmaydi — salomga ham, savolga ham javob bermaydi,
+    # hamma xabar egaga boradi (aks holda «ok», «rahmat» egaga yetmay qolardi va bot suhbat o'rtasiga kirib ketardi)
+    jonli_suhbat = bool(r and r.ega_yozdi and r.ega_yozdi > hozir - EGA_SUHBAT)
+    if tur == 'matn' and not jonli_suhbat:  # faqat salom yoki «rahmat» — bot o'zi javob beradi, egaga uzatilmaydi
         from .agent import avto_faol, salomlashuv
         tayyor = salomlashuv(m['text'])
         if tayyor and avto_faol():
             YordamRejimi.objects.filter(chat_id=chat_id).update(tugaydi=hozir + REJIM_MUDDATI)
             return [(tayyor, None)]
-    r = rejim(chat_id)
     kim, xodim, salon = _kim(chat_id, m.get('from') or {}, r)
     ega_chat, ega_token = manzil
     kw = {'_token': ega_token, 'chat_id': ega_chat}
@@ -225,7 +229,7 @@ def murojaat_qabul(chat_id, m, token=None):
     q = Murojaat.objects.create(chat_id=chat_id, foydalanuvchi_xabar_id=m['message_id'], ega_chat_id=ega_chat,
                                 ega_xabar_id=ega_id, ega_sarlavha_id=sarlavha_id, xodim=xodim, salon=salon)
     from . import agent  # yoqilgan bo'lsa bilim bazasidan javob — bot jarayonida, navbat bilan
-    navbatda = agent.navbatga(q, m.get('text') or m.get('caption') or '', agent.xabar_fayli(m))
+    navbatda = None if jonli_suhbat else agent.navbatga(q, m.get('text') or m.get('caption') or '', agent.xabar_fayli(m))
     YordamRejimi.objects.filter(chat_id=chat_id).update(tugaydi=hozir + REJIM_MUDDATI)  # jimlik muddati qaytadan
     # Har xabarga matnli tasdiq: foydalanuvchi qo'llab-quvvatlash rejimida ekanini doim ko'rib tursin
     # (aks holda zakaz qidiruvi uchun yozgani ham egaga ketayotganini sezmay qolardi)
@@ -298,6 +302,7 @@ def _foydalanuvchiga(chat_id, javob_id, manba_chat, m, tur, kw):
     except telegram.TelegramXatosi as e:
         sabab = "foydalanuvchi botni bloklagan" if '403' in str(e) else 'Telegram xatosi, qayta yuboring'
         return f"❌ Javob yetkazilmadi: {sabab}."
+    YordamRejimi.objects.filter(chat_id=chat_id).update(ega_yozdi=timezone.now())  # ega suhbatda — bot jim turadi
     return None
 
 

@@ -94,7 +94,7 @@ def _xodim_matni(salon, xodim):
     return '\n'.join(qatorlar)
 
 
-def jonli_malumot(murojaat, savol):
+def jonli_malumot(murojaat, savol, qoshimcha=()):
     """Modelga beriladigan blok (bo'sh bo'lishi mumkin) va egaga ko'rsatiladigan qisqa izoh («zakaz #15, kassa holati»)."""
     salon, xodim = murojaat.salon, murojaat.xodim
     if not salon or not xodim or xodim.salon_id != salon.id:
@@ -103,7 +103,14 @@ def jonli_malumot(murojaat, savol):
     # ishdan bo'shatilgan (o'chirilgan) xodim salon bazasidagi holatni ko'rmaydi
     if not xodim.faol or xodim.telegram_id != murojaat.chat_id:
         return '', ''
-    raqamlar = zakaz_raqamlari(savol)
+    # Bitta Telegram bir necha salonga ulangan: zakaz raqamlari har salonda takrorlanadi, qaysi salon so'ralgani
+    # noma'lum — adashib boshqa salonning zakazini aytib qo'ymaslik uchun jonli ma'lumot berilmaydi
+    from apps.tenants.models import Xodim
+    if Xodim.objects.filter(telegram_id=murojaat.chat_id, faol=True, salon__oquv=False).count() > 1:
+        return '', ''
+    # `qoshimcha` — suhbatdan olingan raqamlar: bot «qaysi zakaz?» deb so'ragach yozilgan yalang'och «15» va oldingi
+    # xabarlarda aytilgan zakazlar (odam har gapida raqamni takrorlamaydi)
+    raqamlar = list(dict.fromkeys([*zakaz_raqamlari(savol), *qoshimcha]))[:ZAKAZ_MAKS]
     bloklar = [_xodim_matni(salon, xodim)] + [_zakaz_matni(salon, r) for r in raqamlar]
     izoh = ', '.join([f'zakaz #{r}' for r in raqamlar] + ['kassa holati'])
     return ("Salon bazasidagi jonli ma'lumot (hozirgi holat, faqat shu salon):\n" + '\n\n'.join(bloklar) + '\n\n'), izoh

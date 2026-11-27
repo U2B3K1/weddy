@@ -10,11 +10,19 @@ const TELEFON = { width: 390, height: 844 }
 const KENG = { width: 1280, height: 860 }
 const rasm = (page, nom) => page.screenshot({ path: `test-results/kassa-davomi/${nom}.png`, animations: 'disabled' })
 const apiSorov = (page, usul, yol, tana) => page.evaluate(async ([usul, yol, tana]) => {
-  const r = await fetch(`http://127.0.0.1:8001/api${yol}`, {
-    method: usul, body: tana ? JSON.stringify(tana) : undefined,
-    headers: { 'Content-Type': 'application/json', 'X-Device-Token': localStorage.getItem('weddy.qurilma_token'),
-               Authorization: `Bearer ${sessionStorage.getItem('weddy.token')}` },
-  })
+  const sarlavha = { 'X-Device-Token': localStorage.getItem('weddy.qurilma_token'),
+                     Authorization: `Bearer ${sessionStorage.getItem('weddy.token')}` }
+  let body = tana ? JSON.stringify(tana) : undefined
+  if (yol === '/kassa/tolovlar/' && tana?.usul === 'otkazma') {
+    // O'tkazmada chek majburiy (2026-11-27): so'rov multipart, chek — kichik sinov rasmi
+    const kanvas = Object.assign(document.createElement('canvas'), { width: 8, height: 8 })
+    kanvas.getContext('2d').fillRect(0, 0, 8, 8)
+    const rasm = await new Promise((ok) => kanvas.toBlob(ok, 'image/png'))
+    body = new FormData()
+    Object.entries(tana).forEach(([k, v]) => body.append(k, v))
+    body.append('chek', rasm, 'chek.png')
+  } else sarlavha['Content-Type'] = 'application/json'
+  const r = await fetch(`http://127.0.0.1:8001/api${yol}`, { method: usul, body, headers: sarlavha })
   return r.json()
 }, [usul, yol, tana])
 

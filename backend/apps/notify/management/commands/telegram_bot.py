@@ -106,8 +106,11 @@ def yangilanishni_ishla(u, token=None):
             muddati_otgan = r.tugaydi <= timezone.now()
             # Menyu tugmasi, buyruq, chek so'roviga javob yoki zakaz qidiruviga o'xshash matn (raqam, telefon,
             # «A12 25.11») — rejimdan chiqadi va odatdagidek ishlanadi: mijoz ma'lumoti egaga ketib qolmasin
+            # Bot hozirgina zakaz raqamini so'ragan bo'lsa, yalang'och «15» — qidiruv emas, savolning davomi
+            from apps.notify import agent as _agent
+            qidiruv = bot_menyu.qidiruv_shaklimi(matn) and not _agent.raqam_kutilmoqda(chat_id, matn)
             if (buyruq or bot_menyu.menyu_tugmasimi(matn) or javobga.startswith(bot_menyu.CHEK_SORAV)
-                    or bot_menyu.qidiruv_shaklimi(matn)):
+                    or qidiruv):
                 yordam.tugat(chat_id)
                 if not muddati_otgan:
                     telegram.xabar_yubor(chat_id, "💬 Qo'llab-quvvatlash yozish rejimi tugadi.", **tk)
