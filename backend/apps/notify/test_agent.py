@@ -433,7 +433,7 @@ class AvtoRejimTests(AgentAsos):
             return chiqish.getvalue()
 
         self.api.reset_mock()
-        self.assertIn('Jami: ✅ 4 · ⚠️ 0', yurit('tayyor'))  # salom, rahmat, «nima qila olasan» — AI siz
+        self.assertIn('Jami: ✅ 5 · ⚠️ 0', yurit('tayyor'))  # salom, rahmat, «nima qila olasan» — AI siz
         self.assertFalse(self.urlopen.called)
         self.urlopen.return_value = self.model(mavzudan_tashqari=True)
         self.assertIn('Jami: ✅ 4 · ⚠️ 0 (o\'qib ko\'rish kerak) · ❌ 0', yurit('begona'))
@@ -446,6 +446,9 @@ class AvtoRejimTests(AgentAsos):
         self.urlopen.return_value = self.model(javob="Buni men bajara olmayman — ilovada o'zingiz qilasiz: Kassa.",
                                                manbalar=[self.pin.id])
         self.assertIn('✅ 3', yurit('amal'))
+        self.urlopen.return_value = self.model(javob="Buni men bajara olmayman. Botda /yordam ni bosing va yozing.",
+                                               manbalar=[self.pin.id])
+        self.assertIn('aylanma maslahat', yurit('amal'))  # qo'llab-quvvatlashdagi odamni yana /yordam ga yuborish — xato
         self.urlopen.return_value = self.model(shoshilinch=True, xulosa='Pul yechilgan')
         self.assertIn('✅ 4', yurit('shoshilinch'))
         self.urlopen.side_effect = urllib.error.URLError('ulanmadi')
@@ -742,6 +745,11 @@ class SalomlashuvTests(AgentAsos):
         with override_settings(OPENAI_API_KEY='sk-test'):
             self.assertIn('ovozli', agent.imkoniyat_matni())
         self.assertIn('bajara olmayman', agent.KORSATMA)  # «zakaz och» ga AI ham bajarmasligini aytadi
+        for matn in ('Siz botmisiz?', 'Bu yerda menga odam javob beryaptimi yoki bot?', 'Sen robotmisan', 'Ты бот?'):
+            self.assertEqual(agent.salomlashuv(matn), agent.BOT_EKANI, matn)
+        for matn in ('Botda zakazni qanday topaman?', 'Bot xabar yubormayapti', 'Mijoz odam yubordi libosga'):
+            self.assertIsNone(agent.salomlashuv(matn), matn)
+        self.assertIn('/yordam ni bosing', agent.KORSATMA)  # qo'llab-quvvatlashdagi odamga «/yordam ga yozing» deyilmaydi
 
     def test_kirish_matni_bot_javob_berishini_aytadi(self):
         from . import yordam

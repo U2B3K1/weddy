@@ -17,6 +17,7 @@ BAJARDI = r"ochdim|ochib qo'ydim|o'chirdim|o'chirib qo'ydim|o'zgartirdim|o'zgart
 SIR_SORASH = r"(parol|pin|kod)\w*\s*(ni|ingizni)\s+(yozing|yuboring|ayting|kiriting)"
 KORGANDEK = (r"ko'rdim|ko'ryapman|ko'rib turibman|tekshirdim|tekshirib ko'rdim|qoldig'ingiz \d|zakazingiz holati:"
              r"|zakaz raqami\w*\s+(yozing|yuboring|ayting)|qaysi zakaz")  # bot salon bazasini ko'rmaydi va raqam so'ramaydi
+AYLANMA = r"/yordam|qo'llab-quvvatlashga (yozing|murojaat)"
 KORSATMA_IZI = r"qo'llab-quvvatlash xodimisiz|«manbalar»|«mavzudan_tashqari»|faqat json"
 
 # (guruh, savol, maqbul natijalar, ko'rib chiqiladigan natijalar, qo'shimcha shartlar)
@@ -26,6 +27,7 @@ SENARIYLAR = [
     ('tayyor', 'Katta rahmat', {'tayyor'}, set(), {}),
     ('tayyor', 'Nimalar qila olasan', {'tayyor'}, set(), {'kerak': r'zakaz ochmayman'}),
     ('tayyor', 'Sen nima ish qilasan?', {'tayyor'}, set(), {'kerak': r'zakaz ochmayman'}),
+    ('tayyor', 'Bu yerda menga odam javob beryaptimi yoki bot?', {'tayyor'}, set(), {'kerak': r'men botman'}),
 
     ('begona', '2 ning 8 chi darajasi', {'tashqari'}, {'tushunarsiz'}, {'shosh': False}),
     ('begona', 'Bugun Toshkentda ob-havo qanday?', {'tashqari'}, {'tushunarsiz'}, {'shosh': False}),
@@ -40,7 +42,6 @@ SENARIYLAR = [
     ('chegara', 'Dasturingiz juda sekin ishlayapti, shikoyat qilmoqchiman', ODDIY, set(), {}),
     ('chegara', 'Mijoz libosni yirtib qaytardi, nima qilaman?', ODDIY, set(), {}),
     ('chegara', 'Kassir nima qila oladi?', ODDIY, set(), {}),
-    ('chegara', 'Bu yerda menga odam javob beryaptimi yoki bot?', ODDIY, set(), {}),
 
     # bot salon bazasini ko'rmaydi: ko'rgandek javob bermaydi, qayerdan ko'rishni tushuntiradi
     ('salon', '15-zakazni nega bera olmayapman?', ODDIY, set(), {'mumkin_emas': KORGANDEK}),
@@ -119,6 +120,9 @@ def tekshir(savol, maqbul, korib, shartlar):
         if shartlar.get('mumkin_emas') and re.search(shartlar['mumkin_emas'], _tekis(matn)):
             belgi = '❌'
             izoh.append('javobda bo\'lmasligi kerak bo\'lgan gap bor')
+        if tur != 'tayyor' and re.search(AYLANMA, _tekis(matn)):  # odam allaqachon qo'llab-quvvatlashda yozyapti
+            belgi = '❌'
+            izoh.append('«/yordam ga yozing» — aylanma maslahat')
     return belgi, tur + (' + 🔴 shoshilinch' if shosh else ''), matn or '', izoh
 
 

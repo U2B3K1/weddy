@@ -113,6 +113,13 @@ _IMKONIYAT_QOSHIMCHA = {'bot', 'sen', 'siz', 'san', "o'zing", "o'zingiz", 'ozing
                         'bizga', 'qani', "xo'sh", 'xosh', 'umuman', 'yana', 'ты', 'вы', 'а', 'ну', 'скажи', 'бот'}
 
 
+# «Botmisiz yoki odammi?» — AI ga ham, egaga ham bormaydi (serverdagi tekshiruvda bu savol egaga o'tib ketgan edi)
+_BOTMI = re.compile(r"\b(?:ro)?botmis(?:an|iz)\b|\bodammis(?:an|iz)\b|\b(?:odam|inson)\w*\b.*\bbot\w*|\bbot\w*\b.*\b(?:odam|inson)\w*"
+                    r"|\b(?:ты|вы|это) бот\b|бот или человек|человек или бот")
+BOT_EKANI = ("🤖 Men botman: Libosa bilim bazasi asosida javob beraman. Bilmagan savolimni mutaxassis (odam) ko'radi va "
+             "javobini shu chatga yozadi.")
+
+
 def imkoniyat_matni():
     """«Nima qila olasan?» ga tayyor javob: bot nimani tushuntiradi va nimani QILMAYDI. AI ga qoldirilmaydi — u
     «zakaz ochish, to'lovni rasmiylashtirish…» deb sanab, bot shularni o'zi bajaradigandek taassurot qoldirgan."""
@@ -129,6 +136,8 @@ def salomlashuv(matn):
     """Matn faqat salom, «rahmat/ok» yoki «nima qila olasan?» bo'lsa — tayyor javob, aks holda None (savol AI ga boradi)."""
     sozlar = re.findall(r"[^\W\d_]+(?:['ʻʼ’‘`][^\W\d_]+)?", (matn or '').lower())
     sozlar = [re.sub("[ʻʼ’‘`]", "'", s) for s in sozlar]
+    if sozlar and len(sozlar) <= 10 and _BOTMI.search(' '.join(sozlar)):
+        return BOT_EKANI
     if sozlar and len(sozlar) <= 8 and not re.search(r'\d', matn or ''):
         if _IMKONIYAT.fullmatch(' '.join(s for s in sozlar if s not in _IMKONIYAT_QOSHIMCHA)):
             return imkoniyat_matni()
@@ -278,6 +287,10 @@ KORSATMA = ("Siz Libosa (kelin liboslari salonlari uchun dastur) qo'llab-quvvatl
             "javobni «Buni men bajara olmayman — ilovada o'zingiz qilasiz:» mazmunidagi gap bilan boshlang, so'ng qadamlarni "
             "ayting. O'zingiz haqingizda gapirganda bajaradigandek ko'rinadigan gap yozmang («zakaz ocha olaman» emas — "
             "«zakaz ochishni tushuntiraman»). "
+            "Foydalanuvchi allaqachon qo'llab-quvvatlash chatida yozmoqda: «/yordam ni bosing», «qo'llab-quvvatlashga yozing» "
+            "kabi maslahat bermang. Maqolada yechim sifatida faqat qo'llab-quvvatlashga murojaat qilish aytilgan bo'lsa — "
+            "javob null (savol mutaxassisga o'zi o'tadi); bu javobning bir qismi bo'lsa — o'rniga «mutaxassis shu chatda javob "
+            "beradi» deng. Akademiya darsini javob matnida tilga olmang — havolasi javobga o'zi qo'shiladi. "
             "Javobning birinchi gapida savolga javob yoki hozir nima qilish kerakligi tursin, keyin kerak bo'lsa 1–3 qadam. "
             "Javob berish uchun bitta hal qiluvchi ma'lumot yetishmasa (masalan, qaysi bo'limda yoki ekranda qanday xato matni "
             "chiqqani) — «aniqlashtirish»: true va «javob» ga shu BITTA qisqa savolni yozing (manbasiz); oldingi suhbatda "
